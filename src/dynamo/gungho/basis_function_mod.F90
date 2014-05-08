@@ -59,13 +59,13 @@ type, public :: basis_function_type
 !> subroutine returns a pointer to the array of reals which are the values 
 !! of the basis functions
 !! @param[in] self the calling basis function
-!! @param[out] basis the pointer which points to the basis function array
+!> @return the pointer which points to the basis function array
    procedure :: get_basis
 
 !> subroutine returns a pointer to the array of reals which are the values
 !!  of the differented basis functions
 !! @param[in] self the calling basis function
-!! @param[out] basis the pointer which points to the diff basis array
+!> @return the pointer which points to the diff basis array
    procedure :: get_diff_basis
    
 end type basis_function_type
@@ -131,19 +131,19 @@ contains
     
   end subroutine set_diff_basis
 
-  subroutine get_basis(self,basis)
+  function get_basis(self) result(basis)
     class(basis_function_type), target, intent(in)   :: self
-    real(kind=dp), pointer,             intent(out)  :: basis(:,:,:,:,:)
+    real(kind=dp), pointer                           :: basis(:,:,:,:,:)
     basis => self%basis
     return
-  end subroutine get_basis
+  end function get_basis
 
-  subroutine get_diff_basis(self,basis)
+  function get_diff_basis(self) result(basis)
     class(basis_function_type), target, intent(in)  :: self
-    real(kind=dp), pointer,             intent(out) :: basis(:,:,:,:,:)
+    real(kind=dp), pointer                          :: basis(:,:,:,:,:)
 
     basis => self%diff_basis
-  end subroutine get_diff_basis
+  end function get_diff_basis
 
 
 end module basis_function_mod

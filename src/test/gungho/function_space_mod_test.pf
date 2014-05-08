@@ -45,14 +45,14 @@ contains
     end do
 
     call func_space%populate_cell_dofmap(1,map)
-    call func_space%get_cell_dofmap(1,testmap)
+    testmap => func_space%get_cell_dofmap(1)
     @assertEqual( map, testmap )
 
     do i=1,num_dofs
        map(i) = i+64
     end do
     call func_space%populate_cell_dofmap(num_cells-2,map)
-    call func_space%get_cell_dofmap(num_cells-2,testmap)
+    testmap => func_space%get_cell_dofmap(num_cells-2)
     @assertEqual( map, testmap )
 
   end subroutine test_func_space

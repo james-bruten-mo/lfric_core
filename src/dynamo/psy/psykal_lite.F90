@@ -44,9 +44,9 @@ contains
     nlayers = right_hand_side%get_nlayers( )
     ndf = right_hand_side%vspace%get_ndf( )
 
-    call right_hand_side%vspace%get_basis( v3_basis )
+    v3_basis => right_hand_side%vspace%get_basis( )
     do cell = 1, right_hand_side%get_ncell( )
-       call right_hand_side%vspace%get_cell_dofmap( cell, map )
+       map => right_hand_side%vspace%get_cell_dofmap( cell )
        call rhs_v3_code( nlayers, &
                          ndf, &
                          map, &
@@ -78,10 +78,10 @@ contains
 
     nlayers = pd_data%get_nlayers( )
     ndf     = pd_data%vspace%get_ndf( )
-    call pd_data%vspace%get_basis( v3_basis )
+    v3_basis => pd_data%vspace%get_basis( )
 
     do cell = 1, pd_data%get_ncell()
-       call pd_data%vspace%get_cell_dofmap( cell, map )
+       map => pd_data%vspace%get_cell_dofmap( cell )
        call solver_v3_code( nlayers, &
                             ndf, &
                             map, &

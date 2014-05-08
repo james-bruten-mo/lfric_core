@@ -52,43 +52,9 @@ program dynamo
 
   call dynamo_algorithm( pressure_density%new_proxy( ), rhs%new_proxy( ) )
 
-  call print_field( 'RHS field...', rhs )
-  call print_field( 'LHS field...', pressure_density )
+  call rhs%print_field( 'RHS field...' )
+  call pressure_density%print_field( 'LHS field...' )
 
   call log_event( 'Dynamo completed', LOG_LEVEL_INFO )
-
-contains
-
-  !> Send a field to the log.
-  !>
-  subroutine print_field( title, field )
-
-    use lfric
-    use log_mod, only : log_event, log_scratch_space, LOG_LEVEL_DEBUG
-
-    implicit none
-
-    character( * ),          intent( in ) :: title
-    type( field_data_type ), intent( in ) :: field
-
-    integer                   :: cell
-    integer                   :: layer
-    integer                   :: df
-    integer,          pointer :: map( : )
-
-    call log_event( title, LOG_LEVEL_DEBUG )
-
-    do cell=1,field%vspace%get_ncell()
-      call field%vspace%get_cell_dofmap(cell,map)
-      do df=1,field%vspace%get_ndf()
-        do layer=0,field%get_nlayers()-1
-          write( log_scratch_space, '( I4, I4, I4, F8.2 )' ) &
-              cell, df, layer+1, field%data( map( df ) + layer )
-          call log_event( log_scratch_space, LOG_LEVEL_DEBUG )
-        end do
-      end do
-    end do
-
-  end subroutine print_field
 
 end program dynamo

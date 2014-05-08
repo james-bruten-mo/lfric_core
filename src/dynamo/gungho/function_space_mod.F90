@@ -61,7 +61,7 @@ contains
 !> Subroutine Returns a pointer to the dofmap for the cell 
 !! @param[in] self The calling functions_space
 !! @param[in] cell Which cell
-!! @param[out] map The pointer which points to a slice of the dofmap
+!! @return The pointer which points to a slice of the dofmap
   procedure :: get_cell_dofmap
 
 !> Subroutine which populates the dofmap with data
@@ -77,7 +77,7 @@ contains
 
 !>  Subroutine Wrapper to the accessor procedure for the basis function
 !! @param[in] self the calling function space
-!! @param[out] basis a pointer to the array to hold the values of the basis function 
+!! @return a pointer to the array to hold the values of the basis function 
   procedure :: get_basis
 
 !> Subroutine Wrapper to the accessor procedure for the basis function
@@ -94,8 +94,7 @@ contains
 !>  Subroutine Wrapper to the accessor procedure for the basis function for the
 !! differential or "next" function space
 !! @param[in] self the calling function space
-!! @param[out] basis a pointer to the real array to hold the values of the
-!!  basis function 
+!! @return a pointer to the real array to hold the values of the basis function
   procedure :: get_diff_basis
 
 !> Subroutine Wrapper to the accessor procedure for the "next" basis function
@@ -221,16 +220,16 @@ end function get_ndf
 !> Subroutine Returns a pointer to the dofmap for the cell 
 !! @param[in] self The calling functions_space
 !! @param[in] cell Which cell
-!! @param[out] map The pointer which points to a slice of the dofmap
-subroutine get_cell_dofmap(self,cell,map)
+!! @return The pointer which points to a slice of the dofmap
+function get_cell_dofmap(self,cell) result(map)
   implicit none
   class(function_space_type), target, intent(in) :: self
   integer,                            intent(in) :: cell
-  integer, pointer,                   intent(out) :: map(:)
+  integer, pointer                               :: map(:)
 
   map => self%dofmap(cell,:)
   return
-end subroutine get_cell_dofmap
+end function get_cell_dofmap
 
 !-----------------------------------------------------------------------------
 ! Copy data in the dofmap
@@ -254,13 +253,13 @@ end subroutine populate_cell_dofmap
 !-----------------------------------------------------------------------------
 ! Get the basis function
 !-----------------------------------------------------------------------------
-subroutine get_basis(self,basis)
+function get_basis(self) result(basis)
   implicit none
   class(function_space_type), intent(in)    :: self  
-  real(kind=dp),   pointer , intent(out) :: basis(:,:,:,:,:)
-  call self%basis_function%get_basis(basis)
+  real(kind=dp),   pointer                  :: basis(:,:,:,:,:)
+  basis => self%basis_function%get_basis()
   return
-end subroutine get_basis
+end function get_basis
 
 !-----------------------------------------------------------------------------
 ! Set the basis function
@@ -277,13 +276,13 @@ end subroutine set_basis
 !-----------------------------------------------------------------------------
 ! Get the differential of the basis function
 !-----------------------------------------------------------------------------
-subroutine get_diff_basis(self,diff_basis)
+function get_diff_basis(self) result(diff_basis)
   implicit none
   class(function_space_type), intent(in)  :: self  
-  real(kind=dp), pointer,     intent(out) :: diff_basis(:,:,:,:,:)
-  call self%basis_function%get_diff_basis(diff_basis)
+  real(kind=dp), pointer                  :: diff_basis(:,:,:,:,:)
+  diff_basis => self%basis_function%get_diff_basis()
   return
-end subroutine get_diff_basis
+end function get_diff_basis
 
 !-----------------------------------------------------------------------------
 ! Set the differential of the basis function

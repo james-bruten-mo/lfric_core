@@ -82,6 +82,11 @@ module field_mod
     !> @return The proxy object.
     !>
     procedure, public :: new_proxy
+
+    !> Sends the field contents to the log
+    !! @param[in] title A title added to the log before the data is written out
+    !>
+    procedure, public :: print_field
   end type field_data_type
 
   interface field_data_type
@@ -194,4 +199,36 @@ contains
 
   end function new_proxy
 
+  !> Sends the field contents to the log
+  !! @param[in] title A title added to the log before the data is written out
+  !>
+  subroutine print_field( self, title )
+
+    use log_mod, only : log_event, log_scratch_space, LOG_LEVEL_DEBUG
+
+    implicit none
+
+    class( field_data_type ), target, intent( in ) :: self
+
+    character( * ),          intent( in ) :: title
+
+    integer                   :: cell
+    integer                   :: layer
+    integer                   :: df
+    integer,          pointer :: map( : )
+
+    call log_event( title, LOG_LEVEL_DEBUG )
+
+    do cell=1,self%vspace%get_ncell()
+      map => self%vspace%get_cell_dofmap( cell )
+      do df=1,self%vspace%get_ndf()
+        do layer=0,self%get_nlayers()-1
+          write( log_scratch_space, '( I4, I4, I4, F8.2 )' ) &
+              cell, df, layer+1, self%data( map( df ) + layer )
+          call log_event( log_scratch_space, LOG_LEVEL_DEBUG )
+        end do
+      end do
+    end do
+
+  end subroutine print_field
 end module field_mod
