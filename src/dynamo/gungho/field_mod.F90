@@ -33,7 +33,7 @@ module field_mod
 
     private
 
-    type( field_data_type ), pointer :: real_field => null()
+    class( field_data_type ), pointer :: real_field => null()
 
   end type field_type
 
@@ -108,7 +108,7 @@ contains
     implicit none
 
     type( field_type ), intent( in ) :: proxy
-    type( field_data_type ), pointer :: data
+    class( field_data_type ), pointer :: data
 
     data => proxy%real_field
 
@@ -126,7 +126,7 @@ contains
 
     implicit none
 
-    type( field_data_type ), pointer, intent( in ) :: field_data
+    class( field_data_type ), pointer, intent( in ) :: field_data
 
     type( field_type ) :: new_field
 
@@ -189,13 +189,19 @@ contains
   !>
   !> @return The proxy object.
   !>
+  !> @todo The need to use a temporary pointer variable here is ugly. If you
+  !>       have better syntax please replace it.
+  !>
   type( field_type ) function new_proxy( self ) result( proxy )
 
     implicit none
 
     class( field_data_type ), target, intent( in ) :: self
 
-    proxy = field_type( self )
+    class( field_data_type ), pointer :: ptr
+
+    ptr => self
+    proxy = field_type( ptr )
 
   end function new_proxy
 

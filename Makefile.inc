@@ -17,7 +17,7 @@ ifndef COMPILER
   MACHINE = $(shell uname -m)
   ifeq '$(OS)' 'Linux'
     ifeq '$(MACHINE)' 'x86_64'
-      COMPILER = ifort
+      COMPILER = gfortran
     else
       $(error Unrecognised processor: $(MACHINE))
     endif
@@ -33,6 +33,8 @@ ifeq '$(COMPILER)' 'ifort'
   $(info ** Chosen Intel Fortran compiler)
   FC     = ifort
   FFLAGS += -g -O0 -xhost
+  FWARNINGFLAGS = -warn all -warn errors
+  F_MOD_DESTINATION_ARG = -module $(OBJ_DIR)
   IFORT_VERSION = $(shell ifort -v 2>&1 | awk '{ print $$NF }' \
                    | awk -F . '{ printf "%03i%02i%02i", $$1, $$2, $$3 }')
   $(info ** Version $(IFORT_VERSION))

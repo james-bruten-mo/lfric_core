@@ -31,7 +31,7 @@ contains
 
     type( field_type ), intent( in ) :: right_hand_side_proxy
 
-    type( field_data_type), pointer :: right_hand_side => null( )
+    class( field_data_type), pointer :: right_hand_side => null( )
     integer :: cell
     integer, pointer :: map(:)
     integer :: nlayers
@@ -70,8 +70,8 @@ contains
     integer                 :: ndf
     real(kind=dp), pointer  :: v3_basis(:,:,:,:,:)
 
-    type( field_data_type ), pointer :: pd_data  => null( )
-    type( field_data_type ), pointer :: rhs_data => null( )
+    class( field_data_type ), pointer :: pd_data  => null( )
+    class( field_data_type ), pointer :: rhs_data => null( )
 
     pd_data  => field_data_from_proxy( pdfield )
     rhs_data => field_data_from_proxy( rhs )

@@ -5,7 +5,6 @@
 # https://puma.nerc.ac.uk/trac/GungHo/wiki
 ##############################################################################
 
-export COMPILER?=gfortran
 .PHONY: test
 test: all
 	$(MAKE) -C src/test
