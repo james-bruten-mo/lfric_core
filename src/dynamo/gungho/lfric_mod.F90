@@ -15,7 +15,6 @@ module lfric
   use function_space_mod,      only: function_space_type
   use field_mod,               only: field_type
   use kernel_mod,              only: kernel_type
-  use basis_function_mod,      only: basis_function_type
-  use gaussian_quadrature_mod, only: gaussian_quadrature_type, ngp
+  use gaussian_quadrature_mod, only: gaussian_quadrature_type, ngp_v,ngp_h
 
 end module lfric

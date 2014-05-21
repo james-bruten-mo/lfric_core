@@ -36,7 +36,7 @@ contains
     integer, pointer :: map(:)
     integer :: nlayers
     integer :: ndf
-    real(kind=dp), pointer  :: v3_basis(:,:,:,:,:)
+    real(kind=dp), pointer  :: v3_basis(:,:,:,:)
 
     right_hand_side => field_data_from_proxy( right_hand_side_proxy )
 
@@ -44,9 +44,9 @@ contains
     nlayers = right_hand_side%get_nlayers( )
     ndf = right_hand_side%vspace%get_ndf( )
 
-    v3_basis => right_hand_side%vspace%get_basis( )
+    call right_hand_side%vspace%get_basis(v3_basis )
     do cell = 1, right_hand_side%get_ncell( )
-       map => right_hand_side%vspace%get_cell_dofmap( cell )
+       call right_hand_side%vspace%get_cell_dofmap( cell,map )
        call rhs_v3_code( nlayers, &
                          ndf, &
                          map, &
@@ -68,7 +68,7 @@ contains
     integer, pointer        :: map(:)
     integer                 :: nlayers
     integer                 :: ndf
-    real(kind=dp), pointer  :: v3_basis(:,:,:,:,:)
+    real(kind=dp), pointer  :: v3_basis(:,:,:,:)
 
     class( field_data_type ), pointer :: pd_data  => null( )
     class( field_data_type ), pointer :: rhs_data => null( )
@@ -78,10 +78,10 @@ contains
 
     nlayers = pd_data%get_nlayers( )
     ndf     = pd_data%vspace%get_ndf( )
-    v3_basis => pd_data%vspace%get_basis( )
+    call pd_data%vspace%get_basis(v3_basis )
 
     do cell = 1, pd_data%get_ncell()
-       map => pd_data%vspace%get_cell_dofmap( cell )
+       call pd_data%vspace%get_cell_dofmap( cell,map )
        call solver_v3_code( nlayers, &
                             ndf, &
                             map, &

@@ -14,7 +14,9 @@
 
 
 module v3_rhs_kernel_mod
-use lfric
+use kernel_mod, only : kernel_type
+use constants_mod, only : dp
+use gaussian_quadrature_mod, only : ngp_h, ngp_v, gaussian_quadrature_type
 use argument_mod,            only: arg_type, &          ! the type
                                    gh_rw, v3, fe, cells ! the enums
 
@@ -28,7 +30,7 @@ implicit none
 type, public, extends(kernel_type) :: v3_rhs_kernel_type
   private
   type(arg_type) :: meta_args(1) = [ &
-       arg_type(gh_rw,v3,fe,.true.,.false.,.true.) &
+       arg_type(gh_rw,v3,fe,.true.,.false.,.false.,.true.) &
        ]
   integer :: iterates_over = cells
 
@@ -69,28 +71,26 @@ subroutine rhs_v3_code(nlayers,ndf,map,v3_basis,x,gq)
   !Arguments
   integer, intent(in) :: nlayers, ndf
   integer, intent(in) :: map(ndf)
-  real(kind=dp), intent(in), dimension(ndf,ngp,ngp,ngp,1) :: v3_basis 
+  real(kind=dp), intent(in), dimension(1,ndf,ngp_h,ngp_v) :: v3_basis 
   real(kind=dp), intent(inout) :: x(*)
   type(gaussian_quadrature_type), intent(inout) :: gq
 
   !Internal variables
   integer               :: df, k
-  integer               :: qp1, qp2, qp3
-  real(kind=dp), dimension(ngp,ngp,ngp) :: f
+  integer               :: qp1, qp2
+  real(kind=dp), dimension(ngp_h,ngp_v) :: f
    
   ! compute the analytic R integrated over one cell
   do k = 0, nlayers-1
     do df = 1, ndf
-       do qp1 = 1, ngp
-          do qp2 = 1, ngp
-             do qp3 = 1, ngp
-                f(qp1,qp2,qp3) = v3_basis(df,qp1,qp2,qp3,1) * real(k+1)
-             end do
+       do qp1 = 1, ngp_h
+          do qp2 = 1, ngp_v
+             f(qp1,qp2) = v3_basis(1,df,qp1,qp2) * real(k+1)
           end do
        end do
        x(map(df) + k) = gq%integrate(f)
     end do
-  end do
+ end do
   
 end subroutine rhs_v3_code
 

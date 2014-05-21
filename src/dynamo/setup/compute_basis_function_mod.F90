@@ -15,16 +15,14 @@ module compute_basis_function_mod
 
   use constants_mod, only: dp
   use gaussian_quadrature_mod, only: gaussian_quadrature_type, &
-                                     ngp ! parameter for how many GQ points
+                                     ngp_v, ngp_h !parameter for how many GQ points
   use function_space_mod, only : function_space_type
 
   implicit none
 
-  real(kind=dp) :: xgp(ngp)
-
 contains 
 
-  subroutine compute_basis(k,v0,v1,v2,v3, v_unique_dofs,v_dof_entity)
+  subroutine compute_basis(k,v0,v1,v2,v3, v_unique_dofs,v_dof_entity,gq)
     !-----------------------------------------------------------------------------
     ! Subroutine to compute test/trial functions on quadrature points
     !-----------------------------------------------------------------------------
@@ -32,9 +30,10 @@ contains
     ! order of elements
     integer, intent(in) :: k
     type(function_space_type), intent(inout) :: v0, v1, v2, v3
+    type(gaussian_quadrature_type), intent(in) :: gq
     integer, intent(in) :: v_unique_dofs(4,2), v_dof_entity(4,0:3)
 
-    integer :: i, jx, jy, jz, order, idx, j1, j2
+    integer :: i, jx, jy, jz, order, idx, j1, j2, h_ctr
     integer :: j(3), j2l_edge(12,3), j2l_face(6,3), face_idx(6), edge_idx(12,2)
     integer, allocatable :: lx(:), ly(:), lz(:)
     real(kind=dp)    :: fx, fy, fz, gx, gy, gz, dfx, dfy, dfz
@@ -146,22 +145,26 @@ contains
     end do
     do i=1,v_unique_dofs(1,2)
     !do i=1,nv0
-      do jx=1,ngp
-        fx = poly1d(order,xgp(jx),x1(lx(i)),x1,lx(i))
-        dfx = poly1d_deriv(order,xgp(jx),x1(lx(i)),x1,lx(i))
-        do jy=1,ngp
-          fy = poly1d(order,xgp(jy),x1(ly(i)),x1,ly(i))
-          dfy = poly1d_deriv(order,xgp(jy),x1(ly(i)),x1,ly(i))
-          do jz=1,ngp
-            fz = poly1d(order,xgp(jz),x1(lz(i)),x1,lz(i))
-            dfz = poly1d_deriv(order,xgp(jz),x1(lz(i)),x1,lz(i))
-            call v0%set_basis(fx*fy*fz,i,jx,jy,jz,1)
-            call v0%set_diff_basis(dfx*fy*fz,i,jx,jy,jz,1)
-            call v0%set_diff_basis(fx*dfy*fz,i,jx,jy,jz,2)
-            call v0%set_diff_basis(fx*fy*dfz,i,jx,jy,jz,3)
+       ! explicitly for quads, as ngp_h = ngp_v * ngp_v
+       h_ctr = 1
+       do jx=1,ngp_v
+          fx = gq%poly1d(order,jx,x1(lx(i)),x1,lx(i))
+          dfx = gq%poly1d_deriv(order,jx,x1(lx(i)),x1,lx(i))
+          do jy=1,ngp_v
+             fy = gq%poly1d(order,jy,x1(ly(i)),x1,ly(i))
+             dfy = gq%poly1d_deriv(order,jy,x1(ly(i)),x1,ly(i))
+             do jz=1,ngp_v
+                fz = gq%poly1d(order,jz,x1(lz(i)),x1,lz(i))
+                dfz = gq%poly1d_deriv(order,jz,x1(lz(i)),x1,lz(i))
+                call v0%set_basis(fx*fy*fz,1,i,h_ctr,jz)
+                call v0%set_diff_basis(dfx*fy*fz,1,i,h_ctr,jz)
+                call v0%set_diff_basis(fx*dfy*fz,2,i,h_ctr,jz)
+                call v0%set_diff_basis(fx*fy*dfz,3,i,h_ctr,jz)                
+             end do
+             h_ctr = h_ctr + 1 
           end do
-        end do
-      end do
+       end do
+       call v0%set_nodes(x1(lx(i)),x1(ly(i)),x1(lz(i)),i)
     end do
 
     !-----------------------------------------------------------------------------
@@ -262,41 +265,53 @@ contains
     ! this needs correcting
     !do i=1,nv1  
     do i=1,v_unique_dofs(2,2)
-      do jx=1,ngp
-        fx = poly1d(order,xgp(jx),x1(lx(i)),x1,lx(i))
-        dfx = poly1d_deriv(order,xgp(jx),x1(lx(i)),x1,lx(i))
-        if (lx(i) <= order) then
-          gx = poly1d(order-1,xgp(jx),x2(lx(i)),x2,lx(i))
-        else
-          gx = 0.0
-        end if
-        do jy=1,ngp
-          fy = poly1d(order,xgp(jy),x1(ly(i)),x1,ly(i))
-          dfy = poly1d_deriv(order,xgp(jy),x1(ly(i)),x1,ly(i))
-          if (ly(i) <= order) then 
-            gy = poly1d(order-1,xgp(jy),x2(ly(i)),x2,ly(i))
+       ! Quads only as ngp_h = ngp_v * ngp_v
+       h_ctr = 1
+       do jx=1,ngp_v
+          fx = gq%poly1d(order,jx,x1(lx(i)),x1,lx(i))
+          dfx = gq%poly1d_deriv(order,jx,x1(lx(i)),x1,lx(i))
+          if (lx(i) <= order) then
+             gx = gq%poly1d(order-1,jx,x2(lx(i)),x2,lx(i))
           else
-            gy = 0.0
+             gx = 0.0
           end if
-          do jz=1,ngp
-            fz = poly1d(order,xgp(jz),x1(lz(i)),x1,lz(i))
-            dfz = poly1d_deriv(order,xgp(jz),x1(lz(i)),x1,lz(i))
-            if (lz(i) <= order) then     
-              gz = poly1d(order-1,xgp(jz),x2(lz(i)),x2,lz(i))
-            else
-              gz = 0.0
-            end if
-            
-            call v1%set_basis(gx*fy*fz*unit_vec_v1(i,1),i,jx,jy,jz,1)
-            call v1%set_basis(fx*gy*fz*unit_vec_v1(i,2),i,jx,jy,jz,2)
-            call v1%set_basis(fx*fy*gz*unit_vec_v1(i,3),i,jx,jy,jz,3)
+          do jy=1,ngp_v
+             fy = gq%poly1d(order,jy,x1(ly(i)),x1,ly(i))
+             dfy = gq%poly1d_deriv(order,jy,x1(ly(i)),x1,ly(i))
+             if (ly(i) <= order) then 
+                gy = gq%poly1d(order-1,jy,x2(ly(i)),x2,ly(i))
+             else
+                gy = 0.0
+             end if
+             do jz=1,ngp_v
+                fz = gq%poly1d(order,jz,x1(lz(i)),x1,lz(i))
+                dfz = gq%poly1d_deriv(order,jz,x1(lz(i)),x1,lz(i))
+                if (lz(i) <= order) then     
+                   gz = gq%poly1d(order-1,jz,x2(lz(i)),x2,lz(i))
+                else
+                   gz = 0.0
+                end if
+                
+                call v1%set_basis(gx*fy*fz*unit_vec_v1(i,1),1,i,h_ctr,jz)
+                call v1%set_basis(fx*gy*fz*unit_vec_v1(i,2),2,i,h_ctr,jz)
+                call v1%set_basis(fx*fy*gz*unit_vec_v1(i,3),3,i,h_ctr,jz)
 
-            call v1%set_diff_basis((fx*dfy*gz*unit_vec_v1(i,3) - fx*gy*dfz*unit_vec_v1(i,2)) ,i,jx,jy,jz,1)
-            call v1%set_diff_basis((gx*fy*dfz*unit_vec_v1(i,1) - dfx*fy*gz*unit_vec_v1(i,3)) ,i,jx,jy,jz,2)
-            call v1%set_diff_basis((dfx*gy*fz*unit_vec_v1(i,2) - gx*dfy*fz*unit_vec_v1(i,1)), i,jx,jy,jz,3)
+                call v1%set_diff_basis(                                          &
+                     (fx*dfy*gz*unit_vec_v1(i,3) - fx*gy*dfz*unit_vec_v1(i,2) ), &
+                     1,i,h_ctr,jz)
+                call v1%set_diff_basis(                                          &
+                     (gx*fy*dfz*unit_vec_v1(i,1) - dfx*fy*gz*unit_vec_v1(i,3) ), &
+                     2,i,h_ctr,jz)
+                call v1%set_diff_basis(                                          &
+                     (dfx*gy*fz*unit_vec_v1(i,2) - gx*dfy*fz*unit_vec_v1(i,1) ), &
+                     3,i,h_ctr,jz)                                          
+             end do
+             h_ctr = h_ctr + 1
           end do
-        end do
-      end do
+       end do
+       call v1%set_nodes(unit_vec_v2(i,1)*x2(lx(i)) + (1.0 - unit_vec_v1(i,1))*x1(lx(i)), &
+            unit_vec_v1(i,2)*x2(ly(i)) + (1.0 - unit_vec_v1(i,2))*x1(ly(i)), &
+            unit_vec_v1(i,3)*x2(lz(i)) + (1.0 - unit_vec_v1(i,3))*x1(lz(i)), i)
     end do
 
 
@@ -369,42 +384,48 @@ contains
 
     !do i=1,nv2
     do i=1,v_unique_dofs(3,2)
-      do jx=1,ngp
-        fx = poly1d(order,xgp(jx),x1(lx(i)),x1,lx(i))
-        dfx = poly1d_deriv(order,xgp(jx),x1(lx(i)),x1,lx(i))
-        if (lx(i) <= order) then
-          gx = poly1d(order-1,xgp(jx),x2(lx(i)),x2,lx(i))
-        else
-          gx = 0.0
-        end if
-        do jy=1,ngp
-          fy = poly1d(order,xgp(jy),x1(ly(i)),x1,ly(i))
-          dfy = poly1d_deriv(order,xgp(jy),x1(ly(i)),x1,ly(i))
-          if (ly(i) <= order) then
-            gy = poly1d(order-1,xgp(jy),x2(ly(i)),x2,ly(i))
+       ! Quads only as ngp_h = ngp_h * ngp_h
+       h_ctr = 1
+       do jx=1,ngp_v
+          fx = gq%poly1d(order,jx,x1(lx(i)),x1,lx(i))
+          dfx = gq%poly1d_deriv(order,jx,x1(lx(i)),x1,lx(i))
+          if (lx(i) <= order) then
+             gx = gq%poly1d(order-1,jx,x2(lx(i)),x2,lx(i))
           else
-            gy = 0.0
-          end if       
-          do jz=1,ngp
-            fz = poly1d(order,xgp(jz),x1(lz(i)),x1,lz(i))
-            dfz = poly1d_deriv(order,xgp(jz),x1(lz(i)),x1,lz(i))
-            if (lz(i) <= order) then
-              gz = poly1d(order-1,xgp(jz),x2(lz(i)),x2,lz(i))
-            else
-              gz = 0.0
-            end if
+             gx = 0.0
+          end if
+          do jy=1,ngp_v
+             fy = gq%poly1d(order,jy,x1(ly(i)),x1,ly(i))
+             dfy = gq%poly1d_deriv(order,jy,x1(ly(i)),x1,ly(i))
+             if (ly(i) <= order) then
+                gy = gq%poly1d(order-1,jy,x2(ly(i)),x2,ly(i))
+             else
+                gy = 0.0
+             end if
+             do jz=1,ngp_v
+                fz = gq%poly1d(order,jz,x1(lz(i)),x1,lz(i))
+                dfz = gq%poly1d_deriv(order,jz,x1(lz(i)),x1,lz(i))
+                if (lz(i) <= order) then
+                   gz = gq%poly1d(order-1,jz,x2(lz(i)),x2,lz(i))
+                else
+                   gz = 0.0
+                end if
             
-            call v2%set_basis(fx*gy*gz*unit_vec_v2(i,1),i,jx,jy,jz,1)
-            call v2%set_basis(gx*fy*gz*unit_vec_v2(i,2),i,jx,jy,jz,2)
-            call v2%set_basis(gx*gy*fz*unit_vec_v2(i,3),i,jx,jy,jz,3)
-            
-            call v2%set_diff_basis((dfx*gy*gz*unit_vec_v2(i,1) & 
-                                      + gx*dfy*gz*unit_vec_v2(i,2) &
-                                      + gx*gy*dfz*unit_vec_v2(i,3) ), &
-                                      i,jx,jy,jz,1) 
+                call v2%set_basis(fx*gy*gz*unit_vec_v2(i,1),1,i,h_ctr,jz)
+                call v2%set_basis(gx*fy*gz*unit_vec_v2(i,2),2,i,h_ctr,jz)
+                call v2%set_basis(gx*gy*fz*unit_vec_v2(i,3),3,i,h_ctr,jz)
+                
+                call v2%set_diff_basis( (dfx*gy*gz*unit_vec_v2(i,1) & 
+                     + gx*dfy*gz*unit_vec_v2(i,2)                   &
+                     + gx*gy*dfz*unit_vec_v2(i,3) ),                &
+                     1,i,h_ctr,jz) 
+             end do
+             h_ctr = h_ctr + 1
           end do
-        end do
-      end do
+       end do
+       call v2%set_nodes(unit_vec_v2(i,1)*x1(lx(i)) + (1.0 - unit_vec_v2(i,1))*x2(lx(i)), &
+            unit_vec_v2(i,2)*x1(ly(i)) + (1.0 - unit_vec_v2(i,2))*x2(ly(i)), &
+            unit_vec_v2(i,3)*x1(lz(i)) + (1.0 - unit_vec_v2(i,3))*x2(lz(i)), i)
     end do
 
     !-----------------------------------------------------------------------------
@@ -426,17 +447,21 @@ contains
     end do
 
     !do i=1,nv3
+    ! For Quads only as ngp_h = ngp_v * ngp_v
     do i=1,v_unique_dofs(4,2)
-      do jx=1,ngp
-        gx = poly1d(order,xgp(jx),x2(lx(i)),x2,lx(i))
-        do jy=1,ngp
-          gy = poly1d(order,xgp(jy),x2(ly(i)),x2,ly(i))
-          do jz=1,ngp
-            gz = poly1d(order,xgp(jz),x2(lz(i)),x2,lz(i))
-            call v3%set_basis(gx*gy*gz,i,jx,jy,jz,1)
+       h_ctr = 1
+       do jx=1,ngp_v
+          gx = gq%poly1d(order,jx,x2(lx(i)),x2,lx(i))
+          do jy=1,ngp_v
+             gy = gq%poly1d(order,jy,x2(ly(i)),x2,ly(i))
+             do jz=1,ngp_v
+                gz = gq%poly1d(order,jz,x2(lz(i)),x2,lz(i))
+                call v3%set_basis(gx*gy*gz,1,i,h_ctr,jz)                
+             end do
+             h_ctr = h_ctr + 1
           end do
-        end do
-      end do
+       end do
+       call v3%set_nodes(x2(lx(i)),x2(ly(i)),x2(lz(i)),i)
     end do
 
     ! tidy up
@@ -449,91 +474,7 @@ contains
   end subroutine compute_basis
 
 
-  function poly1d(order,xk,xl,x,l)
-  !-----------------------------------------------------------------------------
-  ! evaluate 1D basis function of arbitrary order at xk
-  !-----------------------------------------------------------------------------
-
-  implicit none
-
-  real(kind=dp) :: poly1d
-  ! Order of basis function
-  integer, intent(in) :: order
-  ! Index of basis function
-  integer, intent(in) :: l
-  ! quadrature point to evaluate basis function at
-  real(kind=dp), intent(in) :: xk
-  ! Point function is unity at
-  real(kind=dp), intent(in) :: xl
-  ! grid points
-  real(kind=dp), intent(in) :: x(order+1)
-
-  integer :: j
-
-  poly1d = 1.0
-
-  do j=1,l-1
-    poly1d = poly1d*(xk-x(j))/(xl-x(j))
-  end do
-  do j=l+1,order+1
-    poly1d = poly1d*(xk-x(j))/(xl-x(j))
-  end do
-
-  end function poly1d
-
-
-  function poly1d_deriv(order,xk,xl,x,l)
-  !-----------------------------------------------------------------------------
-  ! evaluate derivative of 1D basis function of arbitrary order at xk
-  !-----------------------------------------------------------------------------
-  implicit none
-
-  real(kind=dp) :: poly1d_deriv
-  ! Order of basis function
-  integer, intent(in) :: order
-  ! Index of basis function
-  integer, intent(in) :: l
-  ! quadrature point to evaluate basis function at
-  real(kind=dp), intent(in) :: xk
-  ! Point function is unity at
-  real(kind=dp), intent(in) :: xl
-  ! grid points
-  real(kind=dp), intent(in) :: x(order+1)
-
-  real(kind=dp) :: denom,t
-
-  integer :: k,j
-
-
-  poly1d_deriv = 0.0
-  denom = 1.0
-
-  do j=1,l-1
-    denom = denom * 1.0/(xl-x(j))  
-  end do
-  do j=l+1,order+1
-    denom = denom * 1.0/(xl-x(j))  
-  end do
-
-  do k=1,l-1
-    t = 1.0
-    do j=1,order+1
-      if (j .ne. l .and. j .ne. k ) then
-        t = t * (xk - x(j))
-      end if
-    end do
-    poly1d_deriv = poly1d_deriv + t*denom
-  end do  
-  do k=l+1,order+1
-    t = 1.0
-    do j=1,order+1
-      if (j .ne. l .and. j .ne. k ) then
-        t = t * (xk - x(j))
-      end if
-    end do
-    poly1d_deriv = poly1d_deriv + t*denom
-  end do 
-
-  end function poly1d_deriv
+ 
 
 end module compute_basis_function_mod
+

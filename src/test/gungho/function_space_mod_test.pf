@@ -15,23 +15,34 @@ contains
   subroutine test_func_space()
     use pFUnit_Mod
     use function_space_mod
-    use basis_function_mod
+    use constants_mod, only : dp
     implicit none
 
     type(function_space_type) :: func_space
     integer :: num_cells, num_dofs, num_unique_dofs
+    integer :: ngp_v,ngp_h,dim_space,dim_space_diff
     integer :: testncell, testundf
-
+    real(kind=dp), pointer, dimension(:,:,:,:) :: basis
+    real(kind=dp) test_basis
     integer :: map(4),i
     integer, pointer :: testmap(:)
-
+    real(kind=dp) :: epsilon
+    real(kind=dp) :: x,y,z
+    real(kind=dp), pointer, dimension(:,:) :: test_nodes
+    
+    ! set some sizes ...
     num_cells = 35
     num_dofs=4
     num_unique_dofs = 100
+    ngp_v=4
+    ngp_h=7
+    dim_space=1
+    dim_space_diff=3
 
     func_space = function_space_type( &
          num_cells=num_cells, num_dofs=num_dofs, num_unique_dofs=num_unique_dofs, &
-         dim_space=1, dim_space_p1=3, ngp = 3)
+         dim_space=dim_space, dim_space_diff=dim_space_diff,                      &
+         ngp_h = ngp_h, ngp_v = ngp_v)
 
     ! test the procedures of the type
     testncell = func_space%get_ncell()
@@ -45,15 +56,43 @@ contains
     end do
 
     call func_space%populate_cell_dofmap(1,map)
-    testmap => func_space%get_cell_dofmap(1)
+!    testmap => func_space%get_cell_dofmap(1)
+    call func_space%get_cell_dofmap(1,testmap)
     @assertEqual( map, testmap )
 
     do i=1,num_dofs
        map(i) = i+64
     end do
     call func_space%populate_cell_dofmap(num_cells-2,map)
-    testmap => func_space%get_cell_dofmap(num_cells-2)
+!    testmap => func_space%get_cell_dofmap(num_cells-2)
+    call func_space%get_cell_dofmap(num_cells-2,testmap)
+    
     @assertEqual( map, testmap )
+
+
+    epsilon = 1.0e-14
+    test_basis=sqrt(2.0)
+    call func_space%set_basis(test_basis,1,2,3,3)
+    call func_space%get_basis(basis)
+    @assertEqual( basis(1,2,3,3), test_basis,epsilon )
+
+    test_basis=atan(4.0)
+    call func_space%set_diff_basis(test_basis,1,3,4,2)
+    call func_space%get_diff_basis(basis)
+    @assertEqual( basis(1,3,4,2), test_basis,epsilon )
+
+
+    x = 0.152689632_dp
+    y = 0.562554751_dp
+    z = -0.8234_dp
+    do i=1,num_dofs
+       call func_space%set_nodes(x,y,z,i)
+    end do
+    call func_space%get_nodes(test_nodes)
+    @assertEqual( x, test_nodes(1,4), epsilon )
+    @assertEqual( y, test_nodes(2,3), epsilon )
+    @assertEqual( z, test_nodes(3,2), epsilon )
+    
 
   end subroutine test_func_space
 

@@ -1,3 +1,4 @@
+
 !-------------------------------------------------------------------------------
 ! (c) The copyright relating to this work is owned jointly by the Crown, 
 ! Met Office and NERC 2014. 
@@ -14,7 +15,7 @@ module field_mod
 
   use constants_mod,            only : dp
   use function_space_mod,       only : function_space_type
-  use gaussian_quadrature_mod,  only : gaussian_quadrature_type, ngp
+  use gaussian_quadrature_mod,  only : gaussian_quadrature_type
 
   implicit none
 
@@ -226,7 +227,7 @@ contains
     call log_event( title, LOG_LEVEL_DEBUG )
 
     do cell=1,self%vspace%get_ncell()
-      map => self%vspace%get_cell_dofmap( cell )
+     call self%vspace%get_cell_dofmap( cell,map )
       do df=1,self%vspace%get_ndf()
         do layer=0,self%get_nlayers()-1
           write( log_scratch_space, '( I4, I4, I4, F8.2 )' ) &

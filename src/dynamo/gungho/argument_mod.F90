@@ -53,6 +53,7 @@ module argument_mod
      integer :: stencil
      logical :: basis
      logical :: diff_basis
+     logical :: nodal_coords
      logical :: gaussian_quad
   end type arg_type
 

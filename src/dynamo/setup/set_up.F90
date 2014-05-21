@@ -16,28 +16,30 @@
 
 module set_up_mod
 
-  use constants_mod, only: dp
-  use function_space_mod, only : function_space_type
-  use reference_element_mod, only : reference_cube
+  use constants_mod,              only : dp
+  use function_space_mod,         only : function_space_type
+  use reference_element_mod,      only : reference_cube
 
-  use mesh_generator_mod,    only: mesh_generator_init,        &
+  use mesh_generator_mod,         only : mesh_generator_init,  &
                                    mesh_generator_cubedsphere, &
                                    mesh_generator_biperiodic,  &
                                    mesh_connectivity
-  use num_dof_mod,           only: num_dof_init
+  use num_dof_mod,                only : num_dof_init
   use compute_basis_function_mod, only : compute_basis
-  use dofmap_mod,           only: get_dofmap
+  use dofmap_mod,                 only : get_dofmap
+  use gaussian_quadrature_mod,    only : gaussian_quadrature_type,ngp_h, ngp_v
   implicit none
 contains 
 
-  subroutine set_up(v0, v1, v2, v3, num_layers)
+  subroutine set_up(v0, v1, v2, v3, num_layers,gq)
 
     use log_mod, only : log_event, LOG_LEVEL_INFO
 
     implicit none
 
-    type(function_space_type), intent(inout) :: v0, v1, v2, v3
-    integer, intent(out)                     :: num_layers
+    type(function_space_type), intent(inout)   :: v0, v1, v2, v3
+    integer, intent(out)                       :: num_layers
+    type(gaussian_quadrature_type), intent(in) :: gq
 
     integer                                  :: num_cells, element_order
     logical                                  :: l_spherical
@@ -85,32 +87,32 @@ contains
     v0 = function_space_type( &
          num_cells = num_cells ,num_dofs = v_unique_dofs(1,2), &
          num_unique_dofs = v_unique_dofs(1,1) ,  &
-         dim_space = 1, dim_space_p1 = 3,  &
-         ngp = 3 )
+         dim_space = 1, dim_space_diff = 3,  &
+         ngp_h = ngp_h, ngp_v = ngp_v )
 
     v1 = function_space_type( &
          num_cells = num_cells ,num_dofs = v_unique_dofs(2,2), &
          num_unique_dofs = v_unique_dofs(2,1) ,  &
-         dim_space = 3, dim_space_p1 = 3,  &
-         ngp = 3 )
+         dim_space = 3, dim_space_diff = 3,  &
+         ngp_h = ngp_h, ngp_v = ngp_v )
 
     v2 = function_space_type( &
          num_cells = num_cells ,num_dofs = v_unique_dofs(3,2), &
          num_unique_dofs = v_unique_dofs(3,1) ,  &
-         dim_space = 3, dim_space_p1 = 1,  &
-         ngp = 3 )
+         dim_space = 3, dim_space_diff = 1,  &
+         ngp_h = ngp_h, ngp_v = ngp_v )
 
     v3 = function_space_type( &
          num_cells = num_cells ,num_dofs = v_unique_dofs(4,2), &
          num_unique_dofs = v_unique_dofs(4,1) ,  &
-         dim_space = 1, dim_space_p1 = 1,  &
-         ngp = 3 )
+         dim_space = 1, dim_space_diff = 1,  &
+         ngp_h = ngp_h, ngp_v = ngp_v )
 
     call log_event( "set_up: computing basis functions", LOG_LEVEL_INFO )
 
     ! compute the value of the basis functions and populate the
     ! basis_function_type
-    call compute_basis(element_order,v0,v1,v2,v3,v_unique_dofs,v_dof_entity)  
+    call compute_basis(element_order,v0,v1,v2,v3,v_unique_dofs,v_dof_entity,gq)  
     call log_event( "set_up: computing the dof_map", LOG_LEVEL_INFO )
     ! compute the dof maps for each function space
     call get_dofmap(num_layers,v0,v_dof_entity(1,:))

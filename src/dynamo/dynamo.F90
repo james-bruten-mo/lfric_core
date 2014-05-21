@@ -37,10 +37,12 @@ program dynamo
 
   call log_event( 'Dynamo running...', LOG_LEVEL_INFO )
 
-  call set_up( v0_function_space, v1_function_space, v2_function_space, &
-               v3_function_space, num_layers )
-
   gq = gaussian_quadrature_type( )
+
+  call set_up( v0_function_space, v1_function_space, v2_function_space, &
+               v3_function_space, num_layers, gq )
+
+
 
   pressure_density = field_data_type( vector_space = v3_function_space, &
                                       gq = gq,                          &
