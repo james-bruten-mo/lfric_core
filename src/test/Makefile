@@ -27,7 +27,8 @@ test: pfunit $(OBJ_DIR)/test
 include pfunit.mk
 
 $(OBJ_DIR)/test: $(TEST_OBJS) $(OBJS) $(DRIVER_OBJ) $(TARGET_OBJ)
-	$(FC) -L$(PFUNIT_INSTALL)/lib -o $@ $^ -lpfunit
+	$(FC) -L$(PFUNIT_INSTALL)/lib -L/data/cr1/mhambley/modules/packages/gfortran/4.9.0/netcdf/4.3.2/lib \
+        -o $@ $^ -lpfunit -lnetcdf -lnetcdff
 
 $(DRIVER_OBJ): $(PFUNIT_INSTALL)/include/driver.F90 testSuites.inc
 	$(FC) $(FFLAGS) -c -I$(PFUNIT_INSTALL)/mod -I. -o $@ $<

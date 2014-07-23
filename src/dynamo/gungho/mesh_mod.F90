@@ -14,6 +14,7 @@ implicit none
 integer :: num_cells
 integer :: num_layers
 integer :: element_order
+integer :: num_cells_1d
 logical :: l_spherical
 
 integer :: v_unique_dofs(4,2)

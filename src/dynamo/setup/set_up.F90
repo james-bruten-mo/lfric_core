@@ -41,7 +41,7 @@ contains
 
     use log_mod, only : log_event, LOG_LEVEL_INFO
     use mesh_mod, only : num_cells, num_layers, element_order, l_spherical, &
-                         v_unique_dofs,v_dof_entity
+                         num_cells_1d, v_unique_dofs, v_dof_entity
 
     implicit none
 
@@ -49,12 +49,19 @@ contains
     character(len = 100)                     :: filename
 
     ! hard-coded these numbers are
-    num_cells = 9
+    num_cells_1d = 4 
     num_layers = 3
     element_order = 0
     l_spherical = .false.
-    filename = '../../data/Cubegrid.dat' 
-    call log_event( "set_up: generating/reading the mesh", LOG_LEVEL_INFO )
+    filename = 'ugrid_quads_2d.nc' 
+    call log_event( "set_up: generating/reading the mesh", LOG_LEVEL_INFO )    
+
+    ! total number of horizontal cells ( num_cells is currently cells along one edge )   
+    if ( l_spherical ) then  
+      num_cells = 6*num_cells_1d**2
+    else
+      num_cells = num_cells_1d**2
+    end if
 
 !  ----------------------------------------------------------
 !  Mesh generation, really a preprocessor step for reading
@@ -68,7 +75,7 @@ contains
     if ( l_spherical ) then
        call mesh_generator_cubedsphere(filename,num_cells,num_layers,delta)
     else
-       call mesh_generator_biperiodic(num_cells,3,3,num_layers,delta,delta,delta)
+       call mesh_generator_biperiodic(num_cells,num_cells_1d,num_cells_1d,num_layers,delta,delta,delta)
     end if
     ! Extend connectivity ( cells->faces, cells->edges )  
     call mesh_connectivity(num_cells)    

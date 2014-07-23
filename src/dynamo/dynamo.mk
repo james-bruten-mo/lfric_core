@@ -9,7 +9,6 @@ include ../../Makefile.inc
 
 BIN_DIR   = ../../bin
 
-EXE  = dynamo
 -include $(OBJ_DIR)/$(EXE).mk
 
 .PHONY: all
@@ -34,12 +33,12 @@ $(OBJ_DIR)/%.mod: $(OBJ_DIR)/%.o
 
 $(OBJ_DIR)/%.o: %.F90 | $(OBJ_DIR)
 	@echo "Compile $<"
-	$(FC) $(FFLAGS) $(FWARNINGFLAGS) $(F_MOD_DESTINATION_ARG) \
+	$(FC) $(CPPFLAGS) $(FFLAGS) $(FWARNINGFLAGS) $(F_MOD_DESTINATION_ARG) \
 	      -I $(OBJ_DIR) -c -o $@ $<
 
 $(OBJ_DIR)/%.o: %.f90 | $(OBJ_DIR)
 	@echo "Compile $<"
-	$(FC) $(FFLAGS) $(FWARNINGFLAGS) $(F_MOD_DESTINATION_ARG) \
+	$(FC) $(CPPFLAGS) $(FFLAGS) $(FWARNINGFLAGS) $(F_MOD_DESTINATION_ARG) \
 	      -I $(OBJ_DIR) -c -o $@ $<
 
 $(OBJ_DIR)/$(EXE): $($(shell echo $(EXE) | tr a-z A-Z)_OBJS)

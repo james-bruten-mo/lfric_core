@@ -13,11 +13,14 @@ module constants_mod
 implicit none
 
 !Working precision
-integer,       parameter :: dp=8              !< working precision
+integer,       parameter :: dp=8                    !< working precision
 
 !Numerical constants
-real(kind=dp), parameter :: pi=3.141592654    !< pi value
-real(kind=dp), parameter :: eps=3.0E-15_dp    !< relative precision
+real(kind=dp), parameter :: pi=4.0_dp*atan(1.0_dp)  !< pi value
+real(kind=dp), parameter :: eps=3.0E-15_dp          !< relative precision
+
+! Physical constants
+real(kind=dp) :: earth_radius = 6371229.0_dp
 
 integer,       parameter :: max_iter = 10 ! maximum iteration number for solver
 

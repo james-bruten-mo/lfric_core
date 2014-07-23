@@ -5,10 +5,10 @@
 # https://puma.nerc.ac.uk/trac/GungHo/wiki
 ##############################################################################
 
-#IGNORE_DEPENDENCIES = netcdf
-IGNORE_DEPENDENCIES = 
-#EXTERNAL_LIBRARIES = netcdff
-EXTERNAL_LIBRARIES = 
+IGNORE_DEPENDENCIES = netcdf
+#IGNORE_DEPENDENCIES = 
+EXTERNAL_LIBRARIES = netcdff
+#EXTERNAL_LIBRARIES = 
 
 ROOT = ../..
 include $(ROOT)/Makefile.inc
@@ -26,7 +26,8 @@ OBJ_SUBDIRS = $(patsubst %,$(OBJ_DIR)/%,$(SUBDIRS))
 
 .PHONY: all
 all: $(OBJ_DIR)/$(DEP_FILE)
-	$(MAKE) -f dynamo.mk all
+	$(MAKE) -f dynamo.mk EXE=dynamo all
+	$(MAKE) -f dynamo.mk EXE=generate_cubedsphere all
 
 $(OBJ_DIR)/$(DEP_FILE): $(SRC) $(OBJ_DIR) $(OBJ_SUBDIRS)
 	@$(TOOL_DIR)/DependencyAnalyser $(IGNORE_DEPENDENCIES) \

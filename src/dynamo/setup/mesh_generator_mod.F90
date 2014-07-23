@@ -265,24 +265,36 @@ end subroutine mesh_generator_biperiodic
 !> @param nlayers Number of vertical layers.
 !> @param dz Vertical grid spacing.
 !>
+
 subroutine mesh_generator_cubedsphere( filename, ncells, nlayers, dz )
 
-  use log_mod, only : log_event, log_scratch_space, &
-                      LOG_LEVEL_INFO, LOG_LEVEL_ERROR
+  use log_mod,              only: log_event, log_scratch_space, &
+                                  LOG_LEVEL_INFO, LOG_LEVEL_ERROR
+  use ugrid_2d_mod,         only: ugrid_2d_type
+  use ugrid_file_mod,       only: ugrid_file_type 
+  use ncdf_quad_mod,        only: ncdf_quad_type 
+  use coord_algorithms_mod, only: llr2xyz
+  
+  implicit none
 
-  character(*), intent(in) :: filename
-  integer, intent(in) :: ncells
-  integer, intent(in) :: nlayers
-  real(kind=dp), intent(in)    :: dz
+  character(*), intent(in)   :: filename
+  integer, intent(in)        :: ncells
+  integer, intent(in)        :: nlayers
+  real(kind=dp), intent(in)  :: dz
 
 ! file unit for mesh data file
   integer, parameter :: mesh_data_unit = 44
 ! Loop indices
   integer :: i, j, k, vert, id, jd
 ! data from file
-  integer :: nvert_in, nface_in
+  integer :: nvert_in, nface_in, nedge_in
+  integer :: num_nodes_per_face, num_nodes_per_edge, num_edges_per_face
 ! lat/long coordinates
   real(kind=dp) :: long, lat, r
+
+  !2D ugrid and generator strategy
+  type(ugrid_2d_type)                 :: ugrid_2d
+  class(ugrid_file_type), allocatable :: file_handler
 
 ! topologically a cube
   nedge_h_g = 2*ncells
@@ -294,37 +306,40 @@ subroutine mesh_generator_cubedsphere( filename, ncells, nlayers, dz )
 
 ! allocate coordinate array
   allocate ( mesh_vertex(nvert_g,3) )
-  
-  open(mesh_data_unit,file=filename,form='formatted')
-  read(mesh_data_unit,*) nvert_in, nface_in
+
+  allocate(ncdf_quad_type :: file_handler)
+  call ugrid_2d%set_file_handler(file_handler)
+  call ugrid_2d%read_from_file(trim(filename))
+
+  call ugrid_2d%get_dimensions(                &
+     num_nodes          = nvert_in,            &
+     num_edges          = nedge_in,            &
+     num_faces          = nface_in,            &
+     num_nodes_per_face = num_nodes_per_face,  &
+     num_edges_per_face = num_edges_per_face,  &
+     num_nodes_per_edge = num_nodes_per_edge)
+
   if ( nface_in /= ncells ) then
     write( log_scratch_space, '(A, I0, A, I0)' ) &
-         'Number of cells in Cubegrid.dat does not match: ', &
+         'Number of cells in ugrid file does not match: ', &
          nface_in, ' vs. ', ncells
     call log_event( log_scratch_space, LOG_LEVEL_ERROR )
     stop
   end if
   if ( nvert_in /= nvert_h_g ) then
     write( log_scratch_space, '(A, I0, A, I0)' ) &
-         'Number of vertices in Cubegrid.dat does not match: ', &
+         'Number of vertices in ugrid file does not match: ', &
          nvert_in, ' vs. ', nvert_h_g
     stop
   end if  
-! read in vertices  
-  do j=1,nvert_in
-    read(mesh_data_unit,*) i,mesh_vertex(j,1),mesh_vertex(j,2),mesh_vertex(j,3)
-  end do
-! read in vertices on cell  
-  do j=1,nface_in
-    read(mesh_data_unit,*) i,vert_on_cell(j,1),vert_on_cell(j,2), &
-                 vert_on_cell(j,3),vert_on_cell(j,4)
-  end do
-! read in cell connectivity  
-  do j=1,nface_in
-    read(mesh_data_unit,*) i,cell_next(j,1),cell_next(j,2),cell_next(j,3),cell_next(j,4)
-  end do
-  close(mesh_data_unit)
+
+  !Get coordinates of vertices
+  call ugrid_2d%get_node_coords_transpose( mesh_vertex(1:nvert_h_g,1:3) )
+  call ugrid_2d%get_face_node_connectivity_transpose(vert_on_cell(1:nface_in,1:num_nodes_per_face))
+  call ugrid_2d%get_face_face_connectivity_transpose(cell_next   (1:nface_in,1:num_edges_per_face))
   
+   !mesh_vertex(1:nvert_h_g,3) = earth_radius
+
 ! add connectivity for up/down
   do j=1,ncells
     cell_next(j,5) = j - ncells
@@ -352,13 +367,22 @@ subroutine mesh_generator_cubedsphere( filename, ncells, nlayers, dz )
   
 ! perform vertical extrusion for vertices
   do j=1,nvert_in
-! convert to (long,lat,r)
-    call xyz2llr(mesh_vertex(j,1),mesh_vertex(j,2),mesh_vertex(j,3),long,lat,r)
-    do k=1,nlayers    
-      r = r + dz
-! convert to (x,y,z)
+    do k=1,nlayers                       
+      mesh_vertex(j+k*nvert_in,1) = mesh_vertex(j,1)
+      mesh_vertex(j+k*nvert_in,2) = mesh_vertex(j,2) 
+      mesh_vertex(j+k*nvert_in,3) = mesh_vertex(j,3) + dz*real(k)
+    end do
+  end do
+
+! Convert (long,lat,r) -> (x,y,z)
+  do j=1,nvert_in
+    do k=0,nlayers
+      long = mesh_vertex(j+k*nvert_in,1)
+      lat  = mesh_vertex(j+k*nvert_in,2)
+      r    = mesh_vertex(j+k*nvert_in,3)
       call llr2xyz(long,lat,r,mesh_vertex(j+k*nvert_in,1),                  &
-                   mesh_vertex(j+k*nvert_in,2),mesh_vertex(j+k*nvert_in,3))
+                              mesh_vertex(j+k*nvert_in,2),                  &
+                              mesh_vertex(j+k*nvert_in,3))
     end do
   end do
   
@@ -397,7 +421,7 @@ subroutine mesh_generator_cubedsphere( filename, ncells, nlayers, dz )
 
   call log_event( 'vert coords', LOG_LEVEL_INFO )
   do i = 1, nvert_g
-    write( log_scratch_space, '(i6,4f8.4)' ) &
+    write( log_scratch_space, '(i6,4e16.8)' ) &
          i, mesh_vertex(i,1), mesh_vertex(i,2), mesh_vertex(i,3)
     call log_event( log_scratch_space, LOG_LEVEL_INFO )
   end do 
@@ -515,28 +539,6 @@ subroutine mesh_connectivity( ncells )
   end if
 
 end subroutine mesh_connectivity
-
-subroutine llr2xyz(long,lat,r,x,y,z)
-!-------------------------------------------------------------------------------
-!  Subroutine to convert longitude and latitude to cartesian coordinates
-!-------------------------------------------------------------------------------
-      
-  real(kind=dp), intent(in)  :: long,lat,r
-  real(kind=dp), intent(out) :: x,y,z
-  real(kind=dp)              :: cln,sln,clt,slt
-
-  sln=sin(long)
-  cln=cos(long)
-  slt=sin(lat)
-  clt=cos(lat)
-
-  x=r*cln*clt
-  y=r*sln*clt
-  z=r*slt
-
-  return
-      
-end  subroutine llr2xyz
 !-------------------------------------------------------------------------------
       
 subroutine xyz2llr(x,y,z,long,lat,r)
