@@ -9,7 +9,7 @@ IGNORE_DEPENDENCIES = netcdf
 EXTERNAL_LIBRARIES = netcdff
 
 ROOT = ../..
-include $(ROOT)/Makefile.inc
+include $(ROOT)/include.mk
 
 SUBDIRS = $(shell find * -type d -prune)
 IGNORE_DEPENDENCIES := $(patsubst %,-ignore %,$(IGNORE_DEPENDENCIES))

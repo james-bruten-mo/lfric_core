@@ -5,7 +5,7 @@
 # https://puma.nerc.ac.uk/trac/GungHo/wiki
 ##############################################################################
 
-include ../../Makefile.inc
+include ../../include.mk
 
 BIN_DIR   = ../../bin
 
@@ -39,17 +39,17 @@ $(OBJ_DIR)/%.mod: $(OBJ_DIR)/%.o
 
 $(OBJ_DIR)/%.o: %.F90 | $(OBJ_DIR)
 	@echo "Compile $<"
-	$(FC) $(CPPFLAGS) $(FFLAGS) $(F_MOD_DESTINATION_ARG) \
-	      -I $(OBJ_DIR) -c -o $@ $<
+	$(FCOM) $(CPPFLAGS) $(FFLAGS) $(F_MOD_DESTINATION_ARG) \
+	        -I $(OBJ_DIR) -c -o $@ $<
 
 $(OBJ_DIR)/%.o: %.f90 | $(OBJ_DIR)
 	@echo "Compile $<"
-	$(FC) $(CPPFLAGS) $(FFLAGS) $(F_MOD_DESTINATION_ARG) \
-	      -I $(OBJ_DIR) -c -o $@ $<
+	$(FCOM) $(CPPFLAGS) $(FFLAGS) $(F_MOD_DESTINATION_ARG) \
+	        -I $(OBJ_DIR) -c -o $@ $<
 
 $(OBJ_DIR)/$(EXE): $($(shell echo $(EXE) | tr a-z A-Z)_OBJS)
 	@echo "Linking $@"
-	$(FC) $(FFLAGS) $(LDFLAGS) -o $@ $^
+	$(FCOM) $(FFLAGS) $(LDFLAGS) -o $@ $^
 
 .PHONY: clean
 clean:

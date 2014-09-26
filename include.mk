@@ -51,6 +51,17 @@ ifndef FC
   endif
 endif
 
+# Since mpif90 uses $FC there will likely be nasty interactions between the
+# default FC logic above and MPI builds.
+# When MPI becomes the natural way of building dynamo this logic (and the macro
+# name) will have to be inverted. i.e. ifdef NOMPI
+ifdef MPI
+  $(info Building with MPI)
+  FCOM = mpif90
+else
+  FCOM = $(FC)
+endif
+
 ifeq '$(FC)' 'ifort'
   $(info ** Chosen Intel Fortran compiler)
 

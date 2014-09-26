@@ -6,7 +6,7 @@
 ##############################################################################
 
 ROOT = ../..
-include $(ROOT)/Makefile.inc
+include $(ROOT)/include.mk
 FFLAGS := $(filter-out -Werror,$(FFLAGS)) # pFUnit isn't that well put together
 
 TARGET_OBJ_DIR = $(BUILD_DIR)/dynamo
@@ -19,7 +19,7 @@ TEST_SUBDIRS = $(shell find * -maxdepth 1 -type d)
 
 TEST_OBJ_DIR     = $(BUILD_DIR)/tests
 TEST_OBJ_SUBDIRS = $(patsubst %,$(TEST_OBJ_DIR)/%,$(TEST_SUBDIRS))
-# OBJ_DIR is used by Makefile.inc
+# OBJ_DIR is used by include.mk
 OBJ_DIR          = $(TEST_OBJ_DIR)
 
 TEST_SRC  = $(shell find . -name '*.pf')
@@ -41,14 +41,14 @@ include pfunit.mk
 
 .PRECIOUS: $(TEST_OBJ_DIR)/test
 $(TEST_OBJ_DIR)/test: $(TEST_OBJS) $(OBJS) $(DRIVER_OBJ) $(TARGET_OBJ)
-	$(FC) -o $@ $^ $(LDFLAGS) $(LINK_SPECIAL) \
-	      -L$(PFUNIT_INSTALL)/lib -lpfunit
+	$(FCOM) -o $@ $^ $(LDFLAGS) $(LINK_SPECIAL) \
+	        -L$(PFUNIT_INSTALL)/lib -lpfunit
 
 $(TEST_OBJ_DIR)/%.o: $(TEST_OBJ_DIR)/%.F90
 	@echo Compiling $<
-	$(FC) $(FPPFLAGS) $(FFLAGS) $(FFLAGS_TESTS) -c \
-	      $(F_MOD_DESTINATION_ARG) -I$(OBJ_DIR) -I$(PFUNIT_INSTALL)/mod \
-	      -I$(TARGET_OBJ_DIR) -o $@ $<
+	$(FCOM) $(FPPFLAGS) $(FFLAGS) $(FFLAGS_TESTS) -c \
+	        $(F_MOD_DESTINATION_ARG) -I$(OBJ_DIR) -I$(PFUNIT_INSTALL)/mod \
+	        -I$(TARGET_OBJ_DIR) -o $@ $<
 
 .PRECIOUS: $(TEST_OBJ_DIR)/%.F90
 $(TEST_OBJ_DIR)/%.F90: %.pf | $(TEST_OBJ_DIR) $(TEST_OBJ_SUBDIRS) \
