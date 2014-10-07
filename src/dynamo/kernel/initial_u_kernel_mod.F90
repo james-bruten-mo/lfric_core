@@ -69,7 +69,7 @@ subroutine initial_u_code(nlayers,ndf,map,u)
   !Internal variables
   integer               :: df, k
    
-  ! compute the pointwise theta profile
+  ! compute the pointwise u profile
   do k = 0, nlayers-1
     do df = 1, ndf
        u(map(df) + k) = 0.0_r_def

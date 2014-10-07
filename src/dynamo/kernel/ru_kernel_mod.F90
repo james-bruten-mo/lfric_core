@@ -81,16 +81,17 @@ end function ru_kernel_constructor
 !! @param[in] chi_3_w3 Real array. the physical z coordinate in w3
 subroutine ru_code(nlayers,ndf_w2, map_w2, w2_basis, w2_diff_basis, gq,        &
                            boundary_value, r_u,                                &
-                           ndf_w3, map_w3, w3_basis, exner,                    &
+                           ndf_w3, map_w3, w3_basis, rho,                      &
                            ndf_w0, map_w0, w0_basis, theta,                    &                           
                            w0_diff_basis, chi_1, chi_2, chi_3,                 &
                            chi_w3_3                                            &
                            )
                            
-  use coordinate_jacobian_mod, only: coordinate_jacobian
-  use reference_profile_mod,   only: reference_profile 
-  use enforce_bc_mod,          only: enforce_bc_w2
-  use gaussian_quadrature_mod, only: ngp_h, ngp_v, gaussian_quadrature_type
+  use coordinate_jacobian_mod,  only: coordinate_jacobian
+  use reference_profile_mod,    only: reference_profile 
+  use enforce_bc_mod,           only: enforce_bc_w2
+  use gaussian_quadrature_mod,  only: ngp_h, ngp_v, gaussian_quadrature_type
+  use calc_exner_pointwise_mod, only: calc_exner_pointwise
   
   !Arguments
   integer, intent(in) :: nlayers
@@ -103,7 +104,7 @@ subroutine ru_code(nlayers,ndf_w2, map_w2, w2_basis, w2_diff_basis, gq,        &
   real(kind=r_def), intent(in), dimension(1,ndf_w2,ngp_h,ngp_v) :: w2_diff_basis
   real(kind=r_def), intent(in), dimension(3,ndf_w0,ngp_h,ngp_v) :: w0_diff_basis   
   real(kind=r_def), intent(inout) :: r_u(*)
-  real(kind=r_def), intent(in) ::  exner(*), theta(*)  
+  real(kind=r_def), intent(in) ::  rho(*), theta(*)  
   real(kind=r_def), intent(in) :: chi_1(*), chi_2(*), chi_3(*), chi_w3_3(*)
   type(gaussian_quadrature_type), intent(inout) :: gq
 
@@ -117,9 +118,10 @@ subroutine ru_code(nlayers,ndf_w2, map_w2, w2_basis, w2_diff_basis, gq,        &
   real(kind=r_def), dimension(ngp_h,ngp_v)        :: dj
   real(kind=r_def), dimension(3,3,ngp_h,ngp_v)    :: jac
   real(kind=r_def), dimension(ngp_h,ngp_v,ndf_w2) :: f
-  real(kind=r_def) :: exner_e(ndf_w3), theta_e(ndf_w0)
+  real(kind=r_def) :: rho_e(ndf_w3), theta_e(ndf_w0)
   real(kind=r_def) :: exner_at_quad, theta_at_quad, theta_s_at_quad,              &
-                   grad_term, bouy_term
+                      rho_at_quad, rho_s_at_quad, exner_s_at_quad,                &
+                       grad_term, bouy_term
   real(kind=r_def) ::k_vec(3), grad_theta_s_at_quad(3) 
   
   k_vec = (/ 0.0_r_def, 0.0_r_def, 1.0_r_def /)
@@ -140,7 +142,7 @@ subroutine ru_code(nlayers,ndf_w2, map_w2, w2_basis, w2_diff_basis, gq,        &
     call reference_profile(ndf_w0, ndf_w3, exner_s, rho_s, theta_s, chi_3_e,   &
                            chi_w3_3_e)
     do df = 1, ndf_w3
-      exner_e(df) = exner( map_w3(df) + k )
+      rho_e(df) = rho( map_w3(df) + k )
     end do    
     do df = 1, ndf_w0
       theta_e(df) = theta( map_w0(df) + k )
@@ -148,11 +150,14 @@ subroutine ru_code(nlayers,ndf_w2, map_w2, w2_basis, w2_diff_basis, gq,        &
   ! compute the RHS integrated over one cell
     do qp2 = 1, ngp_v
       do qp1 = 1, ngp_h
-        exner_at_quad = 0.0_r_def
+        rho_at_quad     = 0.0_r_def 
+        rho_s_at_quad   = 0.0_r_def 
+        exner_s_at_quad = 0.0_r_def 
         do df = 1, ndf_w3
-          exner_at_quad   = exner_at_quad + exner_e(df)*w3_basis(1,df,qp1,qp2)
-        end do 
-        
+          rho_at_quad      = rho_at_quad     + rho_e(df)  *w3_basis(1,df,qp1,qp2) 
+          rho_s_at_quad    = rho_s_at_quad   + rho_s(df)  *w3_basis(1,df,qp1,qp2) 
+          exner_s_at_quad  = exner_s_at_quad + exner_s(df)*w3_basis(1,df,qp1,qp2)
+        end do
         theta_at_quad           = 0.0_r_def
         theta_s_at_quad         = 0.0_r_def
         grad_theta_s_at_quad(:) = 0.0_r_def
@@ -164,6 +169,9 @@ subroutine ru_code(nlayers,ndf_w2, map_w2, w2_basis, w2_diff_basis, gq,        &
           grad_theta_s_at_quad(:) = grad_theta_s_at_quad(:)                    &
                                   + theta_s(df)*w0_diff_basis(:,df,qp1,qp2) 
         end do
+        exner_at_quad = calc_exner_pointwise(rho_at_quad, theta_at_quad,       & 
+                                             exner_s_at_quad, rho_s_at_quad,   & 
+                                             theta_s_at_quad)
                
         do df = 1, ndf_w2
           bouy_term = dot_product(                                             &

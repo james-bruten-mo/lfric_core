@@ -13,7 +13,7 @@ module ugrid_file_mod_test
 
 contains
 
-  !> Empty test to ensure that urid file handler is found
+  !> Empty test to ensure that ugrid file handler is found
   !>
   @test
   subroutine test_ugrid_file_data( )

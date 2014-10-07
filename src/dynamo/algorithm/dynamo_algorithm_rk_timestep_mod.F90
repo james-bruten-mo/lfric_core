@@ -161,7 +161,7 @@ contains
                                    chi_w3(3) ) 
         !PSY call invoke ( set_field_scalar(0.0_r_def, ru_prediction(stage)))
         call invoke_set_field_scalar(0.0_r_def, ru_prediction(stage))
-        call invoke_ru_kernel    ( ru_prediction(stage), exner, theta, chi,    &
+        call invoke_ru_kernel    ( ru_prediction(stage), rho, theta, chi,    &
                                    chi_w3(3) )  
         call invoke_rrho_kernel  ( rr_prediction(stage), u, chi, chi_w3(3) )  
         

@@ -69,7 +69,7 @@ subroutine initial_rho_code(nlayers,ndf,map,rho)
   !Internal variables
   integer               :: df, k
    
-  ! compute the pointwise theta profile
+  ! compute the pointwise rho profile
   do k = 0, nlayers-1
     do df = 1, ndf
        rho(map(df) + k) = 0.0_r_def
