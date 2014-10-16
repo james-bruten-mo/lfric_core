@@ -107,11 +107,15 @@ subroutine rrho_code(nlayers,ndf_w3, map_w3, w3_basis, gq, r_rho,              &
   real(kind=r_def), dimension(ndf_w2) :: u_e
   real(kind=r_def), dimension(ngp_h,ngp_v)        :: dj
   real(kind=r_def), dimension(3,3,ngp_h,ngp_v)    :: jac
-  real(kind=r_def), dimension(ngp_h,ngp_v,ndf_w3) :: f
+  real(kind=r_def), dimension(ndf_w3) :: rrho_e
   real(kind=r_def) :: rho_s_at_quad, div_u_at_quad, div_term, bouy_term
   real(kind=r_def) :: u_at_quad(3), k_vec(3), vec_term
+  real(kind=r_def), pointer :: wgp_h(:), wgp_v(:)
   
   k_vec = (/ 0.0_r_def, 0.0_r_def, 1.0_r_def /)
+
+  wgp_h => gq%get_wgp_h()
+  wgp_v => gq%get_wgp_v()
   
   do k = 0, nlayers-1
   ! Extract element arrays of chi
@@ -123,6 +127,7 @@ subroutine rrho_code(nlayers,ndf_w3, map_w3, w3_basis, gq, r_rho,              &
     end do
     do df = 1, ndf_w3
       chi_w3_3_e(df) = chi_w3_3( map_w3(df) + k )
+      rrho_e(df) = 0.0_r_def
     end do
     call coordinate_jacobian(ndf_w0, ngp_h, ngp_v, chi_1_e, chi_2_e, chi_3_e,  &
                              w0_diff_basis, jac, dj)
@@ -150,12 +155,12 @@ subroutine rrho_code(nlayers,ndf_w3, map_w3, w3_basis, gq, r_rho,              &
         bouy_term =  n_sq/gravity*rho_s_at_quad*vec_term
         
         do df = 1, ndf_w3
-          f(qp1,qp2,df) = w3_basis(1,df,qp1,qp2)*( bouy_term + div_term )
+          rrho_e(df) = rrho_e(df) + wgp_h(qp1)*wgp_v(qp2)*w3_basis(1,df,qp1,qp2)*( bouy_term + div_term )
         end do
       end do
     end do
     do df = 1, ndf_w3
-      r_rho( map_w3(df) + k ) =  gq%integrate(f(:,:,df))
+      r_rho( map_w3(df) + k ) =  0.125_r_def*rrho_e(df)
     end do 
   end do
   

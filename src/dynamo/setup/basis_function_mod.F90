@@ -101,7 +101,7 @@ contains
     real(kind=r_def)     :: x1(k+2), x2(k+2)
     real(kind=r_def), allocatable    :: unit_vec_w2(:,:), unit_vec_w1(:,:)
     type( gaussian_quadrature_type ), pointer :: gq
-    real(kind=r_def), allocatable :: xqp(:)
+    real(kind=r_def), pointer :: xqp(:)
 
     allocate(w0_basis(1,w_unique_dofs(1,2),ngp_h,ngp_v))
     allocate(w1_basis(3,w_unique_dofs(2,2),ngp_h,ngp_v))
@@ -152,9 +152,8 @@ contains
     ! gq as all we ever do is call a method from it. Sort out later
     gq=>gq%get_instance(GQ3)
 
-    ! Allocate & fetch quadrature point arrays for precomputed basis functions
-    allocate( xqp(ngp_v) )
-    xqp(:) = gq%get_xgp_v()
+    ! Fetch quadrature point arrays for precomputed basis functions
+    xqp => gq%get_xgp_v()
 
     ! positional arrays - need two, i.e quadratic and linear for RT1
     do i=1,k+2

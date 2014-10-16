@@ -71,11 +71,15 @@ subroutine compute_mass_matrix(cell,nlayers,  &
   real(kind=r_def), intent(in)    :: chi1(*), chi2(*), chi3(*)
   
   integer :: df1, df2, qp1, qp2, k, ik, loc
-  real(kind=r_def) :: f(ngp_h,ngp_v)
+  real(kind=r_def) :: integrand
   real(kind=r_def), dimension(ngp_h,ngp_v)     :: dj
   real(kind=r_def), dimension(3,3,ngp_h,ngp_v) :: jac, jac_inv
-  real(kind=r_def), dimension(ndf_w0)          :: chi_1_e, chi_2_e, chi_3_e                 
-     
+  real(kind=r_def), dimension(ndf_w0)          :: chi_1_e, chi_2_e, chi_3_e  
+  real(kind=r_def), pointer                    :: wgp_h(:), wgp_v(:)
+
+  wgp_h => gq%get_wgp_h()
+  wgp_v => gq%get_wgp_v()
+    
   do k = 1,nlayers
     ik = k + (cell-1)*nlayers      
     do df1 = 1, ndf_w0
@@ -91,13 +95,16 @@ subroutine compute_mass_matrix(cell,nlayers,  &
 ! W0 mass matrix
     do df2 = 1, ndf_w0
       do df1 = df2, ndf_w0  
+        w0_mass_matrix(df1,df2,ik) = 0.0_r_def
         do qp2 = 1, ngp_v
-          do qp1 = 1, ngp_h                                         
-            f(qp1,qp2) = basis_w0(1,df1,qp1,qp2)*basis_w0(1,df2,qp1,qp2)       &
-                       * dj(qp1,qp2)
+          do qp1 = 1, ngp_h
+            integrand = 0.125_r_def*wgp_h(qp1)*wgp_v(qp2) &
+                      *basis_w0(1,df1,qp1,qp2)*basis_w0(1,df2,qp1,qp2)       &
+                      * dj(qp1,qp2)
+
+            w0_mass_matrix(df1,df2,ik) = w0_mass_matrix(df1,df2,ik) + integrand 
           end do
         end do
-        w0_mass_matrix(df1,df2,ik) = gq%integrate(f)
       end do
       do df1 = df2, 1, -1  
         w0_mass_matrix(df1,df2,ik) = w0_mass_matrix(df2,df1,ik)
@@ -107,15 +114,16 @@ subroutine compute_mass_matrix(cell,nlayers,  &
 ! W1 mass matrix
     do df2 = 1, ndf_w1
       do df1 = df2, ndf_w1
+        w1_mass_matrix(df1,df2,ik) = 0.0_r_def
         do qp2 = 1, ngp_v
           do qp1 = 1, ngp_h                                         
-            f(qp1,qp2) = dot_product(                                          &
+            integrand = 0.125_r_def*wgp_h(qp1)*wgp_v(qp2)*dot_product(         &
                          matmul(jac_inv(:,:,qp1,qp2),basis_w1(:,df1,qp1,qp2)), &
                          matmul(jac_inv(:,:,qp1,qp2),basis_w1(:,df2,qp1,qp2))) &
-                         *dj(qp1,qp2)           
+                         *dj(qp1,qp2)
+            w1_mass_matrix(df1,df2,ik) = w1_mass_matrix(df1,df2,ik) + integrand
           end do
         end do
-        w1_mass_matrix(df1,df2,ik) = gq%integrate(f)
       end do
       do df1 = df2, 1, -1  
         w1_mass_matrix(df1,df2,ik) = w1_mass_matrix(df2,df1,ik)
@@ -124,16 +132,18 @@ subroutine compute_mass_matrix(cell,nlayers,  &
 
 ! W2 mass matrix
     do df2 = 1, ndf_w2
-      do df1 = df2, ndf_w2  
+      do df1 = df2, ndf_w2 
+        w2_mass_matrix(df1,df2,ik) = 0.0_r_def 
         do qp2 = 1, ngp_v
           do qp1 = 1, ngp_h                                         
-            f(qp1,qp2) = dot_product(                                          &
+            integrand = 0.125_r_def*wgp_h(qp1)*wgp_v(qp2)*dot_product(         &
                          matmul(jac(:,:,qp1,qp2),basis_w2(:,df1,qp1,qp2)),     &
                          matmul(jac(:,:,qp1,qp2),basis_w2(:,df2,qp1,qp2)))     &
                          /dj(qp1,qp2)           
+            w2_mass_matrix(df1,df2,ik) = w2_mass_matrix(df1,df2,ik) + integrand
+
           end do
         end do
-        w2_mass_matrix(df1,df2,ik) = gq%integrate(f)
       end do
       do df1 = df2, 1, -1  
         w2_mass_matrix(df1,df2,ik) = w2_mass_matrix(df2,df1,ik)

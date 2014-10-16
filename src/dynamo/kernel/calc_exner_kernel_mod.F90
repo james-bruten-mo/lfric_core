@@ -106,13 +106,16 @@ subroutine calc_exner_code(nlayers,ndf_w3,map_w3,w3_basis,gq,exner, &
   real(kind=r_def), dimension(ndf_w3) :: chi_3_w3_e
   real(kind=r_def), dimension(ngp_h,ngp_v)     :: dj
   real(kind=r_def), dimension(3,3,ngp_h,ngp_v) :: jac
-  real(kind=r_def), dimension(ngp_h,ngp_v)     :: f
   real(kind=r_def), dimension(ndf_w3,ndf_w3) :: mass_matrix_w3, inv_mass_matrix_w3
   real(kind=r_def) :: rho_at_quad, rho_s_at_quad,                                 &
                    theta_at_quad, theta_s_at_quad,                             &
                    exner_s_at_quad
   real(kind=r_def) :: rhs_eos, basis_func
-  
+  real(kind=r_def), pointer :: wgp_h(:), wgp_v(:)
+
+  wgp_h => gq%get_wgp_h()
+  wgp_v => gq%get_wgp_v()
+
   do k = 0, nlayers-1
   ! Extract element arrays of rho & theta
     do df1 = 1, ndf_w3
@@ -130,7 +133,8 @@ subroutine calc_exner_code(nlayers,ndf_w3,map_w3,w3_basis,gq,exner, &
     call reference_profile(ndf_w0, ndf_w3, exner_s, rho_s, theta_s, chi_3_e,   &
                            chi_3_w3_e)
   ! compute the RHS integrated over one cell
-    do df1 = 1, ndf_w3
+    do df1 = 1, ndf_w3  
+      rhs_e(df1) = 0.0_r_def
       do qp2 = 1, ngp_v
         do qp1 = 1, ngp_h
           rho_at_quad   = 0.0_r_def
@@ -151,21 +155,22 @@ subroutine calc_exner_code(nlayers,ndf_w3,map_w3,w3_basis,gq,exner, &
           end do
           rhs_eos = kappa / (1.0_r_def - kappa) * exner_s_at_quad                 &
                   *( rho_at_quad/rho_s_at_quad + theta_at_quad/theta_s_at_quad )
-          f(qp1,qp2) = w3_basis(1,df1,qp1,qp2) * rhs_eos * dj(qp1,qp2)
+          rhs_e(df1) = rhs_e(df1) + 0.125_r_def*wgp_h(qp1)*wgp_v(qp2)*w3_basis(1,df1,qp1,qp2) * rhs_eos * dj(qp1,qp2)
         end do
       end do
-      rhs_e(df1) =  gq%integrate(f)
     end do
   ! compute the LHS integrated over one cell and solve  
     do df1 = 1, ndf_w3
        do df2 = 1, ndf_w3
+          mass_matrix_w3(df1,df2) = 0.0_r_def
           do qp2 = 1, ngp_v
              do qp1 = 1, ngp_h
-                 f(qp1,qp2) = w3_basis(1,df1,qp1,qp2) * &
-                              w3_basis(1,df2,qp1,qp2) * dj(qp1,qp2)
+                 mass_matrix_w3(df1,df2) = mass_matrix_w3(df1,df2) &
+                                         + 0.125_r_def*wgp_h(qp1)*wgp_v(qp2)* &
+                                         w3_basis(1,df1,qp1,qp2) * &
+                                         w3_basis(1,df2,qp1,qp2) * dj(qp1,qp2)
              end do
           end do
-          mass_matrix_w3(df1,df2) = gq%integrate(f)
        end do
     end do
     call matrix_invert(mass_matrix_w3,inv_mass_matrix_w3,ndf_w3)

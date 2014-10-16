@@ -81,10 +81,13 @@ subroutine rhs_w1_code(nlayers,ndf,undf,map,w1_basis,x,gq)
   !Internal variables
   integer                                  :: df, k
   integer                                  :: qp1, qp2
-  real(kind=r_def), dimension(ngp_h,ngp_v) :: f
   real(kind=r_def), dimension(1,3)         :: basisfun_i
   real(kind=r_def), dimension(3,1)         :: constantvec
   real(kind=r_def), dimension(1,1)         :: T_1
+  real(kind=r_def), pointer                :: wgp_h(:), wgp_v(:)
+
+  wgp_h => gq%get_wgp_h()
+  wgp_v => gq%get_wgp_v()
 
   constantvec(1,1) =  1.0_r_def;
   constantvec(2,1) =  2.0_r_def;  
@@ -96,11 +99,10 @@ subroutine rhs_w1_code(nlayers,ndf,undf,map,w1_basis,x,gq)
           do qp2 = 1, ngp_v
              basisfun_i(1,1:3) = w1_basis(1:3,df,qp1,qp2)
              T_1 = MATMUL(basisfun_i,constantvec)
-             f(qp1,qp2) = T_1(1,1)
+             x(map(df) + k) = x(map(df) + k) &
+                            + 0.125_r_def*wgp_h(qp1)*wgp_v(qp2)*T_1(1,1)
           end do
        end do
-       ! Push data to global array
-       x(map(df) + k) = x(map(df) + k) + gq%integrate(f) 
     end do
   end do
 end subroutine rhs_w1_code

@@ -94,12 +94,15 @@ subroutine solver_w3_code(nlayers, ndf_w3, map_w3, w3_basis, x, rhs, gq, &
   integer               :: qp1, qp2
   
   real(kind=r_def) :: x_e(ndf_w3), rhs_e(ndf_w3)
-  real(kind=r_def), dimension(ngp_h,ngp_v) :: f
+  real(kind=r_def) :: integrand
   real(kind=r_def), dimension(ndf_w3,ndf_w3) :: mass_matrix_w3, inv_mass_matrix_w3
   real(kind=r_def), dimension(ngp_h,ngp_v)     :: dj
   real(kind=r_def), dimension(3,3,ngp_h,ngp_v) :: jac
   real(kind=r_def), dimension(ndf_w0) :: chi_1_e, chi_2_e, chi_3_e
-  
+  real(kind=r_def), pointer           :: wgp_h(:), wgp_v(:)
+
+  wgp_h => gq%get_wgp_h()
+  wgp_v => gq%get_wgp_v() 
   ! compute the LHS integrated over one cell and solve
   do k = 0, nlayers-1
     do df1 = 1, ndf_w0
@@ -110,13 +113,15 @@ subroutine solver_w3_code(nlayers, ndf_w3, map_w3, w3_basis, x, rhs, gq, &
     call coordinate_jacobian(ndf_w0, ngp_h, ngp_v, chi_1_e, chi_2_e, chi_3_e, w0_diff_basis, jac, dj)
     do df1 = 1, ndf_w3
        do df2 = 1, ndf_w3
+          mass_matrix_w3(df1,df2) = 0.0_r_def
           do qp2 = 1, ngp_v
              do qp1 = 1, ngp_h
-                f(qp1,qp2) = w3_basis(1,df1,qp1,qp2) * &
+                integrand =  w3_basis(1,df1,qp1,qp2) * &
                              w3_basis(1,df2,qp1,qp2) * dj(qp1,qp2)
+                 mass_matrix_w3(df1,df2) = mass_matrix_w3(df1,df2) &
+                                         + 0.125_r_def*wgp_h(qp1)*wgp_v(qp2)*integrand
              end do
           end do
-          mass_matrix_w3(df1,df2) = gq%integrate(f)
        end do
        rhs_e(df1) = rhs(map_w3(df1)+k)
     end do

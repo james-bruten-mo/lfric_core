@@ -117,15 +117,18 @@ subroutine ru_code(nlayers,ndf_w2, map_w2, w2_basis, w2_diff_basis, gq,        &
   real(kind=r_def), dimension(ndf_w3) :: chi_w3_3_e
   real(kind=r_def), dimension(ngp_h,ngp_v)        :: dj
   real(kind=r_def), dimension(3,3,ngp_h,ngp_v)    :: jac
-  real(kind=r_def), dimension(ngp_h,ngp_v,ndf_w2) :: f
   real(kind=r_def) :: rho_e(ndf_w3), theta_e(ndf_w0)
   real(kind=r_def) :: exner_at_quad, theta_at_quad, theta_s_at_quad,              &
                       rho_at_quad, rho_s_at_quad, exner_s_at_quad,                &
                        grad_term, bouy_term
-  real(kind=r_def) ::k_vec(3), grad_theta_s_at_quad(3) 
-  
+  real(kind=r_def) :: k_vec(3), grad_theta_s_at_quad(3), ru_e(ndf_w2)
+  real(kind=r_def), pointer :: wgp_h(:), wgp_v(:)
+
   k_vec = (/ 0.0_r_def, 0.0_r_def, 1.0_r_def /)
-  
+
+  wgp_h => gq%get_wgp_h()
+  wgp_v => gq%get_wgp_v()
+
   do k = 0, nlayers-1
   ! Extract element arrays of chi
     do df = 1, ndf_w0
@@ -148,6 +151,7 @@ subroutine ru_code(nlayers,ndf_w2, map_w2, w2_basis, w2_diff_basis, gq,        &
       theta_e(df) = theta( map_w0(df) + k )
     end do    
   ! compute the RHS integrated over one cell
+    ru_e(:) = 0.0_r_def
     do qp2 = 1, ngp_v
       do qp1 = 1, ngp_h
         rho_at_quad     = 0.0_r_def 
@@ -182,12 +186,12 @@ subroutine ru_code(nlayers,ndf_w2, map_w2, w2_basis, w2_diff_basis, gq,        &
                                          grad_theta_s_at_quad(:))              &
                            )*exner_at_quad
         
-          f(qp1,qp2,df) = ( grad_term + bouy_term )
+          ru_e(df) = ru_e(df) +  wgp_h(qp1)*wgp_v(qp2)*( grad_term + bouy_term )
         end do
       end do
     end do
     do df = 1, ndf_w2
-      r_u( map_w2(df) + k ) =  r_u( map_w2(df) + k ) + gq%integrate(f(:,:,df))
+      r_u( map_w2(df) + k ) =  r_u( map_w2(df) + k ) + 0.125_r_def*ru_e(df)
     end do 
   end do 
   

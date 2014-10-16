@@ -57,6 +57,13 @@ contains
   !! which is this gaussian_quadrature
   procedure :: which
 
+  !> function returns the 1-d array of horizontal quadrature weights
+  procedure :: get_wgp_h
+  
+  !> function returns the 1-d array of vertical quadrature weights
+  procedure :: get_wgp_v
+
+
 end type
 
 !-------------------------------------------------------------------------------
@@ -248,10 +255,10 @@ end function integrate
 !> @param[in] xgp_h the array to copy the quadrature points into
 function get_xgp_h(self) result(xgp_h)
   implicit none
-  class(gaussian_quadrature_type), intent(in) :: self
-  real(kind=r_def) :: xgp_h(ngp_h,2)
+  class(gaussian_quadrature_type), target, intent(in) :: self
+  real(kind=r_def), pointer :: xgp_h(:,:)
 
-  xgp_h(:,:) = self%xgp_h(:,:)
+  xgp_h => self%xgp_h(:,:)
   return
 end function get_xgp_h 
 
@@ -260,10 +267,10 @@ end function get_xgp_h
 !> @param[in] xgp_v the array to copy the quadrature points into
 function get_xgp_v(self) result(xgp_v)
   implicit none
-  class(gaussian_quadrature_type), intent(in) :: self
-  real(kind=r_def) :: xgp_v(ngp_v)
+  class(gaussian_quadrature_type), target, intent(in) :: self
+  real(kind=r_def), pointer :: xgp_v(:)
 
-  xgp_v(:) = self%xgp(:)
+  xgp_v => self%xgp(:)
   return
 end function get_xgp_v
 
@@ -275,5 +282,37 @@ function which(self) result(gq)
   gq = self%gq
   return
 end function which
+
+!-----------------------------------------------------------------------------
+! Return Horizontal Gaussian quadrature weights 
+!-----------------------------------------------------------------------------
+!> Function to return the quadrature points in the horizontal
+!> @param[in] self the calling quadrature rule
+!> @param[in] wgp_h the pointer to the quadrature weights
+function get_wgp_h(self) result(wgp_h)
+  implicit none
+  class(gaussian_quadrature_type), target, intent(in) :: self
+  real(kind=r_def), pointer :: wgp_h(:)
+
+  wgp_h => self%wgp_h(:)
+  return
+end function get_wgp_h 
+
+!-----------------------------------------------------------------------------
+! Return Vertical Gaussian quadrature weights 
+!-----------------------------------------------------------------------------
+!> Function to return the quadrature points in the horizontal
+!> @param[in] self the calling quadrature rule
+!> @param[in] wgp_v the pointer to the quadrature weights
+function get_wgp_v(self) result(wgp_v)
+  implicit none
+  class(gaussian_quadrature_type), target, intent(in) :: self
+  real(kind=r_def), pointer :: wgp_v(:)
+
+  wgp_v => self%wgp(:)
+  return
+end function get_wgp_v 
+
+
 
 end module gaussian_quadrature_mod

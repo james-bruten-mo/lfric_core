@@ -94,11 +94,14 @@ subroutine rhs_w3_code(nlayers, &
   !Internal variables
   integer               :: df, k
   integer               :: qp1, qp2
-  real(kind=r_def), dimension(ngp_h,ngp_v)     :: f
+  real(kind=r_def)                             :: integrand
   real(kind=r_def), dimension(ngp_h,ngp_v)     :: dj
   real(kind=r_def), dimension(3,3,ngp_h,ngp_v) :: jac
   real(kind=r_def), dimension(ndf_w0) :: chi_1_e, chi_2_e, chi_3_e
-   
+  real(kind=r_def), pointer                    :: wgp_h(:), wgp_v(:)
+
+  wgp_h => gq%get_wgp_h()
+  wgp_v => gq%get_wgp_v()  
   ! compute the analytic R integrated over one cell
   do k = 0, nlayers-1
     do df = 1, ndf_w0
@@ -108,12 +111,14 @@ subroutine rhs_w3_code(nlayers, &
     end do
     call coordinate_jacobian(ndf_w0, ngp_h, ngp_v, chi_1_e, chi_2_e, chi_3_e, w0_diff_basis, jac, dj)
     do df = 1, ndf_w3
+       x(map_w3(df) + k) = 0.0_r_def
        do qp2 = 1, ngp_v
           do qp1 = 1, ngp_h
-             f(qp1,qp2) = w3_basis(1,df,qp1,qp2) * real(k+1) * dj(qp1,qp2)
+             integrand = w3_basis(1,df,qp1,qp2) * real(k+1) * dj(qp1,qp2)
+             x(map_w3(df) + k) = x(map_w3(df) + k) &
+                               + 0.125*wgp_h(qp1)*wgp_v(qp2)*integrand
           end do
        end do
-       x(map_w3(df) + k) = gq%integrate(f)
     end do
   end do
   

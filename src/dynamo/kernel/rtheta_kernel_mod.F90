@@ -102,13 +102,17 @@ subroutine rtheta_code(nlayers,ndf_w0, map_w0, w0_basis, gq, r_theta,          &
   real(kind=r_def), dimension(ndf_w3) :: chi_w3_3_e
   real(kind=r_def), dimension(ngp_h,ngp_v)     :: dj
   real(kind=r_def), dimension(3,3,ngp_h,ngp_v) :: jac
-  real(kind=r_def), dimension(ngp_h,ngp_v,ndf_w0) :: f
+  real(kind=r_def), dimension(ndf_w0) :: rtheta_e
   real(kind=r_def) :: u_at_quad(3), k_vec(3), vec_term, u_e(ndf_w2)
   real(kind=r_def) :: theta_s_at_quad
   real(kind=r_def) :: bouy_term
+  real(kind=r_def), pointer :: wgp_h(:), wgp_v(:)
   
   k_vec(:) = (/ 0.0_r_def, 0.0_r_def, 1.0_r_def /)
-  
+
+  wgp_h => gq%get_wgp_h()
+  wgp_v => gq%get_wgp_v()
+ 
   do k = 0, nlayers-1
   ! Extract element arrays of chi
     do df = 1, ndf_w0
@@ -116,6 +120,7 @@ subroutine rtheta_code(nlayers,ndf_w0, map_w0, w0_basis, gq, r_theta,          &
       chi_1_e(df) = chi_1( loc )
       chi_2_e(df) = chi_2( loc )
       chi_3_e(df) = chi_3( loc )
+      rtheta_e(df) = 0.0_r_def
     end do
     do df = 1, ndf_w3
       chi_w3_3_e(df) = chi_w3_3( map_w3(df) + k )
@@ -144,13 +149,12 @@ subroutine rtheta_code(nlayers,ndf_w0, map_w0, w0_basis, gq, r_theta,          &
         bouy_term =  - n_sq/gravity*theta_s_at_quad*vec_term
         
         do df = 1, ndf_w0
-          f(qp1,qp2,df) = w0_basis(1,df,qp1,qp2)*bouy_term
+          rtheta_e(df) = rtheta_e(df) + wgp_h(qp1)*wgp_v(qp2)*w0_basis(1,df,qp1,qp2)*bouy_term
         end do
       end do
     end do
     do df = 1, ndf_w0
-      r_theta( map_w0(df) + k ) =  r_theta( map_w0(df) + k )                   &
-                                + gq%integrate(f(:,:,df))
+      r_theta( map_w0(df) + k ) =  r_theta( map_w0(df) + k ) + 0.125_r_def*rtheta_e(df)
     end do 
   end do
   
