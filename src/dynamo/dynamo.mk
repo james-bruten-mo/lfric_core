@@ -14,12 +14,27 @@ DATABASE = $(OBJ_DIR)/dependencies.db
 
 include $(OBJ_DIR)/programs.mk $(OBJ_DIR)/dependencies.mk
 
-ALL_SRC     = $(shell find . -name "*.[Ff]90")
-TOUCH_FILES = $(patsubst ./%.f90,$(OBJ_DIR)/%.t,$(patsubst ./%.F90,$(OBJ_DIR)/%.t,$(ALL_SRC)))
-PROGRAMS    = $(patsubst %.o,%,$(notdir $(PROG_OBJS)))
-ALL_MODULES = $(filter-out $(PROG_OBJS),$(patsubst %.t,%.o,$(TOUCH_FILES)))
+# Extract the program names from the program objects:
+PROGRAMS = $(patsubst %.o,%,$(notdir $(PROG_OBJS)))
 
-IGNORE_ARGUMENTS := $(patsubst %,-ignore %,$(IGNORE_DEPENDENCIES))
+# Convert the program names to all caps, append "_OBJS" to the end and
+# dereference that to get a list of all objects needed by all programs:
+ALL_OBJS = $(foreach proj, $(shell echo $(PROGRAMS) | tr a-z A-Z), $($(proj)_OBJS))
+
+# Compile a list of all possible objects by substituting .[Ff]90 with .o on all
+# source files:
+ALL_POSSIBLE_OBJS = $(patsubst ./%, $(OBJ_DIR)/%.o, $(basename $(shell find . -name "*.[Ff]90")))
+
+# Find any objects which could be built but aren't used:
+UNUSED_OBJS = $(filter-out $(ALL_OBJS), $(ALL_POSSIBLE_OBJS))
+
+# If no programs objects were found then the dependency analysis probably
+# hasn't happened yet
+ifneq ($(words $(ALL_OBJS)), 0)
+  ifneq ($(words $(UNUSED_OBJS)), 0)
+    $(error Found the following unused source files: $(patsubst $(OBJ_DIR)/%.o, %.[Ff]90, $(UNUSED_OBJS)))
+  endif
+endif
 
 .SECONDEXPANSION:
 
@@ -35,12 +50,15 @@ $(BIN_DIR)/%: $(OBJ_DIR)/%.x | $(BIN_DIR)
 
 # Directories
 
+# Find all the subdirectories within the source directory:
+SUBDIRS = $(shell find * -type d -prune)
+
+# Mirror the source directory tree in the object directory:
+OBJ_SUBDIRS = $(patsubst %,$(OBJ_DIR)/%/,$(SUBDIRS))
+
 $(BIN_DIR):
 	@echo "Creating $@"
 	$(Q)mkdir -p $@
-
-SUBDIRS = $(shell find * -type d -prune)
-OBJ_SUBDIRS = $(patsubst %,$(OBJ_DIR)/%/,$(SUBDIRS))
 
 $(OBJ_DIR) $(OBJ_SUBDIRS):
 	@echo "Creating $@"
@@ -48,7 +66,11 @@ $(OBJ_DIR) $(OBJ_SUBDIRS):
 
 # Build Rules
 
-INCLUDE_ARGS = -I $(OBJ_DIR) $(patsubst %,-I $(OBJ_DIR)/%,$(SUBDIRS))
+# Build a set of "-I" arguments to seach the whole object tree:
+INCLUDE_ARGS = -I$(OBJ_DIR) $(patsubst %, -I$(OBJ_DIR)/%, $(SUBDIRS))
+
+# Build set of "-ignore" arguments for each 3rd party depenendnecy:
+IGNORE_DEPENDENCIES := $(patsubst %,-ignore %,$(IGNORE_DEPENDENCIES))
 
 $(OBJ_DIR)/%.o $(OBJ_DIR)/%.mod: %.F90 | $(OBJ_DIR)
 	@echo "Compile $<"
@@ -62,7 +84,7 @@ $(OBJ_DIR)/%.o $(OBJ_DIR)/%.mod: %.f90 | $(OBJ_DIR)
 	            $(F_MOD_DESTINATION_ARG)$(OBJ_DIR)/$(dir $@) \
 	            $(INCLUDE_ARGS) -c -o $(basename $@).o $<
 
-$(OBJ_DIR)/modules.a: $(ALL_MODULES)
+$(OBJ_DIR)/modules.a: $(ALL_OBJS)
 	$(Q)$(AR) -r $@ $^
 
 $(OBJ_DIR)/%.x: $$($$(shell echo $$* | tr a-z A-Z)_OBJS)
@@ -73,6 +95,9 @@ $(OBJ_DIR)/%.x: $$($$(shell echo $$* | tr a-z A-Z)_OBJS)
 	            $(patsubst %,-l%,$(EXTERNAL_STATIC_LIBRARIES))
 
 # Dependencies
+
+# Create a list of dependency analysis flag files by substituting .o with .t:
+TOUCH_FILES = $(addsuffix .t, $(basename $(ALL_POSSIBLE_OBJS)))
 
 $(OBJ_DIR)/programs.mk: | $(OBJ_DIR)
 	$(TOOL_DIR)/ProgramObjects -database $(DATABASE) $@
