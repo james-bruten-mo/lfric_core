@@ -11,11 +11,13 @@
 module ncdf_quad_mod
 use constants_mod,  only : r_def
 use ugrid_file_mod, only : ugrid_file_type
-use netcdf,         only : nf90_max_name, nf90_open, nf90_write, nf90_noerr,        &
-                          nf90_strerror, nf90_put_var, nf90_get_var, nf90_put_att, &      
-                          nf90_def_var, nf90_inq_varid, nf90_int, nf90_double,     &
-                          nf90_clobber, nf90_enddef, nf90_inquire_dimension,       &
-                          nf90_inq_dimid, nf90_def_dim, nf90_create, nf90_close
+use netcdf,         only : nf90_max_name, nf90_open, nf90_write, nf90_noerr,   &
+                           nf90_strerror, nf90_put_var, nf90_get_var,          &      
+                           nf90_def_var, nf90_inq_varid, nf90_int, nf90_double,&
+                           nf90_clobber, nf90_enddef, nf90_inquire_dimension,  &
+                           nf90_inq_dimid, nf90_def_dim, nf90_create,          &
+                           nf90_close, nf90_put_att
+use log_mod,        only : log_event, log_scratch_space, LOG_LEVEL_ERROR
 implicit none
 private
 
@@ -104,9 +106,9 @@ subroutine file_open(self, file_name)
 
   ierr = nf90_open( trim(self%file_name), nf90_write, self%ncid )
   if (ierr /= nf90_noerr) then 
-    write(*,*) 'Error in ncdf_open: '   &
-      //trim(nf90_strerror(ierr))       &
-      //': '//trim(self%file_name)
+    write (log_scratch_space,*) 'Error in ncdf_open: '                         &
+                    // trim(nf90_strerror(ierr)) //' : '// trim(self%file_name)
+    call log_event( trim(log_scratch_space), LOG_LEVEL_ERROR ) 
   end if
 
   !Set up the variable ids
@@ -132,7 +134,9 @@ subroutine file_close(self)
 
   ierr = nf90_close( self%ncid )
   if (ierr /= nf90_noerr) then
-    call abort('Error in ncdf_close: '//trim(nf90_strerror(ierr)))
+    write (log_scratch_space,*) 'Error in ncdf_close: '                        &
+                    // trim(nf90_strerror(ierr)) //' : '// trim(self%file_name)
+    call log_event( trim(log_scratch_space), LOG_LEVEL_ERROR ) 
   end if
 
   return
@@ -163,7 +167,9 @@ subroutine file_new(self, file_name)
   ierr = nf90_create( trim(self%file_name), nf90_clobber, self%ncid )
 
   if (ierr /= NF90_NOERR) then
-    call abort('Error in ncdf_create: '//trim(nf90_strerror(ierr)))
+    write (log_scratch_space,*) 'Error in ncdf_create: '                       &
+                    // trim(nf90_strerror(ierr)) //' : '// trim(self%file_name)
+    call log_event( trim(log_scratch_space), LOG_LEVEL_ERROR ) 
   end if
 
   return
@@ -478,7 +484,6 @@ end subroutine inquire_ids
 !-------------------------------------------------------------------------------
 
 subroutine check_err(ierr)
-  use log_mod, only: log_event, log_scratch_space, LOG_LEVEL_ERROR
   implicit none
 
   !Arguments
@@ -491,28 +496,6 @@ subroutine check_err(ierr)
 
   return
 end subroutine check_err
-
-!-------------------------------------------------------------------------------
-!>  @brief    Passes error message to logger, and terminates execution.
-!!
-!!  @details  Passes error message to logger, and terminates execution.  
-!!
-!!  @param[in] message   The error message to pass to the logger.
-!-------------------------------------------------------------------------------
-
-subroutine abort(message)
-  use log_mod, only: log_event, LOG_LEVEL_ERROR
-  implicit none
-
-  !Arguments
-  character(len=*), intent(in) :: message
-
-  call log_event( trim(message), LOG_LEVEL_ERROR ) 
-
-  stop
-
-  return
-end subroutine abort
 
 !-------------------------------------------------------------------------------
 !>  @brief    Gets dimension information from the netCDF file, as integers.
