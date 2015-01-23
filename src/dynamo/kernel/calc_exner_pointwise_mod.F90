@@ -8,7 +8,7 @@
 !-------------------------------------------------------------------------------
 module calc_exner_pointwise_mod
 
-use constants_mod, only : r_def, kappa, rd, p_zero
+use constants_mod, only : r_def, KAPPA, Rd, P_ZERO
 
 implicit none
 
@@ -30,10 +30,10 @@ function calc_exner_pointwise(rho, theta, exner_s, rho_s, theta_s) result(exner)
   real(kind=r_def), intent(in)  :: rho, theta, exner_s, rho_s, theta_s
 
 ! linear
-  exner = kappa / ( 1.0_r_def - kappa ) * exner_s * ( rho/rho_s + theta/theta_s )
+  exner = KAPPA / ( 1.0_r_def - KAPPA ) * exner_s * ( rho/rho_s + theta/theta_s )
   
 ! nonlinear  
-!   exner = ( rd/p_zero * rho * theta ) ** (  ( 1.0_r_def - kappa ) / kappa )
+!   exner = ( Rd/P_ZERO * rho * theta ) ** (  ( 1.0_r_def - KAPPA ) / KAPPA )
 
 end function calc_exner_pointwise
 

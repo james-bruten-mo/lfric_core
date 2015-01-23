@@ -14,8 +14,8 @@
 module ru_kernel_mod
 use kernel_mod,              only : kernel_type
 use argument_mod,            only : arg_type, &          ! the type
-                                    gh_read, gh_inc, w3, w2, w0, fe, cells 
-use constants_mod,           only : n_sq, gravity, cp, r_def
+                                    GH_READ, GH_INC, W3, W2, W0, FE, CELLS 
+use constants_mod,           only : N_SQ, GRAVITY, Cp, r_def
 use mesh_generator_mod,      only : xyz2llr, sphere2cart_vector
 use mesh_mod,                only : l_spherical
 
@@ -28,14 +28,14 @@ implicit none
 type, public, extends(kernel_type) :: ru_kernel_type
   private
   type(arg_type) :: meta_args(6) = [  &
-       arg_type(gh_inc  ,w2,fe,.true., .true.,.false.,.true.),         &
-       arg_type(gh_read ,w3,fe,.true.,.false.,.false.,.false.),        &
-       arg_type(gh_read ,w0,fe,.false.,.true.,.false., .false.),       &
-       arg_type(gh_read ,w0,fe,.false.,.false.,.true.,.false.),        &
-       arg_type(gh_read ,w0,fe,.false.,.false.,.false.,.false.),       &
-       arg_type(gh_read ,w0,fe,.false.,.false.,.false.,.false.)        &
+       arg_type(GH_INC  ,W2,FE,.true., .true.,.false.,.true.),         &
+       arg_type(GH_READ ,W3,FE,.true.,.false.,.false.,.false.),        &
+       arg_type(GH_READ ,W0,FE,.false.,.true.,.false., .false.),       &
+       arg_type(GH_READ ,W0,FE,.false.,.false.,.true.,.false.),        &
+       arg_type(GH_READ ,W0,FE,.false.,.false.,.false.,.false.),       &
+       arg_type(GH_READ ,W0,FE,.false.,.false.,.false.,.false.)        &
        ]
-  integer :: iterates_over = cells
+  integer :: iterates_over = CELLS
 contains
   procedure, nopass ::ru_code
 end type
@@ -195,9 +195,9 @@ subroutine ru_code(nlayers,                                                    &
         do df = 1, ndf_w2
           jac_v = matmul(jac(:,:,qp1,qp2),w2_basis(:,df,qp1,qp2))
           buoy_term = dot_product( jac_v, k_cart ) &
-                    *(gravity*theta_at_quad/theta_s_at_quad)
-          grad_term = cp*exner_at_quad*theta_s_at_quad*( &
-                      n_sq/gravity*dot_product( jac_v, k_cart ) + &
+                    *(GRAVITY*theta_at_quad/theta_s_at_quad)
+          grad_term = Cp*exner_at_quad*theta_s_at_quad*( &
+                      N_SQ/GRAVITY*dot_product( jac_v, k_cart ) + &
                       w2_diff_basis(1,df,qp1,qp2) )
         
           ru_e(df) = ru_e(df) +  wqp_h(qp1)*wqp_v(qp2)*( grad_term + buoy_term )

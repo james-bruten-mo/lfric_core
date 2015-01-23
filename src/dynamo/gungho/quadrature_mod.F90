@@ -16,7 +16,7 @@
 !> quadrature is returned.
 
 module quadrature_mod
-use constants_mod, only: r_def, pi, eps
+use constants_mod, only: r_def, PI, EPS
 implicit none
 private
 
@@ -146,11 +146,11 @@ subroutine init_quadrature(self, qr, nqp_h, nqp_v)
 
   do i = 1, m ! Loop over the desired roots
 
-    z = cos( pi * (i - 0.25_r_def) / (nqp_v + 0.5_r_def) )
+    z = cos( PI * (i - 0.25_r_def) / (nqp_v + 0.5_r_def) )
 
     !Starting with the above approximation to the ith root, we enter the main
     !loop of refinement by NEWTON'S method
-    do while ( abs(z-z1) > eps )
+    do while ( abs(z-z1) > EPS )
       p1 = 1.0_r_def
       p2 = 0.0_r_def
 

@@ -15,8 +15,8 @@
 module initial_theta_kernel_mod
 use kernel_mod,              only : kernel_type
 use argument_mod,            only: arg_type, &          ! the type
-                                   gh_rw, gh_read, w0, fe, cells ! the enums
-use constants_mod,           only: pi, r_def, earth_radius
+                                   GH_RW, GH_READ, W0, FE, CELLS ! the enums
+use constants_mod,           only: PI, r_def, earth_radius
 use mesh_generator_mod,      only: xyz2llr
 use mesh_mod,                only: l_spherical
 use generate_global_gw_fields_mod, only: generate_global_gw_pert
@@ -29,12 +29,12 @@ implicit none
 type, public, extends(kernel_type) :: initial_theta_kernel_type
   private
   type(arg_type) :: meta_args(4) = [ &
-       arg_type(gh_rw,  w0,fe,.false.,.false.,.false.,.false.), &
-       arg_type(gh_read,w0,fe,.false.,.false.,.false.,.false.), &
-       arg_type(gh_read,w0,fe,.false.,.false.,.false.,.false.), &
-       arg_type(gh_read,w0,fe,.false.,.false.,.false.,.false.) &
+       arg_type(GH_RW,  W0,FE,.false.,.false.,.false.,.false.), &
+       arg_type(GH_READ,W0,FE,.false.,.false.,.false.,.false.), &
+       arg_type(GH_READ,W0,FE,.false.,.false.,.false.,.false.), &
+       arg_type(GH_READ,W0,FE,.false.,.false.,.false.,.false.) &
        ]
-  integer :: iterates_over = cells
+  integer :: iterates_over = CELLS
 
 contains
   procedure, nopass :: initial_theta_code
@@ -80,11 +80,11 @@ subroutine initial_theta_code(nlayers,ndf,undf,map,theta,chi_1,chi_2,chi_3)
 
   !Internal variables
   integer               :: df, k
-  real(kind=r_def), parameter :: theta0 = 0.01_r_def
-  real(kind=r_def), parameter :: xc     = 0.0_r_def
-  real(kind=r_def), parameter :: yc     = 0.0_r_def
-  real(kind=r_def), parameter :: a      = 5000.0_r_def
-  real(kind=r_def), parameter :: h      = 10000.0_r_def
+  real(kind=r_def), parameter :: THETA0 = 0.01_r_def
+  real(kind=r_def), parameter :: XC     = 0.0_r_def
+  real(kind=r_def), parameter :: YC     = 0.0_r_def
+  real(kind=r_def), parameter :: A      = 5000.0_r_def
+  real(kind=r_def), parameter :: H      = 10000.0_r_def
   real(kind=r_def)            :: x, y, z
 
   real(kind=r_def)            :: lat, lon, r
@@ -111,8 +111,8 @@ subroutine initial_theta_code(nlayers,ndf,undf,map,theta,chi_1,chi_2,chi_3)
          y = chi_2(map(df) + k)
          z = chi_3(map(df) + k)
 
-         theta(map(df) + k) = theta0 * sin ( pi * z / h )                        &
-                            / ( 1.0_r_def + ( x - xc )**2/a**2 )   
+         theta(map(df) + k) = THETA0 * sin ( PI * z / H )                        &
+                            / ( 1.0_r_def + ( x - XC )**2/A**2 )   
       end do
     end do
   end if

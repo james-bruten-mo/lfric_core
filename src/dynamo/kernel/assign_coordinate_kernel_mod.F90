@@ -13,7 +13,7 @@ module assign_coordinate_kernel_mod
 use kernel_mod,              only : kernel_type
 use constants_mod,           only : r_def, earth_radius
 use argument_mod,            only : arg_type, &          ! the type
-                                    gh_read, gh_write, any_space, fe, cells ! the enums       
+                                    GH_READ, GH_WRITE, ANY_SPACE, FE, CELLS ! the enums       
 use mesh_mod,                only : dz, l_spherical  
 
 implicit none
@@ -25,11 +25,11 @@ implicit none
 type, public, extends(kernel_type) :: assign_coordinate_kernel_type
   private
   type(arg_type) :: meta_args(3) = [  &
-       arg_type(gh_write,any_space,fe,.false.,.false.,.false.,.false.),        &
-       arg_type(gh_write,any_space,fe,.false.,.false.,.false.,.false.),        &
-       arg_type(gh_write,any_space,fe,.false.,.false.,.false.,.false.)         &
+       arg_type(GH_WRITE,ANY_SPACE,FE,.false.,.false.,.false.,.false.),        &
+       arg_type(GH_WRITE,ANY_SPACE,FE,.false.,.false.,.false.,.false.),        &
+       arg_type(GH_WRITE,ANY_SPACE,FE,.false.,.false.,.false.,.false.)         &
        ]
-  integer :: iterates_over = cells
+  integer :: iterates_over = CELLS
 contains
   procedure, nopass :: assign_coordinate_code
 end type

@@ -26,22 +26,22 @@ module argument_mod
   implicit none
 
 ! access descriptors
-  integer, public, parameter :: gh_read  = 1 
-  integer, public, parameter :: gh_write = 2
-  integer, public, parameter :: gh_rw    = 3
-  integer, public, parameter :: gh_inc   = 4
-  integer, public, parameter :: gh_sum   = 5
-  integer, public, parameter :: gh_min   = 6
-  integer, public, parameter :: gh_max   = 7
+  integer, public, parameter :: GH_READ  = 1 
+  integer, public, parameter :: GH_WRITE = 2
+  integer, public, parameter :: GH_RW    = 3
+  integer, public, parameter :: GH_INC   = 4
+  integer, public, parameter :: GH_SUM   = 5
+  integer, public, parameter :: GH_MIN   = 6
+  integer, public, parameter :: GH_MAX   = 7
 
-  integer, public, parameter :: any_space = 0    
+  integer, public, parameter :: ANY_SPACE = 0    
 
 ! stencil label
-  integer, public, parameter :: fe = 1 
+  integer, public, parameter :: FE = 1 
 
 ! kernel iterator
-  integer, public, parameter :: cells     = 1
-  integer, public, parameter :: all_dofs  = 2
+  integer, public, parameter :: CELLS     = 1
+  integer, public, parameter :: ALL_DOFS  = 2
 
   type, public :: arg_type
      integer :: arg_intent

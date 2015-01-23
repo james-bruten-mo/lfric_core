@@ -13,7 +13,7 @@
 
 module matrix_vector_mm_mod
 use argument_mod,            only : arg_type,                              &
-                                    gh_read, gh_inc, w2, fe, cells 
+                                    GH_READ, GH_INC, W2, FE, CELLS 
 use constants_mod,           only : r_def
 use kernel_mod,              only : kernel_type
 
@@ -26,10 +26,10 @@ implicit none
 type, public, extends(kernel_type) :: matrix_vector_kernel_mm_type
   private
   type(arg_type) :: meta_args(2) = [                                       &
-       arg_type(gh_inc,  w2,fe,.false.,.false.,.false.,.false.),           &  
-       arg_type(gh_read ,w2,fe,.false.,.false.,.false.,.false.)            &
+       arg_type(GH_INC,  W2,FE,.false.,.false.,.false.,.false.),           &  
+       arg_type(GH_READ ,W2,FE,.false.,.false.,.false.,.false.)            &
        ]
-  integer :: iterates_over = cells
+  integer :: iterates_over = CELLS
 contains
   procedure, nopass ::matrix_vector_mm_code
 end type

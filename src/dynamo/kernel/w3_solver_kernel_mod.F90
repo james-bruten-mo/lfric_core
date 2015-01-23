@@ -13,7 +13,7 @@ module w3_solver_kernel_mod
 use kernel_mod,              only : kernel_type
 use constants_mod,           only : r_def
 use argument_mod,            only : arg_type, &          ! the type
-                                    gh_read, gh_write, w0, w3, fe, cells 
+                                    GH_READ, GH_WRITE, W0, W3, FE, CELLS 
 
 implicit none
 
@@ -24,13 +24,13 @@ implicit none
 type, public, extends(kernel_type) :: w3_solver_kernel_type
   private
   type(arg_type) :: meta_args(5) = [  &
-       arg_type(gh_write,w3,fe,.true.,.false.,.false.,.true.),        &
-       arg_type(gh_read ,w3,fe,.false.,.false.,.false.,.false.),      &
-       arg_type(gh_read, w0,fe,.false.,.true.,.false., .false.),      &
-       arg_type(gh_read, w0,fe,.false.,.false.,.false.,.false.),      &
-       arg_type(gh_read, w0,fe,.false.,.false.,.false.,.false.)       &
+       arg_type(GH_WRITE,W3,FE,.true.,.false.,.false.,.true.),        &
+       arg_type(GH_READ ,W3,FE,.false.,.false.,.false.,.false.),      &
+       arg_type(GH_READ, W0,FE,.false.,.true.,.false., .false.),      &
+       arg_type(GH_READ, W0,FE,.false.,.false.,.false.,.false.),      &
+       arg_type(GH_READ, W0,FE,.false.,.false.,.false.,.false.)       &
        ]
-  integer :: iterates_over = cells
+  integer :: iterates_over = CELLS
 contains
   procedure, nopass ::solver_w3_code
 end type

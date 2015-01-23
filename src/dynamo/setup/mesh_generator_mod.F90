@@ -452,8 +452,6 @@ subroutine mesh_generator_cubedsphere( filename, ncells, nlayers, dz )
   integer,          intent(in) :: nlayers
   real(kind=r_def), intent(in) :: dz
 
-! file unit for mesh data file
-  integer, parameter :: mesh_data_unit = 44
 ! Loop indices
   integer :: i, j, k, vert, id, jd
 ! data from file
@@ -812,7 +810,7 @@ subroutine xyz2llr(x,y,z,long,lat,r)
 !  Subroutine to convert cartesian coordinates to longitude and latitude
 !------------------------------------------------------------------------------- 
 
-  use constants_mod, only: pi
+  use constants_mod, only: PI
 
 
   real(kind=r_def), intent(in)  :: x, y, z
@@ -822,27 +820,27 @@ subroutine xyz2llr(x,y,z,long,lat,r)
 
   if ( abs(x) < tol ) then
     if ( y >= 0.0_r_def ) then
-      long = 0.5_r_def*pi
+      long = 0.5_r_def*PI
     else
-      long = 1.5_r_def*pi
+      long = 1.5_r_def*PI
     end if
   else
     tln = y/x
     long = atan(tln)
     if ( x < 0.0_r_def ) then
-      long = long + pi
+      long = long + PI
     end if
     if ( long < 0.0_r_def ) then
-      long = long + 2.0_r_def*pi
+      long = long + 2.0_r_def*PI
     end if
   end if
 
   r = sqrt(x*x + y*y)
   if ( abs(r) < tol ) then
     if (z > 0.0_r_def ) then
-      lat =  0.5_r_def*pi
+      lat =  0.5_r_def*PI
     else
-      lat = -0.5_r_def*pi
+      lat = -0.5_r_def*PI
     end if
   else
     tlt = z/r
@@ -887,14 +885,14 @@ end subroutine get_cell_coords
 !>        and (lambda,phi,r) for spherical domains
 subroutine set_domain_size()
 
-  use constants_mod, only: pi
+  use constants_mod, only: PI
   use mesh_mod,      only: l_spherical
   
   if ( l_spherical ) then
     domain_size%minimum%x =  0.0_r_def 
-    domain_size%maximum%x =  2.0_r_def*pi
-    domain_size%minimum%y = -0.5_r_def*pi
-    domain_size%maximum%y =  0.5_r_def*pi
+    domain_size%maximum%x =  2.0_r_def*PI
+    domain_size%minimum%y = -0.5_r_def*PI
+    domain_size%maximum%y =  0.5_r_def*PI
     domain_size%minimum%z =  0.0_r_def
     domain_size%maximum%z =  domain_top
   else
@@ -919,7 +917,7 @@ end subroutine set_domain_size
 !> @param[in]  cartesian_vec components of a flux vector (u,v,w) in cartesian coordinates
 !> @param[out] spherical_vec components of a flux vector (u,v,w) on spherical coordinates
 pure function cart2sphere_vector(x_vec, cartesian_vec) result ( spherical_vec )
-     use constants_mod, only: r_def, pi
+     use constants_mod, only: r_def, PI
 
      implicit none
 
@@ -942,7 +940,7 @@ pure function cart2sphere_vector(x_vec, cartesian_vec) result ( spherical_vec )
                        + x_vec(3)*cartesian_vec(3)) / r
 
 ! convert from (dlambda/dt,dphi/dt,dr/dt) to (u,v,w) in m/s
-     phi = 0.5_r_def*pi - acos(x_vec(3)/r)
+     phi = 0.5_r_def*PI - acos(x_vec(3)/r)
      spherical_vec(1) = spherical_vec(1)*r*cos(phi)
      spherical_vec(2) = spherical_vec(2)*r
 

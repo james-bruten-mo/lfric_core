@@ -14,8 +14,8 @@ module generate_global_gw_fields_mod
 !> but is based on previous approaches by Skamarock et al. (JAS 1994), Tomita and Satoh (FDR 2004), and
 !> Jablonowski et al. (NCAR Tech Report 2008) 
 
-use constants_mod, only: r_def, pi, gravity, cp, p_zero, &
-                         omega, earth_radius, n_sq, kappa, rd
+use constants_mod, only: r_def, PI, GRAVITY, Cp, P_ZERO, &
+                         omega, earth_radius, N_SQ, KAPPA, Rd
 
 implicit none
 
@@ -32,40 +32,40 @@ implicit none
                                    exner, &              ! exner pressure
                                    rho                   ! density (kg m^-3)
 
-  real(kind=r_def), parameter :: u0        = 0.0_r_def,    &     ! Reference Velocity 
-                                 t_equator = 300.0_r_def,   &     ! Temperature at Equator    
-                                 ztop      = 10000.0_r_def        ! Model Top       
+  real(kind=r_def), parameter :: U0        = 0.0_r_def,    &     ! Reference Velocity 
+                                 T_EQUATOR = 300.0_r_def,   &     ! Temperature at Equator    
+                                 ZTOP      = 10000.0_r_def        ! Model Top       
                            
-  real(kind=r_def) :: bigG = (gravity*gravity)/(n_sq*cp)      ! G constant from DCMIP formulation                            
+  real(kind=r_def) :: bigG = (GRAVITY*GRAVITY)/(N_SQ*Cp)      ! G constant from DCMIP formulation                            
   real(kind=r_def) :: tsurf, psurf                            ! Surface temperature (k) and pressure (Pa)
   real(kind=r_def) :: temperature, pressure                   ! temperature(k) and pressure (Pa)
   real(kind=r_def) :: exp_fac
-  real(kind=r_def) :: p_equator = p_zero
+  real(kind=r_def) :: p_equator = P_ZERO
 
 ! intialise wind field
-  u(1) = u0 * cos(lat)
+  u(1) = U0 * cos(lat)
   u(2) = 0.0_r_def
   u(3) = 0.0_r_def
 
 ! 
-  exp_fac = (u0+2.0_r_def*omega*earth_radius)*(cos(2.0_r_def*lat)-1.0_r_def)
+  exp_fac = (U0+2.0_r_def*omega*earth_radius)*(cos(2.0_r_def*lat)-1.0_r_def)
 
 ! Compute surface temperture
-  tsurf = bigG + (t_equator - bigG)*exp( -(u0*n_sq/(4.0_r_def*gravity*gravity))*exp_fac ) 
+  tsurf = bigG + (T_EQUATOR - bigG)*exp( -(U0*N_SQ/(4.0_r_def*GRAVITY*GRAVITY))*exp_fac ) 
 
 ! Compute surface pressure
-  psurf = p_equator*exp( (u0/(4.0_r_def*bigG*rd))*exp_fac  ) * (tsurf/t_equator)**(cp/rd)
+  psurf = p_equator*exp( (U0/(4.0_r_def*bigG*Rd))*exp_fac  ) * (tsurf/T_EQUATOR)**(Cp/Rd)
 
 ! Compute pressure and temperature
-  pressure = psurf*( (bigG/tsurf)*exp(-n_sq*z/gravity)+1.0_r_def - (bigG/tsurf)  )**(cp/rd)
+  pressure = psurf*( (bigG/tsurf)*exp(-N_SQ*z/GRAVITY)+1.0_r_def - (bigG/tsurf)  )**(Cp/Rd)
 
-  temperature = bigG*(1.0_r_def - exp(n_sq*z/gravity))+ tsurf*exp(n_sq*z/gravity)
+  temperature = bigG*(1.0_r_def - exp(N_SQ*z/GRAVITY))+ tsurf*exp(N_SQ*z/GRAVITY)
 
 ! Compute density from equation of state
-  rho = pressure/(rd*temperature)
+  rho = pressure/(Rd*temperature)
 
 ! convert pressure to exner pressure and temperature to potential temperature
-  exner = (pressure/p_zero)**kappa
+  exner = (pressure/P_ZERO)**KAPPA
   theta = temperature/exner
 
 end subroutine generate_global_gw_fields
@@ -82,21 +82,21 @@ implicit none
 
   real(kind=r_def) :: sin_tmp, cos_tmp, r, shape_function
 
-  real(kind=r_def), parameter :: lambdac = 2.0_r_def*pi/3.0_r_def,     &     ! Lon of Pert Center
-                                 d       = 5000.0_r_def,               &     ! Width for Pert
-                                 phic    = 0.0_r_def,                  &     ! Lat of Pert Center
-                                 delta_theta = 1.0_r_def,              &     ! Max Amplitude of Pert
-                                 Lz      = 10000.0_r_def                     ! Vertical half-Wavelength of Pert
+  real(kind=r_def), parameter :: LAMBDAC = 2.0_r_def*PI/3.0_r_def,     &     ! Lon of Pert Center
+                                 D       = 5000.0_r_def,               &     ! Width for Pert
+                                 PHIC    = 0.0_r_def,                  &     ! Lat of Pert Center
+                                 DELTA_THETA = 1.0_r_def,              &     ! Max Amplitude of Pert
+                                 LZ      = 10000.0_r_def                     ! Vertical half-Wavelength of Pert
  
-  sin_tmp = sin(lat) * sin(phic)
-  cos_tmp = cos(lat) * cos(phic)
+  sin_tmp = sin(lat) * sin(PHIC)
+  cos_tmp = cos(lat) * cos(PHIC)
 
 ! great circle distance  
-  r  = earth_radius * acos (sin_tmp + cos_tmp*cos(lon-lambdac)) 
+  r  = earth_radius * acos (sin_tmp + cos_tmp*cos(lon-LAMBDAC)) 
 
-  shape_function = (d**2)/(d**2 + r**2)
+  shape_function = (D**2)/(D**2 + r**2)
 
-  theta = delta_theta*shape_function*sin(pi*z/Lz)
+  theta = DELTA_THETA*shape_function*sin(PI*z/LZ)
 end function generate_global_gw_pert
 
 end module generate_global_gw_fields_mod

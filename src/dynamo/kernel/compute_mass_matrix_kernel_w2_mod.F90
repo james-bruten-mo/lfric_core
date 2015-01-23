@@ -18,7 +18,7 @@ module compute_mass_matrix_kernel_w2_mod
 use constants_mod,           only: r_def
 use kernel_mod,              only: kernel_type
 use argument_mod,            only: arg_type, &           ! the type
-                                   gh_inc, w2,fe, cells ! the enums
+                                   GH_INC, W2,FE, CELLS ! the enums
 
 use coordinate_jacobian_mod, only: coordinate_jacobian
 implicit none
@@ -30,9 +30,9 @@ implicit none
 type, public, extends(kernel_type) :: compute_mass_matrix_kernel_w2_type
   private
   type(arg_type) :: meta_args(1) = (/ &
-       arg_type(gh_inc,w2,fe,.true.,.false.,.false.,.true.) &
+       arg_type(GH_INC,W2,FE,.true.,.false.,.false.,.true.) &
        /)
-  integer :: iterates_over = cells
+  integer :: iterates_over = CELLS
 
 contains
   procedure, nopass :: compute_mass_matrix_w2_code

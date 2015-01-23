@@ -21,7 +21,7 @@ private
 ! Module parameters
 !-------------------------------------------------------------------------------
 
-integer, parameter :: topology_dimension  = 2
+integer, parameter :: TOPOLOGY_DIMENSION  = 2
 
 !-------------------------------------------------------------------------------
 !> @brief Stores 2-dimensional grid information

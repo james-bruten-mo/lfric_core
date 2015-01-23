@@ -24,6 +24,7 @@ contains
 !> @deprecated This is a tempoary implementation until a proper i/o + plotting
 !> stategy is implemented
 !> @param[in] step  The current timestep
+!> @param[in] n_out The number of output fields to generate from f
 !> @param[in] f     A field to compute output data from
 !> @param[in] chi   A 3D coordinate field
 !> @param[in] fname The name of the field to be output
@@ -49,7 +50,7 @@ contains
     character(6),       intent(in) :: fname
 
     integer                       :: nx(3), i, j, k, out_cell, dir 
-    integer, parameter            :: output_unit = 21
+    integer, parameter            :: OUTPUT_UNIT = 21
     real(kind=r_def), allocatable :: x_out(:,:,:,:), f_out(:,:,:,:)  
     real(kind=r_def)              :: dx(3)
     character(18)                 :: outname
@@ -100,34 +101,34 @@ contains
     write( log_scratch_space, '(A,A)' ) 'Writing interpolated output: ',outname
     call log_event( log_scratch_space, LOG_LEVEL_INFO )
   
-    open(output_unit, file = outname, status = "replace")
-    write(output_unit,*) 'II = ',nx(1),';'
-    write(output_unit,*) 'JJ = ',nx(2),';'
-    write(output_unit,*) 'KK = ',nx(3),';'
-    write(output_unit,*) 'LL = ',3+n_out,';'
-    write(output_unit,*) 'data = ['
+    open(OUTPUT_UNIT, file = outname, status = "replace")
+    write(OUTPUT_UNIT,*) 'II = ',nx(1),';'
+    write(OUTPUT_UNIT,*) 'JJ = ',nx(2),';'
+    write(OUTPUT_UNIT,*) 'KK = ',nx(3),';'
+    write(OUTPUT_UNIT,*) 'LL = ',3+n_out,';'
+    write(OUTPUT_UNIT,*) 'data = ['
     do i = 1,nx(1)
       do j = 1,nx(2)
         do k = 1,nx(3)    
           if ( n_out == 1) then
-            write(output_unit,'(4e16.8)') x_out(1,k,j,i), x_out(2,k,j,i), x_out(3,k,j,i), &
+            write(OUTPUT_UNIT,'(4e16.8)') x_out(1,k,j,i), x_out(2,k,j,i), x_out(3,k,j,i), &
                                           f_out(1,k,j,i)
           else
-            write(output_unit,'(6e16.8)') x_out(1,k,j,i), x_out(2,k,j,i), x_out(3,k,j,i), &
+            write(OUTPUT_UNIT,'(6e16.8)') x_out(1,k,j,i), x_out(2,k,j,i), x_out(3,k,j,i), &
                                           f_out(1,k,j,i), f_out(2,k,j,i), f_out(3,k,j,i)
           end if 
         end do
       end do
     end do
-    write(output_unit,*) '];'
-    write(output_unit,*) ' '
-    write(output_unit,*) 'x=zeros(LL,KK,JJ,II); id=1; '
-    write(output_unit,*) 'for i=1:II; for j=1:JJ; for k=1:KK;'
-    write(output_unit,*) 'for l=1:LL;'
-    write(output_unit,*) 'x(l,k,j,i) = data(id,l);'
-    write(output_unit,*) 'end;' 
-    write(output_unit,*) 'id = id + 1; end; end; end;'
-    close(output_unit)
+    write(OUTPUT_UNIT,*) '];'
+    write(OUTPUT_UNIT,*) ' '
+    write(OUTPUT_UNIT,*) 'x=zeros(LL,KK,JJ,II); id=1; '
+    write(OUTPUT_UNIT,*) 'for i=1:II; for j=1:JJ; for k=1:KK;'
+    write(OUTPUT_UNIT,*) 'for l=1:LL;'
+    write(OUTPUT_UNIT,*) 'x(l,k,j,i) = data(id,l);'
+    write(OUTPUT_UNIT,*) 'end;' 
+    write(OUTPUT_UNIT,*) 'id = id + 1; end; end; end;'
+    close(OUTPUT_UNIT)
   
   end subroutine interpolated_output 
 

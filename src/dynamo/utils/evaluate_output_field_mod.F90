@@ -6,7 +6,7 @@
 !-------------------------------------------------------------------------------
 module evaluate_output_field_mod
 
-use constants_mod,           only: r_def, earth_radius, large_real
+use constants_mod,           only: r_def, earth_radius
 use field_mod,               only: field_type, field_proxy_type
 use coordinate_jacobian_mod, only: coordinate_jacobian, coordinate_jacobian_inverse
 use mesh_mod,                only: l_spherical, dz
@@ -45,7 +45,7 @@ subroutine evaluate_output_field( field, chi, x_in, cell, nz, field_out)
   integer                       :: iter, ndf, ndf_f, k, df, &
                                    dir, nlayers, dfk
   integer, allocatable          :: out_layer(:)
-  integer,          parameter   :: newton_iters = 4
+  integer,          parameter   :: NEWTON_ITERS = 4
   real(kind=r_def)              :: jac(3,3), jac_inv(3,3), dj(1,1), &
                                    g_func(3), gamma(1), x_loc(3), x_out(3), &
                                    offset
@@ -89,7 +89,7 @@ subroutine evaluate_output_field( field, chi, x_in, cell, nz, field_out)
                                    x_loc(3))
 
 ! Find location in computational space of point to evaluate field at  
-  do iter = 1,newton_iters
+  do iter = 1,NEWTON_ITERS
     do df = 1,ndf
       dgamma(:,df) = chi_proxy(1)%vspace%evaluate_diff_basis(df, x_out)
     end do

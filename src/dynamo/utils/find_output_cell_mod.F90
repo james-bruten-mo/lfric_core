@@ -6,7 +6,7 @@
 !-------------------------------------------------------------------------------
 module find_output_cell_mod
 
-use constants_mod,        only: r_def, large_real, earth_radius
+use constants_mod,        only: r_def, LARGE_REAL, earth_radius
 use field_mod,            only: field_type, field_proxy_type 
 use mesh_mod,             only: l_spherical
 use coord_algorithms_mod, only: cartesian_distance, llr2xyz
@@ -47,7 +47,7 @@ contains
     call llr2xyz(x_in(1), x_in(2), x_in(3) + earth_radius, &
                  chi_in(1), chi_in(2), chi_in(3))
   end if
-  min_distance = large_real
+  min_distance = LARGE_REAL
   do cell = 1,chi_proxy(1)%vspace%get_ncell()
     map => chi_proxy(1)%vspace%get_cell_dofmap(cell)
     chi_cell(:) = 0.0_r_def

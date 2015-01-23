@@ -8,8 +8,8 @@
 !-------------------------------------------------------------------------------
 !> @brief Module for computing a linear hydrostatially balanced reference state
 module reference_profile_mod
-use constants_mod,      only: r_def, n_sq, gravity, cp, rd, &
-                              kappa, p_zero, earth_radius
+use constants_mod,      only: r_def, N_SQ, GRAVITY, Cp, Rd, &
+                              KAPPA, P_ZERO, earth_radius
 use mesh_generator_mod, only: xyz2llr 
 use mesh_mod,           only: l_spherical
 use generate_global_gw_fields_mod, only: generate_global_gw_fields
@@ -30,9 +30,8 @@ subroutine reference_profile(exner_s, rho_s, theta_s, x)
 real(kind=r_def), intent(in)  :: x(3)
 real(kind=r_def), intent(out) :: exner_s, rho_s, theta_s
 
-real(kind=r_def), parameter :: theta_surf = 300.0_r_def
-real(kind=r_def), parameter :: exner_surf = 1.0_r_def
-real(kind=r_def), parameter :: rho_surf   = 1.0_r_def
+real(kind=r_def), parameter :: THETA_SURF = 300.0_r_def
+real(kind=r_def), parameter :: EXNER_SURF = 1.0_r_def
 real(kind=r_def)            :: nsq_over_g, z, lat, lon, r, u_s(3)
 
 if ( l_spherical ) then
@@ -42,12 +41,12 @@ if ( l_spherical ) then
   call generate_global_gw_fields (lat, z, exner_s, u_s, theta_s, rho_s)
 else
   z = x(3)
-  nsq_over_g = n_sq/gravity
+  nsq_over_g = N_SQ/GRAVITY
 
-  theta_s = theta_surf * exp ( nsq_over_g * z )
-  exner_s = exner_surf - gravity**2/(cp*theta_surf*n_sq)   &
+  theta_s = THETA_SURF * exp ( nsq_over_g * z )
+  exner_s = EXNER_SURF - GRAVITY**2/(Cp*THETA_SURF*N_SQ)   &
               * (1.0_r_def - exp ( - nsq_over_g * z ))
-  rho_s   = p_zero/(rd*theta_s) * exner_s ** ((1.0_r_def - kappa)/kappa)
+  rho_s   = P_ZERO/(Rd*theta_s) * exner_s ** ((1.0_r_def - KAPPA)/KAPPA)
 end if
 
 end subroutine reference_profile

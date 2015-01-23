@@ -34,7 +34,7 @@
 !!  </pre>
 !-------------------------------------------------------------------------------
 module gencube_mod
-use constants_mod,       only : r_def, str_def, pi
+use constants_mod,       only : r_def, str_def, PI
 use ugrid_generator_mod, only : ugrid_generator_type
 implicit none
 private
@@ -44,13 +44,13 @@ private
 !-------------------------------------------------------------------------------
 
 !Number of grids in multigrid hierarchy
-integer, parameter :: ngrids = 2
+integer, parameter :: NGRIDS = 2
 
 !Number of smoothing iterations. must be at least 1 for consistency of h
 !operator.
-integer, parameter :: nsmooth = 1
+integer, parameter :: NSMOOTH = 1
 
-real(kind=r_def), parameter :: piby4 = pi / 4.0_r_def
+real(kind=r_def), parameter :: PIBY4 = PI / 4.0_r_def
 
 !-------------------------------------------------------------------------------
 !> @brief    Cubed sphere generator type (function object).
@@ -103,11 +103,11 @@ contains
   procedure :: write_data
 end type
 
-integer, parameter :: quads_num_nodes_per_face  = 4
-integer, parameter :: quads_num_edges_per_face  = 4
-integer, parameter :: quads_num_nodes_per_edge  = 2
-integer, parameter :: quads_num_edge_neighbours = 2
-integer, parameter :: quads_num_face_neighbours = 4 
+integer, parameter :: QUADS_NUM_NODES_PER_FACE  = 4
+integer, parameter :: QUADS_NUM_EDGES_PER_FACE  = 4
+integer, parameter :: QUADS_NUM_NODES_PER_EDGE  = 2
+integer, parameter :: QUADS_NUM_EDGE_NEIGHBOURS = 2
+integer, parameter :: QUADS_NUM_FACE_NEIGHBOURS = 4 
 
 !-------------------------------------------------------------------------------
 ! Constructors
@@ -140,7 +140,7 @@ type(gencube_type) function constructor(half_num_cells_on_panel_edge) result(sel
 
   !n x n cells on each panel smallest and largest n
   n0          = half_num_cells_on_panel_edge
-  nx          = n0*(2**(ngrids-1))
+  nx          = n0*(2**(NGRIDS-1))
 
   self%n0     = n0
   self%nfacex = 6*nx*nx
@@ -148,25 +148,25 @@ type(gencube_type) function constructor(half_num_cells_on_panel_edge) result(sel
   self%nvertx = self%nfacex + 2
 
   !Allocate storage
-  allocate (self%neoff (self%nfacex,    ngrids))
-  allocate (self%neofv (self%nvertx,    ngrids))
-  allocate (self%nface (                ngrids))
-  allocate (self%nedge (                ngrids))
-  allocate (self%nvert (                ngrids))
-  allocate (self%fnxtf (self%nfacex, 4, ngrids))
-  allocate (self%eoff  (self%nfacex, 4, ngrids))
-  allocate (self%voff  (self%nfacex, 4, ngrids))
-  allocate (self%fnxte (self%nedgex, 2, ngrids))
-  allocate (self%vofe  (self%nedgex, 2, ngrids))
-  allocate (self%fofv  (self%nvertx, 4, ngrids))
-  allocate (self%eofv  (self%nvertx, 4, ngrids))
-  allocate (self%flong (self%nfacex,    ngrids))
-  allocate (self%flat  (self%nfacex,    ngrids))
-  allocate (self%vlong (self%nvertx,    ngrids))
-  allocate (self%vlat  (self%nvertx,    ngrids))
-  allocate (self%farea (self%nfacex,    ngrids))
-  allocate (self%ldist (self%nedgex,    ngrids))
-  allocate (self%ddist (self%nedgex,    ngrids))
+  allocate (self%neoff (self%nfacex,    NGRIDS))
+  allocate (self%neofv (self%nvertx,    NGRIDS))
+  allocate (self%nface (                NGRIDS))
+  allocate (self%nedge (                NGRIDS))
+  allocate (self%nvert (                NGRIDS))
+  allocate (self%fnxtf (self%nfacex, 4, NGRIDS))
+  allocate (self%eoff  (self%nfacex, 4, NGRIDS))
+  allocate (self%voff  (self%nfacex, 4, NGRIDS))
+  allocate (self%fnxte (self%nedgex, 2, NGRIDS))
+  allocate (self%vofe  (self%nedgex, 2, NGRIDS))
+  allocate (self%fofv  (self%nvertx, 4, NGRIDS))
+  allocate (self%eofv  (self%nvertx, 4, NGRIDS))
+  allocate (self%flong (self%nfacex,    NGRIDS))
+  allocate (self%flat  (self%nfacex,    NGRIDS))
+  allocate (self%vlong (self%nvertx,    NGRIDS))
+  allocate (self%vlat  (self%nvertx,    NGRIDS))
+  allocate (self%farea (self%nfacex,    NGRIDS))
+  allocate (self%ldist (self%nedgex,    NGRIDS))
+  allocate (self%ddist (self%nedgex,    NGRIDS))
 
   return
 end function constructor
@@ -201,13 +201,13 @@ subroutine get_dimensions(self, num_nodes, num_edges, num_faces,    &
   integer, intent(out) :: num_edges_per_face
   integer, intent(out) :: num_nodes_per_edge
 
-  num_nodes = self%nvert(ngrids)
-  num_edges = self%nedge(ngrids)
-  num_faces = self%nface(ngrids)
+  num_nodes = self%nvert(NGRIDS)
+  num_edges = self%nedge(NGRIDS)
+  num_faces = self%nface(NGRIDS)
 
-  num_nodes_per_face = quads_num_nodes_per_face 
-  num_edges_per_face = quads_num_edges_per_face 
-  num_nodes_per_edge = quads_num_nodes_per_edge 
+  num_nodes_per_face = QUADS_NUM_NODES_PER_FACE 
+  num_edges_per_face = QUADS_NUM_EDGES_PER_FACE 
+  num_nodes_per_edge = QUADS_NUM_NODES_PER_EDGE 
 
   return
 end subroutine get_dimensions
@@ -231,9 +231,9 @@ subroutine get_coordinates(self, node_coordinates)
   integer :: iv
   real(kind=r_def) :: long, lat
 
-  do iv = 1, self%nvert(ngrids)
-    long    = self%vlong(iv,ngrids)
-    lat     = self%vlat(iv,ngrids)
+  do iv = 1, self%nvert(NGRIDS)
+    long    = self%vlong(iv,NGRIDS)
+    lat     = self%vlat(iv,NGRIDS)
     node_coordinates(:,iv) = [long, lat]
   end do
  
@@ -271,30 +271,30 @@ subroutine get_connectivity(self,                            &
   integer :: iface1, iface2
 
   !Face-face connectivity
-  do iface2 = 1, self%nface(ngrids)
-    do iface1 = 1, quads_num_face_neighbours
-      face_face_connectivity(iface1, iface2) = self%fnxtf(iface2, iface1, ngrids)
+  do iface2 = 1, self%nface(NGRIDS)
+    do iface1 = 1, QUADS_NUM_FACE_NEIGHBOURS
+      face_face_connectivity(iface1, iface2) = self%fnxtf(iface2, iface1, NGRIDS)
     end do
   end do
 
   !Face-node connectivity
-  do iface = 1, self%nface(ngrids)
-    do inode = 1, quads_num_nodes_per_face
-      face_node_connectivity(inode, iface) = self%voff(iface, inode, ngrids)
+  do iface = 1, self%nface(NGRIDS)
+    do inode = 1, QUADS_NUM_NODES_PER_FACE
+      face_node_connectivity(inode, iface) = self%voff(iface, inode, NGRIDS)
     end do
   end do
 
   !Edge-node connectivity
-  do iedge = 1, self%nedge(ngrids)
-    do inode = 1, quads_num_nodes_per_edge
-      edge_node_connectivity(inode, iedge) = self%vofe(iedge, inode, ngrids)
+  do iedge = 1, self%nedge(NGRIDS)
+    do inode = 1, QUADS_NUM_NODES_PER_EDGE
+      edge_node_connectivity(inode, iedge) = self%vofe(iedge, inode, NGRIDS)
     end do
   end do
 
   !Face-edge connectivity
-  do iface = 1, self%nface(ngrids)
-    do iedge = 1, quads_num_edges_per_face
-      face_edge_connectivity(iedge, iface) = self%eoff(iface, iedge, ngrids)
+  do iface = 1, self%nface(NGRIDS)
+    do iedge = 1, QUADS_NUM_EDGES_PER_FACE
+      face_edge_connectivity(iedge, iface) = self%eoff(iface, iedge, NGRIDS)
     end do
   end do
 
@@ -323,12 +323,12 @@ subroutine generate(self)
   integer          :: n, n2
   real(kind=r_def) :: dlambda
 
-  do igrid = 1, ngrids
+  do igrid = 1, NGRIDS
 
     !Size of panels on this grid
     n       = self%n0*(2**(igrid-1))
     n2      = n*n
-    dlambda = 0.5_r_def*pi/n
+    dlambda = 0.5_r_def*PI/n
 
     self%nface(igrid) = 6*n2
     self%nedge(igrid) = 2*self%nface(igrid)
@@ -389,11 +389,11 @@ subroutine part1(self, igrid, dlambda, n, n2)
 
   !Loop over vertices/faces of one panel
   do j = 1, n
-    lambda2 = (j-1)*dlambda - piby4
+    lambda2 = (j-1)*dlambda - PIBY4
     t2 = tan(lambda2)
 
     do i = 1, n
-      lambda1 = (i-1)*dlambda - piby4
+      lambda1 = (i-1)*dlambda - PIBY4
       t1 = tan(lambda1)
 
       !Set up coordinates of vertices
@@ -688,9 +688,9 @@ subroutine part3(self, igrid, n, n2)
 
   !Vertex 6*n2 + 1 is at top left of panels 1, 3, and 5
   iv      = 6*n2 + 1
-  lambda2 = piby4
+  lambda2 = PIBY4
   t2      = tan(lambda2)
-  lambda1 = - piby4
+  lambda1 = - PIBY4
   t1      = tan(lambda1)
 
   !Cartesian coordinates of vertex
@@ -767,7 +767,7 @@ subroutine part4(self)
   self%vofe  = 0
   self%fofv  = 0
 
-  do igrid = 1, ngrids
+  do igrid = 1, NGRIDS
     do j = 1, self%nface(igrid)
       do i = 1, 4
         ie1 = self%eoff(j,i,igrid)
@@ -831,10 +831,10 @@ subroutine part5(self)
   real(kind=r_def) :: s
 
   !Calculate geometrical quantities
-  do igrid = 1, ngrids
+  do igrid = 1, NGRIDS
 
     !Smoothing iterations
-    do ismooth = 1, nsmooth
+    do ismooth = 1, NSMOOTH
 
       !First locate face centres at barycentres of 
       !surrounding vertices
@@ -1005,7 +1005,7 @@ subroutine part6(self)
   !Sort FNXTF into anticlockwise order on each grid
   !and sort EOFF to correspond to FNXTF
   !Also sort fofv into anticlockwise order
-  do igrid = 1, ngrids
+  do igrid = 1, NGRIDS
     do if0 = 1, self%nface(igrid)
 
       !Coordinates of face if0
@@ -1026,7 +1026,7 @@ subroutine part6(self)
         d1z = z1 - z0
 
         !Find next neighbour (anticlockwise)
-        thetamin = pi
+        thetamin = PI
         ixmin = 0
         ifmin = 0
 
@@ -1101,7 +1101,7 @@ subroutine part6(self)
         d1z = z1 - z0
 
         !find next neighbour (anticlockwise)
-        thetamin = pi
+        thetamin = PI
         ixmin = 0
         ifmin = 0
 
@@ -1166,7 +1166,7 @@ subroutine part7(self)
 
   !Order VOFF so that the k'th vertex is between the
   !k'th and (k+1)'th edges in EOFF
-  do igrid = 1, ngrids
+  do igrid = 1, NGRIDS
     do if0 = 1, self%nface(igrid)
       do ix1 = 1, self%neoff(if0,igrid)
         ix2 = ix1 + 1
@@ -1230,7 +1230,7 @@ subroutine part8(self)
   !Sort VOFE so that VOFE(1) -> VOFE(2) (tangent vector)
   !is 90 degrees anticlockwise of FNXTE(1) -> FNXTE(2) (normal vector)
 
-  do igrid = 1, ngrids
+  do igrid = 1, NGRIDS
     do ie0 = 1, self%nedge(igrid)
 
       if1  = self%fnxte(ie0,1,igrid)
@@ -1305,14 +1305,14 @@ subroutine write_data(self)
   open(44,file='primalgrid.dat',form='formatted')
 
   do j = 1, self%nedgex
-    iv   = self%vofe(j,1,ngrids)
-    long = self%vlong(iv,ngrids)
-    lat  = self%vlat(iv,ngrids)
+    iv   = self%vofe(j,1,NGRIDS)
+    long = self%vlong(iv,NGRIDS)
+    lat  = self%vlat(iv,NGRIDS)
     call ll2xyz(long,lat,x1,y1,z1)
 
-    iv   = self%vofe(j,2,ngrids)
-    long = self%vlong(iv,ngrids)
-    lat  = self%vlat(iv,ngrids)
+    iv   = self%vofe(j,2,NGRIDS)
+    long = self%vlong(iv,NGRIDS)
+    lat  = self%vlat(iv,NGRIDS)
     call ll2xyz(long,lat,x2,y2,z2)
 
     write(44,'(3e15.7)') x1,y1,z1
@@ -1323,14 +1323,14 @@ subroutine write_data(self)
 
   open(44,file='dualgrid.dat',form='formatted')
   do j = 1, self%nedgex
-    if1  = self%fnxte(j,1,ngrids)
-    long = self%flong(if1,ngrids)
-    lat  = self%flat(if1,ngrids)
+    if1  = self%fnxte(j,1,NGRIDS)
+    long = self%flong(if1,NGRIDS)
+    lat  = self%flat(if1,NGRIDS)
     call ll2xyz(long,lat,x1,y1,z1)
 
-    if1  = self%fnxte(j,2,ngrids)
-    long = self%flong(if1,ngrids)
-    lat  = self%flat(if1,ngrids)
+    if1  = self%fnxte(j,2,NGRIDS)
+    long = self%flong(if1,NGRIDS)
+    lat  = self%flat(if1,NGRIDS)
     call ll2xyz(long,lat,x2,y2,z2)
     write(44,'(3e15.7)') x1,y1,z1
     write(44,'(3e15.7)') x2,y2,z2
@@ -1342,8 +1342,8 @@ subroutine write_data(self)
   write(ygridfile,'(''gridmap_cube_'',i10.10,''.dat'')') self%nfacex
   open(22,file=trim(ygridfile),form='unformatted')
   
-  ! write(22,*) 'gridmap for ngrids=',ngrids
-  write(22) ngrids
+  ! write(22,*) 'gridmap for NGRIDS=',NGRIDS
+  write(22) NGRIDS
   write(22) self%nface
   write(22) self%nedge
   write(22) self%nvert
@@ -1351,74 +1351,74 @@ subroutine write_data(self)
   ! write(22,*) 'number of edges of each face - all grids'
   write(22) ((self%neoff(if1,igrid),            &
                  if1 = 1, self%nface(igrid)),   &
-                 igrid = 1, ngrids)
+                 igrid = 1, NGRIDS)
   ! write(22,*) 'number of edges of each vertex - all grids'
   write(22) ((self%neofv(iv1,igrid),            &
                  iv1 = 1, self%nvert(igrid)),   &
-                 igrid=1, ngrids)
+                 igrid=1, NGRIDS)
   ! write(22,*) 'faces next to each face - all grids'
   write(22) (((self%fnxtf(if1,if2,igrid),       &
                  if1 = 1, self%nface(igrid)),   &
                  if2 = 1, 4),                   &
-                 igrid = 1, ngrids)
+                 igrid = 1, NGRIDS)
   ! write(22,*) 'edges of each face - all grids'
   write(22) (((self%eoff(if1,ie1,igrid),        &
                  if1 = 1, self%nface(igrid)),   &
                  ie1 = 1, 4),                   &
-                 igrid = 1, ngrids)
+                 igrid = 1, NGRIDS)
   ! write(22,*) 'vertices of each face - all grids'
   write(22) (((self%voff(if1,iv1,igrid),        &
                  if1 = 1, self%nface(igrid)),   &
                  iv1 = 1, 4),                   &
-                 igrid = 1, ngrids)
+                 igrid = 1, NGRIDS)
   ! write(22,*) 'faces next to each edge - all grids'
   write(22) (((self%fnxte(ie1,if2,igrid),       &
                  ie1 = 1, self%nedge(igrid)),   &
                  if2 = 1, 2),                   &
-                 igrid = 1, ngrids)
+                 igrid = 1, NGRIDS)
   ! write(22,*) 'vertices of each edge - all grids'
   write(22) (((self%vofe(ie1,iv2,igrid),        &
                  ie1 = 1, self%nedge(igrid)),   &
                  iv2 = 1, 2),                   &
-                 igrid = 1, ngrids)
+                 igrid = 1, NGRIDS)
   ! write(22,*) 'faces around each vertex - all grids'
   write(22) (((self%fofv(iv1,if2,igrid),        &
                  iv1 = 1, self%nvert(igrid)),   &
                  if2 = 1, 4),                   &
-                 igrid = 1, ngrids)
+                 igrid = 1, NGRIDS)
   ! write(22,*) 'edges around each vertex - all grids'
   write(22) (((self%eofv(iv1,ie1,igrid),        &
                  iv1 = 1, self%nvert(igrid)),   &
                  ie1 = 1, 4),                   &
-                 igrid = 1, ngrids)
+                 igrid = 1, NGRIDS)
   ! write(22,*) 'longitudes of faces - all grids'
   write(22) ((self%flong(if1,igrid),            &
                  if1 = 1, self%nface(igrid)),   &
-                 igrid = 1, ngrids)
+                 igrid = 1, NGRIDS)
   ! write(22,*) 'latitudes of faces - all grids'
   write(22) ((self%flat(if1,igrid),             &
                  if1 = 1, self%nface(igrid)),   &
-                 igrid = 1, ngrids)
+                 igrid = 1, NGRIDS)
   ! write(22,*) 'longitudes of vertices - all grids'
   write(22) ((self%vlong(iv1,igrid),            &
                  iv1 = 1, self%nvert(igrid)),   &
-                 igrid = 1, ngrids)
+                 igrid = 1, NGRIDS)
   ! write(22,*) 'latitudes of vertices - all grids'
   write(22) ((self%vlat(iv1,igrid),             &
                  iv1 = 1, self%nvert(igrid)),   &
-                 igrid = 1, ngrids)
+                 igrid = 1, NGRIDS)
   ! write(22,*) 'areas of faces - all grids'
   write(22) ((self%farea(if1,igrid),            &
                 if1 = 1, self%nface(igrid)),    &
-                igrid = 1, ngrids)
+                igrid = 1, NGRIDS)
   ! write(22,*) 'lengths of edges - all grids'
   write(22) ((self%ldist(ie1,igrid),            &
                 ie1 = 1, self%nedge(igrid)),    &
-                igrid = 1, ngrids)
+                igrid = 1, NGRIDS)
   ! write(22,*) 'distance between faces across edges - all grids'
   write(22) ((self%ddist(ie1,igrid),            &
                 ie1 = 1, self%nedge(igrid)),    &
-                igrid = 1, ngrids)
+                igrid = 1, NGRIDS)
 
   return
 end subroutine write_data

@@ -103,7 +103,7 @@ end subroutine llr2xyz
 !--------------------------------------------------------------------------------
 
 subroutine xyz2ll(x,y,z,long,lat)
-  use constants_mod, only : pi
+  use constants_mod, only : PI
   implicit none
 
   !Arguments
@@ -115,18 +115,18 @@ subroutine xyz2ll(x,y,z,long,lat)
 
   if (x == 0.0_r_def) then
     if (y >= 0.0_r_def) then
-      long = 0.5_r_def*pi
+      long = 0.5_r_def*PI
     else
-      long = 1.5_r_def*pi
+      long = 1.5_r_def*PI
     end if
   else
     tan_long=y/x
     long=atan(tan_long)
     if (x < 0.0_r_def) then
-      long=long+pi
+      long=long+PI
     endif
     if (long < 0.0_r_def) then
-      long=long+2.0_r_def*pi
+      long=long+2.0_r_def*PI
     endif
   end if
 

@@ -25,17 +25,17 @@ private
 ! Module parameters
 !-------------------------------------------------------------------------------
 
-integer, parameter :: two  = 2                   !< Two
-integer, parameter :: four = 4                   !< Four
+integer, parameter :: TWO  = 2                   !< Two
+integer, parameter :: FOUR = 4                   !< Four
 
 !Ranks for each variable.
-integer, parameter :: Mesh2_rank            = 0 
-integer, parameter :: Mesh2_face_nodes_rank = 2  !< Rank of face-node connectivity arrays
-integer, parameter :: Mesh2_edge_nodes_rank = 2  !< Rank of edge-node connectivity arrays
-integer, parameter :: Mesh2_face_edges_rank = 2  !< Rank of face-edge connectivity arrays
-integer, parameter :: Mesh2_face_links_rank = 2  !< Rank of face-face connectivity arrays
-integer, parameter :: Mesh2_node_x_rank     = 1  !< Rank of node longitude coordinate array
-integer, parameter :: Mesh2_node_y_rank     = 1  !< Rank of node latitude  coordinate array
+integer, parameter :: MESH2_RANK            = 0 
+integer, parameter :: MESH2_FACE_NODES_RANK = 2  !< Rank of face-node connectivity arrays
+integer, parameter :: MESH2_EDGE_NODES_RANK = 2  !< Rank of edge-node connectivity arrays
+integer, parameter :: MESH2_FACE_EDGES_RANK = 2  !< Rank of face-edge connectivity arrays
+integer, parameter :: MESH2_FACE_LINKS_RANK = 2  !< Rank of face-face connectivity arrays
+integer, parameter :: MESH2_NODE_X_RANK     = 1  !< Rank of node longitude coordinate array
+integer, parameter :: MESH2_NODE_Y_RANK     = 1  !< Rank of node latitude  coordinate array
 
 !-------------------------------------------------------------------------------
 !> @brief    NetCDF quad file type
@@ -207,10 +207,10 @@ subroutine define_dimensions(self)
                                                 self%nMesh2_face_dim_id)
   call check_err(ierr)
 
-  ierr = nf90_def_dim(self%ncid, 'Two', two, self%two_dim_id)
+  ierr = nf90_def_dim(self%ncid, 'Two', TWO, self%two_dim_id)
   call check_err(ierr)
 
-  ierr = nf90_def_dim(self%ncid, 'Four', four, self%four_dim_id)
+  ierr = nf90_def_dim(self%ncid, 'Four', FOUR, self%four_dim_id)
   call check_err(ierr)
 
   return
@@ -237,12 +237,12 @@ subroutine define_variables(self)
   integer :: zero_sized(0)
 
   !Variable shapes
-  integer :: Mesh2_face_nodes_dims(Mesh2_face_nodes_rank)
-  integer :: Mesh2_edge_nodes_dims(Mesh2_edge_nodes_rank)
-  integer :: Mesh2_face_edges_dims(Mesh2_face_edges_rank)
-  integer :: Mesh2_face_links_dims(Mesh2_face_links_rank)
-  integer :: Mesh2_node_x_dims(Mesh2_node_x_rank)
-  integer :: Mesh2_node_y_dims(Mesh2_node_y_rank)
+  integer :: Mesh2_face_nodes_dims(MESH2_FACE_NODES_RANK)
+  integer :: Mesh2_edge_nodes_dims(MESH2_EDGE_NODES_RANK)
+  integer :: Mesh2_face_edges_dims(MESH2_FACE_EDGES_RANK)
+  integer :: Mesh2_face_links_dims(MESH2_FACE_LINKS_RANK)
+  integer :: Mesh2_node_x_dims(MESH2_NODE_X_RANK)
+  integer :: Mesh2_node_y_dims(MESH2_NODE_Y_RANK)
 
   ierr = nf90_def_var(self%ncid, 'Mesh2', nf90_int, zero_sized, self%Mesh2_id)
   call check_err(ierr)

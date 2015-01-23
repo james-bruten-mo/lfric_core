@@ -157,7 +157,7 @@ subroutine reference_triangle()
   !-----------------------------------------------------------------------------
   implicit none
   
-  real(kind=r_def), parameter :: rt3ov2 = sqrt(3.0_r_def) / 2.0_r_def
+  real(kind=r_def), parameter :: RT3OV2 = sqrt(3.0_r_def) / 2.0_r_def
   
 ! 2D cell information
   nverts_h = 3 
@@ -181,10 +181,10 @@ subroutine reference_triangle()
 
   x_vert(1,:) = (/ 0.0_r_def, 0.0_r_def, 0.0_r_def /)
   x_vert(2,:) = (/ 1.0_r_def, 0.0_r_def, 0.0_r_def /)
-  x_vert(3,:) = (/ 0.5_r_def, rt3ov2,    0.0_r_def /)
+  x_vert(3,:) = (/ 0.5_r_def, RT3OV2,    0.0_r_def /)
   x_vert(4,:) = (/ 0.0_r_def, 0.0_r_def, 1.0_r_def /)
   x_vert(5,:) = (/ 1.0_r_def, 0.0_r_def, 1.0_r_def /)
-  x_vert(6,:) = (/ 0.5_r_def, rt3ov2,    1.0_r_def /)
+  x_vert(6,:) = (/ 0.5_r_def, RT3OV2,    1.0_r_def /)
 
 ! vertices on each face - anticlockwise ordering
   vert_on_face(1,:) = (/ 1, 2, 5, 4/)
@@ -233,22 +233,22 @@ subroutine reference_triangle()
 
 ! outward unit normal vector to each face  
   normal_to_face(1,:) = (/  0.0_r_def, -1.0_r_def,  0.0_r_def /)
-  normal_to_face(2,:) = (/  rt3ov2,     0.5_r_def,  0.0_r_def /)
-  normal_to_face(3,:) = (/ -rt3ov2,     0.5_r_def,  0.0_r_def /)
+  normal_to_face(2,:) = (/  RT3OV2,     0.5_r_def,  0.0_r_def /)
+  normal_to_face(3,:) = (/ -RT3OV2,     0.5_r_def,  0.0_r_def /)
   normal_to_face(5,:) = (/  0.0_r_def,  0.0_r_def, -1.0_r_def /)
   normal_to_face(6,:) = (/  0.0_r_def,  0.0_r_def,  1.0_r_def /)
   
 ! tangent vectors to each edge 
 ! convention is that vector points from vert_on_edge(i,1) > vert_on_edge(i,2)
   tangent_to_edge(1 ,:) = (/  1.0_r_def,  0.0_r_def,  0.0_r_def /)
-  tangent_to_edge(2 ,:) = (/ -0.5_r_def,  rt3ov2,     0.0_r_def /)
-  tangent_to_edge(3 ,:) = (/ -0.5_r_def, -rt3ov2,     0.0_r_def /)  
+  tangent_to_edge(2 ,:) = (/ -0.5_r_def,  RT3OV2,     0.0_r_def /)
+  tangent_to_edge(3 ,:) = (/ -0.5_r_def, -RT3OV2,     0.0_r_def /)  
   tangent_to_edge(4 ,:) = (/  0.0_r_def,  0.0_r_def,  1.0_r_def /)
   tangent_to_edge(5 ,:) = (/  0.0_r_def,  0.0_r_def,  1.0_r_def /)
   tangent_to_edge(6 ,:) = (/  0.0_r_def,  0.0_r_def,  1.0_r_def /)
   tangent_to_edge(7 ,:) = (/  1.0_r_def,  0.0_r_def,  0.0_r_def /)
-  tangent_to_edge(8 ,:) = (/ -0.5_r_def,  rt3ov2,     0.0_r_def /)
-  tangent_to_edge(9 ,:) = (/ -0.5_r_def, -rt3ov2,     0.0_r_def /)
+  tangent_to_edge(8 ,:) = (/ -0.5_r_def,  RT3OV2,     0.0_r_def /)
+  tangent_to_edge(9 ,:) = (/ -0.5_r_def, -RT3OV2,     0.0_r_def /)
   
 end subroutine reference_triangle
 

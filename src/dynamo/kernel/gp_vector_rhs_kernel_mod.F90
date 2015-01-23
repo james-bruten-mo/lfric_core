@@ -11,7 +11,7 @@ module gp_vector_rhs_kernel_mod
 use kernel_mod,              only : kernel_type
 use constants_mod,           only : r_def
 use argument_mod,            only : arg_type, &          ! the type
-                                    gh_inc, gh_read, any_space, w0, fe, cells ! the enums                                       
+                                    GH_INC, GH_READ, ANY_SPACE, W0, FE, CELLS ! the enums                                       
 
 implicit none
 
@@ -22,15 +22,15 @@ implicit none
 type, public, extends(kernel_type) :: gp_vector_rhs_kernel_type
   private
   type(arg_type) :: meta_args(7) = [ &
-       arg_type(gh_inc,  any_space,fe,.true., .false.,.false.,.true.),  &
-       arg_type(gh_inc,  any_space,fe,.true., .false.,.false.,.true.),  &
-       arg_type(gh_inc,  any_space,fe,.true., .false.,.false.,.true.),  &
-       arg_type(gh_read, any_space,fe,.true., .false.,.false.,.true.),  &
-       arg_type(gh_read, w0,       fe,.false.,.true., .false.,.false.), &
-       arg_type(gh_read, w0,       fe,.false.,.false.,.false.,.false.), &
-       arg_type(gh_read, w0,       fe,.false.,.false.,.false.,.false.)  &
+       arg_type(GH_INC,  ANY_SPACE,FE,.true., .false.,.false.,.true.),  &
+       arg_type(GH_INC,  ANY_SPACE,FE,.true., .false.,.false.,.true.),  &
+       arg_type(GH_INC,  ANY_SPACE,FE,.true., .false.,.false.,.true.),  &
+       arg_type(GH_READ, ANY_SPACE,FE,.true., .false.,.false.,.true.),  &
+       arg_type(GH_READ, W0,       FE,.false.,.true., .false.,.false.), &
+       arg_type(GH_READ, W0,       FE,.false.,.false.,.false.,.false.), &
+       arg_type(GH_READ, W0,       FE,.false.,.false.,.false.,.false.)  &
        ]
-  integer :: iterates_over = cells
+  integer :: iterates_over = CELLS
 
 contains
   procedure, public, nopass :: gp_vector_rhs_code

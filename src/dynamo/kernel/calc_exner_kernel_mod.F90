@@ -14,10 +14,10 @@
 module calc_exner_kernel_mod
 use kernel_mod,              only : kernel_type
 use argument_mod,            only : arg_type, &          ! the type
-                                    gh_read, gh_write, w0, w3, fe, cells ! the enums
+                                    GH_READ, GH_WRITE, W0, W3, FE, CELLS ! the enums
 
 use matrix_invert_mod,       only : matrix_invert
-use constants_mod,           only : kappa, r_def
+use constants_mod,           only : KAPPA, r_def
 implicit none
 
 !-------------------------------------------------------------------------------
@@ -27,14 +27,14 @@ implicit none
 type, public, extends(kernel_type) :: calc_exner_kernel_type
   private
   type(arg_type) :: meta_args(6) = [  &
-       arg_type(gh_write,w3,fe,.true.,.false.,.false.,.true.),        &
-       arg_type(gh_read ,w3,fe,.false.,.false.,.false.,.false.),      &       
-       arg_type(gh_read ,w0,fe,.true.,.false.,.false.,.false.),       &
-       arg_type(gh_read ,w0,fe,.false.,.true.,.false.,.false.),       &
-       arg_type(gh_read ,w0,fe,.false.,.false.,.false.,.false.),      &
-       arg_type(gh_read ,w0,fe,.false.,.false.,.false.,.false.)       &
+       arg_type(GH_WRITE,W3,FE,.true.,.false.,.false.,.true.),        &
+       arg_type(GH_READ ,W3,FE,.false.,.false.,.false.,.false.),      &       
+       arg_type(GH_READ ,W0,FE,.true.,.false.,.false.,.false.),       &
+       arg_type(GH_READ ,W0,FE,.false.,.true.,.false.,.false.),       &
+       arg_type(GH_READ ,W0,FE,.false.,.false.,.false.,.false.),      &
+       arg_type(GH_READ ,W0,FE,.false.,.false.,.false.,.false.)       &
        ]
-  integer :: iterates_over = cells
+  integer :: iterates_over = CELLS
 contains
   procedure, nopass ::calc_exner_code
 end type
@@ -154,7 +154,7 @@ subroutine calc_exner_code(nlayers,ndf_w3,undf_w3, & ! integers
           do df2 = 1, ndf_w0
             theta_at_quad  = theta_at_quad   + theta_e(df2) * w0_basis(1,df2,qp1,qp2)
           end do
-          rhs_eos = kappa / (1.0_r_def - kappa) * exner_s_at_quad                 &
+          rhs_eos = KAPPA / (1.0_r_def - KAPPA) * exner_s_at_quad                 &
                   *( rho_at_quad/rho_s_at_quad + theta_at_quad/theta_s_at_quad )
           rhs_e(df1) = rhs_e(df1) + wqp_h(qp1)*wqp_v(qp2)*w3_basis(1,df1,qp1,qp2) * rhs_eos * dj(qp1,qp2)
         end do

@@ -18,7 +18,7 @@ use log_mod,                 only : log_event, log_scratch_space,       &
 implicit none
 private
 
-integer, parameter                       :: default_unit = -1
+integer, parameter                       :: DEFAULT_UNIT = -1
 
 !-------------------------------------------------------------------------------
 !> @brief Field IO strategy for plain text files
@@ -30,7 +30,7 @@ integer, parameter                       :: default_unit = -1
 type, public, extends(field_io_strategy_type) :: field_io_plain_text_type
   private
 
-  integer                                     :: unit_no = default_unit
+  integer                                     :: unit_no = DEFAULT_UNIT
   character(len=str_max_filename)             :: file_name
 
 contains
@@ -155,7 +155,7 @@ contains
     class(field_io_plain_text_type),       intent(inout) :: self
     character(len=*),                      intent(in)    :: file_name
 
-    integer                 :: iostatus, unit_number = default_unit
+    integer                 :: iostatus, unit_number = DEFAULT_UNIT
     character(len=str_long) :: ioerrmsg=''
 
     self%file_name = file_name
@@ -205,7 +205,7 @@ contains
     end if
 
     ! default_unit is indicator of no unit number..
-    self % unit_no = default_unit
+    self % unit_no = DEFAULT_UNIT
     
     write( log_scratch_space, '( A,x,I2 )' ) &
               'Closed file ' // trim(self%file_name) // ' on unit',unit_number
@@ -231,7 +231,7 @@ contains
 
     unit_number = self % unit_no
 
-    if ( unit_number == default_unit ) then
+    if ( unit_number == DEFAULT_UNIT ) then
         do unit_number = 10,100
             inquire (unit=unit_number, opened=is_opened, iostat=io_status)
             if (io_status /= 0) cycle
@@ -266,7 +266,7 @@ contains
     integer              :: unit_number
 
     unit_number = self % unit_no
-    if ( unit_number == default_unit ) then
+    if ( unit_number == DEFAULT_UNIT ) then
         write( log_scratch_space, '( A )' ) &
              "Get_Unit called on IO strategy that has NO unit number."
         call log_event( log_scratch_space, LOG_LEVEL_ERROR )

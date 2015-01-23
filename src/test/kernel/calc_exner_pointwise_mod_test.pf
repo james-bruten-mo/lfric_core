@@ -16,7 +16,7 @@ contains
   subroutine calc_exner_pointwise_test()
 
     use pFUnit_Mod
-    use constants_mod, only: r_def,kappa
+    use constants_mod, only: r_def,KAPPA
     use calc_exner_pointwise_mod, only: calc_exner_pointwise
 
     implicit none
@@ -30,7 +30,7 @@ contains
     theta_s = 310.0_r_def
     exner_s = 0.9_r_def
 
-    exner_exact = kappa / ( 1.0_r_def - kappa ) * exner_s * ( rho/rho_s + theta/theta_s )
+    exner_exact = KAPPA / ( 1.0_r_def - KAPPA ) * exner_s * ( rho/rho_s + theta/theta_s )
     exner = calc_exner_pointwise(rho, theta, exner_s, rho_s, theta_s)
   
     @assertEqual(exner_exact, exner)

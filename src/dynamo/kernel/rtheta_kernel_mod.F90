@@ -13,9 +13,9 @@
 !>         no advection
 module rtheta_kernel_mod
 use kernel_mod,              only : kernel_type
-use constants_mod,           only : r_def, n_sq, gravity, earth_radius
+use constants_mod,           only : r_def, N_SQ, GRAVITY, earth_radius
 use argument_mod,            only : arg_type, &          ! the type
-                                    gh_read, gh_inc, w0, w2, fe, cells ! the enums
+                                    GH_READ, GH_INC, W0, W2, FE, CELLS ! the enums
 use reference_profile_mod,   only : reference_profile
 use mesh_generator_mod,      only: xyz2llr, sphere2cart_vector
 use mesh_mod,                only : l_spherical
@@ -29,13 +29,13 @@ implicit none
 type, public, extends(kernel_type) :: rtheta_kernel_type
   private
   type(arg_type) :: meta_args(5) = [  &
-       arg_type(gh_inc  ,w0,fe,.true., .false.,.false.,.true.),        &
-       arg_type(gh_read ,w2,fe,.true., .false.,.false.,.false.),       &
-       arg_type(gh_read ,w0,fe,.false.,.true., .false.,.false.),       &
-       arg_type(gh_read ,w0,fe,.false.,.false.,.false.,.false.),       &
-       arg_type(gh_read ,w0,fe,.false.,.false.,.false.,.false.)        &
+       arg_type(GH_INC  ,W0,FE,.true., .false.,.false.,.true.),        &
+       arg_type(GH_READ ,W2,FE,.true., .false.,.false.,.false.),       &
+       arg_type(GH_READ ,W0,FE,.false.,.true., .false.,.false.),       &
+       arg_type(GH_READ ,W0,FE,.false.,.false.,.false.,.false.),       &
+       arg_type(GH_READ ,W0,FE,.false.,.false.,.false.,.false.)        &
        ]
-  integer :: iterates_over = cells
+  integer :: iterates_over = CELLS
 contains
   procedure, nopass ::rtheta_code
 end type
@@ -149,7 +149,7 @@ subroutine rtheta_code(nlayers,                                                &
           k_cart(:) = k_sphere(:)
         end if
         vec_term = dot_product(matmul(jac(:,:,qp1,qp2),u_at_quad), k_cart )
-        buoy_term = -n_sq/gravity*theta_s_at_quad*vec_term
+        buoy_term = -N_SQ/GRAVITY*theta_s_at_quad*vec_term
 
         do df = 1, ndf_w0
           rtheta_e(df) = rtheta_e(df) + wqp_h(qp1)*wqp_v(qp2)*w0_basis(1,df,qp1,qp2)*buoy_term

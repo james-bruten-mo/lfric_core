@@ -15,7 +15,7 @@ contains
   subroutine test_of_reference_profile()
     use pFUnit_Mod
     use reference_profile_mod, only : reference_profile
-    use constants_mod,         only : r_def, n_sq, gravity, p_zero, rd, cp, kappa
+    use constants_mod,         only : r_def, N_SQ, GRAVITY, P_ZERO, Rd, Cp, KAPPA
     
     implicit none
 
@@ -30,10 +30,10 @@ contains
 
     tol=1.0e-14
     
-    theta_exact = 300.0_r_def * exp (  n_sq/gravity*x(3))
-    exner_exact = 1.0_r_def - gravity**2/(cp*300.0_r_def*n_sq)   &
-              * (1.0_r_def - exp ( - n_sq/gravity * x(3) ))
-    rho_exact = p_zero/(rd*theta_exact) * exner_exact ** ((1.0_r_def - kappa)/kappa) 
+    theta_exact = 300.0_r_def * exp (  N_SQ/GRAVITY*x(3))
+    exner_exact = 1.0_r_def - GRAVITY**2/(Cp*300.0_r_def*N_SQ)   &
+              * (1.0_r_def - exp ( - N_SQ/GRAVITY * x(3) ))
+    rho_exact = P_ZERO/(Rd*theta_exact) * exner_exact ** ((1.0_r_def - KAPPA)/KAPPA) 
     
 
     @assertEqual( theta_exact, theta, tol )  

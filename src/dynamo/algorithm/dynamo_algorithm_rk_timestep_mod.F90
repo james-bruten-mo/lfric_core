@@ -31,7 +31,7 @@ module dynamo_algorithm_rk_timestep_mod
   use function_space_mod, &
                      only: function_space_type, W0, W1, W2, W3
   use solver_mod,    only: solver_algorithm
-  use constants_mod, only: r_def, solver_option
+  use constants_mod, only: r_def, SOLVER_OPTION
   use quadrature_mod, only : quadrature_type, QR3
   use galerkin_projection_algorithm_mod, &
                      only : galerkin_projection_algorithm
@@ -70,8 +70,8 @@ contains
     real(kind=r_def) :: dt = 1.0_r_def
     type(function_space_type) :: fs
     type( quadrature_type), pointer :: qr => null()
-    integer, parameter :: vector_field = 3, &
-                          scalar_field = 1
+    integer, parameter :: VECTOR_FIELD = 3, &
+                          SCALAR_FIELD = 1
 
     type(operator_type) :: mm_w2, mm_w0
 
@@ -136,15 +136,15 @@ contains
     call invoke_compute_mass_matrix_w2(mm_w2, chi, qr)
 
     call galerkin_projection_algorithm(projected_field(1),                     &
-         theta, chi, scalar_field, qr, mm=mm_w0)
-    call interpolated_output(0, scalar_field, projected_field(1), chi, 'theta_')
+         theta, chi, SCALAR_FIELD, qr, mm=mm_w0)
+    call interpolated_output(0, SCALAR_FIELD, projected_field(1), chi, 'theta_')
     call invoke_set_field_scalar(0.0_r_def, projected_field(1))
     call galerkin_projection_algorithm(projected_field(1),                     &
-         rho,   chi,  scalar_field, qr, mm=mm_w0)
-    call interpolated_output(0, scalar_field, projected_field(1), chi, 'rho___')
+         rho,   chi,  SCALAR_FIELD, qr, mm=mm_w0)
+    call interpolated_output(0, SCALAR_FIELD, projected_field(1), chi, 'rho___')
     call galerkin_projection_algorithm(projected_field(:),                     &
-         u,     chi, vector_field, qr, mm=mm_w0)
-    call interpolated_output(0, vector_field, projected_field(:), chi, 'u_____')
+         u,     chi, VECTOR_FIELD, qr, mm=mm_w0)
+    call interpolated_output(0, VECTOR_FIELD, projected_field(:), chi, 'u_____')
 
     !==========================================================================
     ! Timestep
@@ -190,9 +190,9 @@ contains
         end do
 
         ! Invert mass matrices
-        call solver_algorithm( theta_inc, r_theta, chi, solver_option, mm=mm_w0)
-        call solver_algorithm( u_inc,     r_u,     chi, solver_option, mm=mm_w2)
-        call solver_algorithm( rho_inc,   r_rho,   chi, solver_option, qr=qr)
+        call solver_algorithm( theta_inc, r_theta, chi, SOLVER_OPTION, mm=mm_w0)
+        call solver_algorithm( u_inc,     r_u,     chi, SOLVER_OPTION, mm=mm_w2)
+        call solver_algorithm( rho_inc,   r_rho,   chi, SOLVER_OPTION, qr=qr)
 
         ! add increments
         !PSY call invoke ( axpy(dt, theta_inc, theta_n, theta))
@@ -214,14 +214,14 @@ contains
 
       if ( mod(n, output_freq) == 0 ) then
         call galerkin_projection_algorithm(projected_field(1),                  &
-             theta, chi, scalar_field, qr, mm=mm_w0)
-        call interpolated_output(n, scalar_field, projected_field(1), chi, 'theta_')
+             theta, chi, SCALAR_FIELD, qr, mm=mm_w0)
+        call interpolated_output(n, SCALAR_FIELD, projected_field(1), chi, 'theta_')
         call galerkin_projection_algorithm(projected_field(1),                  &
-             rho,   chi, scalar_field, qr, mm=mm_w0)
-        call interpolated_output(n, scalar_field, projected_field(1), chi, 'rho___')
+             rho,   chi, SCALAR_FIELD, qr, mm=mm_w0)
+        call interpolated_output(n, SCALAR_FIELD, projected_field(1), chi, 'rho___')
         call galerkin_projection_algorithm(projected_field(:),                  &
-             u,     chi, vector_field, qr, mm=mm_w0)
-        call interpolated_output(n, vector_field, projected_field(:), chi, 'u_____')
+             u,     chi, VECTOR_FIELD, qr, mm=mm_w0)
+        call interpolated_output(n, VECTOR_FIELD, projected_field(:), chi, 'u_____')
       end if
 
       write( log_scratch_space, '(A,I0)' ) 'End of timestep ', n

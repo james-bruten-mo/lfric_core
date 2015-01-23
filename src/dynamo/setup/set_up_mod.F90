@@ -47,7 +47,6 @@ contains
 
     implicit none
 
-    real(kind=r_def), parameter              :: delta = 1.0_r_def
     character(len = str_def)                 :: filename
 
     !Get the processor decomposition
