@@ -72,14 +72,14 @@ contains
 
     ! hard-coded these numbers are
     l_fplane = .true.
-    num_cells_x = 50
-    num_cells_y = 4
+    num_cells_x = 12
+    num_cells_y = 12
     num_layers = 5
     element_order = 0
-    l_spherical = .false.
+    l_spherical = .true.
 ! Horizontal spacings for cartesian grid    
     dx = 6000.0_r_def 
-    dy = 1000.0_r_def
+    dy = 2000.0_r_def
 ! Vertical spacing for all grids    
     dz = 2000.0_r_def
 

@@ -21,9 +21,12 @@
 program dynamo
 
   use ESMF
-  use constants_mod,           only : i_def, str_max_filename
+  use constants_mod,           only : i_def, str_max_filename, &
+                                      L_NONLINEAR
   use dynamo_algorithm_rk_timestep_mod, &
                                only : dynamo_algorithm_rk_timestep
+  use linear_dynamo_algorithm_rk_timestep_mod, &
+                               only : linear_dynamo_algorithm_rk_timestep
   use field_mod,               only : field_type
   use function_space_mod,      only : function_space_type, W0, W1, W2, W3
   use set_up_mod,              only : set_up
@@ -45,12 +48,11 @@ program dynamo
 
   ! coordinate fields
   type( field_type ) :: chi(3)
-
-  ! prognostic fields
-  type( field_type ) :: u, rho, theta, exner, xi
-
+! prognostic fields    
+  type( field_type ) :: u, rho, theta, xi
+                                     
   integer                          :: coord
-  TYPE( field_type ), allocatable  :: state(:)
+  type( field_type ), allocatable  :: state(:)
   integer                          :: n_fields
   type(ESMF_VM) :: vm
   integer :: rc
@@ -124,10 +126,6 @@ program dynamo
 
   rho = field_type( vector_space = function_space%get_instance( W3 ) )
 
-  exner = field_type( vector_space = function_space%get_instance( W3 ) )
-
-
-
   n_fields = 1
   allocate(state(1:n_fields))
   state(1) = theta
@@ -137,21 +135,23 @@ program dynamo
   call log_event( "Dynamo: computing W0 coordinate fields", LOG_LEVEL_INFO )
   call assign_coordinate_field( chi )
 
-  call dynamo_algorithm_rk_timestep( chi, u, rho, theta, exner, xi)
+  if ( L_NONLINEAR ) then
+    call dynamo_algorithm_rk_timestep( chi, u, rho, theta, xi)                       
+  else
+    call linear_dynamo_algorithm_rk_timestep( chi, u, rho, theta)   
+  end if
 
-  ! do some i/o
+   ! do some i/o
   call rho%log_field(   LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, 'rho' )
-  call exner%log_field( LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, 'exner' )
   call theta%log_field( LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, 'theta' )
   call u%log_field(     LOG_LEVEL_DEBUG, LOG_LEVEL_INFO, 'u' )
 
+  n_fields = 3
 
-  n_fields = 4
   allocate(state(1:n_fields))
   state(1) = rho
-  state(2) = exner
-  state(3) = theta
-  state(4) = u
+  state(2) = theta
+  state(3) = u
   call write_state_plain_text( n_fields, state, 'field_output.txt' )
   deallocate(state)
 

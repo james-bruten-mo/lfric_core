@@ -397,7 +397,7 @@ subroutine mesh_generator_biperiodic( nx, ny, nlayers, dx, dy, dz, partition )
 
 end subroutine mesh_generator_biperiodic
 
-!> Generate a biperiodic domain of size nx * ny where nx * ny = ncells.
+!> Generate a cubed sphere domain of size 6* nx * ny where nx * ny = ncells.
 !>
 !> <pre>
 !> Location of panels:
@@ -616,190 +616,124 @@ subroutine mesh_connectivity( ncells )
 
   integer, intent( in ) :: ncells
  
-  integer :: i            ! loop counter used to write out connectivities
-  integer :: lid          ! loop couonter over local ids
-  integer :: nedge_layer  ! Number of edges for a single layer  
-  integer :: nface_layer  ! Number of faces for a single layer  
+  integer :: cell ! cell loop index
+  integer :: face ! face loop index
+  integer :: edge ! edge loop index
+  integer :: vert ! vert loop index
+  integer :: face_id ! unique face index
+  integer :: edge_id ! unique edge index
+  integer :: edge_upper ! index of edge on top face
+  integer :: cell_nbr ! cell index for a neightbouring cell
+  integer :: face_nbr ! face index for a face on a neighbouring cell
+  integer :: edge_nbr ! edge index for a edge on a neighbouring cell
+  integer :: vert_nbr ! vert index for a edge on a neighbouring cell
+  integer :: cell_nbr_nbr ! cell index for a neighbouring cell of a neighbouring cell
+  integer :: vert_nbr_nbr ! vert index for a neighbouring cell of a neighbouring cell
 
   allocate( face_on_cell(nfaces,ncells) )
   allocate( edge_on_cell(nedges,ncells) )
   face_on_cell(:,:) = 0
   edge_on_cell(:,:) = 0
 
-! compute faces on cells
-  nface_layer = 0
-  do lid = 1,ncells
-! 1. south facing face of cell
-    if(face_on_cell(S,lid) == 0)then
-      nface_layer = nface_layer + 1
-      face_on_cell(S,lid) = nface_layer
-      if(cell_next(S,lid) > 0)then                     ! and north facing face of cell to south
-        face_on_cell(N,cell_next(S,lid)) = nface_layer
-      end if
-    end if
-! 2. east facing face of cell
-    if(face_on_cell(E,lid) == 0)then
-      nface_layer = nface_layer + 1
-      face_on_cell(E,lid) = nface_layer
-      if(cell_next(E,lid) > 0)then                     ! and west facing face of cell to east
-        face_on_cell(W,cell_next(E,lid)) = nface_layer
-      end if
-    end if
-! 3. north facing face of cell
-    if(face_on_cell(N,lid) == 0)then
-      nface_layer = nface_layer + 1
-      face_on_cell(N,lid) = nface_layer
-      if(cell_next(N,lid) > 0)then                     ! and south facing face of cell to north
-        face_on_cell(S,cell_next(N,lid)) = nface_layer
-      end if
-    end if
-! 4. west facing face of cell
-    if(face_on_cell(W,lid) == 0)then
-      nface_layer = nface_layer + 1
-      face_on_cell(W,lid) = nface_layer
-      if(cell_next(W,lid) > 0)then                     ! and east facing face of cell to west
-        face_on_cell(E,cell_next(W,lid)) = nface_layer
-      end if
-    end if
-! 5. bottom facing face of cell
-     nface_layer = nface_layer + 1
-     face_on_cell(B,lid) = nface_layer
-! 6. top facing face of cell
-     nface_layer = nface_layer + 1
-     face_on_cell(T,lid) = nface_layer
+! Compute index of faces on the cell
+  face_id = 1
+  do cell = 1,ncells
+! First do faces on E,S,W,N sides of cell  
+    do face = 1,nfaces_h
+      if ( face_on_cell(face,cell) == 0 ) then ! If this face is not already assigned then
+      face_on_cell(face,cell) = face_id        !    assign face_id to this face
+! find matching face on the neighbouring face 
+!( orientations of cells may not be the same so we have to search all faces of
+!  cell_next)
+        cell_nbr = cell_next(face,cell)
+        do face_nbr = 1,nfaces_h
+          if ( cell_next(face_nbr,cell_nbr) == cell ) then ! Found matching face
+            face_on_cell(face_nbr,cell_nbr) = face_id
+            face_id = face_id + 1
+          end if
+        end do
+      end if                 
+    end do
+! Now do Faces on T and B of cell   
+    do face = nfaces_h+1,nfaces
+      face_on_cell(face, cell) = face_id
+      face_id = face_id + 1
+    end do
   end do
-  
-! compute edges on cells
-  nedge_layer = 0
-  do lid = 1,ncells
-! 1. top and bottom edge on south facing face of cell
-    if(edge_on_cell(SB,lid) == 0)then
-      edge_on_cell(SB,lid) = nedge_layer + 1
-      edge_on_cell(ST,lid) = nedge_layer + 2
-      if(cell_next(S,lid) > 0)then                     ! and north facing face of cell to south
-        edge_on_cell(NB,cell_next(S,lid)) = nedge_layer+1
-        edge_on_cell(NT,cell_next(S,lid)) = nedge_layer+2
+
+! Compute the index of edges on the cell
+  edge_id = 1
+  do cell = 1,ncells
+! horizontal edges ( edges on Bottom and Top faces)  
+! This uses the fact that edges of the bottom face correspond to the vertical faces
+! i.e edge i is the bottom edge of face i and hence we can use cell_next array
+! (which is addressed through faces) for edge indexes
+    do edge = 1,nedges_h
+      if ( edge_on_cell(edge,cell) == 0 ) then  
+        edge_on_cell(edge,cell) = edge_id       ! Index of edge on bottom face
+        edge_upper = edge + nedges_h + nverts_h ! Corresponding index of edge on top face
+        edge_on_cell(edge_upper,cell) = edge_id + 1
+! find matching edge in neighbouring cell
+        cell_nbr = cell_next(edge,cell)
+        do edge_nbr = 1,nedges_h
+          if ( cell_next(edge_nbr,cell_nbr) == cell ) then ! Found cell which shares edge
+            edge_on_cell(edge_nbr,cell_nbr) = edge_id
+            edge_upper = edge_nbr+nedges_h+nverts_h
+            edge_on_cell(edge_upper,cell_nbr) = edge_id + 1
+            edge_id = edge_id + 2
+          end if
+        end do
       end if
-      nedge_layer = nedge_layer + 2
-    end if
-! 2. top and bottom egde on east facing face of cell
-    if(edge_on_cell(EB,lid) == 0)then
-      edge_on_cell(EB,lid) = nedge_layer + 1
-      edge_on_cell(ET,lid) = nedge_layer + 2
-      if(cell_next(E,lid) > 0)then                     ! and west facing face of cell to east
-        edge_on_cell(WB,cell_next(E,lid)) = nedge_layer+1
-        edge_on_cell(WT,cell_next(E,lid)) = nedge_layer+2
+    end do
+! vertical edges (edges not on Bottom and Top faces)
+! This uses the fact that vertical edges correspond to vertices of the bottom
+! face i.e edge i has the same index as vertex i and hence we can use vert_on_cell array
+! (which is addressed through verts) for edge indexes
+    do edge = nedges_h+1,nedges_h+nverts_h
+      if ( edge_on_cell(edge,cell) == 0 ) then
+        edge_on_cell(edge,cell) = edge_id
+! find matching edge on two neighbouring cells 
+! this edge is an extrusion of the corresponding vertex
+        vert = vert_on_cell(edge-nedges_h,cell)
+        do face = 1,nfaces_h
+          cell_nbr = cell_next(face,cell)
+          do vert_nbr = 1,nverts_h
+            if ( vert_on_cell(vert_nbr,cell_nbr) == vert ) then ! Found matching vert in neighbour cell
+              edge_on_cell(vert_nbr+nedges_h,cell_nbr) = edge_id
+              do face_nbr = 1,nfaces_h ! Now find matching vert in neighbour of neighbour
+                cell_nbr_nbr = cell_next(face_nbr,cell_nbr)
+                do vert_nbr_nbr = 1,nverts_h
+                  if ( vert_on_cell(vert_nbr_nbr,cell_nbr_nbr) == vert ) then
+                    edge_on_cell(vert_nbr_nbr+nedges_h,cell_nbr_nbr) = edge_id
+                  end if
+                end do
+              end do
+            end if
+          end do
+        end do
+        edge_id = edge_id + 1
       end if
-      nedge_layer = nedge_layer + 2
-    end if
-! 3. top and bottom edge on north facing face of cell
-    if(edge_on_cell(NB,lid) == 0)then
-      edge_on_cell(NB,lid) = nedge_layer + 1
-      edge_on_cell(NT,lid) = nedge_layer + 2
-      if(cell_next(N,lid) > 0)then                     ! and south facing face of cell to north
-        edge_on_cell(SB,cell_next(N,lid)) = nedge_layer + 1
-        edge_on_cell(ST,cell_next(N,lid)) = nedge_layer + 2
-      end if
-      nedge_layer = nedge_layer + 2
-    end if
-! 4. top and bottom edge on west facing face of cell
-    if(edge_on_cell(WB,lid) == 0)then
-      edge_on_cell(WB,lid) = nedge_layer + 1
-      edge_on_cell(WT,lid) = nedge_layer + 2
-      if(cell_next(W,lid) > 0)then                     ! and east facing face of cell to west
-        edge_on_cell(EB,cell_next(W,lid)) = nedge_layer + 1
-        edge_on_cell(ET,cell_next(W,lid)) = nedge_layer + 2
-      end if
-      nedge_layer = nedge_layer + 2
-    end if
-! 5. vertical edge at south west corner of cell
-    if(edge_on_cell(SW,lid) == 0)then 
-      nedge_layer = nedge_layer + 1
-      edge_on_cell(SW,lid) = nedge_layer
-      if(cell_next(W,lid) > 0)then                     ! and at south east corner of cell to west 
-        edge_on_cell(SE,cell_next(W,lid)) = nedge_layer
-        if(cell_next(S,cell_next(W,lid)) > 0)then      ! and at north east corner of cell to south west
-          edge_on_cell(NE,cell_next(S,cell_next(W,lid))) = nedge_layer
-        end if
-      end if
-      if(cell_next(S,lid) > 0)then                     ! and at north west corner of cell to south
-        edge_on_cell(NW,cell_next(S,lid)) = nedge_layer
-        if(cell_next(W,cell_next(S,lid)) > 0)then      ! and again at north east corner of cell to south west (in case other route to southwest goes through a missing cell)
-          edge_on_cell(NE,cell_next(W,cell_next(S,lid))) = nedge_layer
-        end if
-      end if
-    end if
-! 6. vertical edge at south east corner of cell
-    if(edge_on_cell(SE,lid) == 0)then 
-      nedge_layer = nedge_layer + 1
-      edge_on_cell(SE,lid) = nedge_layer
-      if(cell_next(E,lid) > 0)then                     ! and at south west corner of cell to east 
-        edge_on_cell(SW,cell_next(E,lid)) = nedge_layer
-        if(cell_next(S,cell_next(E,lid)) > 0)then      ! and north west corner of cell to south east
-          edge_on_cell(NW,cell_next(S,cell_next(E,lid))) = nedge_layer
-        end if
-      end if
-      if(cell_next(S,lid) > 0)then                     ! and at north east corner of cell to south
-        edge_on_cell(NE,cell_next(S,lid)) = nedge_layer
-        if(cell_next(E,cell_next(S,lid)) > 0)then      ! and again at north west corner of cell to south east (in case other route to southeast goes through a missing cell)
-          edge_on_cell(NW,cell_next(E,cell_next(S,lid))) = nedge_layer
-        end if
-      end if
-    end if
-! 7. vertical edge at north east corner of cell
-    if(edge_on_cell(NE,lid) == 0)then 
-      nedge_layer = nedge_layer + 1
-      edge_on_cell(NE,lid) = nedge_layer
-      if(cell_next(E,lid) > 0)then                     ! and at north west corner of cell to east 
-        edge_on_cell(NW,cell_next(E,lid)) = nedge_layer
-        if(cell_next(N,cell_next(E,lid)) > 0)then      ! and at south west corner of cell to north east
-          edge_on_cell(SW,cell_next(N,cell_next(E,lid))) = nedge_layer
-        end if
-      end if
-      if(cell_next(N,lid) > 0)then                     ! and at south east corner of cell to north
-        edge_on_cell(SE,cell_next(N,lid)) = nedge_layer
-        if(cell_next(E,cell_next(N,lid)) > 0)then      ! and again at south west corner of cell to north east (in case other route to northeast goes through a missing cell)
-          edge_on_cell(SW,cell_next(E,cell_next(N,lid))) = nedge_layer
-        end if
-      end if
-    end if
-! 8. vertical edge at north west corner of cell
-    if(edge_on_cell(NW,lid) == 0)then 
-      nedge_layer = nedge_layer + 1
-      edge_on_cell(NW,lid) = nedge_layer
-      if(cell_next(W,lid) > 0)then                     ! and at north east corner of cell to west 
-        edge_on_cell(NE,cell_next(W,lid)) = nedge_layer
-        if(cell_next(N,cell_next(W,lid)) > 0)then      ! and at south east corner of cell to north west
-          edge_on_cell(SE,cell_next(N,cell_next(W,lid))) = nedge_layer
-        end if
-      end if
-      if(cell_next(N,lid) > 0)then                     ! and at south west corner of cell to nortth
-        edge_on_cell(SW,cell_next(N,lid)) = nedge_layer
-        if(cell_next(W,cell_next(N,lid)) > 0)then      ! and again at south east corner of cell to north west (in case other route to northwest goes through a missing cell)
-          edge_on_cell(SE,cell_next(W,cell_next(N,lid))) = nedge_layer
-        end if
-      end if
-    end if
+    end do
   end do
 
   call log_event( 'faces on cells', LOG_LEVEL_DEBUG )
-  do i = 1, ncells
-    write( log_scratch_space, '(7i6)' ) i, &
-                              face_on_cell(S,i), face_on_cell(E,i), &
-                              face_on_cell(N,i), face_on_cell(W,i), &
-                              face_on_cell(B,i), face_on_cell(T,i)
+  do cell = 1, ncells
+    write( log_scratch_space, '(7i6)' ) cell, &
+                              face_on_cell(S,cell), face_on_cell(E,cell), &
+                              face_on_cell(N,cell), face_on_cell(W,cell), &
+                              face_on_cell(B,cell), face_on_cell(T,cell)
     call log_event( log_scratch_space, LOG_LEVEL_DEBUG )
   end do
 
   call log_event( 'edges on cells', LOG_LEVEL_DEBUG )
-  do i = 1, ncells
-    write( log_scratch_space, '(13i6)' ) i, &
-                              edge_on_cell(SB,i), edge_on_cell(EB,i), &
-                              edge_on_cell(NB,i), edge_on_cell(WB,i), &
-                              edge_on_cell(SW,i), edge_on_cell(SE,i), &
-                              edge_on_cell(NE,i), edge_on_cell(NW,i), &
-                              edge_on_cell(ST,i), edge_on_cell(ET,i),&
-                              edge_on_cell(NT,i),edge_on_cell(WT,i)
+  do cell = 1, ncells
+    write( log_scratch_space, '(13i6)' ) cell, &
+                              edge_on_cell(SB,cell), edge_on_cell(EB,cell), &
+                              edge_on_cell(NB,cell), edge_on_cell(WB,cell), &
+                              edge_on_cell(SW,cell), edge_on_cell(SE,cell), &
+                              edge_on_cell(NE,cell), edge_on_cell(NW,cell), &
+                              edge_on_cell(ST,cell), edge_on_cell(ET,cell),&
+                              edge_on_cell(NT,cell), edge_on_cell(WT,cell)
     call log_event( log_scratch_space, LOG_LEVEL_DEBUG )
   end do
 

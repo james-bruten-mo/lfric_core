@@ -7,42 +7,44 @@
 !
 !-------------------------------------------------------------------------------
 
-!> @brief Provides access to the members of the w2_kernel class.
+!> @brief Provides access to the members of the w1_kernel class.
 
-!> @details Accessor functions for the w2_kernel class are defined in this module.
+!> @details Accessor functions for the w1_kernel class are defined in this module.
 
-!> @param RHS_w2_code              Code to implement the RHS for a w2 field
+!> @param RHS_w1_code              Code to implement the RHS for a w1 field
 !> @param gaussian_quadrature      Contains result of gaussian quadrature
 
-module compute_mass_matrix_kernel_w2_mod
+module compute_mass_matrix_kernel_w1_mod
 use constants_mod,           only: r_def
 use kernel_mod,              only: kernel_type
 use argument_mod,            only: arg_type, func_type,            &
                                    GH_OPERATOR, GH_FIELD,          &
                                    GH_READ, GH_WRITE,              &
-                                   W0, W2, GH_DIFF_BASIS,          &
+                                   W0, W1,                         &
+                                   GH_DIFF_BASIS, GH_ORIENTATION,  &
                                    CELLS
-
-use coordinate_jacobian_mod, only: coordinate_jacobian
+use coordinate_jacobian_mod, only: coordinate_jacobian, &
+                                   coordinate_jacobian_inverse
 implicit none
 
 !-------------------------------------------------------------------------------
 ! Public types
 !-------------------------------------------------------------------------------
 
-type, public, extends(kernel_type) :: compute_mass_matrix_kernel_w2_type
+type, public, extends(kernel_type) :: compute_mass_matrix_kernel_w1_type
   private
   type(arg_type) :: meta_args(2) = (/                                  &
-       arg_type(GH_OPERATOR, GH_WRITE, W2, W2),                        &
+       arg_type(GH_OPERATOR, GH_WRITE, W1, W1),                        &
        arg_type(GH_FIELD*3,  GH_READ,  W0)                             &
        /)
-  type(func_type) :: meta_funcs(1) = (/                                &
+  type(func_type) :: meta_funcs(2) = (/                                &
+       func_type(W1, GH_ORIENTATION),                                  &  
        func_type(W0, GH_DIFF_BASIS)                                    &
-       /)
+       /)  
   integer :: iterates_over = CELLS
 
 contains
-  procedure, nopass :: compute_mass_matrix_w2_code
+  procedure, nopass :: compute_mass_matrix_w1_code
 end type
 
 !-------------------------------------------------------------------------------
@@ -50,34 +52,34 @@ end type
 !-------------------------------------------------------------------------------
 
 ! overload the default structure constructor for function space
-interface compute_mass_matrix_kernel_w2_type
+interface compute_mass_matrix_kernel_w1_type
    module procedure compute_mass_matrix_constructor
 end interface
 
 !-------------------------------------------------------------------------------
 ! Contained functions/subroutines
 !-------------------------------------------------------------------------------
-public compute_mass_matrix_w2_code
+public compute_mass_matrix_w1_code
 contains
 
-type(compute_mass_matrix_kernel_w2_type) function compute_mass_matrix_constructor() result(self)
+type(compute_mass_matrix_kernel_w1_type) function compute_mass_matrix_constructor() result(self)
   return
 end function compute_mass_matrix_constructor
   
-subroutine compute_mass_matrix_w2_code(cell, nlayers, ndf, ncell_3d,          &
-                               basis,  orientation, mm,                       &
-                               ndf_chi, undf_chi,                             &
-                               map_chi, diff_basis_chi, &   ! arrays
-                               chi1, chi2, chi3,                & ! dof vectors
-                               nqp_h, nqp_v, wqp_h, wqp_v )
+subroutine compute_mass_matrix_w1_code(cell, nlayers, ndf, ncell_3d,    &
+                                       basis,  orientation, mm,         &
+                                       ndf_chi, undf_chi,               &
+                                       map_chi, diff_basis_chi,         &  
+                                       chi1, chi2, chi3,                & 
+                                       nqp_h, nqp_v, wqp_h, wqp_v )
 
-!> @brief This subroutine computes the mass matrix for the w2 space
+!> @brief This subroutine computes the mass matrix for the w1 space
 !! @param[in] cell Integer: The cell number
 !! @param[in] nlayers Integer: The number of layers.
 !! @param[in] ndf Integer: The number of degrees of freedom per cell.
 !! @param[in] ncell_3d Integer: ncell*ndf
 !! @param[in] basis Real: 4-dim array holding VECTOR basis functions evaluated at quadrature points.
-!! @param[in] orientation, the cell orientation array for a w2 field
+!! @param[in] orientation The orientation array for W1
 !! @param[in] mm Real array, the local stencil or mass matrix
 !! @param[in] ndf_chi Integer: number of degrees of freedum per cell for chi field
 !! @param[in] undf_chi Integer: number of unique degrees of freedum  for chi field
@@ -97,8 +99,8 @@ subroutine compute_mass_matrix_w2_code(cell, nlayers, ndf, ncell_3d,          &
   integer,   intent(in)     :: ncell_3d
   integer,   intent(in)     :: ndf_chi
   integer,   intent(in)     :: undf_chi
-  integer, dimension(ndf_chi), intent(in)     :: map_chi
-  integer, dimension(ndf),     intent(in)     :: orientation
+  integer, dimension(ndf_chi), intent(in) :: map_chi
+  integer, dimension(ndf),     intent(in) :: orientation
   real(kind=r_def), dimension(ndf,ndf,ncell_3d),  intent(inout)  :: mm
   real(kind=r_def), dimension(3,ndf_chi,nqp_h,nqp_v), intent(in) :: diff_basis_chi
   real(kind=r_def), dimension(3,ndf,nqp_h,nqp_v), intent(in)     :: basis
@@ -115,7 +117,7 @@ subroutine compute_mass_matrix_w2_code(cell, nlayers, ndf, ncell_3d,          &
   real(kind=r_def), dimension(ndf_chi)         :: chi1_e, chi2_e, chi3_e
   real(kind=r_def)                             :: integrand
   real(kind=r_def), dimension(nqp_h,nqp_v)     :: dj
-  real(kind=r_def), dimension(3,3,nqp_h,nqp_v) :: jac
+  real(kind=r_def), dimension(3,3,nqp_h,nqp_v) :: jac, jac_inv
 
 
   !loop over layers: Start from 1 as in this loop k is not an offset
@@ -131,20 +133,19 @@ subroutine compute_mass_matrix_w2_code(cell, nlayers, ndf, ncell_3d,          &
 
     call coordinate_jacobian(ndf_chi, nqp_h, nqp_v, chi1_e, chi2_e, chi3_e,  &
                              diff_basis_chi, jac, dj)
+    call coordinate_jacobian_inverse(nqp_h, nqp_v, jac, dj, jac_inv)  
     do df2 = 1, ndf
        do df = df2, ndf ! mass matrix is symmetric
           mm(df,df2,ik) = 0.0_r_def
           do qp2 = 1, nqp_v
              do qp1 = 1, nqp_h
-                integrand = wqp_h(qp1) * wqp_v(qp2) *        & 
-                     dot_product(                            &
-                     matmul(jac(:,:,qp1,qp2),                &
-                            real(orientation(df),r_def)      & 
-                            *basis(:,df,qp1,qp2)),           &
-                     matmul(jac(:,:,qp1,qp2),                &
-                            real(orientation(df2),r_def)     &
-                            *basis(:,df2,qp1,qp2)) )         &
-                     /dj(qp1,qp2) 
+                integrand = wqp_h(qp1) * wqp_v(qp2) *                           & 
+                     dot_product(                                               &
+                     matmul(transpose(jac_inv(:,:,qp1,qp2)),                    &
+                            basis(:,df,qp1,qp2)*real(orientation(df),r_def)),   &
+                     matmul(transpose(jac_inv(:,:,qp1,qp2)),                    &
+                            basis(:,df2,qp1,qp2)*real(orientation(df2),r_def) ) &
+                                )*dj(qp1,qp2) 
                 mm(df,df2,ik) = mm(df,df2,ik) + integrand
              end do
           end do
@@ -154,7 +155,6 @@ subroutine compute_mass_matrix_w2_code(cell, nlayers, ndf, ncell_3d,          &
        end do
     end do
   end do ! end of k loop
+end subroutine compute_mass_matrix_w1_code
 
-end subroutine compute_mass_matrix_w2_code
-
-end module compute_mass_matrix_kernel_w2_mod
+end module compute_mass_matrix_kernel_w1_mod

@@ -6,7 +6,7 @@
 !-------------------------------------------------------------------------------
 
 !> An algorithm for computing the galerkin projection 
-!> As a first step fields are projected into a continous space
+!> As a first step fields are projected into a continuous space
 
 module galerkin_projection_algorithm_mod
 
@@ -27,7 +27,7 @@ module galerkin_projection_algorithm_mod
 
 contains
 !> @brief An algorithm to compute the galerkin projection of a field
-!> @details Computes the Galrkin projection of a field f_in into the space
+!> @details Computes the Galerkin projection of a field f_in into the space
 !>          of field f_out. Solves M*f_out = rhs where rhs = int(gamma*f_in)
 !>          and gamma is a test function from the same space as f_out and M is 
 !>          the mass matrix for the space of f_out.
@@ -47,7 +47,7 @@ contains
     type( field_type ), intent(inout) :: f_out(space_dimension)
 ! Field to intput
     type( field_type ), intent(inout) :: f_in  
-! Coodinate fields
+! Coordinate fields
     type( field_type ), intent(inout) :: chi(3)  
     type( quadrature_type ), intent(in) :: qr
     type( operator_type ), optional, intent(in) :: mm

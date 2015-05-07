@@ -16,25 +16,39 @@ contains
 !-------------------------------------------------------------------------------
 ! Contained functions/subroutines
 !-------------------------------------------------------------------------------
-!> Function to compute the exner pressure from the linear equation of state at a
-!! point
+!> @brief Function to compute the exner pressure from the nonlinear equation of state
+!> @details Compute the exner pressure from the equation of state:
+!>          exner = ( Rd/p0 * rho * theta ) ^ (  kappa / ( 1 - kappa ) )
+!! @param[in]  rho      real, the density perturbation
+!! @param[in]  theta    real, the potential temperature perturbation
+!! @param[out] exner    real, the exner pressure perturbation
+function calc_exner_pointwise(rho, theta) result(exner)
+
+  real(kind=r_def)              :: exner
+  real(kind=r_def), intent(in)  :: rho, theta
+
+   exner = ( Rd/P_ZERO * rho * theta ) ** (  KAPPA / ( 1.0_r_def - KAPPA ) )
+
+end function calc_exner_pointwise
+
+!> @brief Function to compute the exner pressure from the linear equation of state
+!> @details Compute the exner pressure from the equation of state:
+!>           exner = kappa / ( 1- kappa ) * exner_s * ( rho/rho_s + theta/theta_s ) 
+!>@deprecated The Usefulness of the linear model is to be revaluated at 
+!>            the end of the Gung-Ho project and removied if possible
 !! @param[in]  rho      real, the density perturbation
 !! @param[in]  theta    real, the potential temperature perturbation
 !! @param[in]  exner_s  real, the reference exner pressure
 !! @param[in]  rho_s    real, the reference density
 !! @param[in]  theta_s  real, the reference potential temperature
 !! @param[out] exner    real, the exner pressure perturbation
-function calc_exner_pointwise(rho, theta, exner_s, rho_s, theta_s) result(exner)
+function linear_calc_exner_pointwise(rho, theta, exner_s, rho_s, theta_s) result(exner)
 
   real(kind=r_def)              :: exner
   real(kind=r_def), intent(in)  :: rho, theta, exner_s, rho_s, theta_s
 
-! linear
   exner = KAPPA / ( 1.0_r_def - KAPPA ) * exner_s * ( rho/rho_s + theta/theta_s )
   
-! nonlinear  
-!   exner = ( Rd/P_ZERO * rho * theta ) ** (  ( 1.0_r_def - KAPPA ) / KAPPA )
-
-end function calc_exner_pointwise
+end function linear_calc_exner_pointwise
 
 end module calc_exner_pointwise_mod

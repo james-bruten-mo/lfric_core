@@ -1,0 +1,249 @@
+!-----------------------------------------------------------------------------
+! (c) The copyright relating to this work is owned jointly by the Crown, 
+! Met Office and NERC 2014. 
+! However, it has been created with the help of the GungHo Consortium, 
+! whose members are identified at https://puma.nerc.ac.uk/trac/GungHo/wiki
+!-----------------------------------------------------------------------------
+
+!> Test the ru computation
+!>
+module ru_kernel_mod_test
+
+  implicit none 
+
+
+contains
+
+  @test
+  subroutine ru_kernel_test()
+
+    use pFUnit_Mod
+    use function_space_build_mod,   only : fs_build, fs_destroy
+    use field_mod,                  only : field_type,      &
+                                           field_proxy_type
+    use function_space_mod,         only : function_space_type, W0, W1, W2, W3
+    use ru_kernel_mod,              only : ru_code
+    use constants_mod,              only : r_def, GRAVITY
+    use quadrature_mod,             only : quadrature_type, QR3
+    use mesh_mod,                   only : l_spherical
+    use reference_profile_mod,      only : reference_profile
+    use initial_rho_kernel_mod,     only : initial_rho_code
+
+   implicit none
+    type(field_type) :: chi(3)
+    type(field_proxy_type )   :: chi_p(3) 
+    type(function_space_type) :: fs
+    type( quadrature_type), pointer :: qr => null()
+
+    real(kind=r_def) :: tol
+    real(kind=r_def) :: answer
+
+    integer :: i, j, k, cell
+    real(kind=r_def), parameter :: dx = 6000.0_r_def, &
+                                   dy = 1000.0_r_def, &
+                                   dz = 2000.0_r_def
+    real(kind=r_def) :: junk1, junk2
+! Required for calling kernel 
+    type( field_type ) :: r_u, u, mass_flux, rho, xi, theta, phi
+
+    integer                 :: nlayers, nqp_h, nqp_v
+    integer                 :: ndf_w0, ndf_w1, ndf_w2, ndf_w3
+    integer                 :: undf_w0, undf_w1, undf_w2, undf_w3
+    integer                 :: dim_w0, dim_w1, diff_dim_w0, dim_w2, diff_dim_w2,dim_w3
+    integer, pointer        :: map_w3(:), map_w2(:), map_w1(:), map_w0(:) => null()
+    integer, pointer        :: boundary_dofs(:,:) => null()
+    integer, pointer        :: orientation_w1(:), orientation_w2(:) => null()
+
+    type( field_proxy_type )        :: r_u_proxy, rho_proxy, theta_proxy, &
+                                       u_proxy, f_proxy, xi_proxy, phi_proxy
+    
+    real(kind=r_def), allocatable  :: basis_w3(:,:,:,:), &
+                                      basis_w2(:,:,:,:), &
+                                      basis_w1(:,:,:,:), &
+                                      basis_w0(:,:,:,:), &
+                                      diff_basis_w0(:,:,:,:), &
+                                      diff_basis_w2(:,:,:,:) 
+
+    real(kind=r_def), pointer :: xp(:,:) => null()
+    real(kind=r_def), pointer :: zp(:) => null()
+    real(kind=r_def), pointer :: wh(:), wv(:) => null()
+   
+    tol = 1.0e-3_r_def  
+    qr => qr%get_instance(QR3,9,3)
+    l_spherical = .false.
+
+    ! build some function spaces ...
+    call fs_build()
+    
+    ! make a coordinate field with a function space
+    do i = 1,3
+      chi(i) = field_type( vector_space = fs%get_instance( W0 ) )
+      chi_p(i) = chi(i)%get_proxy()
+    end do
+    ! Compute coordinates
+    cell = 1
+    do j = 1,3
+      do i = 1,3
+        map_w0 => chi_p(1)%vspace%get_cell_dofmap( cell )
+        do k = 0,3          
+          chi_p(1)%data(map_w0(1) + k) = real(i-1)*dx
+          chi_p(2)%data(map_w0(1) + k) = real(j-1)*dy
+          chi_p(3)%data(map_w0(1) + k) = real(k)  *dz
+        end do
+        cell = cell + 1
+      end do
+    end do
+
+    ! Test kernel
+    r_u   = field_type( vector_space = fs%get_instance( W2 ) )
+    u     = field_type( vector_space = fs%get_instance( W2 ) )
+    mass_flux = field_type( vector_space = fs%get_instance( W2 ) )
+    rho   = field_type( vector_space = fs%get_instance( W3 ) )
+    xi    = field_type( vector_space = fs%get_instance( W1 ) )
+    theta = field_type( vector_space = fs%get_instance( W0 ) )
+    phi   = field_type( vector_space = fs%get_instance( W0 ) )
+
+    r_u_proxy  = r_u%get_proxy()
+    u_proxy    = u%get_proxy()
+    f_proxy    = mass_flux%get_proxy()
+    rho_proxy  = rho%get_proxy()
+    xi_proxy   = xi%get_proxy()   
+    theta_proxy = theta%get_proxy()
+    phi_proxy  = phi%get_proxy()
+    
+    boundary_dofs => r_u_proxy%vspace%get_boundary_dofs()
+    
+    nlayers = rho_proxy%vspace%get_nlayers()
+    nqp_h=qr%get_nqp_h()
+    nqp_v=qr%get_nqp_v()
+    zp=>qr%get_xqp_v()
+    xp=>qr%get_xqp_h()
+    wh=>qr%get_wqp_h()
+    wv=>qr%get_wqp_v()
+
+    ndf_w3  = rho_proxy%vspace%get_ndf( )
+    dim_w3  = rho_proxy%vspace%get_dim_space( )
+    undf_w3 = rho_proxy%vspace%get_undf()
+    allocate(basis_w3(dim_w3,ndf_w3,nqp_h,nqp_v))
+
+    ndf_w2      = r_u_proxy%vspace%get_ndf( )
+    dim_w2      = r_u_proxy%vspace%get_dim_space( )
+    diff_dim_w2 = r_u_proxy%vspace%get_dim_space_diff( )
+    undf_w2     = r_u_proxy%vspace%get_undf()
+    allocate(basis_w2(dim_w2,ndf_w2,nqp_h,nqp_v))
+    allocate(diff_basis_w2(diff_dim_w2,ndf_w2,nqp_h,nqp_v))
+
+    ndf_w1  = xi_proxy%vspace%get_ndf( )
+    dim_w1  = xi_proxy%vspace%get_dim_space( )
+    undf_w1 = xi_proxy%vspace%get_undf()
+    allocate(basis_w1(dim_w1,ndf_w1,nqp_h,nqp_v))
+
+    ndf_w0      = theta_proxy%vspace%get_ndf( )
+    dim_w0      = theta_proxy%vspace%get_dim_space( )
+    diff_dim_w0 = theta_proxy%vspace%get_dim_space_diff( )
+    undf_w0     = theta_proxy%vspace%get_undf()
+    allocate(basis_w0(dim_w0,ndf_w0,nqp_h,nqp_v))
+    allocate(diff_basis_w0(diff_dim_w0,ndf_w0,nqp_h,nqp_v))
+
+    call rho_proxy%vspace%compute_basis_function( &
+         basis_w3, ndf_w3, nqp_h, nqp_v, xp, zp)    
+
+    call r_u_proxy%vspace%compute_basis_function( &
+         basis_w2, ndf_w2, nqp_h, nqp_v, xp, zp)    
+
+    call r_u_proxy%vspace%compute_diff_basis_function( &
+         diff_basis_w2, ndf_w2, nqp_h, nqp_v, xp, zp)
+
+    call xi_proxy%vspace%compute_basis_function( &
+         basis_w1, ndf_w1, nqp_h, nqp_v, xp, zp)   
+
+    call theta_proxy%vspace%compute_basis_function( &
+         basis_w0, ndf_w0, nqp_h, nqp_v, xp, zp)    
+
+    call theta_proxy%vspace%compute_diff_basis_function( &
+         diff_basis_w0, ndf_w0, nqp_h, nqp_v, xp, zp)
+
+    cell = 1
+
+    map_w3 => rho_proxy%vspace%get_cell_dofmap( cell )
+    map_w2 => r_u_proxy%vspace%get_cell_dofmap( cell )
+    map_w1 => xi_proxy%vspace%get_cell_dofmap( cell )
+    map_w0 => theta_proxy%vspace%get_cell_dofmap( cell )
+    orientation_w2 => r_u_proxy%vspace%get_cell_orientation ( cell )
+    orientation_w1 => xi_proxy%vspace%get_cell_orientation ( cell )
+
+! Create the data
+    phi_proxy%data(:) = GRAVITY*chi_p(3)%data(:)
+    do k = 0, nlayers
+      do i = 1, ndf_w0
+        call reference_profile(junk1, junk2, theta_proxy%data(map_w0(i)+k), &
+                                (/ chi_p(1)%data(map_w0(i)+k), &
+                                   chi_p(2)%data(map_w0(i)+k), &
+                                   chi_p(3)%data(map_w0(i)+k)  /) )  
+      end do
+    end do
+    u_proxy%data(:)   = 0.0_r_def
+    r_u_proxy%data(:) = 0.0_r_def
+    f_proxy%data(:)   = 0.0_r_def
+    xi_proxy%data(:)  = 0.0_r_def
+    rho_proxy%data(:) = 0.0_r_def
+    call initial_rho_code( &
+                          nlayers, &
+                          ndf_w3, &
+                          undf_w3, &
+                          map_w3, &
+                          basis_w3, &
+                          rho_proxy%data, &
+                          ndf_w0, &
+                          undf_w0, &
+                          map_w0, &
+                          basis_w0, &
+                          diff_basis_w0, &
+                          chi_p(1)%data, &
+                          chi_p(2)%data, &
+                          chi_p(3)%data, &
+                          nqp_h, &
+                          nqp_v, &
+                          wh, &
+                          wv &
+                          )
+
+    call ru_code( nlayers,                                              &
+                  ndf_w2, undf_w2,                                      &
+                  map_w2, basis_w2, diff_basis_w2,                      &
+                  boundary_dofs,                                        &
+                  orientation_w2,                                       &
+                  r_u_proxy%data,                                       &
+                  u_proxy%data,                                         &
+                  f_proxy%data,                                         &
+                  ndf_w3, undf_w3,                                      &
+                  map_w3, basis_w3,                                     &
+                  rho_proxy%data,                                       &
+                  ndf_w1, undf_w1,                                      &
+                  map_w1, basis_w1,                                     &
+                  orientation_w1,                                       &
+                  xi_proxy%data,                                        &
+                  ndf_w0, undf_w0,                                      &
+                  map_w0, basis_w0, diff_basis_w0,                      &   
+                  theta_proxy%data,                                     &
+                  phi_proxy%data,                                       &
+                  chi_p(1)%data,                                        &
+                  chi_p(2)%data,                                        &
+                  chi_p(3)%data,                                        &
+                  nqp_h, nqp_v, wh, wv                                  &
+                  )           
+    deallocate(basis_w3, basis_w2, diff_basis_w2, basis_w1, &
+               basis_w0, diff_basis_w0)
+! Simple test, if u, F, xi = 0 check data is in hydrostatic balance
+    answer = 0.0_r_def
+    do k = 0,2
+      @assertEqual(answer, r_u_proxy%data(map_w2(5)+k)/dz, tol)
+      @assertEqual(answer, r_u_proxy%data(map_w2(6)+k)/dz, tol)
+    end do
+
+    !tear down ...
+    call fs_destroy()
+  
+  end subroutine ru_kernel_test
+
+end module ru_kernel_mod_test

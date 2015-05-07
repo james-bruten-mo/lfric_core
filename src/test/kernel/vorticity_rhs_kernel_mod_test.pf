@@ -1,0 +1,182 @@
+!-----------------------------------------------------------------------------
+! (c) The copyright relating to this work is owned jointly by the Crown, 
+! Met Office and NERC 2014. 
+! However, it has been created with the help of the GungHo Consortium, 
+! whose members are identified at https://puma.nerc.ac.uk/trac/GungHo/wiki
+!-----------------------------------------------------------------------------
+
+!> Test the vorticity rhs computation
+!>
+module vorticity_rhs_kernel_mod_test
+
+  implicit none 
+
+
+contains
+
+  @test
+  subroutine vorticity_rhs_kernel_test()
+
+    use pFUnit_Mod
+    use function_space_build_mod,   only : fs_build, fs_destroy
+    use field_mod,                  only : field_type,      &
+                                           field_proxy_type
+    use function_space_mod,         only : function_space_type, W0, W1, W2
+    use vorticity_rhs_kernel_mod,   only : vorticity_rhs_code
+    use constants_mod,              only : r_def
+    use quadrature_mod,             only : quadrature_type, QR3
+ 
+   implicit none
+    type(field_type) :: chi(3)
+    type(field_proxy_type )   :: chi_p(3) 
+    type(function_space_type) :: fs
+    type( quadrature_type), pointer :: qr => null()
+
+    real(kind=r_def) :: tol, answer
+
+    integer :: i, j, k, cell
+
+! Required for calling vorticity kernel    
+    type( field_type )     :: rhs, u
+
+    integer          :: ndf_xi, undf_xi, dim_diff_xi, &
+                        ndf_u, undf_u, dim_u, &
+                        ndf_chi, undf_chi, dim_diff_chi, &
+                        nqp_h, nqp_v
+
+
+    integer, pointer :: map_xi(:) => null(), &
+                        map_u(:) => null(), & 
+                        map_chi(:) => null(), &
+                        orientation_u(:) => null(), &
+                        orientation_xi(:) => null()
+
+    real(kind=r_def), pointer :: xp(:,:) => null()
+    real(kind=r_def), pointer :: zp(:)   => null()
+    real(kind=r_def), pointer :: wh(:), wv(:) => null()  
+
+    type( field_proxy_type )        :: rhs_p, u_p
+    
+    real(kind=r_def), dimension(:,:,:,:), allocatable :: &
+                                  basis_u, &
+                                  diff_basis_xi, &
+                                  diff_basis_chi
+ 
+    tol = 1.0e-6_r_def  
+    qr => qr%get_instance(QR3,9,3)
+
+    ! build some function spaces ...
+    call fs_build()
+    
+    ! make a coordinate field with a function space
+    do i = 1,3
+      chi(i) = field_type( vector_space = fs%get_instance( W0 ) )
+      chi_p(i) = chi(i)%get_proxy()
+    end do
+    ! Compute coordinates
+    cell = 1
+    do j = 1,3
+      do i = 1,3
+        map_chi => chi_p(1)%vspace%get_cell_dofmap( cell )
+        do k = 0,3          
+          chi_p(1)%data(map_chi(1) + k) = real(i-1)*4.0_r_def
+          chi_p(2)%data(map_chi(1) + k) = real(j-1)*3.0_r_def
+          chi_p(3)%data(map_chi(1) + k) = real(k)  *2.0_r_def
+        end do
+        cell = cell + 1
+      end do
+    end do
+
+    ! Test vorticity rhs
+    rhs = field_type( vector_space = fs%get_instance( W1 ) )
+    u   = field_type( vector_space = fs%get_instance( W2 ) )
+    rhs_p = rhs%get_proxy()
+    u_p   = u%get_proxy()
+
+    ndf_u  = u_p%vspace%get_ndf( )
+    undf_u = u_p%vspace%get_undf( )
+    dim_u  = u_p%vspace%get_dim_space( ) 
+
+    ndf_xi  = rhs_p%vspace%get_ndf( )
+    undf_xi = rhs_p%vspace%get_undf( )
+    dim_diff_xi  = rhs_p%vspace%get_dim_space_diff( ) 
+
+    ndf_chi  = chi_p(1)%vspace%get_ndf( )
+    undf_chi = chi_p(1)%vspace%get_undf( )
+    dim_diff_chi = chi_p(1)%vspace%get_dim_space_diff( ) 
+
+    nqp_h=qr%get_nqp_h()
+    nqp_v=qr%get_nqp_v()
+    zp=>qr%get_xqp_v()
+    xp=>qr%get_xqp_h()
+    wh=>qr%get_wqp_h()
+    wv=>qr%get_wqp_v()
+
+    allocate( basis_u(dim_u, ndf_u, nqp_h, nqp_v), &
+              diff_basis_xi(dim_diff_xi, ndf_xi, nqp_h, nqp_v), &
+              diff_basis_chi(dim_diff_chi, ndf_chi, nqp_h, nqp_v) )         
+    
+    call u_p%vspace%compute_basis_function( &
+         basis_u, ndf_u, nqp_h, nqp_v, xp, zp)  
+    call rhs_p%vspace%compute_diff_basis_function( &
+         diff_basis_xi, ndf_xi, nqp_h, nqp_v, xp, zp)           
+    call chi_p(1)%vspace%compute_diff_basis_function( &
+         diff_basis_chi, ndf_chi, nqp_h, nqp_v, xp, zp)
+        
+    
+    cell = 5 
+    map_u   => u_p%vspace%get_cell_dofmap( cell )
+    map_xi  => rhs_p%vspace%get_cell_dofmap( cell )
+    map_chi => chi_p(1)%vspace%get_cell_dofmap( cell )
+    orientation_u => u_p%vspace%get_cell_orientation ( cell )
+    orientation_xi => rhs_p%vspace%get_cell_orientation ( cell )
+
+! Create the data
+    rhs_p%data(:) = 0.0_r_def
+    u_p%data(:) = 0.0_r_def
+    u_p%data(map_u(5) + 1 ) = 0.0_r_def
+    u_p%data(map_u(6) + 1 ) = 0.0_r_def
+
+    call vorticity_rhs_code( &
+                           rhs_p%vspace%get_nlayers(), &
+                           ndf_xi, &
+                           undf_xi, &
+                           map_xi, &
+                           diff_basis_xi, &
+                           orientation_xi, &
+                           rhs_p%data, &
+                           ndf_u, &
+                           undf_u, &
+                           map_u, &
+                           basis_u, &   
+                           orientation_u, &
+                           u_p%data, &
+                           ndf_chi, &
+                           undf_chi, &
+                           map_chi, &
+                           diff_basis_chi, &   
+                           chi_p(1)%data, &
+                           chi_p(2)%data, &
+                           chi_p(3)%data, &
+                           nqp_h, &
+                           nqp_v, &
+                           wh, &
+                           wv &
+                           )           
+    deallocate( basis_u, diff_basis_xi, diff_basis_chi )
+
+! this is only testing the vertical component of vorticity
+    answer = 0.0_r_def
+    do k = 0,1
+      @assertEqual(answer, rhs_p%data(map_xi(9)  + (k-1) ), tol)
+      @assertEqual(answer, rhs_p%data(map_xi(10) + (k-1) ), tol)
+      @assertEqual(answer, rhs_p%data(map_xi(11) + (k-1) ), tol)
+      @assertEqual(answer, rhs_p%data(map_xi(12) + (k-1) ), tol)
+    end do
+
+    !tear down ...
+    call fs_destroy()
+  
+  end subroutine vorticity_rhs_kernel_test
+
+end module vorticity_rhs_kernel_mod_test

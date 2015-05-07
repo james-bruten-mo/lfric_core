@@ -1,0 +1,50 @@
+!-------------------------------------------------------------------------------
+! (c) The copyright relating to this work is owned jointly by the Crown, 
+! Met Office and NERC 2014. 
+! However, it has been created with the help of the GungHo Consortium, 
+! whose members are identified at https://puma.nerc.ac.uk/trac/GungHo/wiki
+!-------------------------------------------------------------------------------
+!
+!-------------------------------------------------------------------------------
+module compute_geopotential_kernel_mod_test
+  implicit none 
+
+contains
+
+  @test
+  subroutine test_of_compute_geopotential()
+    use pFUnit_Mod
+    use compute_geopotential_kernel_mod, only : compute_geopotential_code
+    use constants_mod,                   only : r_def, earth_radius, GRAVITY
+    
+    implicit none
+
+    real(kind=r_def) :: tol, answer
+    
+    integer              :: nlayers, ndf, undf
+    integer, allocatable :: map(:)
+    real(kind=r_def), allocatable :: x(:),y(:),z(:), phi(:)
+
+    nlayers = 1
+    ndf     = 1
+    undf    = 1
+
+    allocate( map(ndf), x(undf), y(undf), z(undf), phi(undf) )
+    map(1)  = 1
+    x(1) = 0.0_r_def
+    y(1) = 0.0_r_def
+    z(1) = earth_radius
+    
+    call compute_geopotential_code(nlayers, ndf, undf, map, &
+                                   phi, x, y, z)
+    
+    tol = 1.0e-12_r_def     
+    answer = earth_radius*GRAVITY
+
+    @assertEqual( answer, phi(1), tol ) 
+
+    deallocate( map, x, y, z, phi )
+
+  end subroutine test_of_compute_geopotential
+
+end module compute_geopotential_kernel_mod_test

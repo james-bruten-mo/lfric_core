@@ -56,25 +56,25 @@ contains
     
     
 
-!    @assertEqual( eight, dj(1,1), tol )
-!    @assertEqual( two, jac(1,1), tol )
-!    @assertEqual( two, jac(2,2), tol )
-!    @assertEqual( two, jac(3,3), tol )
-!    @assertEqual( zero, jac(1,2), tol )
-!    @assertEqual( zero, jac(1,3), tol )
-!    @assertEqual( zero, jac(2,1), tol )
-!    @assertEqual( zero, jac(2,3), tol )
-!    @assertEqual( zero, jac(3,1), tol )
-!    @assertEqual( zero, jac(3,2), tol )  
+    @assertEqual( eight, dj(1,1), tol )
+    @assertEqual( two, jac(1,1), tol )
+    @assertEqual( two, jac(2,2), tol )
+    @assertEqual( two, jac(3,3), tol )
+    @assertEqual( zero, jac(1,2), tol )
+    @assertEqual( zero, jac(1,3), tol )
+    @assertEqual( zero, jac(2,1), tol )
+    @assertEqual( zero, jac(2,3), tol )
+    @assertEqual( zero, jac(3,1), tol )
+    @assertEqual( zero, jac(3,2), tol )  
     
     @assertEqual( zero, err, tol)
     
-    ! coordinate_jacobian is currently hardwired to diag(dx,dy,dz)
-    ! this test needs updating when this is corrected
-    @assertEqual( 6000.0_r_def, jac(1,1), tol )
-    @assertEqual( 1000.0_r_def, jac(2,2), tol )
-    @assertEqual( 2000.0_r_def, jac(3,3), tol )
-    @assertEqual( 6000.0_r_def*1000.0_r_def*2000.0_r_def, dj(1,1), tol )
+!    ! coordinate_jacobian is currently hardwired to diag(dx,dy,dz)
+!    ! this test needs updating when this is corrected
+!    @assertEqual( 6000.0_r_def, jac(1,1), tol )
+!    @assertEqual( 1000.0_r_def, jac(2,2), tol )
+!    @assertEqual( 2000.0_r_def, jac(3,3), tol )
+!    @assertEqual( 6000.0_r_def*1000.0_r_def*2000.0_r_def, dj(1,1), tol )
 
 
   end subroutine test_of_jacobian

@@ -7,19 +7,26 @@
 !
 !-------------------------------------------------------------------------------
 
-!> @brief The kernel computes the rhs of the thermodynamic equation for the nonlinear equations, 
-!>         this constists entirely of the advection term u.grad(theta)
-!> @detail Kernel to  compute the rhs of thermodynamic equation for the nonlinear equations, in 
-!>         the absense of source terms this is purely an advection term:
-!>         rtheta = -u.grad(theta)
-module rtheta_kernel_mod
+!> @brief Kernel which computes rhs of the thermodynamic equation for the linear equations with
+!>         no advection
+
+
+!> @detail The kernel computes the rhs of the thermodynamic equation 
+!>         That is: rtheta = -N^2/g * theta_s * u.k
+
+!>@deprecated The Usefulness of the linear model is to be revaluated at 
+!>            the end of the Gung-Ho project and removied if possible
+module linear_rtheta_kernel_mod
 use kernel_mod,              only : kernel_type
+use constants_mod,           only : r_def, N_SQ, GRAVITY, earth_radius
 use argument_mod,            only : arg_type, func_type,                     &
                                     GH_FIELD, GH_READ, GH_INC,               &
                                     W0, W2,                                  &
                                     GH_BASIS, GH_DIFF_BASIS, GH_ORIENTATION, &
                                     CELLS
-use constants_mod,           only : r_def
+use reference_profile_mod,   only : reference_profile
+use mesh_generator_mod,      only : xyz2llr, sphere2cart_vector
+use mesh_mod,                only : l_spherical
 
 implicit none
 
@@ -27,12 +34,12 @@ implicit none
 ! Public types
 !-------------------------------------------------------------------------------
 !> The type declaration for the kernel. Contains the metadata needed by the Psy layer
-type, public, extends(kernel_type) :: rtheta_kernel_type
+type, public, extends(kernel_type) :: linear_rtheta_kernel_type
   private
   type(arg_type) :: meta_args(3) = (/                                  &
        arg_type(GH_FIELD,   GH_INC,  W0),                              &
-       arg_type(GH_FIELD,   GH_READ, W0),                              &
-       arg_type(GH_FIELD,   GH_READ, W2)                               &
+       arg_type(GH_FIELD,   GH_READ, W2),                              &
+       arg_type(GH_FIELD*3, GH_READ, W0)                               &
        /)
   type(func_type) :: meta_funcs(2) = (/                                &
        func_type(W0, GH_BASIS, GH_DIFF_BASIS),                         &
@@ -40,7 +47,7 @@ type, public, extends(kernel_type) :: rtheta_kernel_type
        /)
   integer :: iterates_over = CELLS
 contains
-  procedure, nopass ::rtheta_code
+  procedure, nopass ::linear_rtheta_code
 end type
 
 !-------------------------------------------------------------------------------
@@ -48,44 +55,42 @@ end type
 !-------------------------------------------------------------------------------
 
 ! overload the default structure constructor for function space
-interface rtheta_kernel_type
-   module procedure rtheta_kernel_constructor
+interface linear_rtheta_kernel_type
+   module procedure linear_rtheta_kernel_constructor
 end interface
 
 !-------------------------------------------------------------------------------
 ! Contained functions/subroutines
 !-------------------------------------------------------------------------------
-public rtheta_code
+public linear_rtheta_code
 contains
 
-type(rtheta_kernel_type) function rtheta_kernel_constructor() result(self)
+type(linear_rtheta_kernel_type) function linear_rtheta_kernel_constructor() result(self)
   return
-end function rtheta_kernel_constructor
+end function linear_rtheta_kernel_constructor
 
 !> @brief The subroutine which is called directly by the Psy layer
 !! @param[in] nlayers Integer the number of layers
 !! @param[in] ndf_w0 The number of degrees of freedom per cell for w0
-!! @param[in] undf_w0  The number of unique degrees of freedom  for w0
 !! @param[in] map_w0 Integer array holding the dofmap for the cell at the base of the column for w0
 !! @param[in] w0_basis Real 5-dim array holding basis functions evaluated at gaussian quadrature points 
+!! @param[in] w0_diff_basis Real 5-dim array holding differential of the basis functions evaluated at gaussian quadrature points 
 !! @param[inout] r_theta Real array the data 
-!! @param[inout] theta Real array the potential temperature
-!! @param[in] ndf_w2 The number of degrees of freedom per cell for w2
-!! @param[in] undf_w2  The number of unique degrees of freedom  for w2
-!! @param[in] map_w2 Integer array holding the dofmap for the cell at the base of the column for w2 
-!! @param[in] w2_basis Real 5-dim array holding basis functions evaluated at gaussian quadrature points 
-!! @param[in] orientation the orientation arrays for the velocity field
-!! @param[in] u the velocity field
-!! @param[in] nqp_h the number of horizontal quadrature points
-!! @param[in] nqp_v the number of vertical quadrature points
-!! @param[in] wqp_h the weights of the horizontal quadrature points
-!! @param[in] wqp_v the weights of the vertical quadrature points
-subroutine rtheta_code(nlayers,                                                &
-                       ndf_w0, undf_w0, map_w0, w0_basis, w0_diff_basis,       &
-                       r_theta, theta,                                         &
-                       ndf_w2, undf_w2, map_w2, w2_basis, orientation, u,      &
-                       nqp_h, nqp_v, wqp_h, wqp_v )
+!! @param[in] phi Real array. The geopotential field
+!! @param[in] chi_1 Real array. the physical x coordinate in w0
+!! @param[in] chi_2 Real array. the physical x coordinate in w0
+!! @param[in] chi_3 Real array. the physical x coordinate in w0
+!! @param[in] u Real array. the velocity
+!! @param[inout] gq The gaussian quadrature rule 
+subroutine linear_rtheta_code(nlayers,                                         &
+                              ndf_w0, undf_w0, map_w0, w0_basis,  r_theta,     &
+                              ndf_w2, undf_w2, map_w2, w2_basis,               &
+                              orientation, u,                                  &
+                              w0_diff_basis, phi, chi_1, chi_2, chi_3,         &
+                              nqp_h, nqp_v, wqp_h, wqp_v )
                                
+  use coordinate_jacobian_mod, only: coordinate_jacobian
+  use reference_profile_mod,   only: reference_profile                               
   
   !Arguments
   integer, intent(in) :: nlayers, nqp_h, nqp_v
@@ -99,27 +104,36 @@ subroutine rtheta_code(nlayers,                                                &
   real(kind=r_def), dimension(3,ndf_w2,nqp_h,nqp_v), intent(in) :: w2_basis 
 
   real(kind=r_def), dimension(undf_w0), intent(inout) :: r_theta
-  real(kind=r_def), dimension(undf_w0), intent(in)    :: theta
+  real(kind=r_def), dimension(undf_w0), intent(in)    :: chi_1, chi_2, chi_3, phi
   real(kind=r_def), dimension(undf_w2), intent(in)    :: u
 
   real(kind=r_def), dimension(nqp_h), intent(in)      ::  wqp_h
   real(kind=r_def), dimension(nqp_v), intent(in)      ::  wqp_v
 
   !Internal variables
-  integer               :: df, k 
+  integer               :: df, k, loc 
   integer               :: qp1, qp2
   
-  real(kind=r_def), dimension(ndf_w0)          :: rtheta_e, theta_e
-  real(kind=r_def), dimension(ndf_w2)          :: u_e
-  real(kind=r_def) :: u_at_quad(3), grad_theta_at_quad(3) 
-  real(kind=r_def) :: advective_term             
+  real(kind=r_def), dimension(ndf_w0) :: chi_1_e, chi_2_e, chi_3_e
+  real(kind=r_def), dimension(nqp_h,nqp_v)     :: dj
+  real(kind=r_def), dimension(3,3,nqp_h,nqp_v) :: jac
+  real(kind=r_def) :: rtheta_e(ndf_w0),  u_e(ndf_w2), phi_e(ndf_w0)
+  real(kind=r_def) :: u_at_quad(3), x_at_quad(3), grad_phi_at_quad(3)
+  real(kind=r_def) :: theta_s_at_quad, exner_s_at_quad, rho_s_at_quad                    
+  real(kind=r_def) :: buoy_term, vec_term
   
   do k = 0, nlayers-1
   ! Extract element arrays of chi
     do df = 1, ndf_w0
+      loc = map_w0(df) + k
+      chi_1_e(df) = chi_1( loc )
+      chi_2_e(df) = chi_2( loc )
+      chi_3_e(df) = chi_3( loc )
+      phi_e(df)   = phi( loc )
       rtheta_e(df) = 0.0_r_def
-      theta_e(df)  = theta(  map_w0(df) + k )
     end do
+    call coordinate_jacobian(ndf_w0, nqp_h, nqp_v, chi_1_e, chi_2_e, chi_3_e,  &
+                             w0_diff_basis, jac, dj)
     do df = 1, ndf_w2
       u_e(df) = u( map_w2(df) + k )*real(orientation(df),r_def)
     end do
@@ -130,17 +144,23 @@ subroutine rtheta_code(nlayers,                                                &
         do df = 1, ndf_w2
           u_at_quad(:)  = u_at_quad(:)  + u_e(df)*w2_basis(:,df,qp1,qp2)
         end do
-        grad_theta_at_quad(:) = 0.0_r_def
+        x_at_quad(:) = 0.0_r_def
+        grad_phi_at_quad(:) = 0.0_r_def
         do df = 1, ndf_w0
-          grad_theta_at_quad(:) = grad_theta_at_quad(:) &
-                                + theta_e(df)*w0_diff_basis(:,df,qp1,qp2)
+          x_at_quad(1) = x_at_quad(1) + chi_1_e(df)*w0_basis(1,df,qp1,qp2)
+          x_at_quad(2) = x_at_quad(2) + chi_2_e(df)*w0_basis(1,df,qp1,qp2)
+          x_at_quad(3) = x_at_quad(3) + chi_3_e(df)*w0_basis(1,df,qp1,qp2)
+          grad_phi_at_quad(:) = grad_phi_at_quad(:) &
+                              + phi_e(df)*w0_diff_basis(:,df,qp1,qp2)
         end do
+        call reference_profile(exner_s_at_quad, rho_s_at_quad, &
+                               theta_s_at_quad, x_at_quad)
 
-        advective_term = wqp_h(qp1)*wqp_v(qp2) &
-                       * dot_product(u_at_quad,grad_theta_at_quad)
+        vec_term = dot_product(u_at_quad,grad_phi_at_quad)/GRAVITY
+        buoy_term = -N_SQ/GRAVITY*theta_s_at_quad*vec_term
 
         do df = 1, ndf_w0
-          rtheta_e(df) = rtheta_e(df) - w0_basis(1,df,qp1,qp2)*advective_term
+          rtheta_e(df) = rtheta_e(df) + wqp_h(qp1)*wqp_v(qp2)*w0_basis(1,df,qp1,qp2)*buoy_term
         end do
       end do
     end do
@@ -149,6 +169,6 @@ subroutine rtheta_code(nlayers,                                                &
     end do 
   end do
   
-end subroutine rtheta_code
+end subroutine linear_rtheta_code
 
-end module rtheta_kernel_mod
+end module linear_rtheta_kernel_mod

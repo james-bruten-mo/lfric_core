@@ -44,7 +44,7 @@ private
 !-------------------------------------------------------------------------------
 
 !Number of grids in multigrid hierarchy
-integer, parameter :: NGRIDS = 2
+integer, parameter :: NGRIDS = 1
 
 !Number of smoothing iterations. must be at least 1 for consistency of h
 !operator.

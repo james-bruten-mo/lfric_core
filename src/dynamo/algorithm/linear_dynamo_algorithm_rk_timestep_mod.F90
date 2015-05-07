@@ -1,41 +1,37 @@
 !-------------------------------------------------------------------------------
-! (c) The copyright relating to this work is owned jointly by the Crown,
-! Met Office and NERC 2014.
-! However, it has been created with the help of the GungHo Consortium,
+! (c) The copyright relating to this work is owned jointly by the Crown, 
+! Met Office and NERC 2014. 
+! However, it has been created with the help of the GungHo Consortium, 
 ! whose members are identified at https://puma.nerc.ac.uk/trac/GungHo/wiki
 !-------------------------------------------------------------------------------
 
-!>@brief A Runge-Kutta time-discretisation of the nonlinear 3D equations, currently using 3-stage SSP.
-!>@details An algorithm for timstepping the 3D nonlinear equations
-!>         using a 3-stage SSP Runge-Kutta algortihm. The algorithm
-!>         initialialises all fields, sets up tempoary fields and perform the
+!>@brief A Runge-Kutta time-discretisation of the linear 3D equations, currently using 3-stage SSP.
+!>@details An algorithm for timstepping the 3D linear no advection equations
+!>         using a 3-stage SSP Runge-Kutta algorithm. The algorithm
+!>         initialises all fields, sets up temporay fields, performs the
 !>         timestepping and checks to see if it should dump output
-module dynamo_algorithm_rk_timestep_mod
+!>@deprecated The Usefulness of the linear model is to be re-evaluated at 
+!>            the end of the Gung-Ho project and removed if possible
+module linear_dynamo_algorithm_rk_timestep_mod
 
-  use log_mod,       only: log_event,         &
-                           log_scratch_space, &
-                           LOG_LEVEL_INFO,    &
-                           LOG_LEVEL_TRACE
+  use log_mod,       only: log_event, log_scratch_space,                     &
+                           LOG_LEVEL_INFO, LOG_LEVEL_TRACE
   use psy,           only: invoke_initial_theta_kernel,                      &
-                           invoke_initial_rho_kernel,                        &
-                           invoke_rtheta_kernel,                             &
-                           invoke_ru_kernel,                                 &
-                           invoke_rrho_kernel,                               &
+                           invoke_linear_rtheta_kernel,                      &
+                           invoke_linear_ru_kernel,                          &
+                           invoke_linear_rrho_kernel,                        &
                            invoke_compute_mass_matrix_w0,                    &
-                           invoke_compute_mass_matrix_w1,                    &
                            invoke_compute_mass_matrix_w2,                    &
                            invoke_copy_field_data,                           &
                            invoke_set_field_scalar,                          &
                            invoke_axpy,                                      &
-                           invoke_flux_rhs,                                  &
-                           invoke_vorticity_rhs,                             &
                            invoke_compute_geopotential_kernel
 
   use field_mod,     only: field_type 
   use function_space_mod, &
                      only: function_space_type, W0, W1, W2, W3
   use solver_mod,    only: solver_algorithm
-  use constants_mod, only: r_def, SOLVER_OPTION
+  use constants_mod, only: r_def, solver_option
   use quadrature_mod, only : quadrature_type, QR3
   use galerkin_projection_algorithm_mod, &
                      only : galerkin_projection_algorithm
@@ -45,58 +41,56 @@ module dynamo_algorithm_rk_timestep_mod
   implicit none
 
   private
-  public :: dynamo_algorithm_rk_timestep
+  public :: linear_dynamo_algorithm_rk_timestep
 
 contains
 
-  subroutine dynamo_algorithm_rk_timestep( chi, u, rho, theta, xi)
+  subroutine linear_dynamo_algorithm_rk_timestep( chi, u, rho, theta)
 
     implicit none
 
-    ! coordinate fields
+! coordinate fields
     type( field_type ), intent( inout ) :: chi(3)
 ! prognostic fields    
-    type( field_type ), intent( inout ) :: u, rho, theta, xi
+    type( field_type ), intent( inout ) :: u, rho, theta 
 ! temporary fields    
     type( field_type ) :: u_n, rho_n, theta_n,       &
                           r_u, r_rho, r_theta,       &
                           u_inc, rho_inc, theta_inc, &
-                          mass_flux, rhs_xi,         &
                           geopotential
-                          
+
     type( field_type ), allocatable :: rt_prediction(:),  &
                                        ru_prediction(:),  &
-                                       rr_prediction(:)
-    type( field_type ) :: projected_field(3)
-
-    integer :: theta_fs, u_fs, rho_fs, xi_fs
+                                       rr_prediction(:) 
+    type( field_type ) :: projected_field(3)                                       
+    
+    integer :: theta_fs, u_fs, rho_fs
     integer :: n, nt, output_freq
     integer :: stage, num_rk_stage, st
     real(kind=r_def), allocatable :: ak(:,:)
     real(kind=r_def) :: dt = 1.0_r_def
     type(function_space_type) :: fs
     type( quadrature_type), pointer :: qr => null()
-    integer, parameter :: VECTOR_FIELD = 3, &
-                          SCALAR_FIELD = 1
+    integer, parameter :: vector_field = 3, &
+                          scalar_field = 1
 
-    type(operator_type) :: mm_w2, mm_w1, mm_w0  
-
-    ! SSP3 weights
+    type(operator_type) :: mm_w2, mm_w0  
+    
+! SSP3 weights
     num_rk_stage = 3
     allocate ( ak (num_rk_stage,num_rk_stage) )
     ak(1,:) = (/ 1.0_r_def,  0.0_r_def,  0.0_r_def /)
     ak(2,:) = (/ 0.25_r_def, 0.25_r_def, 0.0_r_def /)
     ak(3,:) = (/ 1.0_r_def,  1.0_r_def,  4.0_r_def /)/6.0_r_def
-
+    
     allocate ( rt_prediction(num_rk_stage), &
-               ru_prediction(num_rk_stage), &
+               ru_prediction(num_rk_stage), & 
                rr_prediction(num_rk_stage) )
-
-    ! Local fields
+               
+ ! Local fields
     theta_fs  = theta%which_function_space()
     u_fs      = u%which_function_space()
     rho_fs    = rho%which_function_space()
-    xi_fs     = xi%which_function_space()
 
     qr => qr%get_instance(QR3,9,3)
 
@@ -109,60 +103,56 @@ contains
     theta_inc = field_type( vector_space = fs%get_instance(theta_fs) )
     u_inc     = field_type( vector_space = fs%get_instance(u_fs) )
     rho_inc   = field_type( vector_space = fs%get_instance(rho_fs) )
-    mass_flux = field_type( vector_space = fs%get_instance(u_fs) )
-    rhs_xi    = field_type( vector_space = fs%get_instance(xi_fs) )     
     geopotential = field_type( vector_space = fs%get_instance(theta_fs) )
 
     do stage = 1,num_rk_stage
       rt_prediction(stage) = field_type( vector_space = fs%get_instance(theta_fs) )
-      ru_prediction(stage) = field_type( vector_space = fs%get_instance(u_fs) )
-      rr_prediction(stage) = field_type( vector_space = fs%get_instance(rho_fs) )
-    end do
 
-    mm_w0 = operator_type(fs%get_instance(W0),fs%get_instance(W0))   
-    mm_w1 = operator_type(fs%get_instance(W1),fs%get_instance(W1))
+      ru_prediction(stage) = field_type( vector_space = fs%get_instance(u_fs) )
+
+      rr_prediction(stage) = field_type( vector_space = fs%get_instance(rho_fs) )
+
+    end do   
+
+    mm_w0 = operator_type(fs%get_instance(W0),fs%get_instance(W0))              
     mm_w2 = operator_type(fs%get_instance(W2),fs%get_instance(W2)) 
 
-    do stage = 1,3
+    do stage = 1,3 
       projected_field(stage) = field_type( vector_space = fs%get_instance(theta_fs) )
     end do
 
     !Construct PSy layer given a list of kernels. This is the line the code
     !generator may parse and do its stuff.
-
-    ! initialise
-
+    
+! initialise        
     call invoke_compute_geopotential_kernel( geopotential, chi )
+
     ! Construct initial conditions
     call log_event( "Dynamo: computing initial fields", LOG_LEVEL_INFO )
-    call invoke_initial_theta_kernel( theta, chi )   
-    call invoke_initial_rho_kernel( rho, chi, qr ) 
+    call invoke_initial_theta_kernel( theta, chi )    
     call invoke_set_field_scalar(0.0_r_def, u)
-    call invoke_set_field_scalar(0.0_r_def, xi)
-    call invoke_set_field_scalar(0.0_r_def, mass_flux)
+    call invoke_set_field_scalar(0.0_r_def, rho)
 
-    call invoke_compute_mass_matrix_w0(mm_w0, chi, qr)
-    call invoke_compute_mass_matrix_w1(mm_w1, chi, qr)
+    call invoke_compute_mass_matrix_w0(mm_w0, chi, qr) 
     call invoke_compute_mass_matrix_w2(mm_w2, chi, qr) 
 
     call galerkin_projection_algorithm(projected_field(1),                     &
-         theta, chi, SCALAR_FIELD, qr, mm=mm_w0)
-    call interpolated_output(0, SCALAR_FIELD, projected_field(1), chi, 'theta_')
+         theta, chi, scalar_field, qr, mm=mm_w0) 
+    call interpolated_output(0, scalar_field, projected_field(1), chi, 'theta_')
     call invoke_set_field_scalar(0.0_r_def, projected_field(1))
     call galerkin_projection_algorithm(projected_field(1),                     &
-         rho,   chi,  SCALAR_FIELD, qr, mm=mm_w0)
-    call interpolated_output(0, SCALAR_FIELD, projected_field(1), chi, 'rho___')
+         rho,   chi,  scalar_field, qr, mm=mm_w0)
+    call interpolated_output(0, scalar_field, projected_field(1), chi, 'rho___')                    
     call galerkin_projection_algorithm(projected_field(:),                     &
-         u,     chi, VECTOR_FIELD, qr, mm=mm_w0)
-    call interpolated_output(0, VECTOR_FIELD, projected_field(:), chi, 'u_____')
-
-    !==========================================================================
+         u,     chi, vector_field, qr, mm=mm_w0)
+    call interpolated_output(0, vector_field, projected_field(:), chi, 'u_____')
+!================================================================================    
     ! Timestep
     nt = 30 ! number of timesteps
-    output_freq = nt
+    output_freq = nt 
     do n = 1,nt
-      call log_event( "/****************************************************************************\ ", &
-                      LOG_LEVEL_TRACE )
+      call log_event( '/****************************************************************************/ ', &
+                      LOG_LEVEL_INFO )
       write( log_scratch_space, '(A,I0)' ) 'Start of timestep ', n
       call log_event( log_scratch_space, LOG_LEVEL_INFO )
 
@@ -175,33 +165,23 @@ contains
       
 ! Runge-Kutta algorithm
       do stage = 1,num_rk_stage
-! Compute advection terms
-! mass flux ( F = rho * u )
-        call invoke_set_field_scalar(0.0_r_def, r_u)
-        call invoke_flux_rhs( r_u, u, rho, chi, qr )
-        call solver_algorithm( mass_flux, r_u, chi, solver_option, mm=mm_w2)
-! compute rrho = div(F)        
-        call invoke_rrho_kernel  ( rr_prediction(stage), mass_flux, qr )  
-! Compute vorticity
-        call invoke_set_field_scalar(0.0_r_def, rhs_xi)
-        call invoke_vorticity_rhs( rhs_xi, u, chi, qr )
-        call solver_algorithm( xi, rhs_xi, chi, solver_option, mm=mm_w1)
-
 ! Compute new rhs      
         !PSY call invoke ( set_field_scalar(0.0_r_def, rt_prediction(stage)))
         call invoke_set_field_scalar(0.0_r_def, rt_prediction(stage))
-        call invoke_rtheta_kernel( rt_prediction(stage), theta, u, qr)
+        call invoke_linear_rtheta_kernel( rt_prediction(stage), u, geopotential, chi, qr)
         !PSY call invoke ( set_field_scalar(0.0_r_def, ru_prediction(stage)))
         call invoke_set_field_scalar(0.0_r_def, ru_prediction(stage))
-        call invoke_ru_kernel    ( ru_prediction(stage), u, mass_flux, rho, theta, geopotential, xi, chi, qr )
+        call invoke_linear_ru_kernel    ( ru_prediction(stage), u, rho, theta, &
+                                          geopotential, chi, qr )
+        call invoke_linear_rrho_kernel  ( rr_prediction(stage), u, geopotential, chi, qr )  
         !PSY call invoke ( set_field_scalar(0.0_r_def, r_theta))
         call invoke_set_field_scalar(0.0_r_def, r_theta)
         !PSY call invoke ( set_field_scalar(0.0_r_def, r_u))
         call invoke_set_field_scalar(0.0_r_def, r_u)
         !PSY call invoke ( set_field_scalar(0.0_r_def, r_rho))
-        call invoke_set_field_scalar(0.0_r_def, r_rho)
-
-        do st = 1, stage
+        call invoke_set_field_scalar(0.0_r_def, r_rho) 
+        
+        do st = 1, stage          
           !PSY call invoke ( axpy(ak(stage,st), rt_prediction(st),r_theta, r_theta))
           call invoke_axpy(ak(stage,st), rt_prediction(st),r_theta, r_theta)
           !PSY call invoke ( axpy(ak(stage,st), ru_prediction(st),r_u, r_u))
@@ -210,12 +190,12 @@ contains
           call invoke_axpy(ak(stage,st), rr_prediction(st),r_rho, r_rho)
         end do
 
-        ! Invert mass matrices
-        call solver_algorithm( theta_inc, r_theta, chi, SOLVER_OPTION, mm=mm_w0)
-        call solver_algorithm( u_inc,     r_u,     chi, SOLVER_OPTION, mm=mm_w2)
-        call solver_algorithm( rho_inc,   r_rho,   chi, SOLVER_OPTION, qr=qr)
+! Invert mass matrices
+        call solver_algorithm( theta_inc, r_theta, chi, solver_option, mm=mm_w0)
+        call solver_algorithm( u_inc,     r_u,     chi, solver_option, mm=mm_w2)
+        call solver_algorithm( rho_inc,   r_rho,   chi, solver_option, qr=qr)
 
-        ! add increments
+! add increments
         !PSY call invoke ( axpy(dt, theta_inc, theta_n, theta))
         call invoke_axpy(dt, theta_inc, theta_n, theta)
         !PSY call invoke ( axpy(dt, u_inc, u_n, u))
@@ -229,27 +209,25 @@ contains
         call rho_inc%log_minmax(LOG_LEVEL_TRACE, 'rho_inc');
 
       end do
-
       if ( mod(n, output_freq) == 0 ) then
         call galerkin_projection_algorithm(projected_field(1),                  &
-             theta, chi, SCALAR_FIELD, qr, mm=mm_w0)
-        call interpolated_output(n, SCALAR_FIELD, projected_field(1), chi, 'theta_')
+             theta, chi, scalar_field, qr, mm=mm_w0) 
+        call interpolated_output(n, scalar_field, projected_field(1), chi, 'theta_')
         call galerkin_projection_algorithm(projected_field(1),                  &
-             rho,   chi, SCALAR_FIELD, qr, mm=mm_w0)
-        call interpolated_output(n, SCALAR_FIELD, projected_field(1), chi, 'rho___')
+             rho,   chi, scalar_field, qr, mm=mm_w0)
+        call interpolated_output(n, scalar_field, projected_field(1), chi, 'rho___')                    
         call galerkin_projection_algorithm(projected_field(:),                  &
-             u,     chi, VECTOR_FIELD, qr, mm=mm_w0)
-        call interpolated_output(n, VECTOR_FIELD, projected_field(:), chi, 'u_____')
+             u,     chi, vector_field, qr, mm=mm_w0)
+        call interpolated_output(n, vector_field, projected_field(:), chi, 'u_____')     
       end if
-
       write( log_scratch_space, '(A,I0)' ) 'End of timestep ', n
-      call log_event( log_scratch_space, LOG_LEVEL_TRACE )
+      call log_event( log_scratch_space, LOG_LEVEL_INFO )
       call log_event( '\****************************************************************************/ ', &
-                      LOG_LEVEL_TRACE )
+                      LOG_LEVEL_INFO )
     end do
     call log_event( "Dynamo: finished timestep", LOG_LEVEL_INFO )
     !==========================================================================
 
-  end subroutine dynamo_algorithm_rk_timestep
+  end subroutine linear_dynamo_algorithm_rk_timestep
 
-end module dynamo_algorithm_rk_timestep_mod
+end module linear_dynamo_algorithm_rk_timestep_mod

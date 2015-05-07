@@ -1,0 +1,143 @@
+!-----------------------------------------------------------------------------
+! (c) The copyright relating to this work is owned jointly by the Crown, 
+! Met Office and NERC 2014. 
+! However, it has been created with the help of the GungHo Consortium, 
+! whose members are identified at https://puma.nerc.ac.uk/trac/GungHo/wiki
+!-----------------------------------------------------------------------------
+
+!> Test the rtheta computation
+!>
+module rtheta_kernel_mod_test
+
+  implicit none 
+
+
+contains
+
+  @test
+  subroutine rtheta_kernel_test()
+
+    use pFUnit_Mod
+    use function_space_build_mod,   only : fs_build, fs_destroy
+    use field_mod,                  only : field_type,      &
+                                           field_proxy_type
+    use function_space_mod,         only : function_space_type, W0, W2
+    use rtheta_kernel_mod, &
+                                    only : rtheta_code
+    use constants_mod,              only : r_def
+    use quadrature_mod,             only : quadrature_type, QR3
+
+   implicit none
+    type(function_space_type) :: fs
+    type( quadrature_type), pointer :: qr => null()
+
+    real(kind=r_def) :: tol
+    real(kind=r_def), allocatable, dimension(:) :: answer
+
+    integer :: cell
+
+! Required for calling kernel 
+    type( field_type )  :: r_theta, theta, u
+
+    integer                 :: nlayers, nqp_h, nqp_v
+    integer                 :: ndf_w0, undf_w0, dim_w0, dim_diff_w0
+    integer                 :: ndf_w2, undf_w2, dim_w2
+    integer, pointer        :: map_w2(:), map_w0(:), orientation_w2(:) => null()
+
+    type( field_proxy_type )        :: r_theta_proxy, theta_proxy, u_proxy 
+    
+    real(kind=r_def), allocatable  :: basis_w2(:,:,:,:), &
+                                      basis_w0(:,:,:,:), &
+                                      diff_basis_w0(:,:,:,:)
+
+    real(kind=r_def), pointer :: xp(:,:) => null()
+    real(kind=r_def), pointer :: zp(:)   => null()
+    real(kind=r_def), pointer :: wh(:)   => null(), &
+                                 wv(:)   => null()
+
+   
+    tol = 1.0e-6_r_def  
+    qr => qr%get_instance(QR3,9,3)
+
+    ! build some function spaces ...
+    call fs_build()
+    
+    ! Test kernel
+    r_theta = field_type( vector_space = fs%get_instance( W0 ) )
+    theta   = field_type( vector_space = fs%get_instance( W0 ) )
+    u       = field_type( vector_space = fs%get_instance( W2 ) )
+
+    r_theta_proxy   = r_theta%get_proxy()
+    theta_proxy     = theta%get_proxy()
+    u_proxy         = u%get_proxy()
+
+    nlayers = r_theta_proxy%vspace%get_nlayers()
+
+    nqp_h=qr%get_nqp_h()
+    nqp_v=qr%get_nqp_v()
+    zp=>qr%get_xqp_v()
+    xp=>qr%get_xqp_h()
+    wh=>qr%get_wqp_h()
+    wv=>qr%get_wqp_v()
+
+    ndf_w2      = u_proxy%vspace%get_ndf( )
+    dim_w2      = u_proxy%vspace%get_dim_space( )
+    undf_w2     = u_proxy%vspace%get_undf()
+    allocate(basis_w2(dim_w2,ndf_w2,nqp_h,nqp_v))
+
+    ndf_w0      = r_theta_proxy%vspace%get_ndf( )
+    dim_w0      = r_theta_proxy%vspace%get_dim_space( )
+    dim_diff_w0 = r_theta_proxy%vspace%get_dim_space_diff( )
+    undf_w0     = r_theta_proxy%vspace%get_undf()
+    allocate(basis_w0(dim_w0,ndf_w0,nqp_h,nqp_v))
+    allocate(diff_basis_w0(dim_diff_w0,ndf_w0,nqp_h,nqp_v))
+
+    call u_proxy%vspace%compute_basis_function(                     &
+        basis_w2, ndf_w2, nqp_h, nqp_v, xp, zp)    
+
+    call r_theta_proxy%vspace%compute_basis_function(basis_w0, ndf_w0,      & 
+         nqp_h, nqp_v, xp, zp)
+
+    call r_theta_proxy%vspace%compute_diff_basis_function(                  &
+         diff_basis_w0, ndf_w0, nqp_h, nqp_v, xp, zp)
+
+!   Create the data
+    r_theta_proxy%data(:) = 0.0_r_def
+    theta_proxy%data(:) = 300.0_r_def
+    u_proxy%data(:) = 2.0_r_def
+
+    do cell = 1, r_theta_proxy%vspace%get_ncell()
+       map_w0 => r_theta_proxy%vspace%get_cell_dofmap( cell )
+       map_w2 => u_proxy%vspace%get_cell_dofmap( cell )
+
+       orientation_w2 => u_proxy%vspace%get_cell_orientation ( cell )
+       call rtheta_code( nlayers, &
+                         ndf_w0, undf_w0, &
+                         map_w0, &
+                         basis_w0, &
+                         diff_basis_w0, &   
+                         r_theta_proxy%data, &
+                         theta_proxy%data, &
+                         ndf_w2, undf_w2, &
+                         map_w2, &
+                         basis_w2, &
+                         orientation_w2, &
+                         u_proxy%data, &                        
+                         nqp_h, nqp_v, wh, wv &
+                         )
+    end do 
+
+    deallocate(basis_w2, basis_w0, diff_basis_w0)
+    allocate( answer(undf_w0) )
+
+! Simple test, check that when theta=const, u.grad(theta) = 0    
+    answer(:) = 0.0_r_def
+    @assertEqual(answer, r_theta_proxy%data(:), tol)
+
+    deallocate( answer )
+    !tear down ...
+    call fs_destroy()
+  
+  end subroutine rtheta_kernel_test
+
+end module rtheta_kernel_mod_test

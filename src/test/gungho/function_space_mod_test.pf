@@ -114,14 +114,14 @@ contains
 
     ndf = w1_func_space%get_ndf()
     ! W1 at lowest order on quads ...
-    @assertEqual(ndf,12) 
+    @assertEqual(ndf,12)
     ! 99 for w1
-    @assertEqual( w1_func_space%get_undf(), 99 ) 
+    @assertEqual( w1_func_space%get_undf(), 99 )
     @assertEqual( w1_func_space%get_ncell(), 9)
     @assertEqual( w1_func_space%get_nlayers(),3 )
-    @assertEqual( w1_func_space%get_dim_space(), vector )  
-    @assertEqual( w1_func_space%get_dim_space_diff(), vector ) 
-    
+    @assertEqual( w1_func_space%get_dim_space(), vector )
+    @assertEqual( w1_func_space%get_dim_space_diff(), vector )
+
     allocate(basis(     w1_func_space%get_dim_space(), ndf, nqp_h, nqp_v) )
     allocate(test_basis(w1_func_space%get_dim_space(), ndf, nqp_h, nqp_v) )
     call basis_func_w1(test_basis)

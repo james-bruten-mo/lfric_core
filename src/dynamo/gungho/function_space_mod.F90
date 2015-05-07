@@ -28,7 +28,7 @@ private
   
 type, public :: function_space_type
   private
-  integer              :: ndf, ncell, undf, fs, nlayers
+  integer              :: ndf, ncell, undf, fs, nlayers, order
   integer              :: dim_space, dim_space_diff
   !> A two dimensional, allocatable array which holds the indirection map 
   !! or dofmap for the whole function space over the bottom level of the domain.
@@ -160,6 +160,7 @@ contains
 
 function get_instance(function_space) result(instance)
   use basis_function_mod,      only : &
+              w0_order, w1_order, w2_order, w3_order, &
               w0_nodal_coords, w1_nodal_coords, w2_nodal_coords, w3_nodal_coords, &
               w0_dof_on_vert_boundary, w1_dof_on_vert_boundary, &
               w2_dof_on_vert_boundary, w3_dof_on_vert_boundary, &
@@ -184,6 +185,7 @@ function get_instance(function_space) result(instance)
     if(.not.allocated(w0_function_space)) then
       allocate(w0_function_space)   
       call init_function_space(self=w0_function_space, &
+         order = w0_order, &
          num_cells = num_cells , num_layers = num_layers, &
          num_dofs = w_unique_dofs(1,2), &
          num_unique_dofs = w_unique_dofs(1,1) ,  &
@@ -200,6 +202,7 @@ function get_instance(function_space) result(instance)
     if(.not.allocated(w1_function_space)) then
       allocate(w1_function_space) 
       call init_function_space(self=w1_function_space, &
+         order = w1_order, &
          num_cells = num_cells ,num_layers = num_layers, &
          num_dofs = w_unique_dofs(2,2), &
          num_unique_dofs = w_unique_dofs(2,1) ,  &
@@ -216,6 +219,7 @@ function get_instance(function_space) result(instance)
     if(.not.allocated(w2_function_space)) then 
       allocate(w2_function_space)
       call init_function_space(self=w2_function_space, &
+         order = w2_order, &
          num_cells = num_cells ,num_layers = num_layers, &
          num_dofs = w_unique_dofs(3,2), &
          num_unique_dofs = w_unique_dofs(3,1) ,  &
@@ -232,6 +236,7 @@ function get_instance(function_space) result(instance)
     if(.not.allocated(w3_function_space)) then
       allocate(w3_function_space)
       call init_function_space(self=w3_function_space, &
+         order = w3_order, &
          num_cells = num_cells ,num_layers = num_layers, &
          num_dofs = w_unique_dofs(4,2), &
          num_unique_dofs = w_unique_dofs(4,1) ,  &
@@ -262,6 +267,7 @@ end function get_instance
 !! @param[in] ngp_h The number of guassian quadrature points in the horizonal
 !! @param[in] ngp_v The number of guassian quadrature points in the vertical
 subroutine init_function_space(self, &
+                               order, &
                                num_cells,num_layers, &
                                num_dofs, &
                                num_unique_dofs,  &
@@ -275,7 +281,7 @@ subroutine init_function_space(self, &
   implicit none
 
   class(function_space_type) :: self
-  integer, intent(in) :: num_cells, num_layers, num_dofs, num_unique_dofs
+  integer, intent(in) :: order, num_cells, num_layers, num_dofs, num_unique_dofs
   integer, intent(in) :: dim_space, dim_space_diff
 ! The following four arrays have intent inout because the move_allocs in the
 ! code need access to the arrays to free them in their original locations
@@ -286,6 +292,7 @@ subroutine init_function_space(self, &
   integer,          intent(in)                  :: fs
   integer,          intent(inout), allocatable  :: basis_order(:,:),  basis_index(:,:)
   real(kind=r_def), intent(inout), allocatable  :: basis_vector(:,:), basis_x(:,:,:)
+  self%order           =  order
   self%ncell           =  num_cells
   self%nlayers         =  num_layers
   self%ndf             =  num_dofs
@@ -574,5 +581,19 @@ subroutine compute_diff_basis_function(self, &
   end do
 
 end subroutine compute_diff_basis_function
+!-----------------------------------------------------------------------------
+! Get order for this space
+!-----------------------------------------------------------------------------
 
+!> Function to get the polynomial order for this space
+!! returns an integer
+!! @param[in] self the calling function space
+integer function get_order(self)
+  implicit none
+  class(function_space_type), intent(in) :: self
+
+  get_order=self%order
+
+  return
+end function get_order
 end module function_space_mod

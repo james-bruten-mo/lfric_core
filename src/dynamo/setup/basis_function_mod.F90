@@ -51,6 +51,7 @@ module basis_function_mod
                                    w2_basis_vector(:,:), w2_basis_x(:,:,:), &
                                    w3_basis_vector(:,:), w3_basis_x(:,:,:)
 
+  integer :: w0_order, w1_order, w2_order, w3_order
 
 contains 
 
@@ -106,7 +107,11 @@ contains
    allocate(w2_basis_x(k+2,3,w_unique_dofs(3,2)))
    allocate(w3_basis_x(k+2,3,w_unique_dofs(4,2)))
  
-
+! Polynomial order of spaces
+  w0_order = k+1
+  w1_order = k
+  w2_order = k
+  w3_order = k
 
 
     ! positional arrays - need two, i.e quadratic and linear for RT1

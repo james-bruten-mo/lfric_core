@@ -23,9 +23,9 @@
 {{ prepare_pipeline_schedule( label ) }}
                 export_for_{{label}} => compile_with_{{label}}
                 compile_with_{{label}} => unit_test_with_{{label}}
+                unit_test_with_{{label}} => generate_{{label}}_cubedsphere
                 unit_test_with_{{label}} => run_{{label}}_dynamo
                 run_{{label}}_dynamo => check_{{label}}_dynamo
-                unit_test_with_{{label}} => generate_{{label}}_cubedsphere
                 generate_{{label}}_cubedsphere => check_{{label}}_cubedsphere_metadata
                 generate_{{label}}_cubedsphere => check_{{label}}_cubedsphere_data
 {% endmacro %}
@@ -156,7 +156,7 @@
     [[run_{{label}}_dynamo]]
         inherit = {{family}}, {{family}}_COMPILER, REMOTE
         command scripting = """
-                            mkdir -p $DESTINATION_DIRECTORY
+                            cp $SOURCE_DIRECTORY/data/ugrid_quads_2d.nc .
                             $SOURCE_DIRECTORY/bin/dynamo | tee $DESTINATION_DIRECTORY/dynamo.out.txt
                             """
 
@@ -171,7 +171,8 @@
         inherit = {{family}}, {{family}}_COMPILER, REMOTE
         command scripting = """
                             mkdir -p $DESTINATION_DIRECTORY
-                            $SOURCE_DIRECTORY/bin/generate_cubedsphere && mv ugrid_quads_2d.nc $DESTINATION_DIRECTORY
+                            mkdir -p data
+                            $SOURCE_DIRECTORY/bin/generate_cubedsphere 4 && mv data/ugrid_quads_2d.nc $DESTINATION_DIRECTORY
                             """
 
     [[check_{{label}}_cubedsphere_metadata]]

@@ -42,9 +42,9 @@ real(kind=r_def), intent(out) :: jac(3,3,ngp_h,ngp_v)
 real(kind=r_def), intent(out) :: dj(ngp_h,ngp_v)
 
 ! Hardwired values for cartesian domain
-real(kind=r_def) :: dx = 6000.0_r_def, &
-                    dy = 1000.0_r_def, &
-                    dz = 2000.0_r_def
+!real(kind=r_def) :: dx = 6000.0_r_def, &
+!                    dy = 2000.0_r_def, &
+!                    dz = 2000.0_r_def
 
 integer :: i, j, df, dir
 
@@ -60,10 +60,10 @@ do j = 1,ngp_v
     end do 
 
 ! Hard wired values for cartesian biperiodic domain this needs correcting
-    jac(:,:,i,j) = 0.0_r_def
-    jac(1,1,i,j) = dx
-    jac(2,2,i,j) = dy
-    jac(3,3,i,j) = dz
+!    jac(:,:,i,j) = 0.0_r_def
+!    jac(1,1,i,j) = dx
+!    jac(2,2,i,j) = dy
+!    jac(3,3,i,j) = dz
         
     dj(i,j) = jac(1,1,i,j)*(jac(2,2,i,j)*jac(3,3,i,j)        &
                           - jac(2,3,i,j)*jac(3,2,i,j))       &

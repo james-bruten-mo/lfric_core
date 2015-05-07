@@ -1,0 +1,187 @@
+!-----------------------------------------------------------------------------
+! (c) The copyright relating to this work is owned jointly by the Crown, 
+! Met Office and NERC 2014. 
+! However, it has been created with the help of the GungHo Consortium, 
+! whose members are identified at https://puma.nerc.ac.uk/trac/GungHo/wiki
+!-----------------------------------------------------------------------------
+
+!> Test the flux rhs computation
+!>
+module flux_rhs_kernel_mod_test
+
+  implicit none 
+
+
+contains
+
+  @test
+  subroutine flux_rhs_kernel_test()
+
+    use pFUnit_Mod
+    use function_space_build_mod,   only : fs_build, fs_destroy
+    use field_mod,                  only : field_type,      &
+                                           field_proxy_type
+    use function_space_mod,         only : function_space_type, W0, W2, W3
+    use flux_rhs_kernel_mod,        only : flux_rhs_code
+    use constants_mod,              only : r_def
+    use quadrature_mod,             only : quadrature_type, QR3
+ 
+   implicit none
+    type(field_type) :: chi(3)
+    type(field_proxy_type )   :: chi_p(3) 
+    type(function_space_type) :: fs
+    type( quadrature_type), pointer :: qr => null()
+
+    real(kind=r_def) :: tol, answer(3)
+
+    integer :: i, j, k, cell
+
+    ! Variables for testing flux_rhs
+    type( field_type ) :: rhs, f, u
+
+    integer          :: ndf_f, undf_f, dim_f, &
+                        ndf_u, undf_u, dim_u, &
+                        ndf_chi, undf_chi, dim_diff_chi, &
+                        nqp_h, nqp_v
+
+    integer, pointer :: map_f(:) => null(), &
+                        map_u(:) => null(), & 
+                        map_chi(:) => null(), &
+                        boundary_dofs(:,:) => null(), &
+                        orientation_u(:) => null()
+
+    real(kind=r_def), pointer :: xp(:,:) => null()
+    real(kind=r_def), pointer :: zp(:)   => null()
+    real(kind=r_def), pointer :: wh(:), wv(:) => null()
+
+    type( field_proxy_type )        :: rhs_p, f_p, u_p
+    
+    real(kind=r_def), dimension(:,:,:,:), allocatable :: &
+                                  basis_u, &
+                                  basis_f, &
+                                  diff_basis_chi   
+
+    tol = 1.0e-6_r_def  
+    qr => qr%get_instance(QR3,9,3)
+
+    ! build some function spaces ...
+    call fs_build()
+    
+    ! make a coordinate field with a function space
+    do i = 1,3
+      chi(i) = field_type( vector_space = fs%get_instance( W0 ) )
+      chi_p(i) = chi(i)%get_proxy()
+    end do
+    ! Compute coordinates
+    cell = 1
+    do j = 1,3
+      do i = 1,3
+        map_chi => chi_p(1)%vspace%get_cell_dofmap( cell )
+        do k = 0,3          
+          chi_p(1)%data(map_chi(1) + k) = real(i-1)*4.0_r_def
+          chi_p(2)%data(map_chi(1) + k) = real(j-1)*3.0_r_def
+          chi_p(3)%data(map_chi(1) + k) = real(k)  *2.0_r_def
+        end do
+        cell = cell + 1
+      end do
+    end do
+
+    ! Test flux rhs
+    
+    rhs = field_type( vector_space = fs%get_instance( W2 ) )
+    u   = field_type( vector_space = fs%get_instance( W2 ) )
+    f   = field_type( vector_space = fs%get_instance( W3 ) )
+
+    rhs_p = rhs%get_proxy()
+    f_p   = f%get_proxy()
+    u_p   = u%get_proxy()
+
+    boundary_dofs => rhs_p%vspace%get_boundary_dofs()
+
+    ndf_u  = rhs_p%vspace%get_ndf( )
+    undf_u = rhs_p%vspace%get_undf( )
+    dim_u  = rhs_p%vspace%get_dim_space( ) 
+
+    ndf_f  = f_p%vspace%get_ndf( )
+    undf_f = f_p%vspace%get_undf( )
+    dim_f  = f_p%vspace%get_dim_space( ) 
+
+    ndf_chi  = chi_p(1)%vspace%get_ndf( )
+    undf_chi = chi_p(1)%vspace%get_undf( )
+    dim_diff_chi = chi_p(1)%vspace%get_dim_space_diff( ) 
+
+    nqp_h=qr%get_nqp_h()
+    nqp_v=qr%get_nqp_v()
+    zp=>qr%get_xqp_v()
+    xp=>qr%get_xqp_h()
+    wh=>qr%get_wqp_h()
+    wv=>qr%get_wqp_v()
+
+    allocate( basis_u(dim_u, ndf_u, nqp_h, nqp_v),           &
+              basis_f(dim_f, ndf_f, nqp_h, nqp_v),           &
+              diff_basis_chi(dim_diff_chi, ndf_chi, nqp_h, nqp_v) )         
+    
+    call rhs_p%vspace%compute_basis_function( &
+         basis_u, ndf_u, nqp_h, nqp_v, xp, zp)  
+    call f_p%vspace%compute_basis_function( &
+         basis_f, ndf_f, nqp_h, nqp_v, xp, zp)  
+    call chi_p(1)%vspace%compute_diff_basis_function( &
+         diff_basis_chi, ndf_chi, nqp_h, nqp_v, xp, zp)  
+    
+    cell = 5
+    map_f   => f_p%vspace%get_cell_dofmap( cell )
+    map_u   => rhs_p%vspace%get_cell_dofmap( cell )
+    map_chi => chi_p(1)%vspace%get_cell_dofmap( cell )
+    orientation_u => u_p%vspace%get_cell_orientation ( cell )
+
+    ! Create the data   
+    f_p%data(:) = 2.0_r_def
+    u_p%data(:) = 0.0_r_def
+    rhs_p%data(:) = 0.0_r_def
+
+    u_p%data(map_u(5)+0) = 0.0_r_def
+    u_p%data(map_u(5)+1) = 1.0_r_def
+    u_p%data(map_u(6)+1) = 1.0_r_def
+    u_p%data(map_u(6)+2) = 0.0_r_def
+
+
+    call flux_rhs_code( rhs_p%vspace%get_nlayers(), &
+                        ndf_u, &
+                        undf_u, &
+                        map_u, &
+                        basis_u, &
+                        boundary_dofs, &
+                        orientation_u, &
+                        rhs_p%data, &
+                        u_p%data, &
+                        ndf_f, &
+                        undf_f, &
+                        map_f, &
+                        basis_f, &                             
+                        f_p%data, &
+                        ndf_chi, &
+                        undf_chi, &
+                        map_chi, &
+                        diff_basis_chi, &   
+                        chi_p(1)%data, &
+                        chi_p(2)%data, &
+                        chi_p(3)%data, &
+                        nqp_h, &
+                        nqp_v, &
+                        wh, &
+                        wv &
+                        )           
+    
+    answer(1) = 0.0_r_def
+    answer(2) = 5.0_r_def/6.0_r_def * (2.0_r_def/(4.0_r_def*3.0_r_def))*2.0_r_def
+    answer(3) = 5.0_r_def/6.0_r_def * (2.0_r_def/(4.0_r_def*3.0_r_def))*2.0_r_def
+    do k = 1,3
+      @assertEqual(answer(k), rhs_p%data(map_u(5) + (k-1) ), tol)
+    end do
+
+    !tear down ...
+    call fs_destroy()
+  
+  end subroutine flux_rhs_kernel_test
+
+end module flux_rhs_kernel_mod_test

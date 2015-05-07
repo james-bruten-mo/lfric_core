@@ -17,7 +17,7 @@ type(ugrid_2d_type) :: ugrid_2d
 
 class(ugrid_file_type), allocatable :: ugrid_file_handler
 
-character(len=*), parameter :: filename = 'ugrid_quads_2d.nc'
+character(len=*), parameter :: filename = 'data/ugrid_quads_2d.nc'
 
 integer :: istat
 integer :: mesh_res

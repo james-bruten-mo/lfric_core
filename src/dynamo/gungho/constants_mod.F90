@@ -120,6 +120,9 @@ module constants_mod
                                                                !< residual vectors to calculate at each iteration 
                                                                !< of the solver
  !> @}
+ !> @name Formulation switches
+ logical, parameter :: L_NONLINEAR = .true.
+ !> @}
 
 end module constants_mod
 

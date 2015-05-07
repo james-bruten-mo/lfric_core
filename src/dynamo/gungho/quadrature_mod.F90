@@ -79,11 +79,11 @@ end type
 ! Module parameters
 !-------------------------------------------------------------------------------
 !> integer that defines the type of Gaussian quadrature required
-integer, public, parameter      :: QR3 = 1001
+integer, public, parameter      :: QR3 = 1001, QRnewton = 1002
 
 !> All fields are integrated onto a fixed Guassian quadrature.
 !> This is a static copy of that Gaussian quadrature object 
-type(quadrature_type), target, allocatable, save :: qr_3
+type(quadrature_type), target, allocatable, save :: qr_3, qr_newton
 
 !-------------------------------------------------------------------------------
 ! Contained functions/subroutines
@@ -104,9 +104,17 @@ function get_instance(quadrature,nqp_h,nqp_v) result(instance)
   case (QR3)
     if(.not.allocated(qr_3)) then
       allocate(qr_3)
-      call init_quadrature(qr_3, QR3, nqp_h,nqp_v) 
+      call init_quadrature(qr_3, QR3, nqp_h, nqp_v)
+      call create_gaussian_quadrature(qr_3)
     end if
     instance => qr_3
+  case (QRnewton)
+    if(.not.allocated(qr_newton)) then
+      allocate(qr_newton)
+      call init_quadrature(qr_newton, QRnewton, nqp_h, nqp_v)
+      call create_newton_cotes_quadrature(qr_newton)
+    end if
+    instance => qr_newton
   case default
     instance => null() ! To keep GCC's uninitialised use checker happy.
     ! Not a recognised  quadrature. Logging an event with severity:
@@ -119,18 +127,14 @@ function get_instance(quadrature,nqp_h,nqp_v) result(instance)
 end function get_instance
 
 subroutine init_quadrature(self, qr, nqp_h, nqp_v)
-  !-----------------------------------------------------------------------------
-  ! Subroutine to compute the quadrature points (xqp) and (wqp) wgphts 
-  !-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------
+!> @brief Subroutine to initialise the quadrature rule 
+!-----------------------------------------------------------------------------
   implicit none
 
   class(quadrature_type) :: self
   integer,intent(in)  :: nqp_h,nqp_v
-  integer             :: i, j, m
-  real(kind=r_def)    :: p1, p2, p3, pp, z, z1
   integer, intent(in) :: qr
-  real(kind=r_def), parameter :: DOMAIN_CHANGE_FACTOR = 0.5_r_def
-  real(kind=r_def), parameter :: DOMAIN_SHIFT_FACTOR  = 1.0_r_def
 
   self%nqp_h = nqp_h
   self%nqp_v = nqp_v
@@ -138,16 +142,35 @@ subroutine init_quadrature(self, qr, nqp_h, nqp_v)
   allocate( self%xqp(nqp_v) )
   allocate( self%wqp(nqp_v) ) 
   allocate( self%xqp_h(nqp_h,2) ) 
-  allocate( self%wqp_h(nqp_h) ) 
+  allocate( self%wqp_h(nqp_h) )
+
+  self%xqp(:) = 0.0_r_def
+  self%wqp(:) = 0.0_r_def
+  self%xqp_h(:,:) = 0.0_r_def
+  self%wqp_h(:) = 0.0_r_def
+  self%qr = qr
+end subroutine init_quadrature 
+
+subroutine create_gaussian_quadrature(self)
+!-----------------------------------------------------------------------------
+!> @brief Subroutine to compute Gaussian quadrature points (xqp) and (wqp) wgphts 
+!-----------------------------------------------------------------------------
+  implicit none
+
+  class(quadrature_type) :: self 
+  integer             :: i, j, m
+  real(kind=r_def)    :: p1, p2, p3, pp, z, z1
+  real(kind=r_def), parameter :: DOMAIN_CHANGE_FACTOR = 0.5_r_def
+  real(kind=r_def), parameter :: DOMAIN_SHIFT_FACTOR  = 1.0_r_def
 
   z1 = 0.0_r_def
-  m = (nqp_v + 1) / 2
+  m = (self%nqp_v + 1) / 2
 
   !Roots are symmetric in the interval - so only need to find half of them
 
   do i = 1, m ! Loop over the desired roots
 
-    z = cos( PI * (i - 0.25_r_def) / (nqp_v + 0.5_r_def) )
+    z = cos( PI * (i - 0.25_r_def) / (self%nqp_v + 0.5_r_def) )
 
     !Starting with the above approximation to the ith root, we enter the main
     !loop of refinement by NEWTON'S method
@@ -157,8 +180,8 @@ subroutine init_quadrature(self, qr, nqp_h, nqp_v)
       p2 = 0.0_r_def
 
       !Loop up the recurrence relation to get the Legendre polynomial evaluated
-      !at z
-      do j = 1, nqp_v
+      !at z                 
+      do j = 1, self%nqp_v
         p3 = p2
         p2 = p1
         p1 = ((2.0_r_def * j - 1.0_r_def) * z * p2 - (j - 1.0_r_def) * p3) / j
@@ -167,28 +190,28 @@ subroutine init_quadrature(self, qr, nqp_h, nqp_v)
       !p1 is now the desired Legendre polynomial. We next compute pp, its
       !derivative, by a standard relation involving also p2, the polynomial of
       ! one lower order.
-      pp = nqp_v * (z * p1 - p2)/(z*z - 1.0_r_def)
+      pp = self%nqp_v * (z * p1 - p2)/(z*z - 1.0_r_def)
       z1 = z
       z = z1 - p1/pp             ! Newton's Method  
     end do
 
-    self%xqp(i) =  - z                                  ! Roots will be bewteen -1.0 & 1.0
-    self%xqp(nqp_v+1-i) =  + z                          ! and symmetric about the origin
-    self%wqp(i) = 2.0_r_def/((1.0_r_def - z*z) * pp*pp) ! Compute the wgpht and its
-    self%wqp(nqp_v+1-i) = self%wqp(i)                   ! symmetric counterpart
+    self%xqp(i) =  - z                                  ! Roots will be bewteen -1.0 & 1.0 
+    self%xqp(self%nqp_v+1-i) =  + z                     ! and symmetric about the origin  
+    self%wqp(i) = 2.0_r_def/((1.0_r_def - z*z) * pp*pp) ! Compute the wgpht and its       
+    self%wqp(self%nqp_v+1-i) = self%wqp(i)              ! symmetric counterpart         
 
   end do ! i loop
 
   !Shift quad points from [-1,1] to [0,1]
-  do i=1,nqp_v
+  do i=1,self%nqp_v
     self%xqp(i) = DOMAIN_CHANGE_FACTOR*(self%xqp(i) + DOMAIN_SHIFT_FACTOR)
     self%wqp(i) = DOMAIN_CHANGE_FACTOR*self%wqp(i)
   end do
 
   ! This is correct for quads (will need modification for hexes/triangles)
   m = 1
-  do i=1,nqp_v
-    do j=1,nqp_v 
+  do i=1,self%nqp_v
+    do j=1,self%nqp_v 
       self%xqp_h(m,1) = self%xqp(i)
       self%xqp_h(m,2) = self%xqp(j)
       self%wqp_h(m) = self%wqp(i)*self%wqp(j)
@@ -197,10 +220,62 @@ subroutine init_quadrature(self, qr, nqp_h, nqp_v)
     end do
   end do
 
-  self%qr = qr
-
   return
-end subroutine init_quadrature
+end subroutine create_gaussian_quadrature
+
+subroutine create_newton_cotes_quadrature(self)
+!-----------------------------------------------------------------------------
+!> @brief Subroutine to compute Newton Cotes quadrature 
+!>        points (xqp) and weights (wqp)
+!-----------------------------------------------------------------------------
+  use matrix_invert_mod, only: matrix_invert
+ 
+  implicit none
+
+  class(quadrature_type) :: self 
+  integer :: i, j, ij
+  real(kind=r_def), allocatable :: A(:,:), Ainv(:,:), b(:)
+
+  allocate( A   (self%nqp_v,self%nqp_v),  &
+            Ainv(self%nqp_v,self%nqp_v),  &
+            b   (self%nqp_v) )
+
+  if ( self%nqp_v == 1 ) then
+    self%xqp(1) = 0.5_r_def
+  else
+    do i = 1,self%nqp_v
+     self%xqp(i) = real(i-1)/real(self%nqp_v-1)
+    end do
+  end if
+  ij = 1
+  do i = 1,self%nqp_v
+    do j = 1,self%nqp_v
+      self%xqp_h(ij,1) =  self%xqp(i)
+      self%xqp_h(ij,2) =  self%xqp(j)
+      ij = ij + 1
+    end do    
+  end do
+
+  ! Compute weights
+  do i = 1,self%nqp_v
+    b(i) = (real(self%nqp_v)**i-1.0)/real(i)
+  end do
+  ! Compute coefficient matrix A
+  do i = 1,self%nqp_v
+    do j = 1,self%nqp_v
+      A(i,j) = real(j)**(i-1)
+    end do
+  end do
+  call matrix_invert(A,Ainv,self%nqp_v)
+  self%wqp(:) = matmul(Ainv,b)
+  ij = 1
+  do i = 1,self%nqp_v
+    do j = 1,self%nqp_v
+      self%wqp(ij) = self%wqp(i)*self%wqp(j)
+    end do
+  end do
+  
+end subroutine create_newton_cotes_quadrature
 
 subroutine test_integrate(self)
   !-----------------------------------------------------------------------------
@@ -232,9 +307,8 @@ subroutine test_integrate(self)
 end subroutine test_integrate
   
 !-----------------------------------------------------------------------------
-! Compute 3D quadrature integration of function f  
+!> @brief Compute 3D quadrature integration of function f  
 !-----------------------------------------------------------------------------  
-!> Function to integrate a function f
 !> @param[in] self the calling quadrature rule
 !> @param[in] f the function to be integrated evaluated on the quadrature points
 function integrate(self,f)
@@ -258,9 +332,8 @@ function integrate(self,f)
 end function integrate
 
 !-----------------------------------------------------------------------------
-! Return quadrature points
+!> @brief function to return the quadrature points in the horizontal
 !-----------------------------------------------------------------------------
-!> Function to return the quadrature points in the horizontal
 !> @param[in] self the calling quadrature rule
 !> @param[in] xgp_h the array to copy the quadrature points into
 function get_xqp_h(self) result(xqp_h)
@@ -272,7 +345,7 @@ function get_xqp_h(self) result(xqp_h)
   return
 end function get_xqp_h
 
-!> Function to return the quadrature points in the vertical
+!> @brief Function to return the quadrature points in the vertical
 !> @param[in] self the calling quadrature rule
 !> @param[in] xqp_v the array to copy the quadrature points into
 function get_xqp_v(self) result(xqp_v)
@@ -313,9 +386,8 @@ end function get_nqp_h
 
 
 !-----------------------------------------------------------------------------
-! Return Horizontal quadrature weights 
+!> @brief Function to return the quadrature points in the horizontal
 !-----------------------------------------------------------------------------
-!> Function to return the quadrature points in the horizontal
 !> @param[in] self the calling quadrature rule
 !> @param[in] wqp_h the pointer to the quadrature weights
 function get_wqp_h(self) result(wqp_h)
@@ -328,9 +400,8 @@ function get_wqp_h(self) result(wqp_h)
 end function get_wqp_h 
 
 !-----------------------------------------------------------------------------
-! Return Vertical quadrature weights 
+!> @brief Function to return the quadrature points in the horizontal
 !-----------------------------------------------------------------------------
-!> Function to return the quadrature points in the horizontal
 !> @param[in] self the calling quadrature rule
 !> @param[in] wgp_v the pointer to the quadrature weights
 function get_wqp_v(self) result(wqp_v)

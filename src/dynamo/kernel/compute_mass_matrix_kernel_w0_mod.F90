@@ -21,9 +21,8 @@ use argument_mod,            only: arg_type, func_type,                      &
                                    GH_OPERATOR, GH_FIELD, GH_READ, GH_WRITE, &
                                    W0, GH_BASIS, GH_DIFF_BASIS, &
                                    CELLS
+use coordinate_jacobian_mod, only: coordinate_jacobian
 
-use coordinate_jacobian_mod, only: coordinate_jacobian,                      &
-                                     coordinate_jacobian_inverse
 implicit none
 
 !-------------------------------------------------------------------------------
@@ -64,12 +63,12 @@ type(compute_mass_matrix_kernel_w0_type) function compute_mass_matrix_constructo
   return
 end function compute_mass_matrix_constructor
   
-subroutine compute_mass_matrix_w0_code(cell, nlayers,               &
-                               ndf, ncell_3d,                 &
-                               basis, mm,                         &
-                               undf, map_chi, diff_basis_chi,      &   ! arrays
-                               chi1, chi2, chi3,                & ! dof vectors
-                               nqp_h, nqp_v, wqp_h, wqp_v )
+subroutine compute_mass_matrix_w0_code(cell, nlayers,                  &
+                                       ndf, ncell_3d,                  &
+                                       basis, mm,                      &
+                                       undf, map_chi, diff_basis_chi,  &
+                                       chi1, chi2, chi3,               & 
+                                       nqp_h, nqp_v, wqp_h, wqp_v )
 !> @brief This subroutine computes the mass matrix for the w0 space
 !! @param[in] cell Integer: The cell number
 !! @param[in] nlayers Integer: The number of layers.
@@ -113,7 +112,7 @@ subroutine compute_mass_matrix_w0_code(cell, nlayers,               &
   real(kind=r_def), dimension(ndf)         :: chi1_e, chi2_e, chi3_e
   real(kind=r_def)                             :: integrand
   real(kind=r_def), dimension(nqp_h,nqp_v)     :: dj
-  real(kind=r_def), dimension(3,3,nqp_h,nqp_v) :: jac, jac_inv
+  real(kind=r_def), dimension(3,3,nqp_h,nqp_v) :: jac
 
   !loop over layers: Start from 1 as in this loop k is not an offset
   do k = 1, nlayers
@@ -128,7 +127,6 @@ subroutine compute_mass_matrix_w0_code(cell, nlayers,               &
 
     call coordinate_jacobian(ndf, nqp_h, nqp_v, chi1_e, chi2_e, chi3_e,  &
                              diff_basis_chi, jac, dj)
-    call coordinate_jacobian_inverse(nqp_h, nqp_v, jac, dj, jac_inv)
 
     do df2 = 1, ndf
        do df = df2, ndf ! mass matrix is symmetric

@@ -2482,6 +2482,212 @@ Results for the 2D gravity wave test simulated using the linear equations
 \end_layout
 
 \begin_layout Standard
+\end_layout
+
+\begin_layout Section
+Results
+\end_layout
+
+\begin_layout Subsection
+Nonlinear Results
+\end_layout
+
+\begin_layout Subsubsection
+Spherical Tests
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /net/home/h06/fra25/Documents/Programs/dynamo/r2228_nonlinear_dynamo/Docs/formulation/figures/GW_375DegL10_theta_t1_xy.eps
+	scale 50
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /net/home/h06/fra25/Documents/Programs/dynamo/r2228_nonlinear_dynamo/Docs/formulation/figures/GW_C24L10K0_theta_t1.eps
+	scale 50
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /net/home/h06/fra25/Documents/Programs/dynamo/r2228_nonlinear_dynamo/Docs/formulation/figures/GW_375DegL10_theta_t1_xz.eps
+	scale 50
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /net/home/h06/fra25/Documents/Programs/dynamo/r2228_nonlinear_dynamo/Docs/formulation/figures/GW_C24L10K0_theta_t1_xz.eps
+	scale 50
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Spherical-Gravity-wave-test"
+
+\end_inset
+
+Gravity wave test with (a) & (c) ENDGame, at 
+\begin_inset Formula $3.75^{o}$
+\end_inset
+
+ resolution (
+\begin_inset Formula $46080$
+\end_inset
+
+ cells) and (b) & (d) Dynamo, on a 
+\begin_inset Formula $C24$
+\end_inset
+
+ grid with lowest order elements (
+\begin_inset Formula $34560$
+\end_inset
+
+ cells).
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The gravity wave test from the dynamical core model intercomparison project
+ (DCMIP: see http://earthsystemcog.
+ org/projects/dcmip-2012/ and http://earthsystemcog.org/site media/docs/DCMIP-Tes
+tCaseDocument v1.7.pdf for detailed descriptions of the test problems) is
+ run with the modification that the constant advecting velocity is removed.
+ To facilate a comparison of results the same test is repeated in ENDGame
+ 
+\begin_inset CommandInset citation
+LatexCommand citet
+key "wood_etal_13_eg"
+
+\end_inset
+
+ at similar resolution.
+ Cross sections of the 
+\begin_inset Formula $\theta$
+\end_inset
+
+ perturbation (difference from backgroud state) are shown in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Spherical-Gravity-wave-test"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
 \begin_inset CommandInset bibtex
 LatexCommand bibtex
 bibfiles "../biblio/master"

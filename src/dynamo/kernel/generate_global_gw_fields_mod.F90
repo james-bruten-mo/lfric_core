@@ -22,6 +22,13 @@ implicit none
 contains
 
 subroutine generate_global_gw_fields (lat, z, exner, u, theta, rho)
+!> @brief Function to generate the background fields for 
+!> the global gravity wave test
+!> @param[in] lat The latitude (radians) of the point to compute the fields at
+!> @param[in] z The height (m) above the mean surface of the point to compute the fields at
+!> @param[out] exner the exner pressure at the desired point
+!> @param[out] theta the potential temperature at the desired point
+!> @param[out] rho the density at the desired point
 
 implicit none
         
@@ -75,6 +82,11 @@ end subroutine generate_global_gw_fields
 pure function generate_global_gw_pert(lon, lat, z) result(theta)
 !> @brief Function to generate the potential temperature pertubation for 
 !> the global gravity wave test
+!> @param[in] lon The longtitude (radians) of the point to compute the field at
+!> @param[in] lat The latitude (radians) of the point to compute the field at
+!> @param[in] z The height (m) above the mean surface of the point to compute the fields at
+!> @result theta the potential temperature perturbation at the desired point
+
 implicit none
 
   real(kind=r_def)              :: theta

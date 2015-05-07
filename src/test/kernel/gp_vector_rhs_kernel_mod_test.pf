@@ -33,6 +33,7 @@ contains
     integer :: nqp_h, nqp_v
     real(kind=r_def) :: fx, fy, fz, dx, dy, dz, t_vec(3)
     integer :: df, dim, qp1, qp2
+    integer, dimension(1) :: orientation
 
     qr => qr%get_instance(QR3, 9, 3)
 
@@ -84,6 +85,7 @@ contains
     basis_f(2,:,:,:) = t_vec(2)
     basis_f(3,:,:,:) = t_vec(3)
     f_data(1) = 5.0_r_def
+    orientation(1) = 1
 
     num_layers=1
     rhs1(:) = 0.0_r_def
@@ -94,14 +96,17 @@ contains
 
     call gp_vector_rhs_code(num_layers, &
                             ndf_w0, undf, map_w0, basis, rhs1, rhs2, rhs3, &
-                            ndf_f, undf_f,map_f, basis_f, f_data, &
+                            ndf_f, undf_f,map_f, basis_f, orientation, f_data, &
                             ndf_w0, undf, map_w0, basis, diff_basis, &
                             chi(:,1), chi(:,2), chi(:,3),  &
                             nqp_h, nqp_v, wh, wv )
-
-    dx = 6000.0_r_def
-    dy = 1000.0_r_def
-    dz = 2000.0_r_def
+! Answers for hardwired jacobian
+!    dx = 6000.0_r_def
+!    dy = 1000.0_r_def
+!    dz = 2000.0_r_def
+    dx = 1.0_r_def
+    dy = 1.0_r_def
+    dz = 1.0_r_def
     answer = 0.125_r_def*f_data(1)
 
     tol    = 1.0e-2_r_def
