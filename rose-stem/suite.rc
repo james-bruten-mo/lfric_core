@@ -148,9 +148,20 @@
         [[[environment]]]
             COMPILER              = {{compiler}}
 
+    {% set database_directory = '/var/tmp/$USER/dynamo/$CYLC_SUITE_NAME' %}
     [[compile_with_{{label}}]]
         inherit = {{family}}, {{family}}_COMPILER, REMOTE
-        command scripting = "make -C $SOURCE_DIRECTORY {{target}}"
+        command scripting = """
+                            (
+                            mkdir -p {{database_directory}}
+                            make -C $SOURCE_DIRECTORY {{target}}
+                            RC=$?
+                            rm -rf {{database_directory}}
+                            exit $RC
+                            )
+                            """
+        [[[environment]]]
+            DYNAMO_DEPENDENCY_DB = {{database_directory}}/{{label}}.db
 
     [[unit_test_with_{{label}}]]
         inherit = {{family}}, {{family}}_COMPILER, REMOTE
