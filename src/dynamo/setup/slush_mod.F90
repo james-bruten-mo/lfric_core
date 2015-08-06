@@ -18,13 +18,6 @@ module slush_mod
 
   implicit none
 
-  !> For a biperiodic mesh, the number of horizontal cells in the x-direction of
-  !> the global domain
-  !> For a cubed-sphere mesh it is the number of cells across a face.
-  integer :: num_cells_x
-  !> Number of horizontal cells in the y-direction of the global domain
-  !> (not used for cubed-sphere meshes)
-  integer :: num_cells_y
   !> Order of the function space
   integer :: element_order
   !> Flag for whether mesh is on a sphere or not
@@ -38,10 +31,6 @@ module slush_mod
   !> Number of dofs in a particular function space (4,:) per entity (:,0:3)
   integer :: w_dof_entity(4,0:3)
 
-  !> Grid spacing in the x-direction
-  real(kind=r_def)  :: dx
-  !> Grid spacing in the y-direction
-  real(kind=r_def)  :: dy
 
   real(kind=r_def)  :: f_lat            ! Latitude for f-plane tests
 
