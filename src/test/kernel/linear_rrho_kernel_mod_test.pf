@@ -23,7 +23,7 @@ contains
                                            field_proxy_type
     use function_space_mod,         only : function_space_type, W0, W2, W3
     use linear_rrho_kernel_mod,     only : linear_rrho_code
-    use constants_mod,              only : r_def, PLANE_BI_PERIODIC
+    use constants_mod,              only : r_def, PLANE_BI_PERIODIC, GRAVITY
     use quadrature_mod,             only : quadrature_type, QR3
     use mesh_mod,                   only : mesh_type
 
@@ -79,6 +79,8 @@ contains
       chi(i) = field_type( vector_space = fs%get_instance(mesh, W0) )
       chi_p(i) = chi(i)%get_proxy()
     end do
+    phi = field_type( vector_space = fs%get_instance( mesh, W0 ) )
+    phi_proxy = phi%get_proxy()
     ! Compute coordinates
     cell = 1
     do j = 1,3
@@ -88,6 +90,7 @@ contains
           chi_p(1)%data(map_w0(1) + k) = real(i-1)*dx
           chi_p(2)%data(map_w0(1) + k) = real(j-1)*dy
           chi_p(3)%data(map_w0(1) + k) = real(k)  *dz
+          phi_proxy%data(map_w0(1) + k) = real(k)  *dz*GRAVITY
         end do
         cell = cell + 1
       end do
@@ -96,11 +99,9 @@ contains
     ! Test kernel
     r_rho = field_type( vector_space = fs%get_instance( mesh, W3 ) )
     u     = field_type( vector_space = fs%get_instance( mesh, W2 ) )
-    phi   = field_type( vector_space = fs%get_instance( mesh, W0 ) )
 
     r_rho_proxy  = r_rho%get_proxy()
     u_proxy      = u%get_proxy()
-    phi_proxy    = phi%get_proxy()
     chi_proxy(1) = chi(1)%get_proxy()
     chi_proxy(2) = chi(2)%get_proxy()
     chi_proxy(3) = chi(3)%get_proxy()
