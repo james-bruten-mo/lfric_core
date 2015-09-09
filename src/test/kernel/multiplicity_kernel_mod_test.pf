@@ -1,0 +1,114 @@
+!-----------------------------------------------------------------------------
+! (c) The copyright relating to this work is owned jointly by the Crown, 
+! Met Office and NERC 2014. 
+! However, it has been created with the help of the GungHo Consortium, 
+! whose members are identified at https://puma.nerc.ac.uk/trac/GungHo/wiki
+!-----------------------------------------------------------------------------
+
+module multiplicity_kernel_mod_test
+
+  implicit none 
+
+
+contains
+
+  @test
+  subroutine multiplicity_kernel_test()
+
+    use pFUnit_Mod
+    use function_space_build_mod,   only : fs_build, fs_destroy
+    use field_mod,                  only : field_type,      &
+                                           field_proxy_type
+    use function_space_mod,         only : function_space_type, W0, W1, W2, W3
+    use multiplicity_kernel_mod,    only : multiplicity_code
+    use constants_mod,              only : r_def, PLANE_BI_PERIODIC
+    use mesh_mod,                   only : mesh_type
+
+   implicit none
+    type(field_type) :: chi(3)
+    type(field_proxy_type )   :: chi_p(3) 
+    type(function_space_type) :: fs
+    type(mesh_type)  :: mesh
+
+    real(kind=r_def) :: tol, answer
+
+    integer :: df, cell
+
+    ! Variables for testing multiplicity
+    type( field_type ) :: m
+
+    integer          :: ndf, undf
+
+    integer, pointer :: map(:) => null()
+
+    type( field_proxy_type ) :: m_p
+    
+    tol = 1.0e-12_r_def  
+
+    ! Dummy mesh mod has 9 cells, 3 layers
+    mesh = mesh_type(PLANE_BI_PERIODIC)
+
+    ! build some function spaces ...
+    call fs_build(mesh)
+
+    ! Test multiplicity computation for W1
+    m = field_type( vector_space = fs%get_instance( mesh, W1 ) )
+    m_p    = m%get_proxy()
+
+    ndf  = m_p%vspace%get_ndf( )
+    undf = m_p%vspace%get_undf( )
+    
+    m_p%data(:) = 0.0_r_def
+    do cell = 1,m_p%vspace%get_ncell()
+      map => m_p%vspace%get_cell_dofmap( cell )
+    
+    call multiplicity_code(m_p%vspace%get_nlayers(), &
+                          m_p%data, & 
+                          ndf, & 
+                          undf, &
+                          map &
+                          )
+    end do 
+    map => m_p%vspace%get_cell_dofmap( 1 )
+    answer = 2.0_r_def
+    do df = 1,4
+      @assertEqual(answer, m_p%data(map(df) ), tol)
+    end do
+    answer = 4.0_r_def
+    do df = 5,12
+      @assertEqual(answer, m_p%data(map(df) ), tol)
+    end do
+
+    ! Test multiplicity computation for W2
+    m = field_type( vector_space = fs%get_instance( mesh, W2 ) )
+    m_p    = m%get_proxy()
+
+    ndf  = m_p%vspace%get_ndf( )
+    undf = m_p%vspace%get_undf( )
+    
+    m_p%data(:) = 0.0_r_def
+    do cell = 1,m_p%vspace%get_ncell()
+      map => m_p%vspace%get_cell_dofmap( cell )
+    
+    call multiplicity_code(m_p%vspace%get_nlayers(), &
+                          m_p%data, & 
+                          ndf, & 
+                          undf, &
+                          map &
+                          )
+    end do 
+    map => m_p%vspace%get_cell_dofmap( 1 )
+    answer = 2.0_r_def
+    do df = 1,4
+      @assertEqual(answer, m_p%data(map(df) ), tol)
+    end do
+    answer = 1.0_r_def
+    @assertEqual(answer, m_p%data(map(5) ), tol)
+    answer = 2.0_r_def
+    @assertEqual(answer, m_p%data(map(6) ), tol)
+    !tear down ...
+    call fs_destroy()
+  
+  end subroutine multiplicity_kernel_test
+
+end module multiplicity_kernel_mod_test

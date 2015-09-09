@@ -12,13 +12,23 @@ module iter_timestep_alg_mod
                                 log_scratch_space, &
                                 LOG_LEVEL_INFO,    &
                                 LOG_LEVEL_TRACE
+  use constants_mod,                     only: r_def, SOLVER_OPTION, DT, NT, &
+                                               L_NEWTON_KRYLOV, &
+                                               N_OUTER_ITER, N_INNER_ITER, &
+                                               ALPHA, BETA
 
-  ! PsyKAl lite kernels
+  ! PsyKAl-lite kernels
   use psy,                               only: invoke_axpby,                   &
                                                invoke_plus_field_data,         &
                                                invoke_minus_field_data,        &
                                                invoke_copy_field_data,         &
                                                invoke_set_field_scalar
+  use field_bundle_mod,                  only: clone_bundle, & 
+                                               bundle_axpy, & 
+                                               bundle_axpby, &
+                                               add_bundle, &
+                                               copy_bundle
+
   ! PsyKAl PSYClone kernels
   use initial_theta_kernel_mod,          only: initial_theta_kernel_type
   use compute_mass_matrix_kernel_w0_mod, only: compute_mass_matrix_kernel_w0_type
@@ -31,17 +41,17 @@ module iter_timestep_alg_mod
   use mesh_mod,                          only: mesh_type
   use field_mod,                         only: field_type
   use function_space_mod,                only: function_space_type, W0, W1, W2, W3
-  use solver_mod,                        only: solver_algorithm
-  use constants_mod,                     only: r_def, SOLVER_OPTION, DT, NT
   use quadrature_mod,                    only: quadrature_type, QR3
   use operator_mod,                      only: operator_type
   use runtime_constants_mod,             only: runtime_constants_type
 
   ! Algorithms
+  use solver_mod,                        only: solver_algorithm
   use conservation_algorithm_mod,        only: conservation_algorithm
   use rhs_alg_mod,                       only: rhs_alg
   use advection_alg_mod,                 only: advection_alg
   use output_alg_mod,                    only: output_alg
+  use si_solver_alg_mod,                 only: si_solver_alg
 
   implicit none
 
@@ -79,9 +89,7 @@ contains
     ! prognostic fields    
     type( field_type ), intent( inout ) :: u, rho, theta, xi
     ! temporary fields    
-    type( field_type ) :: r_u, r_rho, r_theta,       &
-                          u_inc, theta_inc, &
-                          geopotential
+    type( field_type ) :: geopotential
 
     type( field_type ) :: state_n(3), state_np1(3), state_adv(3)
     type( field_type ) :: rhs_n(3), rhs_np1(3), rhs_adv(3)
@@ -99,11 +107,7 @@ contains
 
     ! Iterative timestepping variables
     integer            :: n
-    integer, parameter :: N_OUTER_ITER = 2
-    integer, parameter :: N_INNER_ITER = 2
     integer            :: outer, inner
-    real(kind=r_def), parameter :: ALPHA = 0.5_r_def
-    real(kind=r_def), parameter :: BETA = (1.0_r_def - ALPHA)
 
     !=== Section 1: Create field objects =====================================!
     ! Local fields
@@ -113,29 +117,18 @@ contains
 
     qr => qr%get_instance(QR3,9,3)
 
+    ! Create field bundles
+     state_np1(1) = field_type( vector_space = fs%get_instance(mesh, u_fs) )
+     state_np1(2) = field_type( vector_space = fs%get_instance(mesh, theta_fs) )
+     state_np1(3) = field_type( vector_space = fs%get_instance(mesh, rho_fs) )
+     call clone_bundle(state_np1, state_adv, mesh, 3)
+     call clone_bundle(state_np1, state_n,   mesh, 3)
+     call clone_bundle(state_np1, rhs_n,     mesh, 3)
+     call clone_bundle(state_np1, rhs_np1,   mesh, 3)
+     call clone_bundle(state_np1, rhs_adv,   mesh, 3)
+    
     ! Create W0 fields needed for timestepping
-    r_theta      = field_type( vector_space = fs%get_instance(mesh, theta_fs) )
-    theta_inc    = field_type( vector_space = fs%get_instance(mesh, theta_fs) )
     geopotential = field_type( vector_space = fs%get_instance(mesh, theta_fs) )
-    rhs_n(2)   = field_type( vector_space = fs%get_instance(mesh, theta_fs) )
-    rhs_np1(2) = field_type( vector_space = fs%get_instance(mesh, theta_fs) )
-    rhs_adv(2) = field_type( vector_space = fs%get_instance(mesh, theta_fs) )
-    state_adv(2) = field_type( vector_space = fs%get_instance(mesh, theta_fs) )
-
-    ! Create W2 fields needed for timestepping
-    r_u       = field_type( vector_space = fs%get_instance(mesh, u_fs) )
-    u_inc     = field_type( vector_space = fs%get_instance(mesh, u_fs) )
-    rhs_n(1)   = field_type( vector_space = fs%get_instance(mesh, u_fs) )
-    rhs_np1(1) = field_type( vector_space = fs%get_instance(mesh, u_fs) )
-    rhs_adv(1) = field_type( vector_space = fs%get_instance(mesh, u_fs) )
-    state_adv(1) = field_type( vector_space = fs%get_instance(mesh, u_fs) )
-
-    ! Create W3 fields needed for timestepping
-    r_rho     = field_type( vector_space = fs%get_instance(mesh, rho_fs) )
-    rhs_n(3)   = field_type( vector_space = fs%get_instance(mesh, rho_fs) )
-    rhs_np1(3) = field_type( vector_space = fs%get_instance(mesh, rho_fs) )
-    rhs_adv(3) = field_type( vector_space = fs%get_instance(mesh, rho_fs) )
-    state_adv(3) = field_type( vector_space = fs%get_instance(mesh, rho_fs) )
 
     ! Create operators needed for timestepping
     mm_w0 = operator_type(fs%get_instance(mesh, W0),fs%get_instance(mesh, W0))
@@ -156,7 +149,7 @@ contains
 
     ! Create fixed state container
     runtime_constants = runtime_constants_type(mesh, chi, geopotential, &
-                                             mm_w0, mm_w1, mm_w2)
+                                               mm_w0, mm_w1, mm_w2)
 
     !=== Intial output and output frequency ==================================! 
     call output_alg(0, theta, u, rho, chi, mesh, mm_w0)
@@ -165,64 +158,37 @@ contains
     output_freq = NT
 
     !=== Section 3: Timestepping =============================================!
+    call invoke_copy_field_data(u,     state_np1(1))
+    call invoke_copy_field_data(theta, state_np1(2))
+    call invoke_copy_field_data(rho,   state_np1(3))
     do n = 1,NT
       call log_event( "/****************************************************************************\ ", &
                       LOG_LEVEL_TRACE )
       write( log_scratch_space, '(A,I0)' ) 'Start of timestep ', n
       call log_event( log_scratch_space, LOG_LEVEL_INFO )
       ! Time level n fields
-      state_n(1) = u
-      state_n(2) = theta
-      state_n(3) = rho
-      call rhs_alg(rhs_n, BETA*DT, state_n, runtime_constants)
+      call copy_bundle(state_np1, state_n, 3)
+      call rhs_alg(rhs_n, BETA*DT, state_n, runtime_constants, .false.)
       !=== Section 3.1:  Outer (advection loop) ==============================!
       do outer = 1,N_OUTER_ITER
         ! Set advecting velocity & terms
-        call invoke_axpby( ALPHA, u,     BETA, state_n(1), state_adv(1) ) 
-        call invoke_axpby( ALPHA, theta, BETA, state_n(2), state_adv(2) ) 
-        call invoke_axpby( ALPHA, rho,   BETA, state_n(3), state_adv(3) )
-        call advection_alg(rhs_adv, state_adv, (/u,theta,rho/), state_n,  &
+        call bundle_axpby(ALPHA, state_np1, BETA, state_n, state_adv, 3)
+        call advection_alg(rhs_adv, state_adv, state_np1, state_n,  &
                                                   xi, runtime_constants)
-
         !=== Section 3.2: Inner (nonlinear, coriolis loop) ===================!
         do inner = 1,N_INNER_ITER
-
-          ! Construct rhs terms
-          state_np1(1) = u
-          state_np1(2) = theta
-          state_np1(3) = rho
-          call rhs_alg(rhs_np1, -ALPHA*DT, state_np1, runtime_constants)
-
-          ! Add on advective terms: rhs = rhs_n - rhs_np1 + rhs_adv
-          call invoke_minus_field_data( rhs_n(1), rhs_np1(1),  r_u )
-          call invoke_plus_field_data ( rhs_adv(1), r_u,  r_u )
-
-          call invoke_minus_field_data( rhs_n(2), rhs_np1(2),  r_theta )
-          call invoke_plus_field_data ( rhs_adv(2), r_theta,  r_theta )
-
-          call invoke_minus_field_data( rhs_n(3), rhs_np1(3),  r_rho )
-          call invoke_plus_field_data ( rhs_adv(3), r_rho,  r_rho )
+          call rhs_alg(rhs_np1, -ALPHA*DT, state_np1, runtime_constants, .false.)
 
           ! === Section 3.3: Solve for increments ============================!
-          ! Solve for u
-          call invoke_set_field_scalar( 0.0_r_def, u_inc )
-          call solver_algorithm(u_inc, r_u, mesh, chi, SOLVER_OPTION, mm=mm_w2)
-          call invoke_plus_field_data( u_inc, u, u ) 
-          ! Solve for theta
-          call invoke_set_field_scalar( 0.0_r_def, theta_inc )
-          call solver_algorithm(theta_inc, r_theta, mesh, chi, SOLVER_OPTION, &
-                                mm=mm_w0)
-          call invoke_plus_field_data( theta_inc, theta, theta )
-          ! Solve for rho
-          call invoke_plus_field_data( r_rho, rho, rho ) 
+          ! Add on advective terms: rhs = rhs_n - rhs_np1 + rhs_adv
+          ! (reuse rhs_np1 for rhs)
+          call bundle_axpy(-1.0_r_def, rhs_np1, rhs_n, rhs_np1, 3)
+          call add_bundle(rhs_np1, rhs_adv, rhs_np1, 3)
 
-          ! diagnostics
-          write( log_scratch_space, '(A,3I4)' ) &
-             'Increments from solve: ', n, outer, inner
+          write( log_scratch_space, '(A,I6,2I3)' ) &
+              'loop indices (n, o, i): ', n, outer, inner
           call log_event( log_scratch_space, LOG_LEVEL_INFO )
-          call theta_inc%log_minmax(LOG_LEVEL_INFO, 'theta_inc ')
-          call u_inc%log_minmax(LOG_LEVEL_INFO,     'u_inc     ')
-          call r_rho%log_minmax(LOG_LEVEL_INFO,     'rho_inc   ')
+          call si_solver_alg(state_np1, rhs_np1, state_n, runtime_constants)
           !=== End Section 3.3 ===============================================!         
         end do
         !=== End Section 3.2 =================================================!
@@ -230,10 +196,9 @@ contains
       !=== End Section 3.1 ===================================================!
       !=== Section 3.4: End of timestep diagnostics ==========================!
       if ( mod(n, output_freq) == 0 ) &
-        call output_alg(n, theta, u, rho, chi, mesh, mm_w0)
-
-      call conservation_algorithm(n, mesh, rho, u, theta, xi, &
-                                  geopotential, chi)
+         call output_alg(n, state_np1(2), state_np1(1), state_np1(3), chi, mesh, mm_w0)
+         call conservation_algorithm(n, mesh, state_np1(3), state_np1(1), state_np1(2), xi, &
+                                     geopotential, chi)
 
       write( log_scratch_space, '(A,I0)' ) 'End of timestep ', n
       call log_event( log_scratch_space, LOG_LEVEL_TRACE )
@@ -241,7 +206,11 @@ contains
                       LOG_LEVEL_TRACE )
       !=== End of Section 3.4 ================================================!
     end do
-    
+    ! Return fields in u, theta, rho arrays
+     call invoke_copy_field_data(state_np1(1), u)
+     call invoke_copy_field_data(state_np1(2), theta)
+     call invoke_copy_field_data(state_np1(3), rho)
+
     call log_event( "Dynamo: finished timestep", LOG_LEVEL_INFO )
     !=== End Section 3.0 ======================================================!
   end subroutine iter_timestep_alg

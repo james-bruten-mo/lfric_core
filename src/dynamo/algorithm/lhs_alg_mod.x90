@@ -1,0 +1,132 @@
+!-------------------------------------------------------------------------------
+! (c) The copyright relating to this work is owned jointly by the Crown,
+! Met Office and NERC 2014.
+! However, it has been created with the help of the GungHo Consortium,
+! whose members are identified at https://puma.nerc.ac.uk/trac/GungHo/wiki
+!-------------------------------------------------------------------------------
+
+!>@brief wrapper algorithm to compute the lhs of the prognostic
+!>       equations
+module lhs_alg_mod
+  use psy,                               only: invoke_axpy,                   &
+                                               invoke_set_field_scalar,       &
+                                               invoke_sample_flux_kernel,     &
+                                               invoke_copy_field_data
+
+  use rtheta_kernel_mod,                 only: rtheta_kernel_type
+  use ru_kernel_mod,                     only: ru_kernel_type
+  use rrho_kernel_mod,                   only: rrho_kernel_type
+  use pert_pressure_gradient_kernel_mod, only: pert_pressure_gradient_kernel_type
+  use matrix_vector_mm_mod,              only: matrix_vector_kernel_mm_type
+  use multiplicity_kernel_mod,           only: multiplicity_kernel_type
+  use w3_solver_kernel_mod,              only: w3_solver_kernel_type
+
+  use mesh_mod,                          only: mesh_type
+  use field_mod,                         only: field_type
+  use constants_mod,                     only: r_def
+  use quadrature_mod,                    only: quadrature_type, QR3
+  use operator_mod,                      only: operator_type
+  use function_space_mod,                only: function_space_type
+  use runtime_constants_mod,             only: runtime_constants_type
+  use field_bundle_mod,                  only: clone_bundle
+  implicit none
+
+  private
+  public :: lhs_alg
+
+contains
+!>@details A wrapper for computing the lhs of the prognostic
+!>         equations by choosing certain terms to approximate the 
+!>         Jacobian, namely:
+!>         \f[
+!>         \mathbf{L_u} = \mathbf{u}' 
+!>                      + \alpha\Delta t Cp\left( \theta^*\nabla\Pi' 
+!>                                                +\theta'\nabla\Pi^*\right)
+!>         \f]
+!>         \f[ L_\rho = \rho' 
+!>                    + \alpha\Delta t\nabla.\left(\rho^*\mathbf{u}'\right) \f]
+!>         \f[ L_\theta = \theta' + \alpha\Delta t\mathbf{u}'.\nabla\theta^*\f]
+!>       
+!>         Where primed terms are increments to the n+1 timelevel field and
+!>         star terms are a reference profile
+!> @param[inout] lhs The state vector to compute
+!> @param[in]    alpha_dt The offcentring parameter times the timestep
+!> @param[inout] state The current model prognostic state
+!> @param[in]    runtime_constants Runtime constants for the model
+!> @param[in]    l_newton_krylov true if computing timelevel n+1 terms 
+  subroutine lhs_alg(lhs, alpha_dt, state, ref_state, runtime_constants)
+  
+  implicit none
+
+  real(kind=r_def),             intent(in)    :: alpha_dt
+  ! Form of state and lhs is [u,theta,rho] & [lhs_u,lhs_theta,lhs_rho]
+  type(field_type), target,     intent(inout) :: state(3), ref_state(3)
+  type(field_type),             intent(inout) :: lhs(3)
+  type(runtime_constants_type), intent(in)    :: runtime_constants
+
+  type(field_type), pointer :: chi(:)=> null()
+  type(operator_type), pointer :: mm_w2, mm_w0 => null()
+  type(mesh_type), pointer    :: mesh => null()
+
+  type( quadrature_type ), pointer :: qr => null()
+  type(field_type), pointer :: u ,theta, rho, u_ref, theta_ref, rho_ref
+  type(field_type)          :: ones, f_star, w2_multiplicity 
+  type(function_space_type) :: fs
+  integer                   :: u_fs, rho_fs
+  type(field_type)          :: lhs_tmp(3)
+
+  mesh         => runtime_constants%get_mesh()
+  mm_w0        => runtime_constants%get_mass_matrix(0)
+  mm_w2        => runtime_constants%get_mass_matrix(2)
+  chi          => runtime_constants%get_coordinates()
+
+  u     => state(1)
+  theta => state(2)
+  rho   => state(3)
+
+  u_ref     => ref_state(1)
+  theta_ref => ref_state(2)
+  rho_ref   => ref_state(3)
+
+  call clone_bundle(lhs, lhs_tmp, mesh, 3)
+
+  qr => qr%get_instance(QR3,9,3)
+
+  ! Compute lhs_u
+  call invoke_set_field_scalar( 0.0_r_def, lhs_tmp(1) )
+  call invoke_set_field_scalar( 0.0_r_def, lhs(1) )
+  call invoke( pert_pressure_gradient_kernel_type( lhs_tmp(1), rho, rho_ref, &
+                                                   theta, theta_ref, qr ), &
+               matrix_vector_kernel_mm_type( lhs(1), u, mm_w2) )
+  call invoke( ru_kernel_type( lhs_tmp(1) ) )
+  call invoke_axpy( alpha_dt, lhs_tmp(1), lhs(1), lhs(1) ) 
+ 
+  ! Compute lhs_theta
+  rho_fs = rho%which_function_space()  
+  ones = field_type( vector_space = fs%get_instance(mesh, rho_fs) )
+  call invoke_set_field_scalar( 1.0_r_def, ones )
+  call invoke_set_field_scalar( 0.0_r_def, lhs_tmp(2) )
+  call invoke_set_field_scalar( 0.0_r_def, lhs(2) )
+  call invoke( rtheta_kernel_type( lhs_tmp(2), theta_ref, u, ones, qr), & 
+               matrix_vector_kernel_mm_type( lhs(2), theta, mm_w0) )
+  call invoke_axpy( alpha_dt, lhs_tmp(2), lhs(2), lhs(2) ) 
+
+  ! Compute lhs_rho
+  ! Need to create u*rho^ref \in W2 for lhs_tmp(3) kernel -> sampled mass flux
+  u_fs = u%which_function_space()  
+  w2_multiplicity = field_type( vector_space = fs%get_instance(mesh, u_fs) )
+  call invoke_set_field_scalar( 0.0_r_def, w2_multiplicity )
+  call invoke ( multiplicity_kernel_type( w2_multiplicity ) )
+  f_star = field_type( vector_space = fs%get_instance(mesh, u_fs) )
+  call invoke_set_field_scalar( 0.0_r_def, f_star )
+  call invoke_sample_flux_kernel( f_star, u, w2_multiplicity, rho_ref )
+
+  call invoke( rrho_kernel_type( lhs_tmp(3), f_star, qr ) )  
+  call invoke( w3_solver_kernel_type(lhs_tmp(3), lhs_tmp(3), chi, qr) )
+  call invoke_axpy( alpha_dt, lhs_tmp(3), rho, lhs(3) )
+
+  end subroutine lhs_alg
+
+end module lhs_alg_mod
+
+

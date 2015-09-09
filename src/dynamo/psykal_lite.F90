@@ -1495,5 +1495,83 @@ contains
       y_proxy%data(i) = a*x_proxy%data(i)
     end do
   end subroutine invoke_multiply_field
+!-------------------------------------------------------------------------------   
+  subroutine invoke_sample_flux_kernel(flux, u, multiplicity, q)
+    use sample_flux_kernel_mod, only: sample_flux_code
+    implicit none
+
+    type(field_type), intent(in)    :: u, multiplicity, q
+    type(field_type), intent(inout) :: flux
+
+    type(field_proxy_type)          :: u_p, m_p, q_p, flux_p
+    
+    integer                 :: cell, nlayers
+    integer                 :: ndf_f, ndf_q
+    integer                 :: undf_f, undf_q
+    integer                 :: dim_q
+    integer, pointer        :: map_f(:), map_q(:) => null()
+
+    real(kind=r_def), allocatable  :: basis_q(:,:,:)
+
+    real(kind=r_def), pointer :: nodes(:,:) => null()
+
+    u_p    = u%get_proxy()
+    q_p    = q%get_proxy()
+    m_p    = multiplicity%get_proxy()
+    flux_p = flux%get_proxy()
+
+    nlayers = flux_p%vspace%get_nlayers()
+
+    ndf_f  = flux_p%vspace%get_ndf( )
+    undf_f = flux_p%vspace%get_undf()
+
+    ndf_q  = q_p%vspace%get_ndf( )
+    dim_q  = q_p%vspace%get_dim_space( )
+    undf_q = q_p%vspace%get_undf()
+    allocate(basis_q(dim_q, ndf_q, ndf_f))
+
+    nodes => flux_p%vspace%get_nodes( )
+    call q_p%vspace%compute_nodal_basis_function(basis_q, ndf_q, ndf_f, nodes)    
+
+    do cell = 1, flux_p%vspace%get_ncell()
+       map_f => flux_p%vspace%get_cell_dofmap( cell )
+       map_q => q_p%vspace%get_cell_dofmap( cell )
+       call sample_flux_code(nlayers, & 
+                             flux_p%data, & 
+                             m_p%data, &
+                             u_p%data, &
+                             q_p%data, &
+                             ndf_f, & 
+                             undf_f, &
+                             map_f, &
+                             ndf_q, &
+                             undf_q, &
+                             map_q, &
+                             basis_q &
+                            )
+    end do
+
+  end subroutine invoke_sample_flux_kernel
+!-------------------------------------------------------------------------------   
+!> invoke_field_delta: compute delta, a small perturbation to a field
+  subroutine invoke_compute_delta(delta, norm, x)
+    implicit none
+    type( field_type ), intent(in)    :: x
+    real(kind=r_def),   intent(in)    :: norm
+    real(kind=r_def),   intent(out)   :: delta
+    type( field_proxy_type)           :: x_proxy
+    integer                           :: i,undf
+    real(kind=r_def), parameter       :: delta0 = 1.0e-6_r_def
+
+    x_proxy = x%get_proxy()
+
+    undf = x_proxy%vspace%get_undf()
+    
+    delta = 0.0_r_def
+    do i = 1,undf
+      delta = delta + delta0*abs(x_proxy%data(i)) + delta0
+    end do
+    delta = delta/(real(undf)*norm)
+  end subroutine invoke_compute_delta
 
   end module psy

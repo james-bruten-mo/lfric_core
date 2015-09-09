@@ -1,0 +1,70 @@
+!-----------------------------------------------------------------------------
+! (c) The copyright relating to this work is owned jointly by the Crown, 
+! Met Office and NERC 2014. 
+! However, it has been created with the help of the GungHo Consortium, 
+! whose members are identified at https://puma.nerc.ac.uk/trac/GungHo/wiki
+!-----------------------------------------------------------------------------
+
+module mm_diagonal_kernel_mod_test
+  implicit none 
+
+
+contains
+
+  @test
+  subroutine mm_diagonal_kernel_test()
+
+    use pFUnit_Mod
+    use mm_diagonal_kernel_mod,     only : mm_diagonal_kernel_code
+    use constants_mod,              only : r_def
+
+   implicit none
+    real(kind=r_def), allocatable :: mm(:,:,:)
+    real(kind=r_def), allocatable :: mm_diag(:), answer(:)
+    real(kind=r_def) :: tol
+
+    integer :: undf, ndf, ncell, nlayers    
+    integer :: df, cell
+    integer, allocatable :: map(:,:)
+
+    tol = 1.0e-12_r_def  
+
+    ! Make up some function space sizes
+    ncell = 2
+    ndf = 3
+    undf = 5
+    nlayers = 1
+
+    allocate( mm(ndf,ndf,ncell) )
+    allocate( mm_diag(undf) )
+    allocate( map(ndf,ncell) )
+
+    !Fill with some data
+    do cell = 1,2
+      mm(:,1,cell) = (/ 4.0_r_def, 2.0_r_def, 1.0_r_def /)
+      mm(:,2,cell) = (/ 1.0_r_def, 6.0_r_def, 1.0_r_def /)
+      mm(:,3,cell) = (/ 1.0_r_def, 2.0_r_def, 4.0_r_def /)
+    end do
+    map(:,1) = (/ 1, 2, 3 /)
+    map(:,2) = (/ 3, 4, 5 /)
+    mm_diag(:) = 0.0_r_def
+
+    do cell = 1,ncell
+    
+    call mm_diagonal_kernel_code(cell, &
+                                 nlayers, &
+                                 mm_diag, & 
+                                 ncell, &
+                                 mm, &
+                                 ndf, &
+                                 undf, &
+                                 map(:,cell) &
+                                 )
+    end do 
+    allocate( answer(undf) )
+    answer = (/ 4.0_r_def, 6.0_r_def, 8.0_r_def, 6.0_r_def, 4.0_r_def /)
+    @assertEqual(answer, mm_diag, tol)
+  
+  end subroutine mm_diagonal_kernel_test
+
+end module mm_diagonal_kernel_mod_test

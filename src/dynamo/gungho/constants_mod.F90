@@ -116,7 +116,7 @@ module constants_mod
   integer (kind=i_def), parameter :: NO_PRE_COND       = -1 !< No preconditioner option.
   integer (kind=i_def), parameter :: DIAGONAL_PRE_COND = 1  !< Diagonal preconditioner option.
   real(kind=r_def),     parameter :: SOLVER_TOL = 1.0e-4_r_def !< Relative tolerance of solver.
-  integer (kind=i_def), parameter :: GCRK  = 4                 !< Dimension of the approximate Krylov subspace.
+  integer (kind=i_def), parameter :: GCRK  = 32                !< Dimension of the approximate Krylov subspace.
                                                                !< In other words, it is the number of potential 
                                                                !< residual vectors to calculate at each iteration 
                                                                !< of the solver
@@ -132,23 +132,31 @@ module constants_mod
   integer(i_def), parameter :: PLANE             = 1
   integer(i_def), parameter :: PLANE_BI_PERIODIC = 2
   
- !> @}
- !> @name Formulation switches
- logical, parameter :: L_NONLINEAR     = .true. !< Solve the full nonlinear equation set
- logical, parameter :: L_SEMI_IMPLICIT = .true. !< Use the iterative timestepping method or runge kutta method
- logical, parameter :: L_ROTATING      = .true. !< Turn on/off Coriolis terms
- logical, parameter :: L_SUPG          = .false. !< Use Streamline-Upwind-Petrov-Galerkin method for stabilisation of CG advection
-!> @}
+  !> @}
+  !> @name Formulation switches
+  logical, parameter :: L_NONLINEAR     = .true.  !< Solve the full nonlinear equation set
+  logical, parameter :: L_SEMI_IMPLICIT = .true.  !< Use the iterative timestepping method or runge kutta method
+  logical, parameter :: L_ROTATING      = .true.  !< Turn on/off Coriolis terms
+  logical, parameter :: L_NEWTON_KRYLOV = .false. !< Use Newton-Krylov method to compute lhs
+  logical, parameter :: L_SUPG          = .false. !< Use Streamline-Upwind-Petrov-Galerkin method for stabilisation of CG advection
+  !> @}
 
- !> @}
- !> @name Runtime options
- real(kind=r_def),    parameter :: DT = 1.0_r_def !< Timestep in seconds
- integer(kind=i_def), parameter :: NT = 30        !< Number of timesteps to run for
- !> @}
- !> @}
- !> @name Idealised test switches
- logical, parameter :: L_COLD_BUBBLE  = .false. ! Straka density current test (planer domain only)
- logical, parameter :: L_GRAVITY_WAVE = .true.  ! Gravity wave test (either planer or spherical)
- !> @}
+  !> @}
+  !> @name Runtime options
+  real(kind=r_def),    parameter :: DT = 10.0_r_def !< Timestep in seconds
+  integer(kind=i_def), parameter :: NT = 3          !< Number of timesteps to run for
+  !> @}
+  !> @}
+  !> @name Idealised test switches
+  logical, parameter :: L_COLD_BUBBLE  = .false. ! Straka density current test (planer domain only)
+  logical, parameter :: L_GRAVITY_WAVE = .true.  ! Gravity wave test (either planer or spherical)
+  !> @}
+  !> @}
+  !> @name Iterative timestepping options
+  integer, parameter :: N_OUTER_ITER = 2 !< Number of outer (advection) iterations to do
+  integer, parameter :: N_INNER_ITER = 2 !< Number of inner (Newton) iterations to do
+  real(kind=r_def), parameter :: ALPHA = 0.5_r_def !< Time off-centering parameter
+  real(kind=r_def), parameter :: BETA = (1.0_r_def - ALPHA) !< 1 - Time off-centering parameter
+  !> @}
 end module constants_mod
 

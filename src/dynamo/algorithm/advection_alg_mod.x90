@@ -27,7 +27,7 @@ module advection_alg_mod
   use operator_mod,                      only: operator_type
   use function_space_mod,                only: function_space_type
   use runtime_constants_mod,             only: runtime_constants_type
-
+  use field_bundle_mod,                  only: bundle_ax
   implicit none
 
   private
@@ -43,6 +43,7 @@ contains
 !>
 !>         Mass flux: \f[ \mathbf{F} = \mathbf{u}\rho \f]
 !>         Vorticity: \f[ \xi = \nabla\times\mathbf{u} \f]
+!>
 !> @param[inout] advection Field array containing the advective terms
 !> @param[in]    state Field array. Current state of the model prognostics (u, theta, rho)
 !> @param[in]    xi The relative vorticity field
@@ -111,7 +112,6 @@ contains
   call invoke_set_field_scalar( 0.0_r_def, advection(1) ) 
   call invoke( vorticity_advection_kernel_type( advection(1), mass_flux, rho, xi, chi, qr ) )
   call invoke( ru_kernel_type( advection(1) ) )
-  call invoke_multiply_field( DT, advection(1), advection(1) )
 
   ! 3) theta_advection dt*( F/rho . grad(theta) )
   call invoke_set_field_scalar( 0.0_r_def, advection(2) )
@@ -123,6 +123,9 @@ contains
   ! 4) divergence of mass flux: dt * M3^-1(div(F))
   call invoke( rrho_kernel_type( r_rho, mass_flux, qr ) )
   call solver_algorithm( advection(3), r_rho, mesh, chi, SOLVER_OPTION, qr=qr )
+
+  ! Add in Dt factor
+  call bundle_ax( DT, advection, advection, 3 )
 
   end subroutine advection_alg
 
