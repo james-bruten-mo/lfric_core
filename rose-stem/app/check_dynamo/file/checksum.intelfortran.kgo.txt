@@ -4,4 +4,3 @@ Fraction checksum theta = 0.1129321855945169
 Exponent checksum theta = 311040
 Fraction checksum u = 0.5553333322185431
 Exponent checksum u = 479254
-
