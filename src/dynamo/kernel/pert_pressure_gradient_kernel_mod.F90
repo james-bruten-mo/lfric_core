@@ -103,7 +103,6 @@ subroutine pert_pressure_gradient_code(nlayers,                                 
   integer, dimension(ndf_w2), intent(in) :: map_w2
   integer, dimension(ndf_w3), intent(in) :: map_w3
   
-
   real(kind=r_def), dimension(1,ndf_w3,nqp_h,nqp_v), intent(in) :: w3_basis  
   real(kind=r_def), dimension(3,ndf_w2,nqp_h,nqp_v), intent(in) :: w2_basis 
   real(kind=r_def), dimension(1,ndf_w0,nqp_h,nqp_v), intent(in) :: w0_basis 
@@ -164,7 +163,6 @@ subroutine pert_pressure_gradient_code(nlayers,                                 
                           + theta_ref_e(df)*w0_basis(1,df,qp1,qp2)
           grad_theta_ref_at_quad(:) = grad_theta_ref_at_quad(:) &
                                 + theta_ref_e(df)*w0_diff_basis(:,df,qp1,qp2) 
-
         end do
 
         exner_ref_at_quad = calc_exner_pointwise(rho_ref_at_quad, &
@@ -176,20 +174,18 @@ subroutine pert_pressure_gradient_code(nlayers,                                 
         do df = 1, ndf_w2
           v  = w2_basis(:,df,qp1,qp2)
           dv = w2_diff_basis(1,df,qp1,qp2)
-
           ! theta_prime * grad(exner_ref) term
-          grad_term = cp*exner_ref_at_quad * (                       & 
+          grad_term = cp*exner_ref_at_quad * (                       &
                       theta_at_quad * dv                             &
                     + dot_product( grad_theta_at_quad(:),v)          &
                                          )
           ! theta_ref * grad(exner_prime) term
-          grad_term = grad_term + cp*exner_at_quad * (               & 
+          grad_term = grad_term + cp*exner_at_quad * (               &
                       theta_ref_at_quad * dv                         &
                     + dot_product( grad_theta_ref_at_quad(:),v)      &
                                          )
 
           ru_e(df) = ru_e(df) +  wqp_h(qp1)*wqp_v(qp2)*grad_term
-
         end do
       end do
     end do

@@ -530,48 +530,153 @@ The same method can be applied to the nonlinear equations \eqref{eq:nonlinear_mo
 
 \subsection{Semi-Implicit Timestepping}
 
-The governing equations with some estimate $y^{(k)}$ for variable
-$y$ at time level $n+1$ are:
+The governing equations can be compactly written as 
+\begin{equation}
+\mathbf{R}\left(\mathbf{x}\right)=0,\label{eq:residual}
+\end{equation}
+with state vector $\mathbf{x}\equiv\left[\mathbf{u},\:\theta,\,\rho\right]^{T}$
+and the residual term $\mathbf{R}\equiv\left[R_{\mathbf{u}},\,R_{\theta},\,R_{\rho}\right]^{T}$.
+Each component is given by the combination of a time-level $n$ term,
+$R^{n}$, an advective term, $R^{adv}$, and the time-level $n+1$
+term $R^{n+1}$, where the temporal averaging between $n+1$ and $n$
+time-levels is possibly offcentred, using the parameter $\alpha$.
+For $\alpha=1/2$ this corresponds to a Crank-Nicolson method. The
+advection terms use some (as yet unspecified) form of temporal integeration
+(possibly offcentred in the same manner as the other terms) and are
+denoted by fields with a $\widetilde{}$. For each individual component
+of the spatially continuous state the residual components are given
+by
+\begin{eqnarray}
+R_{\mathbf{u}}^{n+1} & = & \mathbf{u}^{n+1}+\alpha\Delta t\left[\nabla\left(\Phi+K^{n+1}\right)+2\bm{\Omega}\times\mathbf{u}^{n+1}+c_{pd}\theta^{n+1}\nabla\Pi^{n+1}\right],\label{eq:Ru_np1_continuous}\\
+R_{\mathbf{u}}^{n} & = & -\mathbf{u}^{n}+\left(1-\alpha\right)\Delta t\left[\nabla\left(\Phi+K^{n}\right)+2\bm{\Omega}\times\mathbf{u}^{n}+c_{pd}\theta^{n}\nabla\Pi^{n}\right],\label{eq:Ru_n_continuous}\\
+R_{\mathbf{u}}^{adv} & = & \Delta t\frac{\bm{\xi}}{\rho}\times\widetilde{\mathbf{F}}\label{eq:Ru_advective}
+\end{eqnarray}
+\begin{eqnarray}
+R_{\theta}^{n+1} & = & \theta^{n+1}\label{eq:Rtheta_np1_continuous}\\
+R_{\theta}^{n} & = & -\theta^{n}\label{eq:Rtheta_n_continous}\\
+R_{\theta}^{adv} & = & \Delta t\frac{\widetilde{\mathbf{F}}}{\rho}.\nabla\theta^{n}\label{eq:Rtheta_advective}
+\end{eqnarray}
+\begin{eqnarray}
+R_{\rho}^{n+1} & = & \rho^{n+1}\label{eq:Rrho_np1_continuous}\\
+R_{\rho}^{n} & = & -\rho^{n}\label{eq:Rrho_n_continous}\\
+R_{\rho}^{adv} & = & \Delta t\nabla.\widetilde{\mathbf{F}}\label{eq:Rrho_advective}
+\end{eqnarray}
+and applying the FEM spatial discretisation, yields 
+\begin{eqnarray}
+R_{\mathbf{u}}^{n+1} & = & \left\langle \mathbf{v},\mathbf{u}^{n+1}\right\rangle -\alpha\Delta t\left[-\left\langle \mathbf{v},\nabla\Phi\right\rangle +\left\langle \nabla.\mathbf{v},K^{n+1}\right\rangle +c_{pd}\left\langle \nabla.\left(\theta^{n+1}\mathbf{v}\right),\Pi^{n+1}\right\rangle -\left\langle \mathbf{v},2\bm{\Omega}\times\mathbf{u}^{n+1}\right\rangle \right],\label{eq:si_ru_np1}\\
+R_{\mathbf{u}}^{n} & = & -\left\langle \mathbf{v},\mathbf{u}^{n}\right\rangle -\left(1-\alpha\right)\Delta t\left[-\left\langle \mathbf{v},\nabla\Phi\right\rangle +\left\langle \nabla.\mathbf{v},K^{n}\right\rangle +c_{pd}\left\langle \nabla.\left(\theta^{n}\mathbf{v}\right),\Pi^{n}\right\rangle -\left\langle \mathbf{v},2\mathbf{\Omega}\times\mathbf{u}^{n}\right\rangle \right],\label{eq:si_ru_n}\\
+R_{\mathbf{u}}^{adv} & = & \Delta t\left\langle \mathbf{v},\left(\frac{\bm{\xi}}{\rho}\right)^{n}\times\widetilde{\mathbf{F}}\right\rangle ,\label{eq:si_ru_adv}\\
+R_{\rho}^{n+1} & = & \left\langle \sigma,\rho^{n+1}\right\rangle ,\label{eq:si_rrho_np1}\\
+R_{\rho}^{n} & = & -\left\langle \sigma,\rho^{n}\right\rangle ,\label{eq:si_rrho_n}\\
+R_{\rho}^{adv} & = & \Delta t\left\langle \sigma,\nabla.\widetilde{\mathbf{F}}\right\rangle ,\label{eq:si_rrho_adv}\\
+R_{\theta}^{n+1} & = & \left\langle \gamma,\theta^{n+1}\right\rangle ,\label{eq:si_rtheta_np1}\\
+R_{\theta}^{n} & = & -\left\langle \gamma,\theta^{n}\right\rangle ,\label{eq:si_rtheta_n}\\
+R_{\theta}^{adv} & = & \Delta t\left\langle \gamma,\frac{\widetilde{\mathbf{F}}}{\widetilde{\rho}}.\nabla\theta^{n}\right\rangle .\label{eq:si_rtheta_adv}
+\end{eqnarray}
+Combining these together, we have 
+\begin{eqnarray}
+R_{\mathbf{u}}^{n+1}+R_{\mathbf{u}}^{n}+R_{\mathbf{u}}^{adv} & = & 0,\label{eq:Ru_combined}\\
+R_{\theta}^{n+1}+R_{\theta}^{n}+R_{\theta}^{adv} & = & 0,\label{eq:Rtheta_combined}\\
+R_{\rho}^{n+1}+R_{\rho}^{n}+R_{\rho}^{adv} & = & 0,\label{eq:Rrho_combined}
+\end{eqnarray}
+which is a nonlinear set of equations for the unknowns $\mathbf{x}^{n+1}=\left[\mathbf{u}^{n+1},\,\theta^{n+1},\,\rho^{n+1}\right]^{T}$. 
 
-\begin{eqnarray}
-\left\langle \mathbf{v},\mathbf{u}'\right\rangle  & =R_{\mathbf{u}}^{(k)}\equiv & -\left\langle \mathbf{v},\mathbf{u}^{(k)}-\mathbf{u}^{n}\right\rangle -\Delta t\left\langle \mathbf{v},\left(\frac{\bm{\xi}}{\rho}\right)^{n}\times\widetilde{\mathbf{F}}\right\rangle \label{eq:si_mom}\\
- &  & +\Delta t\left\{ -\overline{\left\langle \mathbf{v},\nabla\Phi\right\rangle }^{\alpha}+\overline{\left\langle \nabla.\mathbf{v},K\right\rangle }^{\alpha}+c_{pd}\overline{\left\langle \nabla.\left(\theta\mathbf{v}\right),\Pi\right\rangle }^{\alpha}-\overline{\left\langle \mathbf{v},2\bm{\Omega}\times\mathbf{u}\right\rangle }^{\alpha}\right\} ,\nonumber \\
-\left\langle \sigma,\rho'\right\rangle  & =R_{\rho}^{(k)}\equiv & -\left\langle \sigma,\rho^{(k)}-\rho^{n}\right\rangle -\Delta t\left\langle \sigma,\nabla.\widetilde{\mathbf{F}}\right\rangle ,\label{eq:si_continuity}\\
-\left\langle \gamma,\theta'\right\rangle  & =R_{\theta}^{(k)}\equiv & -\left\langle \gamma,\theta^{(k)}-\theta^{n}\right\rangle -\Delta t\left\langle \gamma,\frac{\widetilde{\mathbf{F}}}{\rho}.\nabla\theta^{n}\right\rangle ,\label{eq:si_thermo}
-\end{eqnarray}
-where $y'\equiv y^{(k+1)}-y^{(k)},$ are the increments to the latest
-estimate for timelevel $n+1$ fields and $\overline{y}^{\alpha}\equiv\alpha y^{(k)}+\left(1-\alpha\right)y^{n}$
-is the possibly off-centred time averaging. These can be rewritten
-as
+To solve \eqref{eq:Ru_combined}-\eqref{eq:Rrho_combined} a Newton
+method is used to obtain subsequent estimates $\mathbf{x}^{\left(k\right)}$
+to the unknowns $\mathbf{x}^{n+1}.$ Applying the Newton method to
+\eqref{eq:residual} gives 
+\begin{equation}
+J\mathbf{x}'=-\mathbf{R}\left(\mathbf{x}^{(k)}\right),\label{eq:Newton}
+\end{equation}
+where $\mathbf{x}^{'}\equiv\mathbf{x}^{(k+1)}-\mathbf{x}^{(k)}$ is
+the increment to the state vector, $J$ is the system Jacobian and
+$k$ is the iteration index of the Newton loop, at convergence this
+recovers the Crank-Nicolson discretisation \eqref{eq:residual}. In
+practice $J$ is a large matrix and its inverse is dense, therefore
+so it is desirable to use a method that avoids the explicit computation
+of $J$. 
 
+Two different methods are proposed here, both can be considered forms
+of the Jacobian-Free-Newton-Krylov (JFNK) method \citep{knoll04}
+and differ only in how they approximate the $J\mathbf{x}'$ term.
+Both methods seek to solve \eqref{eq:Newton} at a fixed Newton iterate
+$k$ with a Krylov solver (GMRES is currently used). The first method,
+is a traditional JFNK method and approximates the product $J\mathbf{x}'$
+using a first order finite difference 
+\begin{equation}
+J\mathbf{x}'\approx\frac{\mathbf{R}\left(\mathbf{x}^{(k)}+\delta\mathbf{x}'\right)-\mathbf{R}\left(\mathbf{x}^{(k)}\right)}{\delta},\label{eq:standard_jfnk}
+\end{equation}
+for some small value $\delta$. The second approach is based upon
+some understanding of the physics of the equations being solved and
+approximates the Jacobian $J$ by a linear system 
+\begin{equation}
+J\mathbf{x'}\approx L\mathbf{x'},\label{eq:physics_based_jfnk}
+\end{equation}
+The system $L$ is obtained by linearising $\mathbf{R}$ about some
+reference state $\mathbf{x}^{*}$ to obtain $L\left(\mathbf{x}^{*}\right)=\left[L_{\mathbf{u}},\,L_{\theta},\,L_{\rho}\right]^{T}$
+and then solving $L\mathbf{x}'=-\mathbf{R}\left(\mathbf{x}^{(k)}\right).$
+The form of $L$ implemented in dynamo is 
+\begin{equation}
+L\mathbf{x}'=\begin{cases}
+\mathbf{u}'+\tau\Delta tc_{pd}\left(\theta^{*}\nabla\Pi'+\theta'\nabla\Pi^{*}\right),\\
+\theta'+\tau\Delta t\mathbf{u}'.\nabla\theta^{*},\\
+\rho'+\tau\Delta t\nabla.\left(\rho^{*}\mathbf{u}'\right),
+\end{cases}\label{eq:L}
+\end{equation}
+where $\tau$ is a relaxation parameter. The reference pressure $\Pi^{*}$
+is computed from $\rho^{*}$ and $\theta^{*}$ using the equation
+of state and $\Pi'=\frac{\kappa}{1-\kappa}\Pi^{*}\left(\frac{\theta'}{\theta^{*}}+\frac{\rho'}{\rho^{*}}\right)$
+is a pressure increment.
+
+Due to the expected high relative cost of computing the advective
+terms these are computed outside of the Newton loop and are therefore
+assumed fixed inside of it. The advective terms are recomputed as
+part of an outer advective loop using the latest estimate for the
+advecting wind field. The timestepping process is summarised in Table
+\ref{tab:Iterative-timestepping-algorithm}. As a result of keeping
+the advective terms constant in the Newton loop (i.e. the advection
+is treated explicitly) the traditional JFNK method will not see any
+of the buoyancy and divergence terms for the $\theta$ and $\rho$
+equations respectively and hence will be unstable for the acoustic
+CFL number $\frac{a\Delta t}{\Delta x}>1$ greatly restricting the
+timestep. To get around this, inside the Krylov solver the residual
+$\mathbf{R}$ is evaluated as $\mathbf{R}=\left[R_{\mathbf{u}}^{n+1},\,R_{\theta}^{*},\,R_{\rho}^{*}\right]^{T}$
+where 
 \begin{eqnarray}
-M_{1}\mathbf{u}' & = & R_{\mathbf{u}}^{(k)}\equiv R_{\mathbf{u}}^{n+1}+R_{\mathbf{u}}^{n}+R_{\mathbf{u}}^{adv},\label{eq:si_momentum_operator}\\
-M_{2}\rho' & = & R_{\rho}^{(k)}\equiv R_{\rho}^{n+1}+R_{\rho}^{n}+R_{\rho}^{adv},\label{eq:si_continuity_operator}\\
-M_{\theta}\theta' & = & R_{\theta}^{(k)}\equiv R_{\theta}^{n+1}+R_{\theta}^{n}+R_{\theta}^{adv},\label{eq:si_thermodynamic_operator}
+R_{\theta}^{*} & = & \theta^{n+1}+\tau\Delta t\mathbf{u}^{n+1}.\nabla\mathbf{\theta}^{n+1},\label{eq:Rtheta_jfnk}\\
+R_{\rho}^{*} & = & \rho^{n+1}+\tau\Delta t\nabla.\left(\rho^{n+1}\mathbf{u}^{n+1}\right).\label{eq:Rrho_jfnk}
 \end{eqnarray}
-where
-\begin{eqnarray}
-R_{\mathbf{u}}^{n+1} & = & -\left\langle \mathbf{v},\mathbf{u}^{(k)}\right\rangle +\alpha\Delta t\left[-\left\langle \mathbf{v},\nabla\Phi\right\rangle +\left\langle \nabla.\mathbf{v},K^{(k)}\right\rangle +c_{pd}\left\langle \nabla.\left(\theta^{(k)}\mathbf{v}\right),\Pi^{(k)}\right\rangle -\left\langle \mathbf{v},2\bm{\Omega}\times\mathbf{u}^{(k)}\right\rangle \right],\label{eq:si_ru_np1}\\
-R_{\mathbf{u}}^{n} & = & \left\langle \mathbf{v},\mathbf{u}^{n}\right\rangle +\left(1-\alpha\right)\Delta t\left[-\left\langle \mathbf{v},\nabla\Phi\right\rangle +\left\langle \nabla.\mathbf{v},K^{n}\right\rangle +c_{pd}\left\langle \nabla.\left(\theta^{n}\mathbf{v}\right),\Pi^{n}\right\rangle -\left\langle \mathbf{v},2\mathbf{\Omega}\times\mathbf{u}^{n}\right\rangle \right],\label{eq:si_ru_n}\\
-R_{\mathbf{u}}^{adv} & = & -\Delta t\left\langle \mathbf{v},\left(\frac{\bm{\xi}}{\rho}\right)^{n}\times\widetilde{\mathbf{F}}\right\rangle ,\label{eq:si_ru_adv}\\
-R_{\rho}^{n+1} & = & -\left\langle \sigma,\rho^{(k)}\right\rangle ,\label{eq:si_rrho_np1}\\
-R_{\rho}^{n} & = & \left\langle \sigma,\rho^{n}\right\rangle ,\label{eq:si_rrho_n}\\
-R_{\rho}^{adv} & = & -\Delta t\left\langle \sigma,\nabla.\widetilde{\mathbf{F}}\right\rangle ,\label{eq:si_rrho_adv}\\
-R_{\theta}^{n+1} & = & -\left\langle \gamma,\theta^{(k)}\right\rangle ,\label{eq:si_rtheta_np1}\\
-R_{\theta}^{n} & = & \left\langle \gamma,\theta^{n}\right\rangle ,\label{eq:si_rtheta_n}\\
-R_{\theta}^{adv} & = & -\Delta t\left\langle \gamma,\frac{\widetilde{\mathbf{F}}}{\widetilde{\rho}}.\nabla\theta^{n}\right\rangle .\label{eq:si_rtheta_adv}
-\end{eqnarray}
-The $R^{n}$ terms are computed at the start of the timestep, $R^{adv}$
-terms are computed in the outer (advection) loop which computes the
-advective mass flux $\widetilde{F}$ and advective density $\widetilde{\rho}$.
-Finally $R^{n+1}$ terms are computed in the inner (nonlinear) loop
-using the latest $k^{th}$ estimate to the timelevel $n+1$ fields.
-To create the full semi-implicit equations it is only necessary to
-add the desired terms to the lhs of \eqref{eq:si_momentum_operator}-\eqref{eq:si_thermodynamic_operator}.
-It should be noted that at convergence of the iterative process $\left(y^{(k+1)}\equiv y^{(k)}\right)$
-that both the left and right hand sides of \eqref{eq:si_momentum_operator}-\eqref{eq:si_thermodynamic_operator}
-are zero and the scheme corresponds to the standard Crank-Nicolson
-method
+These terms can be seen as a approximation to the Newton correction
+to the advective terms. In fact they need not (and for efficiency
+should probably not) be computed using the same method, i.e the advective
+terms in the outer loop could be computed using some high order finite
+volume method, but in the Newton loop they would be computed using
+the standard FEM or even a simple low order FV/FD method.
+
+\begin{table}
+
+
+\begin{centering}
+\begin{tabular}{|l|}
+\hline 
+Do $n=1,n\_time$\tabularnewline
+$\qquad$Compute time-level n terms $\mathbf{R}\left(\mathbf{x}^{n}\right)$\tabularnewline
+$\qquad$Do $o=1,n\_outer$\tabularnewline
+$\qquad\qquad$Compute advective wind $\overline{\mathbf{u}}$\tabularnewline
+$\qquad\qquad$Compute advective terms $\mathbf{R}^{adv}\left(\mathbf{x}^{n},\overline{\mathbf{u}}\right)$\tabularnewline
+$\qquad\qquad$Do $i=1,n\_inner$\tabularnewline
+$\qquad\qquad\qquad$Compute time-level $n+1$ terms $\mathbf{R}\left(\mathbf{x}^{n+1}\right)$\tabularnewline
+$\qquad\qquad\qquad$Solve for increment $\mathbf{x}'$\tabularnewline
+$\qquad\qquad$End inner loop\tabularnewline
+$\qquad$End outer loop\tabularnewline
+End timestep loop\tabularnewline
+\hline 
+\end{tabular}\caption{\label{tab:Iterative-timestepping-algorithm}Iterative timestepping
+algorithm}
+
+\par\end{centering}
+
+\end{table}
 
 
 \subsection{\label{sub:Advection}Advection}
@@ -847,17 +952,24 @@ the results are shown in Figure \ref{fig:Spherical-Rotating-Gravity-wave-test}.
 
 \begin{figure}
 \begin{centering}
-\subfloat[]{\includegraphics[scale=0.5]{EG_DCMIP301_rotation_xy}}\subfloat[]{\includegraphics[scale=0.5]{GW_C24L10K0_theta_t1_rotating}}
+\subfloat[]{\includegraphics[scale=0.5]{EG_DCMIP301_rotation_xy}}\subfloat[]{\includegraphics[scale=0.5]{EG_DCMIP301_rotation_xz}}
 \par\end{centering}
 
 \begin{centering}
-\subfloat[]{\includegraphics[scale=0.5]{EG_DCMIP301_rotation_xz}}\subfloat[]{\includegraphics[scale=0.5]{GW_C24L10K0_theta_t1_xz_rotating}}
+\subfloat[]{\includegraphics[scale=0.5]{GW_C24L10K0_theta_t1_rotating}}\subfloat[]{\includegraphics[scale=0.5]{GW_C24L10K0_theta_t1_xz_rotating}}
+\par\end{centering}
+
+\begin{centering}
+\subfloat[]{\includegraphics[scale=0.5]{figures/GW_C24L10K0_theta_rotating_SI_dt10.eps}}\subfloat[]{\includegraphics[scale=0.5]{figures/GW_C24L10K0_theta_rotating_SI_dt10_xz.eps}}
 \par\end{centering}
 
 \centering{}\protect\caption{\label{fig:Spherical-Rotating-Gravity-wave-test}Rotating gravity
-wave test with (a) \& (c) ENDGame, at $3.75^{o}$ resolution ($46080$
-cells) and (b) \& (d) Dynamo, on a $C24$ grid with lowest order elements
-($34560$ cells), both with 10 vertical levels.}
+wave test with (a) \& (b) ENDGame, at $3.75^{o}$ resolution ($46080$
+cells) and Dynamo, on a $C24$ grid with lowest order elements ($34560$
+cells), and (c) \& (d) using the RK3 timstepping with $\Delta t=1$s,
+(e) \& (f) using semi-implicit timestepping with $\Delta t=10$ s.
+All with 10 vertical levels. Plots show the $\theta$ perturbation
+on the background balanced state.}
 \end{figure}
 
 \newpage\resetcounters

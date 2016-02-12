@@ -13,10 +13,14 @@ module field_bundle_mod
  
   implicit none
 
-  contains
+contains
 
-!> Create a bundle y of fields on the same function space as bundel x
- subroutine clone_bundle(x, y, bundle_size)
+!> Create a bundle y of fields on the same function space as bundle x
+!> @param[in]  x The input bundle to clone
+!> @param[out] y The output bundle to contain fields of the same type as x
+!> @param[in]  bundle_size Integer, the number of fields in the bundle
+
+  subroutine clone_bundle(x, y, bundle_size)
 
     use function_space_mod, only: function_space_type
     use mesh_mod,           only: mesh_type
@@ -27,19 +31,14 @@ module field_bundle_mod
     type(field_type), intent(inout) :: y(bundle_size)
 
     type(function_space_type) :: fs
-    type(mesh_type), pointer :: mesh => null()
-
-    integer(i_def) :: fs_handle
-    integer :: i
-
+    type(mesh_type), pointer  :: mesh => null()
+    integer(i_def)            :: fs_handle
+    integer                   :: i
 
     do i = 1,bundle_size   
-
       mesh => x(i)%get_mesh()
       fs_handle = x(i)%which_function_space()
-
       y(i) = field_type( vector_space = fs%get_instance(mesh,0,fs_handle) )
-
     end do
   end subroutine clone_bundle
 !=============================================================================!
@@ -186,17 +185,13 @@ module field_bundle_mod
     use log_mod,            only: lOG_LEVEL_INFO   
 
     implicit none
-    integer,          intent(in)    :: bundle_size
-
-    type(field_type) :: x(bundle_size)
-    type(field_type) :: y
-
-    type(function_space_type) :: fs
-    type(mesh_type),  pointer :: mesh => null()
-
-
-    integer(i_def) :: fs_handle
-    integer :: i
+    integer,          intent(in) :: bundle_size
+    type(field_type), intent(in) :: x(bundle_size)
+    type(field_type)             :: y
+    type(function_space_type)    :: fs
+    type(mesh_type),  pointer    :: mesh => null()
+    integer(i_def)               :: fs_handle
+    integer                      :: i
 
 ! This has strange syntax as psykal_lite_modclone doesnt like calls to
 ! type-bound procedures of field arrays
@@ -207,7 +202,6 @@ module field_bundle_mod
       y = field_type( vector_space = fs%get_instance(mesh,0,fs_handle) )
       call invoke_copy_field_data( x(1), y ) 
       call y%log_minmax(LOG_LEVEL_INFO, 'field')
-
     end do
   end subroutine bundle_minmax
 

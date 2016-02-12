@@ -30,7 +30,7 @@ implicit none
 type, public, extends(kernel_type) :: mm_diagonal_kernel_type
   private
   type(arg_type) :: meta_args(2) = (/                                  &
-       arg_type(GH_FIELD,    GH_INC,  ANY_SPACE_1),                    &  
+       arg_type(GH_FIELD,    GH_INC,  ANY_SPACE_1),                    &
        arg_type(GH_OPERATOR, GH_READ, ANY_SPACE_1, ANY_SPACE_1)        &
        /)
   integer :: iterates_over = CELLS
@@ -69,7 +69,7 @@ end function mm_diagonal_kernel_constructor
 !! @param[in] mass_matrix Real: Array holding mass matrix values
 subroutine mm_diagonal_kernel_code(cell,        &
                                    nlayers,     &
-                                   mm_diag,     & 
+                                   mm_diag,     &
                                    ncell_3d,    &
                                    mass_matrix, &
                                    ndf,undf,map)
@@ -82,12 +82,12 @@ subroutine mm_diagonal_kernel_code(cell,        &
   real(kind=r_def), dimension(ndf,ndf,ncell_3d), intent(in) :: mass_matrix
 
   !Internal variables
-  integer :: df, k, ik 
+  integer :: df, k, ik
  
   do k = 0, nlayers-1
     ik = (cell-1)*nlayers + k + 1
     do df = 1,ndf
-       mm_diag(map(df)+k) = mm_diag(map(df)+k) + mass_matrix(df,df,ik) 
+       mm_diag(map(df)+k) = mm_diag(map(df)+k) + mass_matrix(df,df,ik)
     end do
   end do
  

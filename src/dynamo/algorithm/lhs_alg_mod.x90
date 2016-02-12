@@ -102,8 +102,8 @@ contains
   ! Compute lhs_u
   call invoke_set_field_scalar( 0.0_r_def, lhs_tmp(1) )
   call invoke_set_field_scalar( 0.0_r_def, lhs(1) )
-  call invoke( pert_pressure_gradient_kernel_type( lhs_tmp(1), rho, rho_ref, &
-                                                   theta, theta_ref, qr ), &
+  call invoke( pert_pressure_gradient_kernel_type(  &
+                 lhs_tmp(1), rho, rho_ref, theta, theta_ref, qr ), &
                matrix_vector_kernel_mm_type( lhs(1), u, mm_w2) )
   call invoke( enforce_bc_kernel_type( lhs_tmp(1) ) )
   call invoke_axpy( alpha_dt, lhs_tmp(1), lhs(1), lhs(1) ) 

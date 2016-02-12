@@ -100,7 +100,7 @@ contains
 !>@param[in]    runtime_constants Container for various constant objects
 !>@param[in]    mm_diagonal fields containing a diagonal approxiamtion to the
 !!                          mass matrices
-subroutine mixed_gmres_alg(x0, rhs0, rhs, x_ref, delta, tau_dt, runtime_constants)
+  subroutine mixed_gmres_alg(x0, rhs0, rhs, x_ref, delta, tau_dt, runtime_constants)
     use psykal_lite_mod, only: invoke_inner_prod
     implicit none
 
@@ -112,7 +112,7 @@ subroutine mixed_gmres_alg(x0, rhs0, rhs, x_ref, delta, tau_dt, runtime_constant
     real(kind=r_def),             intent(in)    :: delta, tau_dt
 
 
-! The temporary fields
+    ! The temporary fields
     type(field_type)         :: mm_diagonal(bundle_size)
     type(field_type)         :: dx(bundle_size), Ax(bundle_size), &
                                 residual(bundle_size), s(bundle_size), &
@@ -262,7 +262,7 @@ subroutine mixed_gmres_alg(x0, rhs0, rhs, x_ref, delta, tau_dt, runtime_constant
     ! Add increments to field
     call bundle_axpy(1.0_r_def, dx, x0, x0, bundle_size)  
 
-end subroutine mixed_gmres_alg
+  end subroutine mixed_gmres_alg
 !=============================================================================!
 !>@brief Computes the action of the lhs matrix L on a field x
 !>@details Using either the Newton-Krylov method or a proscribed lhs computes

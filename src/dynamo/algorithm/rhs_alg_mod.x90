@@ -120,8 +120,10 @@ contains
   call invoke( pressure_gradient_kernel_type( rhs_tmp(1), rho, theta, qr ) )
   call invoke( kinetic_energy_gradient_kernel_type( rhs_tmp(1), u, chi, qr ) )
   if ( .not. l_from_solver ) &
-     call invoke( geopotential_gradient_kernel_type( rhs_tmp(1), geopotential, qr ) )
-  if ( l_rotating ) call invoke( rotation_kernel_type( rhs_tmp(1), u, chi, qr ) )
+    call invoke( geopotential_gradient_kernel_type( rhs_tmp(1), &
+                                                    geopotential, qr ) )
+  if ( l_rotating ) &
+    call invoke( rotation_kernel_type( rhs_tmp(1), u, chi, qr ) )
   call invoke(enforce_bc_kernel_type(rhs_tmp(1)) )
   call invoke_set_field_scalar( 0.0_r_def, rhs(1) )
   call invoke( matrix_vector_kernel_mm_type( rhs(1), u, mm_w2) )
@@ -143,7 +145,8 @@ contains
   ! Compute rhs_rho
   if ( l_from_solver ) then
     call invoke( rrho_kernel_type( rhs_tmp(3), f_star, qr ) )
-    call solver_algorithm( rhs_tmp(3), rhs_tmp(3), mesh, chi, solver_option, qr=qr )
+    call solver_algorithm( rhs_tmp(3), rhs_tmp(3), &
+                           mesh, chi, solver_option, qr=qr )
   else
     call invoke_set_field_scalar( 0.0_r_def, rhs_tmp(3) )
   end if
