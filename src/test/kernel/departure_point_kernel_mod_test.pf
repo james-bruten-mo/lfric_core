@@ -81,7 +81,7 @@ contains
 
     nlayers = 1
     undf_w2 = 11
-    ndf_w2 = 2
+    ndf_w2 = 4
     ndf_w3 = 1
     departure_pt_stencil_length = 9
 
@@ -93,6 +93,8 @@ contains
 
     stencil_map_W2(1,1:departure_pt_stencil_length) = (/ 1,2,3,4,5,6,7,8,9 /)
     stencil_map_W2(2,1:departure_pt_stencil_length) = (/ 1,2,3,4,5,6,7,8,9 /)
+    stencil_map_W2(3,1:departure_pt_stencil_length) = (/ 1,2,3,4,5,6,7,8,9 /)
+    stencil_map_W2(4,1:departure_pt_stencil_length) = (/ 1,2,3,4,5,6,7,8,9 /)
 
     dep_pts(:) = 0.0_r_def
 
