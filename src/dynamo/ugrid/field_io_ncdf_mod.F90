@@ -15,7 +15,8 @@ use netcdf, only: nf90_max_name, nf90_open, nf90_write, nf90_noerr,       &
                  nf90_strerror, nf90_put_var, nf90_get_var, nf90_put_att, &      
                  nf90_def_var, nf90_inq_varid, nf90_int, nf90_double,     &
                  nf90_clobber, nf90_enddef, nf90_inquire_dimension,       &
-                 nf90_inq_dimid, nf90_def_dim, nf90_create, nf90_close
+                 nf90_inq_dimid, nf90_def_dim, nf90_create, nf90_close,   &
+                 nf90_64bit_offset
 implicit none
 private
 
@@ -133,7 +134,10 @@ subroutine file_new(self, file_name)
 
   self%file_name = file_name
 
-  ierr = nf90_create( trim(self%file_name), nf90_clobber, self%ncid )
+  ! Create the NetCDF file with 64-bit offsets to support large file sizes
+  ierr = nf90_create( path=trim(self%file_name), &
+                      cmode=ior(nf90_clobber,nf90_64bit_offset), &
+                      ncid=self%ncid )
 
   if (ierr /= NF90_NOERR) then
     call fatal('Error in ncdf_create: '//trim(nf90_strerror(ierr)))
