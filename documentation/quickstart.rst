@@ -116,6 +116,8 @@ The requirements for building Dynamo are:
 +---------+----------+-----------------+---------------------------------------+------------------------------------------+
 | HDF5    | 1.8.12   | Build, Run      | Parallel filesystem used by NetCDF    | FFLAGS, LDFLAGS, LD_LIBRARY_PATH         |
 +---------+----------+-----------------+---------------------------------------+------------------------------------------+
+| Jinja2  | 2.6      | Build           | Required by configuration handler     | PYTHONPATH                               |
++---------+----------+-----------------+---------------------------------------+------------------------------------------+
 | MPICH   | 3.1      | Build, Run      | MPI library used by NetCDF            | FFLAGS, LDFLAGS, PATH, LD_LIBRARY_PATH   |
 +---------+----------+-----------------+---------------------------------------+------------------------------------------+
 | NetCDF  | 4.3.1.1  | Build, Run      | File I/O                              | FFLAGS, LDFLAGS, LD_LIBRARY_PATH         |

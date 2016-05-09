@@ -161,7 +161,8 @@ end module configuration_mod
         uut = loader.ConfigurationLoader()
         uut.writeModule( outputFile )
 
-        self.assertMultiLineEqual( expectedSource, outputFile.getvalue() )
+        self.assertMultiLineEqual( expectedSource + '\n', \
+                                   outputFile.getvalue() )
 
     ###########################################################################
     def testEmpty( self ):
@@ -335,5 +336,5 @@ end module configuration_mod
         inserts = {'usage'         : firstUsage,         \
                    'readSection'   : firstReadSection,   \
                    'ensureSection' : firstEnsureSection}
-        self.assertMultiLineEqual( expectedSource.format( **inserts ), \
+        self.assertMultiLineEqual( expectedSource.format( **inserts ) + '\n', \
                                    outputFile.getvalue() )

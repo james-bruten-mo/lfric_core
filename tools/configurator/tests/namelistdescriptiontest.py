@@ -49,28 +49,29 @@ module test_config_mod
   implicit none
 
   private
-  public :: enum_from_key, key_from_enum, read_test_namelist, test_is_loadable, test_is_loaded
+  public :: enum_from_key, key_from_enum, &
+            read_test_namelist, test_is_loadable, test_is_loaded
 
-  integer(i_native), public, parameter :: TEST_ENUM_ONE = 100
-  integer(i_native), public, parameter :: TEST_ENUM_TWO = 101
-  integer(i_native), public, parameter :: TEST_ENUM_THREE = 102
+  integer(i_native), public, parameter :: test_enum_one = 100
+  integer(i_native), public, parameter :: test_enum_two = 101
+  integer(i_native), public, parameter :: test_enum_three = 102
 
-  character(str_def), public, protected :: dstr
-  character(str_def), public, protected :: vstr
-  character(str_max_filename), public, protected :: fstr
   integer(i_def), public, protected :: dint
-  integer(i_def), public, protected :: vint
-  integer(i_long), public, protected :: lint
-  integer(i_native), public, protected :: enum
-  integer(i_short), public, protected :: sint
   real(r_def), public, protected :: dreal
-  real(r_def), public, protected :: vreal
+  character(str_def), public, protected :: dstr
+  integer(i_native), public, protected :: enum
+  character(str_max_filename), public, protected :: fstr
+  integer(i_long), public, protected :: lint
   real(r_double), public, protected :: lreal
+  integer(i_short), public, protected :: sint
   real(r_single), public, protected :: sreal
+  integer(i_def), public, protected :: vint
+  real(r_def), public, protected :: vreal
+  character(str_def), public, protected :: vstr
+
+  logical :: namelist_loaded = .false.
 
   character(str_short), parameter :: enum_key(3) = [character(len=str_short) :: 'one', 'two', 'three']
-
-  logical :: namelist_loaded = .False.
 
 contains
 
@@ -96,7 +97,8 @@ contains
       else
         key_index = key_index + 1
         if (key_index > ubound(enum_key, 1)) then
-          write( log_scratch_space, '("Key ''", A, "'' not recognised for test enum")' ) key
+          write( log_scratch_space, &
+                 '("Key ''", A, "'' not recognised for test enum")' ) key
           call log_event( log_scratch_space, LOG_LEVEL_ERROR )
         end if
       end if
@@ -121,7 +123,8 @@ contains
     key_index = value - test_enum_one + 1
     if (key_index < lbound(enum_key, 1) &
         .or. key_index > ubound(enum_key, 1)) then
-      write( log_scratch_space, '("Value ", I0, " is not in test enum")' ) value
+      write( log_scratch_space, &
+             '("Value ", I0, " is not in test enum")' ) value
       call log_event( log_scratch_space, LOG_LEVEL_ERROR )
     end if
 
@@ -141,9 +144,9 @@ contains
     call read_namelist( file_unit, enum )
   end subroutine read_test_namelist
 
+  ! Reads the namelist file.
+  !
   subroutine read_namelist( file_unit, dummy_enum )
-
-
 
     implicit none
 
@@ -163,9 +166,7 @@ contains
 
     dummy_enum = enum_from_key( enum )
 
-
-
-    namelist_loaded = .True.
+    namelist_loaded = .true.
 
   end subroutine read_namelist
 
@@ -217,7 +218,8 @@ end module test_config_mod
         uut.addParameter( 'enum', 'enumeration', None, ['one', 'two', 'three'] )
         uut.writeModule( outputFile )
 
-        self.assertMultiLineEqual( expectedSource, outputFile.getvalue() )
+        self.assertMultiLineEqual( expectedSource + '\n', \
+                                   outputFile.getvalue() )
 
     ###########################################################################
     def testModuleWriteGrowing( self ):
@@ -240,17 +242,11 @@ module test_config_mod
   private
   public :: read_test_namelist, test_is_loadable, test_is_loaded
 
-
-
   integer(i_def), public, protected :: foo
 
-
-
-  logical :: namelist_loaded = .False.
+  logical :: namelist_loaded = .false.
 
 contains
-
-
 
   !> Populates this module from a namelist file.
   !>
@@ -264,16 +260,13 @@ contains
     call read_namelist( file_unit )
   end subroutine read_test_namelist
 
+  ! Reads the namelist file.
+  !
   subroutine read_namelist( file_unit )
-
-
 
     implicit none
 
     integer(i_native), intent(in)  :: file_unit
-
-
-
 
     namelist /test/ foo
 
@@ -284,11 +277,7 @@ contains
       call log_event( log_scratch_space, LOG_LEVEL_ERROR )
     end if
 
-
-
-
-
-    namelist_loaded = .True.
+    namelist_loaded = .true.
 
   end subroutine read_namelist
 
@@ -342,18 +331,12 @@ module test_config_mod
   private
   public :: read_test_namelist, test_is_loadable, test_is_loaded
 
-
-
-  integer(i_def), public, protected :: foo
   real(r_def), public, protected :: bar
+  integer(i_def), public, protected :: foo
 
-
-
-  logical :: namelist_loaded = .False.
+  logical :: namelist_loaded = .false.
 
 contains
-
-
 
   !> Populates this module from a namelist file.
   !>
@@ -367,16 +350,13 @@ contains
     call read_namelist( file_unit )
   end subroutine read_test_namelist
 
+  ! Reads the namelist file.
+  !
   subroutine read_namelist( file_unit )
-
-
 
     implicit none
 
     integer(i_native), intent(in)  :: file_unit
-
-
-
 
     namelist /test/ bar, foo
 
@@ -387,11 +367,7 @@ contains
       call log_event( log_scratch_space, LOG_LEVEL_ERROR )
     end if
 
-
-
-
-
-    namelist_loaded = .True.
+    namelist_loaded = .true.
 
   end subroutine read_namelist
 
@@ -432,13 +408,15 @@ end module test_config_mod
         uut.addParameter( 'foo', 'integer' )
         uut.writeModule( outputFile )
 
-        self.assertMultiLineEqual( firstExpectedSource, outputFile.getvalue() )
+        self.assertMultiLineEqual( firstExpectedSource + '\n', \
+                                   outputFile.getvalue() )
 
         outputFile = StringIO.StringIO()
         uut.addParameter( 'bar', 'real', 'default' )
         uut.writeModule( outputFile )
 
-        self.assertMultiLineEqual( secondExpectedSource, outputFile.getvalue() )
+        self.assertMultiLineEqual( secondExpectedSource + '\n', \
+                                   outputFile.getvalue() )
 
     def testEnumerationOnly( self ):
         expectedSource = '''
@@ -458,17 +436,18 @@ module enum_config_mod
   implicit none
 
   private
-  public :: enum_is_loadable, enum_is_loaded, key_from_value, read_enum_namelist, value_from_key
+  public :: value_from_key, key_from_value, &
+            read_enum_namelist, enum_is_loadable, enum_is_loaded
 
-  integer(i_native), public, parameter :: ENUM_VALUE_ONE = 100
-  integer(i_native), public, parameter :: ENUM_VALUE_TWO = 101
-  integer(i_native), public, parameter :: ENUM_VALUE_THREE = 102
+  integer(i_native), public, parameter :: enum_value_one = 100
+  integer(i_native), public, parameter :: enum_value_two = 101
+  integer(i_native), public, parameter :: enum_value_three = 102
 
   integer(i_native), public, protected :: value
 
-  character(str_short), parameter :: value_key(3) = [character(len=str_short) :: 'one', 'two', 'three']
+  logical :: namelist_loaded = .false.
 
-  logical :: namelist_loaded = .False.
+  character(str_short), parameter :: value_key(3) = [character(len=str_short) :: 'one', 'two', 'three']
 
 contains
 
@@ -494,7 +473,8 @@ contains
       else
         key_index = key_index + 1
         if (key_index > ubound(value_key, 1)) then
-          write( log_scratch_space, '("Key ''", A, "'' not recognised for enum value")' ) key
+          write( log_scratch_space, &
+                 '("Key ''", A, "'' not recognised for enum value")' ) key
           call log_event( log_scratch_space, LOG_LEVEL_ERROR )
         end if
       end if
@@ -519,7 +499,8 @@ contains
     key_index = value - enum_value_one + 1
     if (key_index < lbound(value_key, 1) &
         .or. key_index > ubound(value_key, 1)) then
-      write( log_scratch_space, '("Value ", I0, " is not in enum value")' ) value
+      write( log_scratch_space, &
+             '("Value ", I0, " is not in enum value")' ) value
       call log_event( log_scratch_space, LOG_LEVEL_ERROR )
     end if
 
@@ -539,9 +520,9 @@ contains
     call read_namelist( file_unit, value )
   end subroutine read_enum_namelist
 
+  ! Reads the namelist file.
+  !
   subroutine read_namelist( file_unit, dummy_value )
-
-
 
     implicit none
 
@@ -561,9 +542,7 @@ contains
 
     dummy_value = value_from_key( value )
 
-
-
-    namelist_loaded = .True.
+    namelist_loaded = .true.
 
   end subroutine read_namelist
 
@@ -604,7 +583,8 @@ end module enum_config_mod
         uut.addParameter( 'value', 'enumeration', None, ['one', 'two', 'three'] )
         uut.writeModule( outputFile )
 
-        self.assertMultiLineEqual( expectedSource, outputFile.getvalue() )
+        self.assertMultiLineEqual( expectedSource + '\n', \
+                                   outputFile.getvalue() )
 
     ###########################################################################
     def testModuleWriteComputed( self ):
@@ -627,18 +607,12 @@ module teapot_config_mod
   private
   public :: read_teapot_namelist, teapot_is_loadable, teapot_is_loaded
 
-
-
   real(r_def), public, protected :: bar
   real(r_def), public, protected :: foo
 
-
-
-  logical :: namelist_loaded = .False.
+  logical :: namelist_loaded = .false.
 
 contains
-
-
 
   !> Populates this module from a namelist file.
   !>
@@ -652,16 +626,13 @@ contains
     call read_namelist( file_unit )
   end subroutine read_teapot_namelist
 
+  ! Reads the namelist file.
+  !
   subroutine read_namelist( file_unit )
-
-
 
     implicit none
 
     integer(i_native), intent(in)  :: file_unit
-
-
-
 
     namelist /teapot/ foo
 
@@ -672,11 +643,9 @@ contains
       call log_event( log_scratch_space, LOG_LEVEL_ERROR )
     end if
 
-
+    namelist_loaded = .true.
 
     bar = foo ** 2
-
-    namelist_loaded = .True.
 
   end subroutine read_namelist
 
@@ -718,7 +687,8 @@ end module teapot_config_mod
         uut.addParameter( 'bar', 'real', 'default', ['foo ** 2'] )
         uut.writeModule( outputFile )
 
-        self.assertMultiLineEqual( expectedSource, outputFile.getvalue() )
+        self.assertMultiLineEqual( expectedSource + '\n', \
+                                   outputFile.getvalue() )
 
     ###########################################################################
     def testModuleWriteConstant( self ):
@@ -739,20 +709,14 @@ module cheese_config_mod
   implicit none
 
   private
-  public :: cheese_is_loadable, cheese_is_loaded, read_cheese_namelist
-
-
+  public :: read_cheese_namelist, cheese_is_loadable, cheese_is_loaded
 
   real(r_def), public, protected :: fred
   real(r_def), public, protected :: wilma
 
-
-
-  logical :: namelist_loaded = .False.
+  logical :: namelist_loaded = .false.
 
 contains
-
-
 
   !> Populates this module from a namelist file.
   !>
@@ -766,6 +730,8 @@ contains
     call read_namelist( file_unit )
   end subroutine read_cheese_namelist
 
+  ! Reads the namelist file.
+  !
   subroutine read_namelist( file_unit )
 
     use constants_mod, only : FUDGE
@@ -773,9 +739,6 @@ contains
     implicit none
 
     integer(i_native), intent(in)  :: file_unit
-
-
-
 
     namelist /cheese/ fred
 
@@ -786,11 +749,9 @@ contains
       call log_event( log_scratch_space, LOG_LEVEL_ERROR )
     end if
 
-
+    namelist_loaded = .true.
 
     wilma = fred * FUDGE
-
-    namelist_loaded = .True.
 
   end subroutine read_namelist
 
@@ -833,7 +794,8 @@ end module cheese_config_mod
         uut.addParameter( 'wilma', 'real', 'default', ['fred * FUDGE'] )
         uut.writeModule( outputFile )
 
-        self.assertMultiLineEqual( expectedSource, outputFile.getvalue() )
+        self.assertMultiLineEqual( expectedSource + '\n', \
+                                   outputFile.getvalue() )
 
 ###############################################################################
 class NamelistDescriptionParserTest( unittest.TestCase ):
@@ -863,10 +825,10 @@ class NamelistDescriptionParserTest( unittest.TestCase ):
         for namelist in uut.parseFile( inputFile ):
             result.update( namelist.asDict() )
 
-        self.assertEqual( {'fred'  : {'first_thing' : ['string', 'default'],\
-                                      'second' : ['integer', 'default'],    \
-                                      'filename' : ['string', 'filename'],  \
-                                      'choices' : ['enumeration', None, \
+        self.assertEqual( {'fred'  : {'first_thing' : ['character', 'str_def'],  \
+                                      'second' : ['integer', 'i_def'],        \
+                             'filename' : ['character', 'str_max_filename'],  \
+                                      'choices' : ['enumeration', None,       \
                                                'foo', 'bar', 'baz', 'qux']}}, \
                           result )
 
@@ -934,9 +896,9 @@ class NamelistDescriptionParserTest( unittest.TestCase ):
         for namelist in uut.parseFile( inputFile ):
             result.update( namelist.asDict() )
 
-        self.assertEqual({'cheese' : {'fred' : ['real', 'default'], \
+        self.assertEqual({'cheese' : {'fred' : ['real', 'r_def'], \
                                       'FUDGE' : ['constant'], \
-                                      'wilma' : ['real', 'default', 'fred * FUDGE']}}, \
+                                      'wilma' : ['real', 'r_def', 'fred * FUDGE']}}, \
                          result)
 
 ###############################################################################

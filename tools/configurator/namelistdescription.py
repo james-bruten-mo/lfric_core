@@ -12,6 +12,7 @@ Turns namelist descriptions into namelist modules.
 
 from __future__ import print_function
 
+import jinja2    as jinja
 import pyparsing as parsing
 
 ###############################################################################
@@ -19,214 +20,54 @@ class NamelistDescriptionException(Exception):
     pass
 
 ###############################################################################
+def _prefaceMacro( subject, prefix ):
+    return [prefix+value for value in subject]
+
+###############################################################################
+class _FortranType:
+    def __init__( self, typex, kind ):
+        self.typex = typex
+        self.kind  = kind
+
+###############################################################################
+class _Enumeration(dict):
+    def __init__( self, key, value ):
+        self['key'] = key
+        self['value'] = value
+
+###############################################################################
 class NamelistDescription():
-    _moduleTemplate = '''
-!------------------------------------------------------------------------------
-! (c) The copyright relating to this work is owned jointly by the Crown,
-! Met Office and NERC 2014.
-! However, it has been created with the help of the GungHo Consortium,
-! whose members are identified at https://puma.nerc.ac.uk/trac/GungHo/wiki
-!------------------------------------------------------------------------------
-!> Manages the {listname} namelist.
-!>
-module {listname}_config_mod
-
-  use constants_mod, only : {kindlist}
-  use log_mod,       only : log_event, log_scratch_space, LOG_LEVEL_ERROR
-
-  implicit none
-
-  private
-  public :: {publics}
-
-{enumerations}
-
-{variables}
-
-{enumerationHelpers}
-
-  logical :: namelist_loaded = .False.
-
-contains
-
-{enumerationKeyFunctions}
-
-  !> Populates this module from a namelist file.
-  !>
-  !> An error is reported if the namelist could not be read.
-  !>
-  !> \\param [in] file_unit Unit number of the file to read from.
-  !>
-  subroutine read_{listname}_namelist( file_unit )
-    implicit none
-    integer(i_native), intent(in) :: file_unit
-    call read_namelist( file_unit{enumsArgsList} )
-  end subroutine read_{listname}_namelist
-
-  subroutine read_namelist( file_unit{dummyEnumArgsList} )
-
-{constants}
-
-    implicit none
-
-    integer(i_native), intent(in)  :: file_unit
-{dummyEnumArgs}
-
-{enumerationKeys}
-
-{namelist}
-
-    integer(i_native) :: condition
-
-    read( file_unit, nml={listname}, iostat=condition, iomsg=log_scratch_space )
-    if (condition /= 0) then
-      call log_event( log_scratch_space, LOG_LEVEL_ERROR )
-    end if
-
-{interpretEnumerationKey}
-
-{initialisation}
-
-    namelist_loaded = .True.
-
-  end subroutine read_namelist
-
-  !> Can this namelist be loaded?
-  !>
-  !> \\return True if it is possible to load the namelist.
-  !>
-  function {listname}_is_loadable()
-
-    implicit none
-
-    logical :: {listname}_is_loadable
-
-    {listname}_is_loadable = .not. namelist_loaded
-
-  end function {listname}_is_loadable
-
-  !> Has this namelist been loaded?
-  !>
-  !> \\return True if the namelist has been loaded.
-  !>
-  function {listname}_is_loaded()
-
-    implicit none
-
-    logical :: {listname}_is_loaded
-
-    {listname}_is_loaded = namelist_loaded
-
-  end function {listname}_is_loaded
-
-end module {listname}_config_mod
-    '''.strip()
-
-    _enumerationTemplate = '  integer(i_native), public, parameter :: {listname}_{enumeration}_{identifier} = {value}'
-
-    _variableTemplate = '  {type}({kind}), public, protected :: {name}'
-    _enumVariableTemplate = '  {type}({kind}), public, protected :: {name}'
-
-    _enumerationHelperTemplate = '''  character(str_short), parameter :: {enumeration}_key({key_count}) = [character(len=str_short) :: {keys}]'''
-
-    _enumerationKeyTemplate = '    character(str_short) :: {enumeration}'
-    
-    _dummyEnumArgTemplate = '    integer(i_native), intent(out) :: {arg}'
-
-    _namelistTemplate = '    namelist /{listname}/ {variables}'
-
-    _enumFromKeyTemplate = '''  !> Gets the enumeration value from the key string.
-  !>
-  !> An error is reported if the key is not actually a key.
-  !>
-  !> \param[in] key Enumeration key.
-  !>
-  integer(i_native) function {enumeration}_from_key( key )
-
-    implicit none
-
-    character(*), intent(in) :: key
-
-    integer(i_native) :: key_index
-
-    key_index = 1
-    do
-      if (trim({enumeration}_key(key_index)) == trim(key)) then
-        {enumeration}_from_key = key_index + {listname}_{enumeration}_{first_key} - 1
-        return
-      else
-        key_index = key_index + 1
-        if (key_index > ubound({enumeration}_key, 1)) then
-          write( log_scratch_space, '("Key ''", A, "'' not recognised for {listname} {enumeration}")' ) key
-          call log_event( log_scratch_space, LOG_LEVEL_ERROR )
-        end if
-      end if
-    end do
-
-  end function {enumeration}_from_key
-'''
-
-    _keyFromEnumTemplate = '''  !> Gets the enumeration key corresponding to a particular value.
-  !>
-  !> An error is reported if the value is not within range.
-  !>
-  !> \param[in] value Enumeration value.
-  !>
-  character(str_short) function key_from_{enumeration}( value )
-
-    implicit none
-
-    integer(i_native), intent(in) :: value
-
-    integer(i_native) :: key_index
-
-    key_index = value - {listname}_{enumeration}_{first_key} + 1
-    if (key_index < lbound({enumeration}_key, 1) &
-        .or. key_index > ubound({enumeration}_key, 1)) then
-      write( log_scratch_space, '("Value ", I0, " is not in {listname} {enumeration}")' ) value
-      call log_event( log_scratch_space, LOG_LEVEL_ERROR )
-    end if
-
-    key_from_{enumeration} = {enumeration}_key( key_index )
-
-  end function key_from_{enumeration}'''
-
-    _interpretEnumerationKeyTemplate = '''    dummy_{enumeration} = {enumeration}_from_key( {enumeration} )'''
-
-    _constantsTemplate = '    use constants_mod, only : {constants}'
-
-    _initialisationTemplate = '    {name} = {code}'
-
     _enumerationType = 'integer'
     _enumerationKind = 'native'
 
-    _readableTypeMap = { 'logical' : 'logical', \
-                         'integer' : 'integer', \
-                         'real'    : 'real',    \
-                         'string'  : 'string' }
-    _readableKindMap = { 'default' : 'default', \
-                         'native'  : 'native',  \
-                         'short'   : 'short',   \
-                         'long'    : 'long',    \
-                         'single'  : 'single',  \
-                         'double'  : 'double' }
+    class TypeDetail:
+        def __init__( self, xtype, kindMap ):
+            self.xtype = xtype
+            self.kindMap = kindMap
 
-    _fortranTypeMap = { 'logical' : 'logical', \
-                        'integer' : 'integer', \
-                        'real'    : 'real',    \
-                        'string'  : 'character' }
-    _fortranKindMap = { 'default' : 'def',    \
-                        'native'  : 'native', \
-                        'short'   : 'short',  \
-                        'long'    : 'long',   \
-                        'single'  : 'single', \
-                        'double'  : 'double' }
-
-    _stringLengthMap = { 'default'  : 'str_def', \
-                         'filename' : 'str_max_filename' }
+    _fortranTypeMap = { 'logical' : TypeDetail( 'logical', \
+                                                {'default' : 'l_def', \
+                                                 'native'  : 'l_native'} ), \
+                        'integer' : TypeDetail( 'integer', \
+                                                {'default' : 'i_def',    \
+                                                 'native'  : 'i_native', \
+                                                 'short'   : 'i_short',  \
+                                                 'long'    : 'i_long'} ), \
+                        'real'    : TypeDetail( 'real',    \
+                                                {'default' : 'r_def',    \
+                                                 'native'  : 'r_native', \
+                                                 'single'  : 'r_single', \
+                                                 'double'  : 'r_double'} ), \
+                        'string'  : TypeDetail( 'character', \
+                                                {'default'  : 'str_def',
+                                           'filename' : 'str_max_filename'} ) }
 
     ###########################################################################
     def __init__( self, name ):
+        self._engine = jinja.Environment( \
+                   loader=jinja.PackageLoader( 'configurator', 'templates') )
+        self._engine.filters['preface'] = _prefaceMacro
+
         self._name         = name
         self._parameters   = {}
         self._enumerations = {}
@@ -238,51 +79,27 @@ end module {listname}_config_mod
         return self._name
 
     ###########################################################################
-    def asDict( self ):
-        if len(self._parameters) + len(self._enumerations) == 0:
-            return {}
-        else:
-            representation = {}
-
-            for xtype, remainder in self._parameters.items():
-                for kind, tail in remainder.items():
-                    for name, args in tail.items():
-                        representation[name] = [xtype, kind]
-                        representation[name].extend( args )
-
-            for name, identifiers in self._enumerations.items():
-                representation[name] = ['enumeration', None]
-                representation[name].extend( identifiers )
-
-            for name in self._constants:
-                representation[name] = ['constant']
-
-            return {self._name : representation}
+    def getModuleName ( self ):
+        return self._name + '_config_mod'
 
     ###########################################################################
     def addParameter( self, name, xtype, kind='default', args=[] ):
         if xtype == 'constant':
             self._constants.add( name )
-        else:
-            if xtype == 'enumeration':
-                self._enumerations[name] = args
-                xtype = 'integer'
-                kind  = 'native'
-            elif args:
-                self._computed[name] = args
+            return
 
-            if not kind:
-                kind = 'default'
+        if kind == '':
+            kind = 'default'
 
-            if xtype not in self._parameters:
-                self._parameters[xtype] = {}
-            if kind not in self._parameters[xtype]:
-                self._parameters[xtype][kind] = {}
-            self._parameters[xtype][kind][name] = args
+        if xtype == 'enumeration':
+            self._enumerations[name] = args
+            xtype = 'integer'
+            kind  = 'native'
+        elif args:
+            self._computed[name] = args
 
-    ###########################################################################
-    def getModuleName ( self ):
-        return self._name + '_config_mod'
+        self._parameters[name] = _FortranType( self._fortranTypeMap[xtype].xtype, \
+                                               self._fortranTypeMap[xtype].kindMap[kind] )
 
     ###########################################################################
     def writeModule( self, fileObject ):
@@ -290,152 +107,55 @@ end module {listname}_config_mod
             message = 'Namelist description contains no variables.'
             raise NamelistDescriptionException( message )
 
-        kindset             = {'i_native'}
-        variables           = []
-        publics             = []
-        enumerations        = []
-        enumerationHelpers  = []
-        enumerationFuncts   = []
-        enumerationKeys     = []
-        enumInterpreters    = []
-        dummyEnumArgs       = []
-        names               = []
-        interfaceProcedures = []
-        definitions         = {}
-        initialisation      = []
-
+        kindset = set(['i_native'])
         if self._enumerations:
             kindset.add( 'str_short' )
 
-        publics.extend( ['read_{}_namelist'.format( self._name.lower() ), \
-                         '{}_is_loadable'.format( self._name.lower() ),   \
-                         '{}_is_loaded'.format( self._name.lower() )] )
         evalue = 100
-        for xtype, kindBag in self._parameters.items():
-            for kind, nameBag in kindBag.items():
-                if xtype == 'string':
-                    # Strings are a special case because they have a lengh, not
-                    # a kind.
-                    readableType = kind + '_' + self._readableTypeMap[xtype]
-                    fortranType = self._fortranTypeMap[xtype] \
-                                  + '(' + self._stringLengthMap[kind] + ')'
-                    kindset.add( self._stringLengthMap[kind] )
-                else:
-                    readableType = self._readableKindMap[kind] \
-                                   + '_' + self._readableTypeMap[xtype]
-                    fortranKind = self._fortranTypeMap[xtype][0] \
-                                  + '_' + self._fortranKindMap[kind]
-                    fortranType = self._fortranTypeMap[xtype] \
-                                  + '(' + fortranKind + ')'
-                    kindset.add( fortranKind )
-                humanReadableType = readableType.replace( '_', ' ' )
+        enumerations = {}
+        for name, keys in self._enumerations.iteritems():
+            enumerations[name] = []
+            for key in keys:
+                enumerations[name].append( _Enumeration( key, evalue) )
+                evalue += 1
 
-                for name, args in nameBag.items():
-                    names.append( name )
+        variables = {}
+        for name, fType in self._parameters.iteritems():
+            kindset.add( fType.kind )
+            if name not in self._computed.keys():
+                variables[name] = fType
 
-                    # Create the list of variables
-                    if xtype == 'string' :
-                        inserts = {'type' : self._fortranTypeMap[xtype], \
-                                   'kind' : self._stringLengthMap[kind], \
-                                   'name' : name}
-                    else:
-                        inserts = {'type' : self._fortranTypeMap[xtype],      \
-                                 'kind' : self._fortranTypeMap[xtype][0]      \
-                                          + '_' + self._fortranKindMap[kind], \
-                                 'name' : name}
-                    if name in self._enumerations:
-                        text = self._enumVariableTemplate.format( **inserts )
-                    else:
-                        text = self._variableTemplate.format( **inserts )
-                    variables.append( text )
+        inserts = { 'listname'       : self._name,        \
+                    'kindlist'       : sorted( kindset ), \
+                    'enumerations'   : enumerations,      \
+                    'parameters'     : self._parameters,  \
+                    'constants'      : self._constants,   \
+                    'variables'      : variables,         \
+                    'initialisation' : self._computed }
 
-                    if name in self._enumerations:
-                        publics.append( '{}_from_key'.format( name.lower() ) )
-                        publics.append( 'key_from_{}'.format( name.lower() ) )
+        template = self._engine.get_template( 'namelist.f90' )
+        print( template.render( inserts ), file=fileObject )
 
-                        inserts = {'enumeration' : name.lower()}
-                        text = self._enumerationKeyTemplate.format( **inserts )
-                        enumerationKeys.append( text )
-
-                        inserts = {'arg' : 'dummy_' + name.lower()}
-                        text = self._dummyEnumArgTemplate.format( **inserts )
-                        dummyEnumArgs.append( text )
-
-                        firstKey = None
-                        keys = []
-                        for eid in args:
-                            if not firstKey: firstKey = eid.lower()
-                            keys.append( "'" + eid.lower() + "'" )
-                            inserts = {'listname'    : self._name.upper(),  \
-                                       'enumeration' : name.upper(),        \
-                                       'identifier'  : eid.upper(),         \
-                                       'value'       : evalue}
-                            text = self._enumerationTemplate.format( **inserts )
-                            enumerations.append( text )
-                            evalue += 1
-                        lastKey = eid.lower()
-
-                        inserts = {'listname'    : self._name.lower(), \
-                                   'enumeration' : name.lower()}
-                        text = self._interpretEnumerationKeyTemplate.format( **inserts )
-                        enumInterpreters.append( text )
-
-                        inserts = {'enumeration' : name.lower(),       \
-                                   'listname'    : self._name.lower(), \
-                                   'enumeration' : name.lower(),       \
-                                   'first_key'   : firstKey,           \
-                                   'last_key'    : lastKey,            \
-                                   'keys'        : ', '.join( keys ),  \
-                                   'key_count'   : len(keys)}
-                        text = self._enumerationHelperTemplate.format( **inserts )
-                        enumerationHelpers.append( text )
-
-                        text = self._enumFromKeyTemplate.format( **inserts )
-                        enumerationFuncts.append( text )
-                        text = self._keyFromEnumTemplate.format( **inserts )
-                        enumerationFuncts.append( text )
-                    elif name in self._computed:
-                        if args:
-                            inserts = {'name' : name, 'code' : args[0]}
-                            code = self._initialisationTemplate.format( **inserts )
-                            initialisation.append( code )
-
-        if len(names) > 0:
-            noncomputed = list( set(names) - set(self._computed.keys()) )
-            noncomputed.sort()
-            inserts = {'listname' : self._name, \
-                       'variables' : ', '.join(noncomputed)}
-            namelist = self._namelistTemplate.format( **inserts )
+    ###########################################################################
+    def asDict( self ):
+        if len(self._parameters) + len(self._enumerations) == 0:
+            return {}
         else:
-            namelist = ''
+            representation = {}
 
-        if len(self._constants) > 0:
-            inserts = {'constants' : ', '.join(self._constants)}
-            constants = self._constantsTemplate.format(**inserts)
-        else:
-            constants = ''
+            for name, fType in self._parameters.iteritems():
+                representation[name] = [fType.typex, fType.kind]
+                if name in self._computed:
+                    representation[name].extend( self._computed[name] )
 
-        leadingEnumKeyList = ['']
-        leadingEnumKeyList.extend( self._enumerations.keys() )
-        leadingDummyEnumKeyList = ['']
-        leadingDummyEnumKeyList.extend( ['dummy_' + enum for enum in self._enumerations.keys()] )
-        inserts = {'listname'                : self._name,                    \
-                   'kindlist'                : ', '.join( sorted( kindset ) ),\
-                   'publics'                 : ', '.join( sorted( publics ) ),\
-                   'enumerations'            : '\n'.join(enumerations),       \
-                   'variables'               : '\n'.join(sorted(variables)),  \
-                   'enumerationHelpers'      : '\n'.join(enumerationHelpers), \
-                   'enumerationKeyFunctions' : '\n'.join(enumerationFuncts),  \
-                   'enumerationKeys'         : '\n'.join(enumerationKeys),    \
-                   'enumsArgsList'           : ', '.join(leadingEnumKeyList),  \
-                   'dummyEnumArgsList'      : ', '.join(leadingDummyEnumKeyList), \
-                   'dummyEnumArgs'           : '\n'.join(dummyEnumArgs),
-                   'namelist'                : namelist,                      \
-                   'interpretEnumerationKey' : '\n'.join(enumInterpreters),   \
-                   'constants'               : constants,                     \
-                   'initialisation'          : '\n'.join(initialisation)}
-        print( self._moduleTemplate.format(**inserts ), end='', \
-               file=fileObject )
+            for name, identifiers in self._enumerations.iteritems():
+                representation[name] = ['enumeration', None]
+                representation[name].extend( identifiers )
+
+            for name in self._constants:
+                representation[name] = ['constant']
+
+            return {self._name : representation}
 
 ###############################################################################
 class NamelistDescriptionParser():
