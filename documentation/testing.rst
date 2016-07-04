@@ -1,0 +1,290 @@
+Testing
+=======
+
+A number of different mechanisms and approaches are provided within the Dynamo
+build system for testing. Each is discussed here giving details on how to make
+use of it and in which circumstances you may wish to do so.
+
+Unit Testing
+------------
+
+Unit testing is intended to exercise a discrete, well contained and defined,
+"unit" of code. This will generally be a class, ("type" in Fortran parlance)
+module or part thereof.
+
+Tests of this kind are found under ``src/unit-test`` in a tree which mirrors
+that in ``src/dynamo``. This is intended to make it easy to find the tests
+corresponding to a particular piece of functionality.
+
+We use the pFUnit framework, documentation for which may be found in
+``src/pfunit/documentation``.
+
+Tests are identified with the ``.pf`` extension while support code in normal
+``.[fF]90`` files may also be included. ``.pf`` files are normal Fortran files
+garnished with pFUnit directives. These are preceded with an "at symbol".
+
+A minimal example might look like this::
+
+    module simple_mod_test
+
+    use pFUnit_Mod
+    use simple_mod, only: thing, thang
+
+    implicit none
+
+    private
+    public test_simple_thing
+
+    contains
+
+    @test
+    subroutine test_thing
+
+        integer :: result
+
+        result = thing( 1, 2, 3 )
+        @assertEqual( 12, result )
+
+    end subroutine test_thing
+
+    @test
+    subroutine test_thang
+
+        integer :: result
+
+        call thang( result )
+        @assertEqual( 13, result )
+
+    end subroutine test_thang
+
+    end module simple_mod_test
+
+There are a number of things to note here:
+
+  * The module name should follow the form
+    ``<module under test>_test[__<subsection>]``
+  * Test procedure names should follow the form
+    ``test_<procedure name>[__<subsection>]``
+  * Inputs to the procedure under test should be provided as constants. This
+    prevents them changing unexpectedly. Do not rely on configuration values as
+    these can change.
+  * If the unit under test makes use of configuration, use the "frig" functions
+    provided by "frig_config_mod" to explicitly set the values needed.
+  * The expected result given to assertions should be constants or calculated
+    from constants. Try to avoid calculations so as to avoid the possibility
+    that the same (flawed) algorithm is used in test and unit under test.
+  * Each test procedure should contain a single well defined set of tests. This
+    is usually for a single procedure under test.
+
+Fully Fledged Test Class
+------------------------
+
+The simple test outlined above is fine for situations where there are no
+resources to be managed. When there are, a full test class is needed.
+
+The most common resource requiring management is memory, allocated space must
+be deallocated, but configuration may also be considered a resource in this
+case.
+
+These managed resources are referred to as "fixtures" in testing parlance. They
+are things which must exist in order to perform the test but which are not
+under test themselves. They are created and initialised before each test and
+destroyed after it. This means that each test has a pristine, known,
+environment in which to work.
+
+Following is a minimal example of a full test class with example fixtures::
+
+    module simple_mod_test
+
+    use pFUnit_Mod
+    use simple_mod, only: thing, thang
+
+    implicit none
+
+    private
+    public test_simpe_type, test_thing, test_thang
+
+    @TestCase
+    type, extends(TestCase) :: test_simple_type
+        private
+        real :: data_block(:)
+    contains
+        procedure setUp
+        procedure tearDown
+        procedure test_thing
+        procedure test_thang
+    end type test_simple_type
+
+    contains
+
+    subroutine setUp( this )
+
+        use frig_config_mod, only :: frig_stuff_config
+
+        implicit none
+
+        class(test_simple_type), intent(inout) :: this
+
+        call frig_stuff_config( 'foo', 13 )
+
+        allocate( this%data_block(256) )
+
+    end subroutine setUp
+
+    subroutine tearDown( this )
+
+        implicit none
+
+        class(test_simple_type), intent(inout) :: this
+
+        deallocate( this%data_block )
+
+    end subroutine tearDown
+
+    @test
+    subroutine test_thing( this )
+
+        implicit none
+
+        class(test_simple_type), intent(inout) :: this
+
+        call thing( 1, 2, 3, data_block )
+        @assertEqual( (/12, 13, 14/), data_block )
+
+    end subroutine test_thing
+
+    @test
+    subroutine test_thang( this )
+
+        implicit none
+
+        class(test_simple_type), intent(inout) :: this
+
+        integer :: result
+
+        data_block = (/-1, -2, -3/)
+        result = thang( data_block )
+        @assertEqual( 13, result )
+
+    end subroutine test_thang
+
+    end module simple_mod_test
+
+Notice how ``data_block`` is allocated in ``setUp`` and deallocated in
+``tearDown``. These procedures are called before and after each test method.
+This means that the contents do not carry between tests. Therefore they must be
+initialised for each test. This may be done in ``setUp`` if every test needs
+the same initial condition or locally to the test if they need different
+starting points.
+
+Also notice the use of the "frig" procedure to set up configuration for the
+unit under test. Bare in mind that you must frig everything the code being
+tested will use. You can not rely on them having been set up by a previous test
+as they have not been. You can not rely on them defaulting to a particular
+value because they do not.
+
+If the unit calls down to help procedures any configuration they make use of
+must also be frigged.
+
+Problems With pFUnit
+--------------------
+
+Currently there is an issue with pFUnit whereby it will report finding errors,
+then tell you no errors were found and exit with "Okay".
+
+This is an issue with running in "robust mode". In this mode each test is run
+in a subprocess. This is the mode you want to run in as it means an error (as
+opposed to a failure) in the test will not cause the whole test suite to exit.
+It should also mean that each test is unable to affect any other test. Sadly
+this is not currently the case as there is leakage between tests.
+
+To find out what is failing you can run the tests by hand in non-robust mode.
+To do this change to ``src/unit-test`` and run ``../../build/unit-test/test``.
+
+Functional Testing
+--------------------
+
+Some things can not be easily tested using the unit testing framework. For
+instance things which halt execution or interact with command line arguments.
+In these cases "functional" tests (which may need a more suitable group name)
+may be appropriate.
+
+These tests live in ``src/functional-test``. Each test comprises two parts::
+
+    * A Fortran source file which implements a ``PROGRAM`` which may be
+      compiled and linked against Dynamo code
+    * A Python script which executes the program and validates the results
+
+A simple framework is provided to aid in writing the test script. Its use is
+shown in this example::
+
+    #!/usr/bin/env python2.7
+
+    from __future__ import print_function
+
+    import testframework import Test, TestEngine, TestFailed
+
+    class simple_test( Test ):
+    def test( self ):
+        question = 'How much wood would a Woodchuck chuck if a Woodchuck could chuck wood'
+        expectedTranscript = 'You asked "{}"\nI answer "A Woodchuck would chuck no amount of wood as a Woodchuck can't chuck wood"'.format( question)
+
+        out, err = process.communicate( question )
+
+        if process.returncode != 0:
+        raise TestFailed( 'Failed to execute' )
+
+        if err != '':
+        raise TestFailed( 'Expected no output on standard error' )
+
+        if out != expectedTranscript:
+        raise TestFailed( 'Expected >{}< but found >{}<'.format( expectedTranscript, out ) )
+
+        return 'The question answerer understands the nature of Woodchucks'
+
+    if __name__ == '__main__':
+      TestEngine.run( simple_test )
+
+Test Suite
+==========
+
+`Rose <http://metomi.github.io/rose/doc/rose.html>`_ and
+`Cylc <http://cylc.github.io/cylc/>`_ are used to run a suite of tests. There
+are two goals for these tests.
+
+  * Ensure the code remains buildable with our supported compilers
+  * Ensure the code is tidy
+  * Ensure changes to the code do not change the results
+
+The first goal is pursued by automating the process of building with each of
+the compilers. The generation of API documentation is also included as this can
+sometimes break as well.
+
+Code tidiness is currently pursued only as far as ensuring there are no unused
+source files. Other tests may be forthcoming.
+
+The result of runs with known inputs are compared against known good outputs to
+check for changes.
+
+The test suite is invoked with ``make test-suite``. This will launch the suite
+multiple times, once for each platform listed in the
+``DYNAMO_TEST_SUITE_TARGETS`` environment variable. This variable is set up for
+you by the LFRic module system.
+
+During development it is often useful to target a single platform. If the test
+suite is invoked using ``rose stem`` this will target the default platform.
+Out-of-the-box this is the Met Office SPICE server farm. To change the default
+target modify ``opts = meto-desktop`` in "rose-stem/rose-suite.conf".
+
+Developers and reviewers should remember not to allow changes to this default
+on to trunk.
+
+Test Suite on MONSooN
+---------------------
+
+The test suite can only be launched from the machine "exvmsrose", within the
+MONSooN subnet. Ensure you have suitable, unprotected, keys set up to allow you
+to connect from "exvmscylc" back to "exvmsrose" and to "xcml00".
+
+Loading the module "meto-common-environment/dynamo" will set everything up so
+you need only type ``make test-suite``.

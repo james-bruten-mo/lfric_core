@@ -51,6 +51,7 @@ tools:
 test: build
 ifndef NOTEST
 	$(MAKE) -C src/test
+	$(MAKE) -C src/functional-test
 endif
 
 .PHONY:test-suite
@@ -75,6 +76,7 @@ doc docs:
 clean:
 	$(MAKE) -C src/dynamo clean
 	$(MAKE) -C src/test clean
+	$(MAKE) -C src/functional-test clean
 
 # Clean both dynamo and pFUnit builds.
 #
@@ -82,3 +84,4 @@ clean:
 clean-all:
 	$(MAKE) -C src/dynamo clean ALL=1
 	$(MAKE) -C src/test clean ALL=1
+	$(MAKE) -C src/functional-test clean ALL=1

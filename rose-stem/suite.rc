@@ -61,6 +61,9 @@
 {%-    if compiler in TARGET_PERFORM_UNIT_TESTS %}
             compile_with_{{label}}         => unit_test_with_{{label}}
 {%-    endif %}
+{%-    if compiler in TARGET_PERFORM_FUNCTIONAL_TESTS %}
+            compile_with_{{label}}         => functional_test_with_{{label}}
+{%-    endif %}
 {%-    if compiler in TARGET_PERFORM_KGO_TESTS %}
             generate_{{label}}_cubedsphere => check_{{label}}_cubedsphere_metadata
             generate_{{label}}_cubedsphere => check_{{label}}_cubedsphere_data
@@ -226,10 +229,14 @@
     [[unit_test_with_{{label}}]]
         inherit = {{family}}, {{family}}_BUILD_ENVIRONMENT
         pre-script = {{command_list(TARGET_BASE_SETUP, TARGET_BUILD_SETUP, compiler_setup[compiler], TARGET_REVEAL_SETUP, "mkdir -p $DYNAMO_BUILD_ROOT", "cp -rp $DYNAMO_SOURCE_DIRECTORY/build/* $DYNAMO_BUILD_ROOT")}}
-        script = "make -C $DYNAMO_SOURCE_DIRECTORY test"
+        script = "make -C $DYNAMO_SOURCE_DIRECTORY/src/test"
         post-script = {{command_list("cp -rp $DYNAMO_BUILD_ROOT $DYNAMO_SOURCE_DIRECTORY/build", "rm -rf $DYNAMO_BUILD_ROOT")}}
-        [[[environment]]]
-            VERBOSE=1
+
+    [[functional_test_with_{{label}}]]
+        inherit = {{family}}, {{family}}_BUILD_ENVIRONMENT
+        pre-script = {{command_list(TARGET_BASE_SETUP, TARGET_BUILD_SETUP, compiler_setup[compiler], TARGET_REVEAL_SETUP, "mkdir -p $DYNAMO_BUILD_ROOT", "cp -rp $DYNAMO_SOURCE_DIRECTORY/build/* $DYNAMO_BUILD_ROOT")}}
+        script = "make -C $DYNAMO_SOURCE_DIRECTORY/src/functional-test"
+        post-script = {{command_list("cp -rp $DYNAMO_BUILD_ROOT $DYNAMO_SOURCE_DIRECTORY/build", "rm -rf $DYNAMO_BUILD_ROOT")}}
 
     [[clean_build_{{label}}]]
         inherit = {{family}}, {{family}}_BUILD_ENVIRONMENT
