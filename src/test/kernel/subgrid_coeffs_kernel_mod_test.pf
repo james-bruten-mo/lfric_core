@@ -51,6 +51,7 @@ contains
     type(subgrid_coeffs_test_type)       :: subgrid_coeffs_test
 
     subgrid_coeffs_test%rho_approximation = testParameter%rho_approximation
+    subgrid_coeffs_test%rho               = testParameter%rho
     subgrid_coeffs_test%answer            = testParameter%answer
 
   end function subgrid_coeffs_test_constructor
