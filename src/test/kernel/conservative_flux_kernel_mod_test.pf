@@ -18,7 +18,9 @@ module conservative_flux_kernel_mod_test
 
   private
   public :: conservative_flux_test_type, &
-            test_one, test_two, test_three, test_four, test_five
+            test_positive_flux_large_cfl, test_positive_flux_small_cfl,       &
+            test_negative_flux_small_cfl, test_negative_flux_large_cfl,       &
+            test_negative_density
 
   @TestCase
   type, extends(TestCase) :: conservative_flux_test_type
@@ -31,10 +33,11 @@ module conservative_flux_kernel_mod_test
   contains
     procedure setUp
     procedure tearDown
-    procedure test_one
-    procedure test_two
-    procedure test_three
-    procedure test_four
+    procedure test_positive_flux_large_cfl
+    procedure test_positive_flux_small_cfl
+    procedure test_negative_flux_small_cfl
+    procedure test_negative_flux_large_cfl
+    procedure test_negative_density
   end type conservative_flux_test_type
 
     integer(i_def), parameter :: stencil_length = 9
@@ -110,7 +113,7 @@ contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   @test
-  subroutine test_one( this )
+  subroutine test_positive_flux_large_cfl( this )
 
     use conservative_flux_kernel_mod, only : conservative_flux_code
 
@@ -150,11 +153,11 @@ contains
                                  deltaT )
     @assertEqual(3.34_r_def, this%flux(1), tol)
 
-end subroutine test_one
+end subroutine test_positive_flux_large_cfl
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   @test
-  subroutine test_two( this )
+  subroutine test_positive_flux_small_cfl( this )
 
     use conservative_flux_kernel_mod, only : conservative_flux_code
 
@@ -189,11 +192,11 @@ end subroutine test_one
                                  deltaT )
     @assertEqual(fr, this%flux(1), tol)
 
-  end subroutine test_two
+  end subroutine test_positive_flux_small_cfl
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   @test
-  subroutine test_three( this )
+  subroutine test_negative_flux_small_cfl( this )
 
     use conservative_flux_kernel_mod, only : conservative_flux_code
 
@@ -228,11 +231,11 @@ end subroutine test_one
                                  deltaT )
     @assertEqual(-(1.0_r_def+fr), this%flux(1), tol)
 
-  end subroutine test_three
+  end subroutine test_negative_flux_small_cfl
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   @test
-  subroutine test_four( this )
+  subroutine test_negative_flux_large_cfl( this )
 
     use conservative_flux_kernel_mod, only : conservative_flux_code
 
@@ -267,11 +270,11 @@ end subroutine test_one
                                  deltaT )
     @assertEqual(-(1.0_r_def+fr+4.0_r_def+fr), this%flux(1), tol)
 
-  end subroutine test_four
+  end subroutine test_negative_flux_large_cfl
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   @test
-  subroutine test_five( this )
+  subroutine test_negative_density( this )
 
     use conservative_flux_kernel_mod, only : conservative_flux_code
 
@@ -312,7 +315,7 @@ end subroutine test_one
                                  deltaT )
     @assertEqual(-(1.0_r_def), this%flux(1), tol)
 
-  end subroutine test_five
+  end subroutine test_negative_density
 
 
 end module conservative_flux_kernel_mod_test
