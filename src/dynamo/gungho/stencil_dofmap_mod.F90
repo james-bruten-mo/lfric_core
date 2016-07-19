@@ -69,6 +69,7 @@ function stencil_dofmap_constructor( st_shape, st_extent, ndf, mesh, master_dofm
                         log_scratch_space, &
                         LOG_LEVEL_ERROR
     use mesh_mod, only: mesh_type
+    use reference_element_mod, only: W, E, N, S
 
     integer(i_def),           intent(in) :: st_shape, st_extent, ndf
     type(mesh_type), pointer, intent(in) :: mesh
@@ -79,9 +80,18 @@ function stencil_dofmap_constructor( st_shape, st_extent, ndf, mesh, master_dofm
     integer(i_def), pointer :: map(:) => null()
     integer(i_def) :: cell_in_stencil
     integer(i_def) :: cell_west,  next_cell_west,  &
-               cell_south, next_cell_south, &
-               cell_east,  next_cell_east,  &
-               cell_north, next_cell_north
+                      cell_south, next_cell_south, &
+                      cell_east,  next_cell_east,  &
+                      cell_north, next_cell_north
+    integer(i_def) :: west, north, east, south
+    integer(i_def) :: direction
+    integer(i_def) :: opposite(4)
+
+    ! Set local directions to be those of the reference element
+    opposite(W) = E
+    opposite(E) = W
+    opposite(N) = S
+    opposite(S) = N
 
     self%dofmap_shape  = st_shape
     self%dofmap_extent = st_extent
@@ -98,59 +108,7 @@ function stencil_dofmap_constructor( st_shape, st_extent, ndf, mesh, master_dofm
           map => master_dofmap%get_master_dofmap(cell)
           self%dofmap(:,1,cell) = map(:)
         end do
-      case ( STENCIL_1DX )
-        do cell = 1,ncells
-          map => master_dofmap%get_master_dofmap(cell)
-          self%dofmap(:,1,cell) = map
-          cell_in_stencil = 1
-          cell_west = cell
-          cell_east = cell
-          do while ( cell_in_stencil <= st_extent )
-            cell_in_stencil = cell_in_stencil + 1
-            if (  cell_in_stencil <= st_extent ) then
-              next_cell_west = mesh%get_cell_next(1,cell_west)
-              map => master_dofmap%get_master_dofmap(next_cell_west)
-              self%dofmap(:,cell_in_stencil,cell) = map
-              cell_west = next_cell_west
-            end if
-
-            cell_in_stencil = cell_in_stencil + 1
-            if (  cell_in_stencil <= st_extent ) then
-              next_cell_east = mesh%get_cell_next(3,cell_east)
-              map => master_dofmap%get_master_dofmap(next_cell_east)
-              self%dofmap(:,cell_in_stencil,cell) = map
-              cell_east = next_cell_east
-            end if
-          end do
-        end do   
-           
-      case ( STENCIL_1DY )
-        do cell = 1,ncells
-          map => master_dofmap%get_master_dofmap(cell)
-          self%dofmap(:,1,cell) = map
-          cell_in_stencil = 1
-          cell_south = cell
-          cell_north = cell
-          do while ( cell_in_stencil <= st_extent )
-            cell_in_stencil = cell_in_stencil + 1
-            if (  cell_in_stencil <= st_extent ) then
-              next_cell_south = mesh%get_cell_next(2,cell_south)
-              map => master_dofmap%get_master_dofmap(next_cell_south)
-              self%dofmap(:,cell_in_stencil,cell) = map
-              cell_south = next_cell_south
-            end if
-    
-            cell_in_stencil = cell_in_stencil + 1
-            if (  cell_in_stencil <= st_extent ) then
-              next_cell_north = mesh%get_cell_next(4,cell_north)
-              map => master_dofmap%get_master_dofmap(next_cell_north)
-              self%dofmap(:,cell_in_stencil,cell) = map
-              cell_north = next_cell_north
-            end if
-          end do
-        end do   
-
-      case ( STENCIL_CROSS )
+      case ( STENCIL_CROSS, STENCIL_1DX, STENCIL_1DY )
         do cell = 1,ncells
           map => master_dofmap%get_master_dofmap(cell)
           self%dofmap(:,1,cell) = map(:)
@@ -159,38 +117,71 @@ function stencil_dofmap_constructor( st_shape, st_extent, ndf, mesh, master_dofm
           cell_south = cell
           cell_east  = cell
           cell_north = cell         
-          do while ( cell_in_stencil <= st_extent )
-            cell_in_stencil = cell_in_stencil + 1
-            if (  cell_in_stencil <= st_extent ) then
-              next_cell_west = mesh%get_cell_next(1,cell_west)
-              map => master_dofmap%get_master_dofmap(next_cell_west)
-              self%dofmap(:,cell_in_stencil,cell) = map
-              cell_west = next_cell_west
+          west  = W
+          east  = E
+          north = N
+          south = S
+          do while ( cell_in_stencil <= st_extent )  
+            if ( st_shape ==  STENCIL_CROSS .or. st_shape == STENCIL_1DX ) then
+              cell_in_stencil = cell_in_stencil + 1
+              if (  cell_in_stencil <= st_extent ) then
+                next_cell_west = mesh%get_cell_next(west,cell_west)
+                map => master_dofmap%get_master_dofmap(next_cell_west)
+                self%dofmap(:,cell_in_stencil,cell) = map
+                ! Compute 'west' direction of new cell west
+                do direction = 1,4
+                  if ( mesh%get_cell_next(direction,next_cell_west) == cell_west) &
+                    west = opposite(direction)
+                end do
+                cell_west = next_cell_west
+              end if
             end if
 
-            cell_in_stencil = cell_in_stencil + 1
-            if (  cell_in_stencil <= st_extent ) then
-              next_cell_south = mesh%get_cell_next(2,cell_south)
-              map => master_dofmap%get_master_dofmap(next_cell_south)
-              self%dofmap(:,cell_in_stencil,cell) = map
-              cell_south = next_cell_south
+            if ( st_shape ==  STENCIL_CROSS .or. st_shape == STENCIL_1DY ) then
+              cell_in_stencil = cell_in_stencil + 1
+              if (  cell_in_stencil <= st_extent ) then
+                next_cell_south = mesh%get_cell_next(south,cell_south)
+                map => master_dofmap%get_master_dofmap(next_cell_south)
+                self%dofmap(:,cell_in_stencil,cell) = map
+                ! Compute 'south' direction of new cell south
+                do direction = 1,4
+                  if ( mesh%get_cell_next(direction,next_cell_south) == cell_south) &
+                    south = opposite(direction)
+                end do
+                cell_south = next_cell_south
+              end if
             end if
 
-            cell_in_stencil = cell_in_stencil + 1
-            if (  cell_in_stencil <= st_extent ) then
-              next_cell_east = mesh%get_cell_next(3,cell_east)
-              map => master_dofmap%get_master_dofmap(next_cell_east)
-              self%dofmap(:,cell_in_stencil,cell) = map
-              cell_east = next_cell_east
+            if ( st_shape ==  STENCIL_CROSS .or. st_shape == STENCIL_1DX ) then
+              cell_in_stencil = cell_in_stencil + 1
+              if (  cell_in_stencil <= st_extent ) then
+                next_cell_east = mesh%get_cell_next(east,cell_east)
+                map => master_dofmap%get_master_dofmap(next_cell_east)
+                self%dofmap(:,cell_in_stencil,cell) = map
+                ! Compute 'east' direction of new cell east
+                do direction = 1,4
+                  if ( mesh%get_cell_next(direction,next_cell_east) == cell_east) &
+                    east = opposite(direction)
+                end do
+                cell_east = next_cell_east
+              end if
             end if
 
-            cell_in_stencil = cell_in_stencil + 1
-            if (  cell_in_stencil <= st_extent ) then
-              next_cell_north = mesh%get_cell_next(4,cell_north)
-              map => master_dofmap%get_master_dofmap(next_cell_north)
-              self%dofmap(:,cell_in_stencil,cell) = map
-              cell_north = next_cell_north
+            if ( st_shape ==  STENCIL_CROSS .or. st_shape == STENCIL_1DY ) then
+              cell_in_stencil = cell_in_stencil + 1
+              if (  cell_in_stencil <= st_extent ) then
+                next_cell_north = mesh%get_cell_next(north,cell_north)
+                map => master_dofmap%get_master_dofmap(next_cell_north)
+                self%dofmap(:,cell_in_stencil,cell) = map
+                ! Compute 'north' direction of new cell north
+                do direction = 1,4
+                  if ( mesh%get_cell_next(direction,next_cell_north) == cell_north) &
+                    north = opposite(direction)
+                end do
+                cell_north = next_cell_north
+              end if
             end if
+
           end do
         end do
  
