@@ -1,0 +1,7 @@
+namelist cubedsphere_mesh_generator
+
+  edge_cells    : integer ! Cells on a panel edge (6 panels to a cubedsphere)
+  smooth_passes : integer ! Number of smoothing iterations to perform
+  mesh_filename : string(filename)
+
+end namelist cubedsphere_mesh_generator

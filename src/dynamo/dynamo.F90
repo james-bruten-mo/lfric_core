@@ -23,16 +23,17 @@
 
 program dynamo
 
+  use cli_mod,                        only : get_initial_filename
   use constants_mod,                  only : i_def
-  use dynamo_mod,                     only : load_configuration, &
-                                             process_commandline
-  use init_gungho_mod,                only : init_gungho
-  use init_dynamo_mod,                only : init_dynamo
+  use dynamo_mod,                     only : load_configuration
   use ESMF
   use field_io_mod,                   only : write_state_netcdf
   use field_mod,                      only : field_type
   use finite_element_config_mod,      only : element_order
   use formulation_config_mod,         only : transport_only, use_moisture
+  use init_gungho_mod,                only : init_gungho
+  use init_dynamo_mod,                only : init_dynamo
+  use io_utility_mod,                 only : open_file, close_file
   use iter_timestep_alg_mod,          only : iter_alg_init, &
                                              iter_alg_step
   use runge_kutta_init_mod,           only : runge_kutta_init
@@ -54,7 +55,7 @@ program dynamo
                                              LOG_LEVEL_INFO,    &
                                              LOG_LEVEL_DEBUG,   &
                                              LOG_LEVEL_TRACE
-  use restart_config_mod,             only : filename
+  use restart_config_mod,             only : restart_filename => filename
   use restart_control_mod,            only : restart_type
   use output_config_mod,              only : diagnostic_frequency
   use output_alg_mod,                 only : output_alg
@@ -68,6 +69,9 @@ program dynamo
   use diagnostic_alg_mod,             only : divergence_diagnostic_alg
   use mr_indices_mod,                 only : imr_v, imr_c, imr_r, imr_nc, imr_nr, nummr
   implicit none
+
+  character(:), allocatable :: filename
+  integer                   :: namelist_unit
 
   type(ESMF_VM)      :: vm
   integer            :: rc
@@ -114,18 +118,23 @@ program dynamo
   total_ranks = petCount
   local_rank  = localPET
 
+  ! Currently log_event can only use ESMF so it cannot be used before ESMF is
+  ! initialised.
   call log_event( 'Dynamo running...', LOG_LEVEL_INFO )
 
-  call process_commandline()
-  call load_configuration()
+  allocate( filename, source='dynamo_configuration.nml' )
+  call get_initial_filename( filename )
+  namelist_unit = open_file( filename )
+  call load_configuration( namelist_unit )
   call set_derived_config()
+  call close_file( namelist_unit )
+  deallocate( filename )
 
-  restart = restart_type( filename, local_rank, total_ranks )
+  restart = restart_type( restart_filename, local_rank, total_ranks )
 
   !-----------------------------------------------------------------------------
   ! model init
   !-----------------------------------------------------------------------------
-
 
   ! Create the mesh and function space collection
   call init_gungho(mesh_id, local_rank, total_ranks)

@@ -14,18 +14,19 @@
 
 program boundary_test
 
+  use boundary_test_alg_mod,          only : boundary_test_alg_init, &
+                                             boundary_test_alg
+  use boundary_test_mod,              only : load_configuration
+  use cli_mod,                        only : get_initial_filename
   use constants_mod,                  only : i_def
-  use boundary_test_mod,              only : load_configuration, &
-                                             process_commandline
-  use init_gungho_mod,                only : init_gungho
-  use init_boundary_test_mod,         only : init_boundary_test
+  use derived_config_mod,             only : set_derived_config
   use ESMF
   use field_io_mod,                   only : write_state_netcdf
   use field_mod,                      only : field_type
   use finite_element_config_mod,      only : element_order
-  use operator_mod,                   only : operator_type
-  use boundary_test_alg_mod,          only : boundary_test_alg_init, &
-                                             boundary_test_alg
+  use init_gungho_mod,                only : init_gungho
+  use init_boundary_test_mod,         only : init_boundary_test
+  use io_utility_mod,                 only : open_file, close_file
   use log_mod,                        only : log_event,         &
                                              log_set_level,     &
                                              log_scratch_space, &
@@ -34,15 +35,18 @@ program boundary_test
                                              LOG_LEVEL_DEBUG,   &
                                              LOG_LEVEL_TRACE,   &
                                              log_scratch_space
-  use restart_config_mod,             only : filename
+  use operator_mod,                   only : operator_type
+  use restart_config_mod,             only : restart_filename => filename
   use restart_control_mod,            only : restart_type
-  use derived_config_mod,             only : set_derived_config
   use runtime_constants_mod,          only : create_runtime_constants, &
                                              get_geopotential, &
                                              get_mass_matrix
 
 
   implicit none
+
+  character(:), allocatable :: filename
+  integer                   :: namelist_unit
 
   type(ESMF_VM)      :: vm
   integer            :: rc
@@ -76,11 +80,14 @@ program boundary_test
 
   call log_event( 'Boundary test running...', LOG_LEVEL_INFO )
 
-  call process_commandline()
-  call load_configuration()
+  call get_initial_filename( filename )
+  namelist_unit = open_file( filename )
+  call load_configuration( namelist_unit )
   call set_derived_config()
+  call close_file( namelist_unit )
+  deallocate( filename )
 
-  restart = restart_type( filename, local_rank, total_ranks )
+  restart = restart_type( restart_filename, local_rank, total_ranks )
 
   !-----------------------------------------------------------------------------
   ! model init

@@ -35,13 +35,17 @@ production: test
 .PHONY: build
 build: OPTIMISATION?=SAFE
 build: SYMBOLS?=YES
-build: tools
+build: tools scripts
 	$(MAKE) -C src/dynamo LINK=$(LINK) OPTIMISATION=$(OPTIMISATION) \
 	                      SYMBOLS=$(SYMBOLS) CHECKS=$(CHECKS)
 
 .PHONY: tools
 tools:
 	$(MAKE) -C tools
+
+.PHONY: scripts
+scripts:
+	$(MAKE) -C src/scripts
 
 # The 'test' target allows tests to be run on their own. When it is used in
 # this sense there is no way to know which (if any) build target was used.

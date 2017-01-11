@@ -616,7 +616,7 @@
         pre-script = """
                      {{'\n'|commandList(TARGET_BASE_SETUP, compiler_setup[compiler], TARGET_BUILD_SETUP, TARGET_REVEAL_SETUP, "mkdir -p $DYNAMO_BUILD_ROOT", "cp -rp $DYNAMO_SOURCE_DIRECTORY/build/* $DYNAMO_BUILD_ROOT")}}
                      """
-        script = make VERBOSE=SET -C $DYNAMO_SOURCE_DIRECTORY/src/test
+        script = make -C $DYNAMO_SOURCE_DIRECTORY/src/test
         post-script = """
                       {{'\n'|commandList("cp -rp $DYNAMO_BUILD_ROOT/* $DYNAMO_SOURCE_DIRECTORY/build", "rm -rf $DYNAMO_BUILD_ROOT")}}
                       """
@@ -653,7 +653,9 @@
         pre-script = """
                      {{'\n'|commandList(TARGET_BASE_SETUP, compiler_setup[compiler], TARGET_BUILD_SETUP, TARGET_REVEAL_SETUP)}}
                      """
-        script = "rose task-run --app-key=mesh --command-key={{mesh}}"
+        script = "rose task-run --app-key=mesh --opt-conf-key={{mesh}}"
+        [[[environment]]]
+            OUTPUT_FILE = $DYNAMO_DESTINATION_DIRECTORY/{{mesh}}.nc
         [[[directives]]]
 {%-         for DIRECTIVE in TARGET_RUN_BATCHER_DIRECTIVES %}
             {{DIRECTIVE}}
@@ -667,6 +669,8 @@
                      {{'\n'|commandList(TARGET_BASE_SETUP, compiler_setup[compiler], TARGET_REVEAL_SETUP)}}
                      """
         script = rose task-run --app-key=check_{{mesh}}
+        [[[environment]]]
+            MESH_FILE = $DYNAMO_DESTINATION_DIRECTORY/{{mesh}}.nc
         [[[directives]]]
 {%-         for DIRECTIVE in TARGET_TECHNICAL_BATCHER_DIRECTIVES %}
             {{DIRECTIVE}}

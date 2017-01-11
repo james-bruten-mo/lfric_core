@@ -14,8 +14,15 @@ import sys
 class Test:
     __metaclass__ = ABCMeta
 
-    def __init__( self ):
-        self.process = subprocess.Popen( [sys.argv[1]], \
+    def __init__( self, arguments=None ):
+        command = [sys.argv[1]]
+        if arguments:
+            if type(arguments) is list:
+                command.extend( arguments )
+            else:
+                command.append( arguments )
+
+        self.process = subprocess.Popen( command, \
                                          stdin=subprocess.PIPE, \
                                          stdout=subprocess.PIPE, \
                                          stderr=subprocess.PIPE )

@@ -14,8 +14,8 @@
 program gravity_wave
 
   use constants_mod,                  only : i_def
-  use gravity_wave_mod,               only : load_configuration, &
-                                             process_commandline
+  use cli_mod,                        only : get_initial_filename
+  use gravity_wave_mod,               only : load_configuration
   use init_gungho_mod,                only : init_gungho
   use init_gravity_wave_mod,          only : init_gravity_wave
   use ESMF
@@ -25,6 +25,7 @@ program gravity_wave
   use operator_mod,                   only : operator_type
   use gravity_wave_alg_mod,           only : gravity_wave_alg_init, &
                                              gravity_wave_alg_step
+  use io_utility_mod,                 only : open_file, close_file
   use log_mod,                        only : log_event,         &
                                              log_set_level,     &
                                              log_scratch_space, &
@@ -33,7 +34,7 @@ program gravity_wave
                                              LOG_LEVEL_DEBUG,   &
                                              LOG_LEVEL_TRACE,   &
                                              log_scratch_space
-  use restart_config_mod,             only : filename
+  use restart_config_mod,             only : restart_filename => filename
   use restart_control_mod,            only : restart_type
   use derived_config_mod,             only : set_derived_config
   use runtime_constants_mod,          only : create_runtime_constants, &
@@ -43,6 +44,9 @@ program gravity_wave
   use output_config_mod,              only : diagnostic_frequency
   use output_alg_mod,                 only : output_alg
   implicit none
+
+  character(:), allocatable :: namelist_filename
+  integer                   :: namelist_unit
 
   type(ESMF_VM)      :: vm
   integer            :: rc
@@ -77,11 +81,14 @@ program gravity_wave
 
   call log_event( 'Gravity wave simulation running...', LOG_LEVEL_INFO )
 
-  call process_commandline()
-  call load_configuration()
+  call get_initial_filename( namelist_filename )
+  namelist_unit = open_file( namelist_filename )
+  call load_configuration( namelist_unit )
   call set_derived_config()
+  call close_file( namelist_unit )
+  deallocate( namelist_filename )
 
-  restart = restart_type( filename, local_rank, total_ranks )
+  restart = restart_type( restart_filename, local_rank, total_ranks )
 
   !-----------------------------------------------------------------------------
   ! model init

@@ -40,7 +40,7 @@ character(len=*), parameter  :: prefix = "[Cubed-Sphere Mesh] "
 ! flag to print out mesh data for debugging purposes
 logical, parameter :: debug = .false.
 !-------------------------------------------------------------------------------
-type, extends(ugrid_generator_type), public        :: gencube_ps_type
+type, extends(ugrid_generator_type), public :: gencube_ps_type
   private
   integer                            :: ndivs
   integer                            :: nsmooth
@@ -64,7 +64,7 @@ contains
 end type gencube_ps_type
 !-------------------------------------------------------------------------------
 interface gencube_ps_type
-  module procedure         gencube_ps_constructor
+  module procedure gencube_ps_constructor
 end interface gencube_ps_type
 !-------------------------------------------------------------------------------
 contains
@@ -81,7 +81,7 @@ type(gencube_ps_type) function gencube_ps_constructor(ndivs, nsmooth) &
 
   implicit none
 
-  integer(kind=i_def), intent(in)                   :: ndivs, nsmooth
+  integer(kind=i_def), intent(in) :: ndivs, nsmooth
 
 
   if(ndivs < 3) then
@@ -1015,38 +1015,7 @@ subroutine orient_lfric(self)
 
 
 end subroutine orient_lfric
-!-------------------------------------------------------------------------------
-!>  @brief      Projects Cartesian coordinates onto the unit sphere
-!!
-!!  @details    Non-member routine
-!!            
-!!  @param[in]   x    x-coord argument
-!!  @param[in]   y    y-coord argument
-!!  @param[in]   z    z-coord argument
-!!  @param[out]  xs   x-coord of returned projection
-!!  @param[out]  ys   y-coord of returned projection
-!!  @param[out]  zs   z-coord of returned projection
-!-------------------------------------------------------------------------------
-subroutine map_sphere(x, y, z, xs, ys, zs)
 
-  implicit none
-  real(kind=r_def), intent(in)       :: x, y, z
-  real(kind=r_def), intent(out)      :: xs, ys, zs
-
-  real(kind=r_def)                   :: xrad, yrad, zrad
-
-
-  xrad = 1.0_r_def - 0.5_r_def*y*y - 0.5_r_def*z*z + (y*y*z*z)/3.0_r_def
-  xs = x * sqrt(xrad)
-
-  yrad = 1.0_r_def - 0.5_r_def*z*z - 0.5_r_def*x*x + (x*x*z*z)/3.0_r_def
-  ys = y * sqrt(yrad)
-
-  zrad = 1.0_r_def - 0.5_r_def*x*x - 0.5_r_def*y*y + (x*x*y*y)/3.0_r_def
-  zs = z * sqrt(zrad)
-
-end subroutine map_sphere
-!-------------------------------------------------------------------------------
 !>  @brief  Smooth the cube grid
 !>  @details Smooth the grid by iteratively computing the face centres as 
 !!           barycentres of the surrounding vertices and then the vertices
