@@ -19,7 +19,7 @@ contains
 ! Contained functions/subroutines
 !-------------------------------------------------------------------------------
 !> @brief Subroutine Computes the element Jacobian of the coordinate transform from
-!! reference space \f[ \hat{\chi} \f] to physical space chi assuming the coordinate
+!! reference space \f$ \hat{\chi} \f$ to physical space chi assuming the coordinate
 !! field is in W0
 !> @details Compute the Jacobian of the coordinate transform from
 !> reference space \f[ \hat{\chi} \f] to physical space \f[ \chi \f]
@@ -82,7 +82,7 @@ end do
 end subroutine coordinate_jacobian
 
 !> @brief Subroutine Computes the inverse of the Jacobian of the coordinate transform from
-!! reference space \f[\hat{\chi}\f] to physical space \f[ \chi \f] 
+!! reference space \f$\hat{\chi}\f$ to physical space \f$ \chi \f$
 !> @details Compute the inverse of the Jacobian 
 !> \f[ J^{i,j} = \frac{\partial \chi_i} / {\partial \hat{\chi_j}} \f] 
 !> and the derterminant det(J)

@@ -15,7 +15,7 @@
   </head>
   <body>
     <h1>Dynamo Nightly Build Report</h1>
-    <p>
+    <p class="internal">
 {%- if cronout %}
       Last updated {{crontimestamp}} (<a href="{{cronout}}"> log </a>)
 {%- endif %}
@@ -25,8 +25,8 @@
     </p>
     <h2>Documentation</h2>
     <ul id="doclist">
-{%- for url, details in subsites|dictsort if not "Model_Output" in details.name %}
-      <li><a href="{{url}}">{{details.name|replace(' ', '&nbsp;')}}</a></li>
+{%- for key, details in subsites|dictsort if not "Model_Output" in details.name %}
+      <li><a href="{{details.url}}">{{details.name|replace(' ', '&nbsp;')}}</a></li>
 {%- endfor %}
     </ul>
     <h2>Model Output</h2>

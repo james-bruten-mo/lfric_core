@@ -32,7 +32,7 @@
                               'miniapp(gravity_wave)',
                               'check_compilers(full-debug, True)',
                               'godlines(True)',
-                              'publish_index']} %}
+                              'publish_commit']} %}
 {%- set maxnrun = 3 %}
 {%- set mesh_types = ['cubedsphere', 'biperiodic'] %}
 {%- set ts_config = {} %}
@@ -49,6 +49,10 @@
 {%-   endif %}
 {%- else %}
 {%-   set groupsToRun = ['developer'] %}
+{%- endif %}
+
+{%- if MIRROR_UPLOAD_URL and MIRROR_UPLOAD_URL|list|last != '/' %}
+{%-   set MIRROR_UPLOAD_URL = MIRROR_UPLOAD_URL + '/' %}
 {%- endif %}
 
 {#- #########################################################################}
@@ -69,9 +73,10 @@
 {%-     endif %}
 {%-   endif %}
 {%-   if plotting %}
+            run_{{configuration}}_{{label}} => publish_{{configuration}}_{{label}}
 {%-     do ts_config.update( {configuration : timestep} ) %}
             run_{{configuration}}_{{label}} => plot_{{configuration}}_{{label}}
-            plot_{{configuration}}_{{label}} => copy_results_{{configuration}}_{{label}}
+            plot_{{configuration}}_{{label}} => publish_{{configuration}}_{{label}}_plots
 {%-   endif %}
 {%-   endif %}
 {%- endmacro %}
@@ -126,8 +131,12 @@
 {%-   endif %}
 {%- endmacro %}
 {#- #########################################################################}
-{%- macro publish_index() %}
+{%- macro publish_commit() %}
             PUBLISH:finish-all => publish_index
+            publish_index      => mirror_results_local
+{%- if MIRROR_UPLOAD_URL %}
+            publish_index      => mirror_results_remote
+{%- endif %}
 {%- endmacro %}
 {#- #########################################################################}
 {%- macro check_compilers( build, publish=False ) %}
@@ -158,7 +167,7 @@
 {%-       endif %}
             compile_with_{{label}} => run_semi-implicit_{{label}}
 {%-       if publish %}
-            run_semi-implicit_{{label}}:finish => publish_{{label}}_semi-implicit
+            run_semi-implicit_{{label}}:finish => publish_semi-implicit_{{label}}
 {%-       endif %}
 {%-       if compiler in TARGET_PERFORM_KGO_TESTS %}
             run_semi-implicit_{{label}} => check_semi-implicit_{{label}}
@@ -251,11 +260,11 @@
 {%- set dummy = setTaskEnv(scheduledTasksEnv) -%}
 {%- macro ensureDestination() %}
                      mkdir -p $DESTINATION
-                     chmod 755 $DESTINATION
 {%- endmacro %}
+{%- set publish_destination = '$CYLC_SUITE_SHARE_DIR/publish-' + TARGET_OPT %}
     [[PUBLISH]]
         [[[environment]]]
-            DESTINATION = ~/public_html/dynamo-{{TARGET_OPT}}
+            DESTINATION = {{publish_destination}}
 
 ##############################################################################
     [[purge_local]]
@@ -281,10 +290,34 @@
         inherit = None, LOCAL
         script = rose task-run --app-key=publish --command-key=index
         [[[environment]]]
-            DESTINATION = ~/public_html/dynamo-{{TARGET_OPT}}
+            DESTINATION = $CYLC_SUITE_SHARE_DIR/publish-{{TARGET_OPT}}
 {%-   if ROSE_BUSH_URL %}
             ROSE_BUSH_ARG = -bush {{ROSE_BUSH_URL}}
 {%-   endif %}
+{%- endif %}
+
+{%- if 'mirror_results_local' in scheduledTasks %}
+    # Again, something which happens after publishing and so cannot be in the
+    # PUBLISH family.
+    [[mirror_results_local]]
+        inherit = None, LOCAL
+        script = rose task-run --app-key=publish --command-key=mirror
+        [[[environment]]]
+            REWRITE = ''
+            SOURCE  = $CYLC_SUITE_SHARE_DIR/publish-{{TARGET_OPT}}
+            TARGET  = file:///$HOME/public_html/dynamo-{{TARGET_OPT}}
+{%- endif %}
+
+{%- if 'mirror_results_remote' in scheduledTasks %}
+    # Again, something which happens after publishing and so cannot be in the
+    # PUBLISH family.
+    [[mirror_results_remote]]
+        inherit = None, LOCAL
+        script = rose task-run --app-key=publish --command-key=mirror
+        [[[environment]]]
+            REWRITE = {{MIRROR_REWRITE}}
+            SOURCE  = $CYLC_SUITE_SHARE_DIR/publish-{{TARGET_OPT}}
+            TARGET  = {{MIRROR_UPLOAD_URL}}dynamo-{{TARGET_OPT}}
 {%- endif %}
 
 ##############################################################################
@@ -366,7 +399,7 @@
         script = rose task-run --app-key=publish --command-key=tar-file
         [[[environment]]]
             FILE = $DYNAMO_SOURCE_DIRECTORY/documentation/design-documents.tar
-            DESTINATION = ~/public_html/dynamo-{{TARGET_OPT}}/design
+            DESTINATION = {{publish_destination}}/design
 {%- endif %}
 
 ##############################################################################
@@ -468,11 +501,12 @@
                      """
         script = rose task-run --app-key=dynamo --command-key={{TARGET_RUN_METHOD}} --opt-conf-key={{configuration}}
         post-script = """
-                      cp dynamo-checksums.txt $DYNAMO_DESTINATION_DIRECTORY/dynamo.{{configuration}}.{{compiler}}.checksums
+                      mkdir -p $DYNAMO_DESTINATION_DIRECTORY/{{configuration}}
+                      cp dynamo-checksums.txt $DYNAMO_DESTINATION_DIRECTORY/{{configuration}}/{{compiler}}.checksums
                       mkdir -p $DYNAMO_DESTINATION_DIRECTORY/{{configuration}}/results
                       cp $CYLC_TASK_WORK_DIR/diagDynamo*.m $DYNAMO_DESTINATION_DIRECTORY/{{configuration}}/results/
                       # Future publisher stages need this information
-                      echo $CYLC_TASK_LOG_ROOT > $DYNAMO_DESTINATION_DIRECTORY/dynamo.{{configuration}}.{{compiler}}.log.path
+                      echo $CYLC_TASK_LOG_ROOT > $DYNAMO_DESTINATION_DIRECTORY/{{configuration}}/dynamo.{{compiler}}.log.path
                       """
         [[[environment]]]
             OMP_NUM_THREADS=2
@@ -492,51 +526,14 @@
 {%-         endfor %}
 {%-       endif %}
 
-{%-       if 'plot_' + configuration_label in scheduledTasks %}
-{%-         set ts_label = configuration %}
-    [[plot_{{configuration_label}}]]
-        inherit = PUBLISH, {{family}}, TARGET
-        pre-script = """
- {{ensureDestination()}}
-                     mkdir -p ~/public_html/dynamo-{{TARGET_OPT}}/model_output/{{configuration_label}}
-                     chmod 755 ~/public_html/dynamo-{{TARGET_OPT}}/model_output/{{configuration_label}}
-                     mkdir -p ~/public_html/dynamo-{{TARGET_OPT}}/model_output/{{configuration_label}}/plots
-                     chmod 755 ~/public_html/dynamo-{{TARGET_OPT}}/model_output/{{configuration_label}}/plots
-                     chmod 755 ~/public_html/dynamo-{{TARGET_OPT}}/model_output
-                     # remove old plots before running new ones
-                     rm -rf $PLOT_DIR/*.png
-                     """
-        script = rose task-run --app-key=plot
-        post-script = """
-                      chmod 754 $PLOT_DIR/*.png
-                      """
-        [[[environment]]]
-             NODAL_DATA_DIR = $DYNAMO_DESTINATION_DIRECTORY/{{configuration}}/results/
-             PLOT_DIR = ~/public_html/dynamo-{{TARGET_OPT}}/model_output/{{configuration_label}}/plots
-             FIELDS = theta,rho
-             TS = {{ts_config[ts_label]}}
-
-{%-       endif %}
-
-    # Copy of model results back to user's public_html must be performed locally as the target machine may
-    # not allow outgoing ssh connections
-{%-       if 'copy_results_' + configuration_label in scheduledTasks %}
-    [[copy_results_{{configuration_label}}]]
-        inherit = PUBLISH, {{family}}, LOCAL
-        pre-script = """
-{{ensureDestination()}}
-                     """
-        script = scp -pr {{TARGET_HOST}}:public_html/dynamo-{{TARGET_OPT}}/model_output ~/public_html/dynamo-{{TARGET_OPT}}
-{%- endif %}
-
-{%-       if 'publish_' + label + '_' +  configuration|lower in scheduledTasks %}
-    [[publish_{{label}}_{{configuration|lower}}]]
+{%-       if 'publish_' + configuration_label in scheduledTasks %}
+    [[publish_{{configuration_label}}]]
         inherit = PUBLISH, {{family}}, LOCAL
         pre-script = """
 {{ensureDestination()}}
                      mkdir -p $DYNAMO_DESTINATION_DIRECTORY
                      RELATIVE_DESTINATION_DIRECTORY=`echo $DYNAMO_DESTINATION_DIRECTORY | sed "s|$HOME/||"`
-                     scp {{TARGET_HOST}}:$RELATIVE_DESTINATION_DIRECTORY/dynamo.{{configuration}}.{{compiler}}.log.path .
+                     scp {{TARGET_HOST}}:$RELATIVE_DESTINATION_DIRECTORY/{{configuration}}/dynamo.{{compiler}}.log.path dynamo.{{configuration}}.{{compiler}}.log.path
                      scp {{TARGET_HOST}}:`cat dynamo.{{configuration}}.{{compiler}}.log.path`.out $DYNAMO_DESTINATION_DIRECTORY/dynamo.{{configuration}}.{{compiler}}.out
                      scp {{TARGET_HOST}}:`cat dynamo.{{configuration}}.{{compiler}}.log.path`.err $DYNAMO_DESTINATION_DIRECTORY/dynamo.{{configuration}}.{{compiler}}.err
                      """
@@ -547,6 +544,34 @@
             COMPILER      = {{compiler}}
             LOG_OUT       = $DYNAMO_DESTINATION_DIRECTORY/dynamo.{{configuration}}.{{compiler}}.out
             LOG_ERR       = $DYNAMO_DESTINATION_DIRECTORY/dynamo.{{configuration}}.{{compiler}}.err
+{%-       endif %}
+
+{%-       if 'plot_' + configuration_label in scheduledTasks %}
+{%-         set ts_label = configuration %}
+    [[plot_{{configuration_label}}]]
+        inherit = PUBLISH, {{family}}, TARGET
+        pre-script = """
+ {{ensureDestination()}}
+                     mkdir -p $PLOT_DIR
+                     # remove old plots before running new ones
+                     rm -rf $PLOT_DIR/*.png
+                     """
+        script = rose task-run --app-key=plot
+        [[[environment]]]
+             NODAL_DATA_DIR = $DYNAMO_DESTINATION_DIRECTORY/{{configuration}}/results
+             PLOT_DIR = $DYNAMO_DESTINATION_DIRECTORY/{{configuration}}/plots
+             FIELDS = theta,rho
+             TS = {{ts_config[ts_label]}}
+{%-       endif %}
+
+{%-       if 'publish_' + configuration_label + '_plots' in scheduledTasks %}
+    [[publish_{{configuration_label}}_plots]]
+        inherit = PUBLISH, {{family}}, LOCAL
+        script = """
+                 mkdir -p $DESTINATION/model_output/{{configuration_label}}/plots
+                 RELATIVE_DESTINATION_DIRECTORY=`echo $DYNAMO_DESTINATION_DIRECTORY | sed "s|$HOME/||"`
+                 scp -r {{TARGET_HOST}}:$RELATIVE_DESTINATION_DIRECTORY/{{configuration}}/plots $DESTINATION/model_output/{{configuration_label}}
+                 """
 {%-       endif %}
 
 {%-       if 'check_' + configuration_label in scheduledTasks %}

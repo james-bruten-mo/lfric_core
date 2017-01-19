@@ -26,6 +26,33 @@ class IndexRenderer(object):
     __MetaClass__ = ABCMeta
 
     @abstractmethod
+    def render( self, fileList ):
+        '''
+        Render to the specified file object.
+        '''
+        return ''
+
+##############################################################################
+class HtmlIndexRenderer(IndexRenderer):
+  def __init__( self ):
+    pass
+
+  def render( self, title, fileList ):
+    variables = {'title' : title, \
+                 'files' : fileList}
+    environment = Environment( loader=PackageLoader( 'parserender', \
+                                                     'templates' ) )
+    template = environment.get_template( 'simpleindex.html' )
+    return template.render( variables )
+
+##############################################################################
+class SiteIndexRenderer(object):
+    '''
+    Index page renderers inherit from this class.
+    '''
+    __MetaClass__ = ABCMeta
+
+    @abstractmethod
     def render( self, stream ):
         '''
         Render to the specified file object.
@@ -33,7 +60,7 @@ class IndexRenderer(object):
         pass
 
 ##############################################################################
-class HtmlIndexRenderer(IndexRenderer):
+class HtmlSiteIndexRenderer(SiteIndexRenderer):
     '''
     Render the index page to an HTML document.
     '''
@@ -42,17 +69,22 @@ class HtmlIndexRenderer(IndexRenderer):
         self._suiteUrl = suiteUrl
 
     def render( self, stream ):
+        if self._suiteUrl.endswith('/'):
+          suiteUrl = self._suiteURL[:-1]
+        else:
+          suiteUrl = self._suiteUrl
+
         variables = {'cronout'       : self._indexer.cronOut,       \
                      'crontimestamp' : self._indexer.cronTimestamp, \
                      'pages'         : self._indexer.pages,         \
                      'subsites'      : self._indexer.subsites,      \
                      'oldthreshold'  : datetime.datetime.utcnow()   \
                                        - datetime.timedelta( hours=48 ), \
-                     'suiteurl'      : self._suiteUrl}
+                     'suiteurl'      : suiteUrl}
 
         environment = Environment( loader=PackageLoader( 'parserender', \
                                                          'templates' ) )
-        template = environment.get_template( 'index.html' )
+        template = environment.get_template( 'siteindex.html' )
         print( template.render( variables ), file=stream )
 
 ##############################################################################

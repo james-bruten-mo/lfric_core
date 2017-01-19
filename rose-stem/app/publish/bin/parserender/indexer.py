@@ -37,7 +37,10 @@ class SubsiteDetails(object):
     Holds details about a subsite directory.
     '''
     def __init__( self, url, name, timestamp ):
-        self.url       = url
+        if url.endswith( '/' ):
+          self.url = url[:-1]
+        else:
+          self.url = url
         self.name      = name
         self.timestamp = timestamp
 
@@ -55,7 +58,6 @@ class DynamoIndexer(Indexer):
     '''
     def __init__( self, pathname ):
         self.subsites = {}
-
         self._rootPath = pathname
 
     def examine( self ):
@@ -96,9 +98,10 @@ class DynamoIndexer(Indexer):
                                                             'index.html' ) )
                 timestamp = datetime.datetime.utcfromtimestamp( timestamp )
                 # Add it to the list of subsites
-                subsites[relativePath] = SubsiteDetails( relativePath, \
+                subsites[relativePath] = SubsiteDetails( \
+                                os.path.join( relativePath, 'index.html' ),  \
                                 relativePath.replace( os.sep, ' ' ).title(), \
-                                                         timestamp )
+                                timestamp )
 
             else:
                 if (len(directorynames) > 0):
@@ -115,7 +118,6 @@ class DynamoIndexer(Indexer):
 
         return subsites
 
-   
     def siteExists(self, relPath, subsites):
        # Checks if a path is a subpath of an entry in the current subsites list
        exists = False

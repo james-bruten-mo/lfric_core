@@ -8,7 +8,7 @@
 !-------------------------------------------------------------------------------
 
 !> @brief The kernel computes the cell integrated potential vorticity
-!> \f[ \int( \xi . \nabla(\theta) dV ) \f]
+!> \f$ \int( \xi . \nabla(\theta) dV ) \f$
 module compute_total_pv_kernel_mod
 
 use argument_mod,      only : arg_type, func_type,                     &

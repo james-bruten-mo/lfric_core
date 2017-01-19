@@ -14,6 +14,7 @@ from __future__ import print_function
 
 import argparse
 import os
+import os.path
 import stat
 
 import parserender.parser   as parser
@@ -40,6 +41,8 @@ if __name__ == '__main__':
                     'Portland': parser.PortlandRunParser}
 
     workingFilename = arguments.output + '.work'
+    if not os.path.exists( os.path.dirname( workingFilename ) ):
+      os.makedirs( os.path.dirname( workingFilename ) )
     with open( arguments.outfile, 'r' ) as outfile, \
          open( arguments.errfile, 'r' ) as errfile, \
          open( workingFilename, 'w' ) as workingFile:

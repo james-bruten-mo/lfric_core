@@ -44,6 +44,8 @@ if __name__ == '__main__':
                    file=hashFile )
 
     workingFilename = arguments.output + '.work'
+    if not os.path.exists( os.path.dirname( workingFilename ) ):
+      os.makedirs( os.path.dirname( workingFilename ) )
     with open( workingFilename, 'w' ) as outfile:
         if arguments.bush and 'CYLC_SUITE_NAME' in os.environ:
             suiterun = '{}/jobs/{}/{}'.format( arguments.bush,     \
@@ -51,7 +53,7 @@ if __name__ == '__main__':
                                                os.environ['CYLC_SUITE_NAME'] )
         else:
             suiterun = None
-        pageRenderer = renderer.HtmlIndexRenderer( dynamoIndexer, suiterun )
+        pageRenderer = renderer.HtmlSiteIndexRenderer( dynamoIndexer, suiterun )
         pageRenderer.render( outfile )
 
     os.rename( workingFilename, arguments.output )
