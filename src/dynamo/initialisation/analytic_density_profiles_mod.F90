@@ -21,7 +21,8 @@ use idealised_config_mod,       only : idealised_test_cold_bubble,   &
                                        idealised_test_cosine_hill,   &
                                        idealised_test_slotted_cylinder, &
                                        idealised_test_gravity_wave, &
-                                       idealised_test_solid_body_rotation
+                                       idealised_test_solid_body_rotation, &
+                                       idealised_test_deep_baroclinic_wave
 use initial_density_config_mod, only : r1, x1, y1, r2, x2, y2,     &
                                        tracer_max, tracer_background
 use base_mesh_config_mod,       only : geometry, &
@@ -29,6 +30,7 @@ use base_mesh_config_mod,       only : geometry, &
 use planet_config_mod,          only : p_zero, Rd, kappa, scaled_radius
 use reference_profile_mod,      only : reference_profile
 use analytic_temperature_profiles_mod, only: analytic_temperature
+use deep_baroclinic_wave_mod,   only : deep_baroclinic_wave
 
 implicit none
 
@@ -56,6 +58,7 @@ function analytic_density(chi, choice) result(density)
   real(kind=r_def)             :: pressure, temperature
   real(kind=r_def)             :: t0
   real(kind=r_def)             :: chi_surf(3)
+  real(kind=r_def)             :: u, v, w
 
           
   if ( geometry == base_mesh_geometry_spherical ) then
@@ -139,7 +142,11 @@ function analytic_density(chi, choice) result(density)
     temperature = analytic_temperature(chi, choice, chi_surf)
     pressure = t0/temperature
     density = p_zero/(Rd*temperature) * pressure**( (1.0_r_def - kappa )/ kappa )
- 
+
+  case( idealised_test_deep_baroclinic_wave )
+    call deep_baroclinic_wave(long, lat, radius-scaled_radius, &
+                              pressure, temperature, density, &
+                              u, v, w) 
   case default
     write( log_scratch_space, '(A)' )  'Invalid density profile choice, stopping'
     call log_event( log_scratch_space, LOG_LEVEL_ERROR )

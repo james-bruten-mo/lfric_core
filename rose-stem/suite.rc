@@ -4,7 +4,8 @@
                                  'transport-cosmic', 'transport-rk', 'transport-biperiodic',
                                  'biperiodic_p0_gw', 'biperiodic_p1_gw',
                                  'dcmip301', 'robert', 'robert-moist',
-                                 'sbr', 'sbr_spinupwinds', 'sbr_spinupalpha'%}
+                                 'sbr', 'sbr_spinupwinds', 'sbr_spinupalpha',
+                                 'baroclinic'%}
 {%- set groups = {'developer': ['science(semi-implicit)',
                                 'science(si-helmholtz)',
                                 'science(runge-kutta)',
@@ -13,6 +14,7 @@
                                 'science(transport-biperiodic)',
                                 'science(biperiodic_p0_gw)',
                                 'science(biperiodic_p1_gw)',
+                                'science(baroclinic)',
                                 'miniapp(boundary_test)',
                                 'check_compilers(fast-debug)',
                                 'canned_test',

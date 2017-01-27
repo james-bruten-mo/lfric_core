@@ -3,7 +3,9 @@ namelist initial_wind
                                solid_body_rotation,
                                constant_uv,
                                constant_shear_uv,
-                               dcmip301]
+                               dcmip301,
+                               deep_baroclinic_steady,
+                               deep_baroclinic_perturbed]
   u0             : real
   v0             : real
   rotation_angle : real

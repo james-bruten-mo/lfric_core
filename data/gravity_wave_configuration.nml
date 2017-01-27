@@ -18,6 +18,7 @@
   coordinate_order = 0
   rehabilitate  = .true.
   wtheta_on     = .false.
+  supg = .false.
 /
 
 &initial_temperature

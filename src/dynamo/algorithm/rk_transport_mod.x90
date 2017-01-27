@@ -17,7 +17,7 @@ module rk_transport_mod
                                                LOG_LEVEL_TRACE
 
   ! Configuration and restart/checkpoint options
-  use finite_element_config_mod,         only: element_order
+  use finite_element_config_mod,         only: element_order, supg
   use restart_control_mod,               only: restart_type
   use solver_config_mod,                 only: method,         &
                                                preconditioner, &
@@ -32,7 +32,6 @@ module rk_transport_mod
                                                fv_advective_order, &
                                                transport_operators_fv, &
                                                transport_operators_fem
-  use formulation_config_mod,            only: supg
 
   ! PsyKAl-lite kernels
   use psykal_lite_mod,                   only: invoke_axpy,                   &

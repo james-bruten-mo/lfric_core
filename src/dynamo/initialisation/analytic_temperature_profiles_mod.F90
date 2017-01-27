@@ -22,7 +22,8 @@ use idealised_config_mod,         only : idealised_test_cold_bubble,   &
                                          idealised_test_slotted_cylinder, &
                                          idealised_test_gravity_wave, &
                                          idealised_test_warm_bubble, &
-                                         idealised_test_solid_body_rotation
+                                         idealised_test_solid_body_rotation, &
+                                         idealised_test_deep_baroclinic_wave
 use initial_density_config_mod,    only : r1, x1, y1, r2, x2, y2,     &
                                           tracer_max, tracer_background
 use base_mesh_config_mod,          only : geometry, &
@@ -32,6 +33,7 @@ use planet_config_mod,             only : p_zero, Rd, kappa, scaled_radius, &
 use reference_profile_mod,         only : reference_profile_wtheta
 use generate_global_gw_fields_mod, only : generate_global_gw_pert
 use initial_wind_config_mod,       only : u0, rotation_angle
+use deep_baroclinic_wave_mod,      only : deep_baroclinic_wave
 
 implicit none
 
@@ -64,7 +66,8 @@ function analytic_temperature(chi, choice, chi_surf) result(temperature)
   real(kind=r_def)             :: h1, h2
   real(kind=r_def)             :: pressure, density
   real(kind=r_def)             :: s, u00, f_sb, t0
-          
+  real(kind=r_def)             :: u, v, w 
+ 
   if ( geometry == base_mesh_geometry_spherical ) then
     call xyz2llr(chi(1),chi(2),chi(3),long,lat,radius)
     call xyz2llr(chi_surf(1),chi_surf(2),chi_surf(3),long_surf,lat_surf,radius_surf)
@@ -170,6 +173,12 @@ function analytic_temperature(chi, choice, chi_surf) result(temperature)
     f_sb = 0.5*u00*s**2
     temperature = t0 * exp( gravity*(radius-scaled_radius)/( cp * t0 ) ) &
                 * exp(-kappa*f_sb)  
+
+  case( idealised_test_deep_baroclinic_wave )
+    call deep_baroclinic_wave(long, lat, radius-scaled_radius, &
+                              pressure, temperature, density, &
+                              u, v, w) 
+
   end select
 
 end function analytic_temperature

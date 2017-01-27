@@ -2,8 +2,7 @@ namelist formulation
 
   transport_only  : logical ! Solve the transport equation only
   rotating        : logical ! Turn on/off Coriolis terms
-  supg            : logical ! Use Streamline-Upwind-Petrov-Galerkin method for
-                            ! stabilisation of CG advection
   eliminate_p     : logical ! Eliminate p from the si solver
   use_moisture    : logical ! Use moisture variables.
+  shallow         : logical ! Run in shallow atmosphere mode
 end namelist formulation

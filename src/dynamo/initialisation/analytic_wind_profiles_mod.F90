@@ -12,15 +12,19 @@ module analytic_wind_profiles_mod
 
 use constants_mod,      only : r_def, pi
 use initial_wind_config_mod, only : &
-                               initial_wind_profile_none,                &
-                               initial_wind_profile_solid_body_rotation, &
-                               initial_wind_profile_constant_uv,         &
-                               initial_wind_profile_constant_shear_uv,   &
-                               initial_wind_profile_dcmip301
+                               initial_wind_profile_none,                   &
+                               initial_wind_profile_solid_body_rotation,    &
+                               initial_wind_profile_constant_uv,            &
+                               initial_wind_profile_constant_shear_uv,      &
+                               initial_wind_profile_dcmip301,               &
+                               initial_wind_profile_deep_baroclinic_steady, &
+                               initial_wind_profile_deep_baroclinic_perturbed
+
 use planet_config_mod,  only : scaled_radius
 use log_mod,            only : log_event,                &
                                log_scratch_space,        &
                                LOG_LEVEL_ERROR
+use deep_baroclinic_wave_mod, only : deep_baroclinic_wave
 
 implicit none
 
@@ -41,6 +45,7 @@ function analytic_wind(chi, choice, num_options, option) result(u)
   real(kind=r_def), optional   :: option(num_options)
   real(kind=r_def)             :: u(3)
   real(kind=r_def)             :: s
+  real(kind=r_def)             :: pressure, temperature, density
 
   if ( .not. present(option) ) option(:) = 0.0_r_def
 
@@ -65,6 +70,11 @@ function analytic_wind(chi, choice, num_options, option) result(u)
       u(1) = option(1)*chi(3)/option(3)
       u(2) = option(2)*chi(3)/option(3)
       u(3) = 0.0_r_def 
+    case ( initial_wind_profile_deep_baroclinic_steady, &
+           initial_wind_profile_deep_baroclinic_perturbed)
+      call deep_baroclinic_wave(chi(1), chi(2), chi(3)-scaled_radius, &
+                                pressure, temperature, density, &
+                                u(1), u(2), u(3)) 
     case default
       write( log_scratch_space, '(A)' )  'Invalid velocity profile choice, stopping'
       call log_event( log_scratch_space, LOG_LEVEL_ERROR )

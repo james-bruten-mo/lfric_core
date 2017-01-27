@@ -19,8 +19,7 @@ module advection_alg_mod
                                             get_mass_matrix_diagonal
   use field_bundle_mod,               only: bundle_ax
   use field_mod,                      only: field_type
-  use finite_element_config_mod,      only: element_order, wtheta_on
-  use formulation_config_mod,         only: supg
+  use finite_element_config_mod,      only: element_order, wtheta_on, supg
   use function_space_mod,             only: function_space_type
   use matrix_vector_kernel_mod,       only: matrix_vector_kernel_type
   use operator_mod,                   only: operator_type

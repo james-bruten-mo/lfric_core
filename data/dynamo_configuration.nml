@@ -17,15 +17,16 @@
   element_order = 0
   coordinate_order = 0
   rehabilitate  = .true.
-  wtheta_on = .false. 
+  wtheta_on = .false.
+  supg = .false. 
 /
 
 &formulation
   transport_only = .false.
   rotating       = .true.
-  supg           = .false.
   eliminate_p    = .false.
   use_moisture   = .false.
+  shallow        = .false.
 /
 
 &idealised

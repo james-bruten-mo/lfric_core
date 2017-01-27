@@ -15,5 +15,7 @@ namelist finite_element
                           ! polynomials of order k in the horizontal
                           ! direction and continuous polynomials of order k+1 
                           ! in the vertical direction.
+  supg          : logical ! Use Streamline-Upwind-Petrov-Galerkin method for
+                          ! stabilisation of CG advection
 
 end namelist finite_element
