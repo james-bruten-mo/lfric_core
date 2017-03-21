@@ -32,11 +32,9 @@ module rtheta_kernel_mod_test
     type(quadrature_type)              :: qr
     type(function_space_type), pointer :: w0_fs => null()
     type(function_space_type), pointer :: w2_fs => null()
-    type(function_space_type), pointer :: w3_fs => null()
-    type(field_type)                   :: r_theta, f, rho
+    type(field_type)                   :: r_theta, u
     real(r_def), allocatable           :: basis_w2(:,:,:,:), &
                                           basis_w0(:,:,:,:), &
-                                          basis_w3(:,:,:,:), &
                                           diff_basis_w0(:,:,:,:)
     real(r_def), allocatable           :: answer(:)
   contains
@@ -61,12 +59,11 @@ contains
     class(rtheta_test_type), intent(inout) :: this
 
 
-    type(field_proxy_type) :: r_theta_proxy, f_proxy, rho_proxy
+    type(field_proxy_type) :: r_theta_proxy, u_proxy
 
     integer(i_def)         :: nqp_h, nqp_v
     integer(i_def)         :: ndf_w0, undf_w0, dim_w0, dim_diff_w0
     integer(i_def)         :: ndf_w2, undf_w2, dim_w2
-    integer(i_def)         :: ndf_w3, undf_w3, dim_w3
     integer(i_def)         :: mesh_id
 
     this%qr  = quadrature_type(3, GAUSSIAN)
@@ -88,12 +85,11 @@ contains
 
     this%w0_fs => function_space_collection%get_fs(mesh_id, element_order, W0)
     this%w2_fs => function_space_collection%get_fs(mesh_id, element_order, W2)
-    this%w3_fs => function_space_collection%get_fs(mesh_id, element_order, W3)
 
-    this%f  = field_type( vector_space = this%w2_fs )
-    f_proxy = this%f%get_proxy()
-    ndf_w2  = f_proxy%vspace%get_ndf( )
-    dim_w2  = f_proxy%vspace%get_dim_space( )
+    this%u  = field_type( vector_space = this%w2_fs )
+    u_proxy = this%u%get_proxy()
+    ndf_w2  = u_proxy%vspace%get_ndf( )
+    dim_w2  = u_proxy%vspace%get_dim_space( )
     allocate( this%basis_w2(dim_w2,ndf_w2,nqp_h,nqp_v) )
 
     this%r_theta  = field_type( vector_space = this%w0_fs )
@@ -105,12 +101,6 @@ contains
     allocate( this%basis_w0(dim_w0,ndf_w0,nqp_h,nqp_v) )
     allocate( this%diff_basis_w0(dim_diff_w0,ndf_w0,nqp_h,nqp_v) )
     allocate( this%answer(undf_w0) )
-
-    this%rho  = field_type( vector_space = this%w3_fs )
-    rho_proxy = this%rho%get_proxy()
-    ndf_w3    = rho_proxy%vspace%get_ndf( )
-    dim_w3    = rho_proxy%vspace%get_dim_space( )
-    allocate( this%basis_w3(dim_w3,ndf_w3,nqp_h,nqp_v) )
 
 
   end subroutine setUp
@@ -126,8 +116,8 @@ contains
 
     deallocate( this%basis_w2,      &
                 this%basis_w0,      &
-                this%diff_basis_w0, &
-                this%basis_w3 )
+                this%diff_basis_w0  &
+                )
     deallocate( this%answer )
 
     call function_space_collection%clear()
@@ -158,14 +148,12 @@ contains
     integer                 :: nlayers, nqp_h, nqp_v
     integer                 :: ndf_w0, undf_w0
     integer                 :: ndf_w2, undf_w2
-    integer                 :: ndf_w3, undf_w3
 
     integer, pointer        :: map_w0(:) => null()
     integer, pointer        :: map_w2(:) => null()
-    integer, pointer        :: map_w3(:) => null()
 
     type(field_proxy_type)        :: r_theta_proxy, theta_proxy, &
-                                     f_proxy, rho_proxy
+                                     u_proxy
 
     real(kind=r_def), pointer :: xp(:,:) => null()
     real(kind=r_def), pointer :: zp(:)   => null()
@@ -178,8 +166,7 @@ contains
 
     r_theta_proxy   = this%r_theta%get_proxy()
     theta_proxy     = theta%get_proxy()
-    f_proxy         = this%f%get_proxy()
-    rho_proxy       = this%rho%get_proxy()
+    u_proxy         = this%u%get_proxy()
 
     nlayers = r_theta_proxy%vspace%get_nlayers()
 
@@ -190,16 +177,13 @@ contains
     wh=>this%qr%get_wqp_h()
     wv=>this%qr%get_wqp_v()
 
-    ndf_w2      = f_proxy%vspace%get_ndf( )
-    undf_w2     = f_proxy%vspace%get_undf()
+    ndf_w2      = u_proxy%vspace%get_ndf( )
+    undf_w2     = u_proxy%vspace%get_undf()
 
     ndf_w0      = r_theta_proxy%vspace%get_ndf( )
     undf_w0     = r_theta_proxy%vspace%get_undf()
 
-    ndf_w3      = rho_proxy%vspace%get_ndf( )
-    undf_w3     = rho_proxy%vspace%get_undf()
-
-    call f_proxy%vspace%compute_basis_function(                     &
+    call u_proxy%vspace%compute_basis_function(                     &
         this%basis_w2, ndf_w2, nqp_h, nqp_v, xp, zp)
 
     call r_theta_proxy%vspace%compute_basis_function(this%basis_w0, ndf_w0,      &
@@ -208,28 +192,22 @@ contains
     call r_theta_proxy%vspace%compute_diff_basis_function(                  &
          this%diff_basis_w0, ndf_w0, nqp_h, nqp_v, xp, zp)
 
-    call rho_proxy%vspace%compute_basis_function(                     &
-        this%basis_w3, ndf_w3, nqp_h, nqp_v, xp, zp)
-
 
     ! Create the data
     r_theta_proxy%data(:) = 0.0_r_def
     theta_proxy%data(:) = 300.0_r_def
-    f_proxy%data(:) = 2.0_r_def
-    rho_proxy%data(:) = 0.5_r_def
+    u_proxy%data(:) = 4.0_r_def
 
 
     do cell = 1, r_theta_proxy%vspace%get_ncell()
        map_w0 => r_theta_proxy%vspace%get_cell_dofmap( cell )
-       map_w2 => f_proxy%vspace%get_cell_dofmap( cell )
-       map_w3 => rho_proxy%vspace%get_cell_dofmap( cell )
+       map_w2 => u_proxy%vspace%get_cell_dofmap( cell )
 
 
        call rtheta_code( nlayers, &
                          r_theta_proxy%data, &
                          theta_proxy%data, &
-                         f_proxy%data, &
-                         rho_proxy%data, &
+                         u_proxy%data, &
                          ndf_w0, undf_w0, &
                          map_w0, &
                          this%basis_w0, &
@@ -237,14 +215,11 @@ contains
                          ndf_w2, undf_w2, &
                          map_w2, &
                          this%basis_w2, &
-                         ndf_w3, undf_w3, &
-                         map_w3, &
-                         this%basis_w3, &
                          nqp_h, nqp_v, wh, wv &
                          )
     end do
 
-    ! Simple test, check that when theta=const, f/rho.grad(theta) = 0    
+    ! Simple test, check that when theta=const, u.grad(theta) = 0    
     this%answer(:) = 0.0_r_def
     @assertEqual( this%answer, r_theta_proxy%data(:), tol )
 

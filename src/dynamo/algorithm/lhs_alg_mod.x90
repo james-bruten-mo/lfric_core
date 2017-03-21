@@ -22,7 +22,7 @@ module lhs_alg_mod
                                                transport_operators_fv
   implicit none
 
-  type(field_type),              private :: ones, w2_multiplicity, f_star, r_rho
+  type(field_type),              private :: w2_multiplicity, f_star, r_rho
   type(field_type), allocatable, private :: lhs_tmp(:)
   type( field_type )                     :: mt_lumped
   type(function_space_type), pointer     :: u_fs => null()
@@ -52,6 +52,7 @@ contains
     integer(i_def),                    :: mesh_id
     integer                            :: fs_handle
     type(operator_type)                :: mm_wt
+    type( field_type )                 :: ones
 
     allocate( lhs_tmp(si_bundle_size) )
     call clone_bundle(state, lhs_tmp, si_bundle_size)
@@ -219,14 +220,14 @@ contains
   call invoke_set_field_scalar( 0.0_r_def, lhs_tmp(2) )
   call invoke_set_field_scalar( 0.0_r_def, lhs(2) )
   if(wtheta_on) then
-    call invoke_rtheta_bd_kernel ( lhs_tmp(2), theta_ref, u, ones, qr )
+    call invoke_rtheta_bd_kernel ( lhs_tmp(2), theta_ref, u, qr )
     call invoke( rtheta_wtheta_kernel_type( lhs_tmp(2), theta_ref, u, qr), &
                  matrix_vector_kernel_type( lhs(2), theta, mm_wtheta ) )
   else
-    call invoke( rtheta_kernel_type( lhs_tmp(2), theta_ref, u, ones, qr), &
+    call invoke( rtheta_kernel_type( lhs_tmp(2), theta_ref, u, qr), &
                  matrix_vector_kernel_type( lhs(2), theta, mm_wtheta ) )
   end if
-  call invoke_axpy( -tau_dt, lhs_tmp(2), lhs(2), lhs(2) ) 
+  call invoke_axpy( tau_dt, lhs_tmp(2), lhs(2), lhs(2) ) 
 
   ! Compute lhs_rho
   ! Need to create u*rho^ref \in W2 for lhs_tmp(3) kernel -> sampled mass flux

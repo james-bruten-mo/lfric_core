@@ -226,7 +226,7 @@ contains
       call log_event( log_scratch_space, LOG_LEVEL_INFO )
       ! Compute advection terms
       call advection_alg( rhs_prediction(:,stage), &
-                          state, state, state_n, xi)
+                          state_n, xi, state(1))
       ! Compute new rhs
       if ( rotating ) &
         call invoke( rotation_kernel_type( rhs_prediction(1,stage), state(1), chi, qr ) )

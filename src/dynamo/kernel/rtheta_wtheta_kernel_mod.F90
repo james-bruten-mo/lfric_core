@@ -12,7 +12,7 @@
 !>         this consists of the term theta*gamma*div(u) + theta u*grad(gamma)
 !> @details Kernel to  compute the rhs of thermodynamic equation for the nonlinear equations, in
 !>         the absense of source terms this is
-!>         rtheta = theta*gamma*div(u) + theta u*grad(gamma)
+!>         rtheta = -(theta*gamma*div(u) + theta u*grad(gamma))
 module rtheta_wtheta_kernel_mod
 use kernel_mod,              only : kernel_type
 use argument_mod,            only : arg_type, func_type,                     &
@@ -165,7 +165,7 @@ subroutine rtheta_wtheta_code(nlayers,                                          
     end do
 
     do df = 1, ndf_wtheta
-      r_theta( map_wtheta(df) + k ) =  r_theta( map_wtheta(df) + k ) + rtheta_e(df)
+      r_theta( map_wtheta(df) + k ) =  r_theta( map_wtheta(df) + k ) - rtheta_e(df)
     end do
   end do
 end subroutine rtheta_wtheta_code

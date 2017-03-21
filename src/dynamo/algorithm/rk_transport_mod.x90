@@ -17,7 +17,7 @@ module rk_transport_mod
                                                LOG_LEVEL_TRACE
 
   ! Configuration and restart/checkpoint options
-  use finite_element_config_mod,         only: element_order, supg
+  use finite_element_config_mod,         only: element_order, supg, wtheta_on
   use restart_control_mod,               only: restart_type
   use solver_config_mod,                 only: method,         &
                                                preconditioner, &
@@ -200,18 +200,14 @@ contains
 
 
     ! temps for retrieving objects back from runtime constants
-    type(operator_type), pointer :: mm_w2, mm_w3_inv, mm_w0 => null()
-    type(field_type),    pointer :: mm_w0_d => null()
+    type(operator_type), pointer :: mm_w2, mm_w3_inv, mm_wt => null()
+    type(field_type),    pointer :: mm_wt_d => null()
 
     qr = get_qr()
 
     ! Create operators needed for timestepping
     mm_w2     => get_mass_matrix(2)
     mm_w3_inv => get_mass_matrix(4)
-    if ( operators == transport_operators_fem ) then
-      mm_w0 => get_mass_matrix(0)
-      mm_w0_d => get_mass_matrix_diagonal(0)
-    end if
     call invoke_copy_field_data(rho,   rho_n)
     call invoke_copy_field_data(theta, theta_n)
 
@@ -239,7 +235,7 @@ contains
 
           ! theta advection
           call invoke_set_field_scalar( 0.0_r_def, rt_prediction(stage) )
-          call invoke( rtheta_kernel_type( rt_prediction(stage), theta, u, ones, qr) )
+          call invoke( rtheta_kernel_type( rt_prediction(stage), theta, u, qr) )
           if ( supg ) &
             call invoke( rtheta_supg_kernel_type( rt_prediction(stage),     &
                                 theta, theta_n, u, ones, chi, qr) )
@@ -268,12 +264,19 @@ contains
         case(transport_operators_fv) ! theta in Wtheta
           call invoke_divide_field(r_theta, mt_lumped, r_theta)
           call invoke_axpy(-dt,r_theta, theta_n, theta)
-        case(transport_operators_fem) ! theta in W0
+        case(transport_operators_fem)
+          if ( wtheta_on ) then
+            mm_wt => get_mass_matrix(5)
+            mm_wt_d => get_mass_matrix_diagonal(4)
+          else
+            mm_wt => get_mass_matrix(0)
+            mm_wt_d => get_mass_matrix_diagonal(0)
+          end if
           call solver_algorithm( theta_inc, r_theta,       &
-                                 mesh_id, chi, method, mm=mm_w0,&
-                                 mmd=mm_w0_d, &
+                                 mesh_id, chi, method, mm=mm_wt,&
+                                 mmd=mm_wt_d, &
                                  preconditioner_choice=preconditioner )
-           call invoke_axpy(dt, theta_inc, theta_n, theta)
+          call invoke_axpy(-dt, theta_inc, theta_n, theta)
       end select      
     end do
 

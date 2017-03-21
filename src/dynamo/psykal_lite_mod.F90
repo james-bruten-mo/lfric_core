@@ -270,7 +270,7 @@ contains
   !> Computation of 2d quadrature on faces not currently supported PSyClone,
   !> will be introduced in #793  by modifying quadrature tools developed in ticket #761.
   !> Invoke_rtheta_bd_kernel: Invoke the boundary part of the RHS of the theta equation
-  subroutine invoke_rtheta_bd_kernel( r_theta_bd, theta, f, rho, qr )
+  subroutine invoke_rtheta_bd_kernel( r_theta_bd, theta, u, qr )
 
     use rtheta_bd_kernel_mod,   only : rtheta_bd_code
     use mesh_mod, only : mesh_type ! Work around for intel_v15 failues on the Cray
@@ -280,36 +280,31 @@ contains
     implicit none
 
     type (mesh_type), pointer            :: mesh => null()
-    type( field_type ), intent( in )     :: theta, f, rho
+    type( field_type ), intent( in )     :: theta, u
     type( field_type ), intent( inout )  :: r_theta_bd
     type( quadrature_type), intent( in ) :: qr
 
     type(stencil_dofmap_type), pointer :: cross_stencil_w2 => null()
-    type(stencil_dofmap_type), pointer :: cross_stencil_w3 => null()
     type(stencil_dofmap_type), pointer :: cross_stencil_wtheta => null()
 
     integer                 :: cell, nlayers, nqp_h, nqp_v, nqp_h_1d
-    integer                 :: ndf_w2, ndf_wtheta, ndf_w3
-    integer                 :: undf_w2, undf_wtheta, undf_w3
-    integer                 :: dim_w2, dim_wtheta, dim_w3
+    integer                 :: ndf_w2, ndf_wtheta
+    integer                 :: undf_w2, undf_wtheta
+    integer                 :: dim_w2, dim_wtheta
     integer, allocatable    :: adjacent_face(:)
 
     integer, pointer        :: cross_stencil_w2_map(:,:,:) => null()
     integer                 :: cross_stencil_w2_size
-
-    integer, pointer        :: cross_stencil_w3_map(:,:,:) => null()
-    integer                 :: cross_stencil_w3_size
 
     integer, pointer        :: cross_stencil_wtheta_map(:,:,:) => null()
     integer                 :: cross_stencil_wtheta_size
 
     integer                 :: ii, jj, ff
 
-    type( field_proxy_type )        :: r_theta_bd_proxy, f_proxy, theta_proxy, rho_proxy
+    type( field_proxy_type )        :: r_theta_bd_proxy, u_proxy, theta_proxy
 
     real(kind=r_def), allocatable  :: basis_wtheta_face(:,:,:,:,:),  &
-                                      basis_w2_face(:,:,:,:,:),      &
-                                      basis_w3_face(:,:,:,:,:)
+                                      basis_w2_face(:,:,:,:,:)
 
     real(kind=r_def), pointer :: xp(:,:) => null()
     real(kind=r_def), pointer :: xp_f(:,:,:) => null()
@@ -320,16 +315,11 @@ contains
 
     r_theta_bd_proxy = r_theta_bd%get_proxy()
     theta_proxy      = theta%get_proxy()
-    f_proxy          = f%get_proxy()
-    rho_proxy        = rho%get_proxy()
+    u_proxy          = u%get_proxy()
 
-    cross_stencil_w2 => f_proxy%vspace%get_stencil_dofmap(STENCIL_CROSS, 1)
+    cross_stencil_w2 => u_proxy%vspace%get_stencil_dofmap(STENCIL_CROSS, 1)
     cross_stencil_w2_map => cross_stencil_w2%get_whole_dofmap()
     cross_stencil_w2_size = cross_stencil_w2%get_size()
-
-    cross_stencil_w3 => rho_proxy%vspace%get_stencil_dofmap(STENCIL_CROSS, 1)
-    cross_stencil_w3_map => cross_stencil_w3%get_whole_dofmap()
-    cross_stencil_w3_size = cross_stencil_w3%get_size()
 
     cross_stencil_wtheta => theta_proxy%vspace%get_stencil_dofmap(STENCIL_CROSS, 1)
     cross_stencil_wtheta_map => cross_stencil_wtheta%get_whole_dofmap()
@@ -348,15 +338,10 @@ contains
 
     allocate(xp_f(nfaces_h, nqp_h_1d, 2))
 
-    ndf_w2      = f_proxy%vspace%get_ndf( )
-    dim_w2      = f_proxy%vspace%get_dim_space( )
-    undf_w2     = f_proxy%vspace%get_undf()
+    ndf_w2      = u_proxy%vspace%get_ndf( )
+    dim_w2      = u_proxy%vspace%get_dim_space( )
+    undf_w2     = u_proxy%vspace%get_undf()
     allocate(basis_w2_face(nfaces_h,dim_w2,ndf_w2,nqp_h_1d,nqp_v))
-
-    ndf_w3      = rho_proxy%vspace%get_ndf( )
-    dim_w3      = rho_proxy%vspace%get_dim_space( )
-    undf_w3     = rho_proxy%vspace%get_undf()
-    allocate(basis_w3_face(nfaces_h,dim_w3,ndf_w3,nqp_h_1d,nqp_v))
 
     ndf_wtheta      = theta_proxy%vspace%get_ndf( )
     dim_wtheta      = theta_proxy%vspace%get_dim_space( )
@@ -383,11 +368,8 @@ contains
 
     do ff = 1, nfaces_h
 
-      call f_proxy%vspace%compute_basis_function( &
+      call u_proxy%vspace%compute_basis_function( &
         basis_w2_face(ff,:,:,:,:), ndf_w2, nqp_h_1d, nqp_v, xp_f(ff, :, :), zp)
-
-      call rho_proxy%vspace%compute_basis_function( &
-        basis_w3_face(ff,:,:,:,:), ndf_w3, nqp_h_1d, nqp_v, xp_f(ff, :,:), zp)
 
       call theta_proxy%vspace%compute_basis_function( &
         basis_wtheta_face(ff,:,:,:,:), ndf_wtheta, nqp_h_1d, nqp_v, xp_f(ff, :, :), zp)
@@ -396,8 +378,7 @@ contains
 
     if(r_theta_bd_proxy%is_dirty(depth=2) ) call r_theta_bd_proxy%halo_exchange(depth=2)
     if(theta_proxy%is_dirty(depth=2) ) call theta_proxy%halo_exchange(depth=2)
-    if(rho_proxy%is_dirty(depth=2) ) call rho_proxy%halo_exchange(depth=2)
-    if(f_proxy%is_dirty(depth=2) ) call f_proxy%halo_exchange(depth=2)
+    if(u_proxy%is_dirty(depth=2) ) call u_proxy%halo_exchange(depth=2)
 
     do cell = 1, mesh%get_last_halo_cell(1)
 
@@ -413,24 +394,20 @@ contains
                           ndf_w2, undf_w2,                                 &
                           cross_stencil_w2_map(:,:,cell),                  &
                           cross_stencil_w2_size,                           &
-                          ndf_w3, undf_w3,                                 &
-                          cross_stencil_w3_map(:,:,cell),                  &
-                          cross_stencil_w3_size,                           &
                           ndf_wtheta, undf_wtheta,                         &
                           cross_stencil_wtheta_map(:,:,cell),              &
                           cross_stencil_wtheta_size,                       &
                           r_theta_bd_proxy%data,                           &
-                          rho_proxy%data,                                  &
                           theta_proxy%data,                                &
-                          f_proxy%data,                                    &
+                          u_proxy%data,                                    &
                           nqp_v, nqp_h_1d, wv,                             &
-                          basis_w2_face, basis_w3_face, basis_wtheta_face, &
+                          basis_w2_face, basis_wtheta_face,                &
                           adjacent_face )
 
     end do
     call r_theta_bd_proxy%set_dirty()
 
-    deallocate(basis_w2_face, basis_w3_face, basis_wtheta_face, adjacent_face)
+    deallocate(basis_w2_face, basis_wtheta_face, adjacent_face)
 
   end subroutine invoke_rtheta_bd_kernel
 
@@ -3853,5 +3830,38 @@ end subroutine invoke_sample_poly_adv
    call     u_inc_proxy%set_dirty()
 
   end subroutine invoke_viscosity
+
+!> invoke_raise_field: Raise a field to a integer exponent
+!> x => x^a
+  subroutine invoke_raise_field(x, a)
+    use mesh_mod,only : mesh_type
+    implicit none
+    type( field_type ), intent(inout)  :: x
+    integer(i_def),     intent(in)     :: a
+    type( field_proxy_type)            :: xp
+    integer(kind=i_def)                :: i,undf
+    integer(kind=i_def)                :: depth, dplp
+    type(mesh_type), pointer           :: mesh => null()
+
+    xp = x%get_proxy()
+
+    undf = xp%vspace%get_undf()
+    !$omp parallel do schedule(static), default(none), shared(xp, undf, a),  private(i)
+    do i = 1,undf
+      xp%data(i) = xp%data(i)**a
+    end do
+    !$omp end parallel do
+
+    mesh => x%get_mesh()
+    depth = mesh%get_halo_depth()
+
+    do dplp = 1, depth
+      if( xp%is_dirty(depth=dplp) ) then
+        call xp%set_dirty()
+      else
+        call xp%set_clean(dplp)
+      end if
+    end do
+  end subroutine invoke_raise_field
 
 end module psykal_lite_mod

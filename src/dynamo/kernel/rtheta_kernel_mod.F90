@@ -11,12 +11,12 @@
 !>         this constists entirely of the advection term u.grad(theta)
 !> @details Kernel to  compute the rhs of thermodynamic equation for the nonlinear equations, in 
 !>         the absense of source terms this is purely an advection term:
-!>         rtheta = -u.grad(theta)
+!>         rtheta = u.grad(theta)
 module rtheta_kernel_mod
 use kernel_mod,              only : kernel_type
 use argument_mod,            only : arg_type, func_type,                     &
                                     GH_FIELD, GH_READ, GH_INC,               &
-                                    W0, W2, W3,                              &
+                                    W0, W2,                                  &
                                     GH_BASIS, GH_DIFF_BASIS,                 &
                                     CELLS, QUADRATURE_XYoZ
 use constants_mod,           only : r_def, i_def
@@ -29,16 +29,14 @@ implicit none
 !> The type declaration for the kernel. Contains the metadata needed by the Psy layer
 type, public, extends(kernel_type) :: rtheta_kernel_type
   private
-  type(arg_type) :: meta_args(4) = (/                                  &
+  type(arg_type) :: meta_args(3) = (/                                  &
        arg_type(GH_FIELD,   GH_INC,  W0),                              &
        arg_type(GH_FIELD,   GH_READ, W0),                              &
-       arg_type(GH_FIELD,   GH_READ, W2),                              &
-       arg_type(GH_FIELD,   GH_READ, W3)                               &
+       arg_type(GH_FIELD,   GH_READ, W2)                               &
        /)
-  type(func_type) :: meta_funcs(3) = (/                                &
+  type(func_type) :: meta_funcs(2) = (/                                &
        func_type(W0, GH_BASIS, GH_DIFF_BASIS),                         &
-       func_type(W2, GH_BASIS),                                        &
-       func_type(W3, GH_BASIS)                                         &
+       func_type(W2, GH_BASIS)                                         &
        /)
   integer :: iterates_over = CELLS
   integer :: evaluator_shape = QUADRATURE_XYoZ
@@ -69,8 +67,7 @@ end function rtheta_kernel_constructor
 !! @param[in] nlayers Number of layers
 !! @param[inout] r_theta Right hand side of the thermodynamic equation
 !! @param[inout] theta Potential temperature
-!! @param[in] f Mass flux
-!! @param[in] rho Density
+!! @param[in] u wind field
 !! @param[in] ndf_w0 Number of degrees of freedom per cell for w0
 !! @param[in] undf_w0  Number of unique degrees of freedom  for w0
 !! @param[in] map_w0 Dofmap for the cell at the base of the column for w0
@@ -80,39 +77,31 @@ end function rtheta_kernel_constructor
 !! @param[in] undf_w2  Number of unique degrees of freedom  for w2
 !! @param[in] map_w2 Dofmap for the cell at the base of the column for w2 
 !! @param[in] w2_basis Basis functions evaluated at gaussian quadrature points 
-!! @param[in] ndf_w3 Number of degrees of freedom per cell for w3
-!! @param[in] undf_w3  Number of unique degrees of freedom  for w3
-!! @param[in] map_w3 Dofmap for the cell at the base of the column for w3 
-!! @param[in] w3_basis Basis functions evaluated at gaussian quadrature points 
 !! @param[in] nqp_h Number of horizontal quadrature points
 !! @param[in] nqp_v Number of vertical quadrature points
 !! @param[in] wqp_h Weights of the horizontal quadrature points
 !! @param[in] wqp_v Weights of the vertical quadrature points
 subroutine rtheta_code(nlayers,                                                &
-                       r_theta, theta, f, rho,                                 &
+                       r_theta, theta, u,                                      &
                        ndf_w0, undf_w0, map_w0, w0_basis, w0_diff_basis,       &
                        ndf_w2, undf_w2, map_w2, w2_basis,                      &
-                       ndf_w3, undf_w3, map_w3, w3_basis,                      &
                        nqp_h, nqp_v, wqp_h, wqp_v )
 
   
   !Arguments
   integer(kind=i_def), intent(in) :: nlayers, nqp_h, nqp_v
-  integer(kind=i_def), intent(in) :: ndf_w0, ndf_w2, ndf_w3, undf_w0, undf_w2, undf_w3
+  integer(kind=i_def), intent(in) :: ndf_w0, ndf_w2, undf_w0, undf_w2
 
   integer(kind=i_def), dimension(ndf_w0), intent(in) :: map_w0
   integer(kind=i_def), dimension(ndf_w2), intent(in) :: map_w2
-  integer(kind=i_def), dimension(ndf_w3), intent(in) :: map_w3
 
   real(kind=r_def), dimension(1,ndf_w0,nqp_h,nqp_v), intent(in) :: w0_basis  
   real(kind=r_def), dimension(3,ndf_w0,nqp_h,nqp_v), intent(in) :: w0_diff_basis  
   real(kind=r_def), dimension(3,ndf_w2,nqp_h,nqp_v), intent(in) :: w2_basis 
-  real(kind=r_def), dimension(1,ndf_w3,nqp_h,nqp_v), intent(in) :: w3_basis  
 
   real(kind=r_def), dimension(undf_w0), intent(inout) :: r_theta
   real(kind=r_def), dimension(undf_w0), intent(in)    :: theta
-  real(kind=r_def), dimension(undf_w2), intent(in)    :: f
-  real(kind=r_def), dimension(undf_w3), intent(in)    :: rho
+  real(kind=r_def), dimension(undf_w2), intent(in)    :: u
 
   real(kind=r_def), dimension(nqp_h), intent(in)      ::  wqp_h
   real(kind=r_def), dimension(nqp_v), intent(in)      ::  wqp_v
@@ -122,10 +111,8 @@ subroutine rtheta_code(nlayers,                                                &
   integer(kind=i_def)               :: qp1, qp2
   
   real(kind=r_def), dimension(ndf_w0)          :: rtheta_e, theta_e
-  real(kind=r_def), dimension(ndf_w2)          :: f_e
-  real(kind=r_def), dimension(ndf_w3)          :: rho_e
-  real(kind=r_def) :: f_at_quad(3), grad_theta_at_quad(3) 
-  real(kind=r_def) :: rho_at_quad
+  real(kind=r_def), dimension(ndf_w2)          :: u_e
+  real(kind=r_def) :: u_at_quad(3), grad_theta_at_quad(3) 
   real(kind=r_def) :: advective_term             
   
   do k = 0, nlayers-1
@@ -135,33 +122,26 @@ subroutine rtheta_code(nlayers,                                                &
       theta_e(df)  = theta(  map_w0(df) + k )
     end do
     do df = 1, ndf_w2
-      f_e(df) = f( map_w2(df) + k )
+      u_e(df) = u( map_w2(df) + k )
     end do
-    do df = 1, ndf_w3
-      rho_e(df) = rho( map_w3(df) + k )
-    end do   
   ! compute the RHS integrated over one cell
     do qp2 = 1, nqp_v
       do qp1 = 1, nqp_h
-        f_at_quad(:) = 0.0_r_def
+        u_at_quad(:) = 0.0_r_def
         do df = 1, ndf_w2
-          f_at_quad(:)  = f_at_quad(:)  + f_e(df)*w2_basis(:,df,qp1,qp2)
+          u_at_quad(:)  = u_at_quad(:)  + u_e(df)*w2_basis(:,df,qp1,qp2)
         end do
         grad_theta_at_quad(:) = 0.0_r_def
         do df = 1, ndf_w0
           grad_theta_at_quad(:) = grad_theta_at_quad(:) &
                                 + theta_e(df)*w0_diff_basis(:,df,qp1,qp2)
         end do
-        rho_at_quad = 0.0_r_def
-        do df = 1, ndf_w3
-          rho_at_quad  = rho_at_quad  + rho_e(df)*w3_basis(1,df,qp1,qp2)
-        end do
 
         advective_term = wqp_h(qp1)*wqp_v(qp2) &
-                       * dot_product(f_at_quad,grad_theta_at_quad)/rho_at_quad
+                       * dot_product(u_at_quad,grad_theta_at_quad)
 
         do df = 1, ndf_w0
-          rtheta_e(df) = rtheta_e(df) - w0_basis(1,df,qp1,qp2)*advective_term
+          rtheta_e(df) = rtheta_e(df) + w0_basis(1,df,qp1,qp2)*advective_term
         end do
       end do
     end do
