@@ -22,7 +22,7 @@ module sample_poly_adv_kernel_mod
 use argument_mod,  only : arg_type, func_type,                  &
                           GH_FIELD, GH_WRITE, GH_READ,          &
                           W2, Wtheta, GH_BASIS, CELLS,          &
-                          EVALUATOR_XYZ
+                          EVALUATOR
 use constants_mod, only : r_def, i_def
 use kernel_mod,    only : kernel_type
 use reference_element_mod, only: W, E, N, S
@@ -48,7 +48,6 @@ type, public, extends(kernel_type) :: sample_poly_adv_kernel_type
   private
   type(arg_type) :: meta_args(3) = (/                                  &
        arg_type(GH_FIELD,   GH_WRITE, Wtheta),                         &
-!       arg_type(GH_FIELD,   GH_READ,  Wtheta, STENCIL(cross,order))   &
        arg_type(GH_FIELD,   GH_READ,  Wtheta),                         &
        arg_type(GH_FIELD,   GH_READ,  W2)                              &
        /)
@@ -56,7 +55,7 @@ type, public, extends(kernel_type) :: sample_poly_adv_kernel_type
        func_type(W2, GH_BASIS)                                         &
        /)
   integer :: iterates_over = CELLS
-  integer :: evaluator_shape = EVALUATOR_XYZ
+  integer :: evaluator_shape = EVALUATOR
 contains
   procedure, nopass ::sample_poly_adv_code
 end type
@@ -65,7 +64,7 @@ end type
 ! Constructors
 !-------------------------------------------------------------------------------
 
-! overload the default structure constructor for function space
+! Overload the default structure constructor for function space
 interface sample_poly_adv_kernel_type
    module procedure sample_poly_adv_kernel_constructor
 end interface
@@ -110,7 +109,7 @@ subroutine sample_poly_adv_code( nlayers,              &
 
   implicit none
 
-  !Arguments
+  ! Arguments
   integer(kind=i_def), intent(in)                    :: nlayers
   integer(kind=i_def), intent(in)                    :: ndf_wt
   integer(kind=i_def), intent(in)                    :: undf_wt
@@ -127,7 +126,7 @@ subroutine sample_poly_adv_code( nlayers,              &
   integer(kind=i_def),                                 intent(in) :: stencil_size
   integer(kind=i_def), dimension(ndf_wt,stencil_size), intent(in) :: stencil_map
 
-  !Internal variables
+  ! Internal variables
   integer(kind=i_def) :: k, df, dft, p, dir, id
   real(kind=r_def)    :: u(3,nlayers+1)
   real(kind=r_def)    :: polynomial_tracer, advection_update, z0 

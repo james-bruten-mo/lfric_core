@@ -3,5 +3,5 @@
 ' GungHo Consortium, whose members are identified at
 ' https://puma.nerc.ac.uk/trac/GungHo/wiki
 
-abstract class evaluator_mod::evaluator_type {
+abstract class abstract_quadrature_mod::abstract_quadrature_type {
 }

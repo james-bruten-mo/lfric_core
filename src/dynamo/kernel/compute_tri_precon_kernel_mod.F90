@@ -20,7 +20,7 @@ use argument_mod,            only: arg_type, func_type,                      &
                                    GH_OPERATOR, GH_FIELD, GH_READ, GH_WRITE, &
                                    ANY_SPACE_9, W3, ANY_SPACE_1,             &
                                    GH_BASIS, GH_DIFF_BASIS,                  &
-                                   CELLS, EVALUATOR_XYZ
+                                   CELLS, EVALUATOR
 use planet_config_mod,       only : kappa, cp
 use timestepping_config_mod, only : dt, alpha
 
@@ -41,7 +41,7 @@ type, public, extends(kernel_type) :: compute_tri_precon_kernel_type
        func_type(ANY_SPACE_1, GH_DIFF_BASIS)                           &
        /)
   integer :: iterates_over = CELLS
-  integer :: evaluator_shape = EVALUATOR_XYZ
+  integer :: evaluator_shape = EVALUATOR
 contains
   procedure, nopass :: compute_tri_precon_code
 end type compute_tri_precon_kernel_type
@@ -50,7 +50,7 @@ end type compute_tri_precon_kernel_type
 ! Constructors
 !-------------------------------------------------------------------------------
 
-! overload the default structure constructor for function space
+! Overload the default structure constructor for function space
 interface compute_tri_precon_kernel
    module procedure compute_tri_precon_constructor
 end interface

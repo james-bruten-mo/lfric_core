@@ -16,9 +16,8 @@
 !> quadrature is returned.
 
 module quadrature_mod
-use constants_mod, only: r_def, i_def, PI, EPS
-use log_mod,       only: LOG_LEVEL_ERROR, log_event, log_scratch_space
-
+use constants_mod,       only: r_def, i_def, PI, EPS
+use log_mod,             only: LOG_LEVEL_ERROR, log_event, log_scratch_space
 use quadrature_rule_mod, only: quadrature_rule_type
 use quadrature_rule_gaussian_mod, only: quadrature_rule_gaussian_type
 use quadrature_rule_newton_cotes_mod, only: quadrature_rule_newton_cotes_type
@@ -31,7 +30,7 @@ private
 !-------------------------------------------------------------------------------
 type, public :: quadrature_type
   private
-  !> allocatable arrays which holds the values of the gaussian quadrature
+  !> Allocatable arrays which holds the values of the gaussian quadrature
   real(kind=r_def), allocatable :: xqp(:), xqp_h(:,:), wqp(:), wqp_h(:)
 
   !> integer Number of quadrature points in the horizontal
@@ -41,22 +40,11 @@ type, public :: quadrature_type
   integer :: nqp_v
 
 contains
-  !final     :: final_gauss
-  !> @brief Writes out an answer for a test
-  !> @param self The calling gaussian quadrature
-  procedure :: test_integrate
 
-  !> @brief Computes 3D quadrature integration of function f
-  !> @param[in] self The calling quadrature rule
-  !> @param f Real 3D array each of size ngp which holds the sample values of the
-  !! function to be integrated on the quadrature points
-  !> @return real The value of the function thus integrated
-  procedure :: integrate
-
-  !> @brief quadrature rule functor to get 1D quadrature points and weights
+  !> @brief Quadrature rule functor to get 1D quadrature points and weights
   !> @param quadrature_rule_type function to be used
-  !> @return list of 1D quadrature points and weights
-  procedure :: quadrature_rule
+  !> @return List of 1D quadrature points and weights
+  procedure, private :: quadrature_rule
 
   !> @brief Returns the 2-d array of quadrature points in the horizontal
   !> @param[in] self The calling quadrature rule
@@ -161,8 +149,8 @@ end function init_quadrature
 !-----------------------------------------------------------------------------
 !> @brief Distribute quadrature points (xqp) and weights (wqp)
 !> @param[in] self The calling quadrature rule
-!> @param[in] points_weights quadrature points(dim 1) and weights(dim 2)
-!> @todo this code is correct for quads but will need modification for
+!> @param[in] points_weights quadrature Points(dim 1) and weights(dim 2)
+!> @todo This code is correct for quads but will need modification for
 !>       hexes/triangles)
 !-----------------------------------------------------------------------------
 subroutine create_quadrature(self, points_weights)
@@ -190,58 +178,6 @@ subroutine create_quadrature(self, points_weights)
 
   return
 end subroutine create_quadrature
-
-!-----------------------------------------------------------------------------
-! Writes out an answer for a test
-!-----------------------------------------------------------------------------
-subroutine test_integrate(self)
-
-  use log_mod, only : log_event, log_scratch_space, LOG_LEVEL_INFO
-
-  implicit none
-
-  class(quadrature_type) :: self
-
-  integer          :: i, k
-  real(kind=r_def) :: func(self%nqp_h, self%nqp_v)
-  real(kind=r_def) :: answer
-
-  do i=1,self%nqp_h
-    do k=1,self%nqp_v
-      func(i,k) = self%xqp_h(i,1)*self%xqp_h(i,2)*1.0_r_def*1.0_r_def
-    end do
-  end do
-
-  answer = self%integrate(func)
-  write( log_scratch_space, '(A,F0.0)') 'int(x^2,x=0..1,y=0..1,z=0..1) = ', &
-                                        answer
-  call log_event( log_scratch_space, LOG_LEVEL_INFO )
-
-  return
-end subroutine test_integrate
-  
-!-----------------------------------------------------------------------------
-! Computes 3D quadrature integration of function f  
-!-----------------------------------------------------------------------------  
-function integrate(self,f)
-  implicit none
-
-  class(quadrature_type), intent(in) :: self
-
-  real(kind=r_def), intent(in) :: f(self%nqp_h,self%nqp_v)
-  real(kind=r_def)             :: integrate
-
-  integer :: i,k
-
-  integrate = 0.0_r_def
-  do k=1,self%nqp_v 
-    do i=1,self%nqp_h
-      integrate = integrate + self%wqp_h(i)*self%wqp(k)*f(i,k)
-    end do
-  end do
-  
-  return
-end function integrate
 
 !-----------------------------------------------------------------------------
 ! Returns the quadrature points in the horizontal

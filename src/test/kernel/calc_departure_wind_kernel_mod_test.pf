@@ -16,7 +16,6 @@ module calc_departure_wind_kernel_mod_test
                                             field_proxy_type
   use fs_continuity_mod,             only : W0, W2
   use function_space_mod,            only : function_space_type
-  use evaluator_xyz_mod,             only : evaluator_xyz_type
   use pFUnit_Mod
 
   implicit none
@@ -32,7 +31,6 @@ module calc_departure_wind_kernel_mod_test
     type(field_type)         :: departure_field
     real(r_def), allocatable :: diff_basis_chi(:,:,:)
     real(r_def), allocatable :: nodal_basis_u(:,:,:)
-    type(evaluator_xyz_type) :: evaluator
   contains
     procedure setUp
     procedure tearDown
@@ -97,8 +95,6 @@ contains
     diff_dim_chi = chi_p(1)%vspace%get_dim_space_diff()
     allocate( this%diff_basis_chi(diff_dim_chi, ndf_chi, ndf) )
 
-    this%evaluator = evaluator_xyz_type( w2_fs%get_ndf( ), w2_fs%get_nodes() )
-
   end subroutine setUp
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -139,18 +135,18 @@ contains
 
     integer                   :: i, j, k, cell, df
     integer                   :: nlayers
-    integer                   :: ndf_chi, ndf_u
+    integer                   :: ndf_chi, ndf_u, ndf_udep
+    integer                   :: df_chi, df_u, df_udep
     integer                   :: undf_chi, undf_u
     integer                   :: diff_dim_chi, dim_u
     integer                   :: element_order
     integer, pointer          :: map_chi(:), map(:) => null()
-    type(evaluator_xyz_type)  :: evaluator
+    real(kind=r_def), pointer :: nodes_udep(:,:) => null()
 
     ! Insert Psykal_lite unpacking code here
     do i = 1,3
       chi_p(i) = this%chi(i)%get_proxy()
     end do
-    evaluator = this%evaluator
 
     ! Compute coordinates
     cell = 1
@@ -179,8 +175,22 @@ contains
     undf_chi = chi_p(1)%vspace%get_undf()
     diff_dim_chi = chi_p(1)%vspace%get_dim_space_diff( )
 
-    call evaluator%compute_evaluate( DIFF_BASIS, chi_p(1)%vspace, diff_dim_chi, ndf_chi, this%diff_basis_chi)
-    call evaluator%compute_evaluate( BASIS, u_piola%vspace, dim_u, ndf_u, this%nodal_basis_u)
+    ndf_udep   =  u_departure_wind%vspace%get_ndf()
+    nodes_udep => u_departure_wind%vspace%get_nodes()
+
+    ! Evaluate the basis function
+    do df_udep = 1, ndf_udep
+      do df_chi = 1, ndf_chi
+        this%diff_basis_chi(:,df_chi,df_udep) = chi_p(1)%vspace%evaluate_function(DIFF_BASIS,df_chi,nodes_udep(:,df_udep))
+      end do
+    end do
+
+    ! Evaluate the basis function
+    do df_udep = 1, ndf_udep
+      do df_u = 1, ndf_u
+        this%nodal_basis_u(:,df_u,df_udep) = u_piola%vspace%evaluate_function(BASIS,df_u,nodes_udep(:,df_udep))
+      end do
+    end do
 
     cell = 1
     map     => u_piola%vspace%get_cell_dofmap( cell )

@@ -20,7 +20,6 @@ module sample_poly_flux_kernel_mod_test
   use pFUnit_Mod
   use quadrature_mod,                only : quadrature_type, GAUSSIAN
   use stencil_dofmap_mod,            only : stencil_dofmap_type, STENCIL_CROSS
-  use evaluator_xyz_mod,             only : evaluator_xyz_type
 
   implicit none
 
@@ -35,7 +34,6 @@ module sample_poly_flux_kernel_mod_test
     type(field_type)                   :: rho, u, flux 
     real(r_def), allocatable           :: basis_u(:,:,:)
     type(stencil_dofmap_type), pointer :: stencil => null()
-    type(evaluator_xyz_type)           :: evaluator
    
   contains
     procedure setUp
@@ -90,8 +88,6 @@ contains
 
     allocate( this%basis_u(dim_u, ndf_u, ndf_u) )
 
-    this%evaluator = evaluator_xyz_type( this%w2_fs%get_ndf( ), this%w2_fs%get_nodes() )
-
   end subroutine setUp
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -133,29 +129,34 @@ contains
 
     integer          :: ndf_rho, undf_rho, dim_u, &
                         ndf_u, undf_u
+    integer          :: df_u1, df_u2
 
-    integer, pointer :: stencil_map(:,:,:) => null(), &
-                        map_u(:,:) => null() 
+    integer, pointer :: stencil_map(:,:,:) => null()
+    integer, pointer :: map_u(:,:) => null() 
 
-    type(field_proxy_type)   :: flux_p, rho_p, u_p
-    type(evaluator_xyz_type) :: evaluator
-
+    type(field_proxy_type)    :: flux_p, rho_p, u_p
+    real(kind=r_def), pointer :: nodes_u(:,:) => null()
 
     ! Test flux computation
 
     flux_p    = this%flux%get_proxy()
     rho_p     = this%rho%get_proxy()
     u_p       = this%u%get_proxy()
-    evaluator = this%evaluator
 
-    ndf_u  = u_p%vspace%get_ndf( )
-    undf_u = u_p%vspace%get_undf( )
-    dim_u  = u_p%vspace%get_dim_space( )
+    ndf_u   = u_p%vspace%get_ndf( )
+    undf_u  = u_p%vspace%get_undf( )
+    dim_u   = u_p%vspace%get_dim_space( )
+    nodes_u => u_p%vspace%get_nodes()
 
     ndf_rho  = rho_p%vspace%get_ndf( )
     undf_rho = rho_p%vspace%get_undf( )
 
-    call evaluator%compute_evaluate( BASIS, u_p%vspace, dim_u, ndf_u, this%basis_u)
+    ! Evaluate the basis function
+    do df_u2 = 1, ndf_u
+      do df_u1 = 1, ndf_u
+        this%basis_u(:,df_u1,df_u2) = u_p%vspace%evaluate_function(BASIS,df_u1,nodes_u(:,df_u2))
+      end do
+    end do
 
     stencil_map => this%stencil%get_whole_dofmap()
     map_u => flux_p%vspace%get_whole_dofmap()

@@ -19,7 +19,7 @@ use argument_mod,            only : arg_type, func_type,                     &
                                     GH_FIELD, GH_READ, GH_WRITE,             &
                                     W0, W2, W3,                              &
                                     GH_BASIS, GH_DIFF_BASIS,                 &
-                                    CELLS, EVALUATOR_XYZ
+                                    CELLS
 use constants_mod,           only : r_def
 use biperiodic_deppt_config_mod, only : n_dep_pt_iterations
 use timestepping_config_mod, only : dt
@@ -45,7 +45,7 @@ end type
 ! Constructors
 !-------------------------------------------------------------------------------
 
-! overload the default structure constructor for function space
+! Overload the default structure constructor for function space
 interface calc_departure_point_kernel_type
    module procedure calc_departure_point_kernel_constructor
 end interface

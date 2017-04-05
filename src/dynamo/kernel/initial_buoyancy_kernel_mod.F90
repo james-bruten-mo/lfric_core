@@ -18,7 +18,7 @@ module initial_buoyancy_kernel_mod
         GH_FIELD, GH_WRITE, GH_READ,                    &
         ANY_SPACE_9, ANY_SPACE_1, GH_BASIS,             &
         GH_DIFF_BASIS,                                  &
-        CELLS, EVALUATOR_XYZ
+        CELLS, EVALUATOR
     use constants_mod,                 only: r_def, i_def
     use kernel_mod,                    only: kernel_type
 
@@ -38,7 +38,7 @@ module initial_buoyancy_kernel_mod
             func_type(ANY_SPACE_9, GH_BASIS)                              &
             /)
         integer :: iterates_over = CELLS
-        integer :: evaluator_shape = EVALUATOR_XYZ
+        integer :: evaluator_shape = EVALUATOR
 
     contains
         procedure, nopass :: initial_buoyancy_code
@@ -48,7 +48,7 @@ module initial_buoyancy_kernel_mod
     ! Constructors
     !-------------------------------------------------------------------------------
 
-    ! overload the default structure constructor for function space
+    ! Overload the default structure constructor for function space
     interface initial_buoyancy_kernel_type
         module procedure initial_buoyancy_kernel_constructor
     end interface

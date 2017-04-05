@@ -13,8 +13,7 @@ module conservative_flux_kernel_mod
 
 use argument_mod,  only : arg_type, func_type,                  &
                           GH_FIELD, GH_WRITE, GH_READ,          &
-                          W0, W2, W3, GH_BASIS, CELLS,          &
-                          EVALUATOR_XYZ
+                          W0, W2, W3, GH_BASIS, CELLS
 use constants_mod, only : r_def
 use kernel_mod,    only : kernel_type
 
@@ -40,7 +39,7 @@ end type
 ! Constructors
 !-------------------------------------------------------------------------------
 
-! overload the default structure constructor for function space
+! Overload the default structure constructor for function space
 interface conservative_flux_kernel_type
    module procedure conservative_flux_kernel_constructor
 end interface
@@ -150,7 +149,7 @@ subroutine conservative_flux_code( nlayers,              &
   call calc_stencil_ordering(stencil_length,stencil_ordering)
 
   edge_options = (/ 0, 1 /)
-  if (direction .EQ. x_direction) then
+  if (direction == x_direction) then
     local_dofs = (/ 1, 3 /)
   else
     local_dofs = (/ 2, 4 /)

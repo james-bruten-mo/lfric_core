@@ -25,10 +25,11 @@ module psykal_lite_mod
   ! The following modules are not currently implemented as part of the main
   ! code but they do have unit tests so need to be declared here so they are
   ! built ready for unit testing.
-  use evaluator_xyz_mod,  only : evaluator_xyz_type
-  use evaluator_xyoz_mod, only : quadrature_xyoz_type, &
-                                 quadrature_xyoz_proxy_type
-  use evaluator_xoyoz_mod
+
+  use quadrature_xoyoz_mod
+  use quadrature_xyz_mod
+  use quadrature_xyoz_mod, only : quadrature_xyoz_type, &
+                                  quadrature_xyoz_proxy_type
 
   implicit none
   public
@@ -2235,10 +2236,10 @@ contains
     type(field_proxy_type) :: phys_p(3), chi_p(3), comp_p
    
     integer                 :: cell, nlayers
-    integer                 :: ndf_chi, ndf_comp, ndf_phys
+    integer                 :: ndf_chi, ndf_comp
     integer                 :: undf_chi, undf_comp
     integer                 :: diff_dim_chi, dim_comp
-    integer                 :: df_comp, df_chi, df_phys
+    integer                 :: df_comp1, df_comp2, df_chi
     integer, pointer        :: map(:) => null()
     integer, pointer        :: map_chi(:) => null()
     real(kind=r_def), pointer :: nodes_phys(:,:) => null()
@@ -2252,7 +2253,6 @@ contains
     end do
     comp_p = comp_field%get_proxy()
 
-    ndf_phys   = phys_p(1)%vspace%get_ndf()
     nodes_phys => phys_p(1)%vspace%get_nodes()
 
     nlayers = comp_p%vspace%get_nlayers()
@@ -2267,17 +2267,17 @@ contains
 
     ! Evaluate the diff basis function
     allocate(diff_basis_chi(diff_dim_chi, ndf_chi, ndf_comp))
-    do df_phys = 1, ndf_comp
+    do df_comp2 = 1, ndf_comp
       do df_chi = 1, ndf_chi
-        diff_basis_chi(:,df_chi,df_phys) = chi_p(1)%vspace%evaluate_function(DIFF_BASIS,df_chi,nodes_phys(:,df_phys))
+        diff_basis_chi(:,df_chi,df_comp2) = chi_p(1)%vspace%evaluate_function(DIFF_BASIS,df_chi,nodes_phys(:,df_comp2))
       end do
     end do
 
     ! Evaluate the diff basis function
     allocate(basis_comp(dim_comp, ndf_comp, ndf_comp) )
-    do df_phys = 1, ndf_comp
-      do df_comp = 1, ndf_comp
-        basis_comp(:,df_comp,df_phys) = comp_p%vspace%evaluate_function(BASIS,df_comp,nodes_phys(:,df_phys))
+    do df_comp2 = 1, ndf_comp
+      do df_comp1 = 1, ndf_comp
+        basis_comp(:,df_comp1,df_comp2) = comp_p%vspace%evaluate_function(BASIS,df_comp1,nodes_phys(:,df_comp2))
       end do
     end do
 

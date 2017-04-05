@@ -20,8 +20,7 @@ contains
 
     integer, parameter :: nqp_h=9, nqp_v=3
 
-    real(kind=r_def)   :: polynomial(nqp_h,nqp_v)
-    real(kind=r_def)   :: result, answer, epsilon
+    real(kind=r_def)   :: epsilon
     integer            :: test_qr
 
     real(kind=r_def) :: xqp_v(nqp_v), xqp_h(nqp_h,2)
@@ -31,17 +30,9 @@ contains
 
     type(quadrature_type)  :: qr
 
-    qr = quadrature_type(nqp_v, GAUSSIAN)
-
-    polynomial = 0.33333333333333333333333_r_def
-
-    result = qr%integrate(polynomial)
-
-    answer = 0.33333333333333333333333_r_def
-
     epsilon = 1.0e-14_r_def
 
-    @assertEqual( answer, result, epsilon )
+    qr = quadrature_type(nqp_v, GAUSSIAN)
 
     test_xqp_v(:)   = [0.112701665379258_r_def, &
                        0.500000000000000_r_def, &

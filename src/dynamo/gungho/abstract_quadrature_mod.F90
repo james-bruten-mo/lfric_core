@@ -5,11 +5,10 @@
 ! whose members are identified at
 ! https://puma.nerc.ac.uk/trac/GungHo/wiki
 !-------------------------------------------------------------------------------
-! Abstract base evaluator type.
+! Abstract base quadrature type.
 !-------------------------------------------------------------------------------
-!> @brief Abstract base type for for evaluator
-module evaluator_mod
-use constants_mod, only: i_def
+!> @brief Abstract base type for for quadrature
+module abstract_quadrature_mod
 implicit none
 private
 
@@ -17,9 +16,9 @@ private
 ! Public types
 !-------------------------------------------------------------------------------
 
-type, public, abstract :: evaluator_type
+type, public, abstract :: abstract_quadrature_type
   private
 
 end type
 
-end module evaluator_mod
+end module abstract_quadrature_mod

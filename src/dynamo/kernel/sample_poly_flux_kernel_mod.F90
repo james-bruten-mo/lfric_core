@@ -22,7 +22,7 @@ module sample_poly_flux_kernel_mod
 use argument_mod,  only : arg_type, func_type,                  &
                           GH_FIELD, GH_WRITE, GH_READ,          &
                           W2, W3, GH_BASIS, CELLS,              &
-                          EVALUATOR_XYZ
+                          EVALUATOR
 use constants_mod, only : r_def, i_def
 use kernel_mod,    only : kernel_type
 use reference_element_mod, only: out_face_normal
@@ -56,7 +56,7 @@ type, public, extends(kernel_type) :: sample_poly_flux_kernel_type
        func_type(W2, GH_BASIS)                                         &
        /)
   integer :: iterates_over = CELLS
-  integer :: evaluator_shape = EVALUATOR_XYZ
+  integer :: evaluator_shape = EVALUATOR
 contains
   procedure, nopass ::sample_poly_flux_code
 end type

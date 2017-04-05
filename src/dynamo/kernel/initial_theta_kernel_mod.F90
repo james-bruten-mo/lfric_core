@@ -18,7 +18,7 @@ module initial_theta_kernel_mod
         GH_FIELD, GH_WRITE, GH_READ,                    &
         ANY_SPACE_9, ANY_SPACE_1, GH_BASIS,             &
         GH_DIFF_BASIS,                                  &
-        CELLS, EVALUATOR_XYZ
+        CELLS, EVALUATOR
     use constants_mod,                 only: r_def, i_def
     use kernel_mod,                    only: kernel_type
     use idealised_config_mod,          only: test
@@ -39,7 +39,7 @@ module initial_theta_kernel_mod
              func_type(ANY_SPACE_9, GH_BASIS)                             &
              /)
         integer :: iterates_over = CELLS
-        integer :: evaluator_shape = EVALUATOR_XYZ
+        integer :: evaluator_shape = EVALUATOR
 
     contains
         procedure, nopass :: initial_theta_code
@@ -49,7 +49,7 @@ module initial_theta_kernel_mod
     ! Constructors
     !-------------------------------------------------------------------------------
 
-    ! overload the default structure constructor for function space
+    ! Overload the default structure constructor for function space
     interface initial_theta_kernel_type
         module procedure initial_theta_kernel_constructor
     end interface
@@ -113,7 +113,7 @@ contains
               x(2) = x(2) + chi_2_e(dfc)*chi_basis(1,dfc,df)
               x(3) = x(3) + chi_3_e(dfc)*chi_basis(1,dfc,df)
             end do
-            if(df .eq. 1 .and. k .eq. 0 ) x_surf = x
+            if(df == 1 .and. k .eq. 0 ) x_surf = x
 
             theta(map_wtheta(df) + k) = analytic_temperature(x, test, x_surf)
 

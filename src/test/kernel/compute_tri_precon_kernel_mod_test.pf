@@ -16,7 +16,6 @@ module compute_tri_precon_kernel_mod_test
                                             field_proxy_type
   use function_space_mod,            only : function_space_type
   use fs_continuity_mod,             only : W0, W3
-  use evaluator_xyz_mod,             only : evaluator_xyz_type
   use pFUnit_Mod
 
   implicit none
@@ -36,7 +35,6 @@ module compute_tri_precon_kernel_mod_test
     type(field_type)                   :: AP
     type(field_type)                   :: AM
     real(r_def), allocatable           :: diff_basis_chi(:,:,:)
-    type(evaluator_xyz_type)           :: evaluator
   contains
     procedure setUp
     procedure tearDown
@@ -134,8 +132,6 @@ contains
 
     allocate(this%diff_basis_chi(diff_dim_chi, ndf_chi, ndf_rho))
 
-    this%evaluator = evaluator_xyz_type( this%w3_fs%get_ndf( ), this%w3_fs%get_nodes() )
-
   end subroutine setUp
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -167,32 +163,33 @@ contains
 
     class(compute_tri_precon_test_type), intent(inout) :: this
 
-    real(r_def), parameter  :: dx = 6000.0_r_def, &
-                               dy = 1000.0_r_def, &
-                               dz = 2000.0_r_def
-    real(r_def), parameter  :: tol = 1.0e-10_r_def
-    real(r_def)             :: answer, exner
-    type(field_proxy_type ) :: chi_p(3)
+    real(r_def), parameter    :: dx = 6000.0_r_def, &
+                                 dy = 1000.0_r_def, &
+                                 dz = 2000.0_r_def
+    real(r_def), parameter    :: tol = 1.0e-10_r_def
+    real(r_def)               :: answer, exner
+    type(field_proxy_type )   :: chi_p(3)
 
-    integer                 :: i, j, k, cell, err
+    integer                   :: i, j, k, cell, err
 
-    integer                 :: nlayers, nqp_h, nqp_v
-    integer                 :: ndf_w0, ndf_w3
-    integer                 :: undf_w0, undf_w3
+    integer                   :: nlayers, nqp_h, nqp_v
+    integer                   :: ndf_w0, ndf_w3
+    integer                   :: undf_w0, undf_w3
 
-    integer                 :: ndf_chi, diff_dim_chi
+    integer                   :: ndf_chi, diff_dim_chi
+    integer                   :: df_w3, df_chi
 
-    integer                 :: element_order
-    integer, pointer        :: map_w3(:), map_w0(:) => null()
+
+    integer                   :: element_order
+    integer, pointer          :: map_w3(:), map_w0(:) => null()
+    real(kind=r_def), pointer :: nodes_w3(:,:) => null()
 
     type(field_proxy_type)  :: rho_proxy, theta_proxy, A0_proxy, AM_proxy, AP_proxy
-    type(evaluator_xyz_type):: evaluator
 
     ! Make a coordinate field with a function space
     do i = 1,3
       chi_p(i) = this%chi(i)%get_proxy()
     end do
-    evaluator = this%evaluator
 
     ! Compute coordinates
     cell = 1
@@ -215,9 +212,10 @@ contains
     AP_proxy  = this%AP%get_proxy()
     AM_proxy  = this%AM%get_proxy()
 
-    nlayers = rho_proxy%vspace%get_nlayers()
-    ndf_w3  = rho_proxy%vspace%get_ndf( )
-    undf_w3 = rho_proxy%vspace%get_undf()
+    nlayers  = rho_proxy%vspace%get_nlayers()
+    nodes_w3 => rho_proxy%vspace%get_nodes()
+    ndf_w3   = rho_proxy%vspace%get_ndf( )
+    undf_w3  = rho_proxy%vspace%get_undf()
 
     ndf_w0  = theta_proxy%vspace%get_ndf( )
     undf_w0 = theta_proxy%vspace%get_undf()
@@ -225,7 +223,12 @@ contains
     ndf_chi = chi_p(1)%vspace%get_ndf( )
     diff_dim_chi = chi_p(1)%vspace%get_dim_space_diff( )
 
-    call evaluator%compute_evaluate( DIFF_BASIS, chi_p(1)%vspace, diff_dim_chi, ndf_chi, this%diff_basis_chi)
+    ! Evaluate the basis function
+    do df_w3 = 1, ndf_w3
+      do df_chi = 1, ndf_chi
+        this%diff_basis_chi(:,df_chi,df_w3) = chi_p(1)%vspace%evaluate_function(DIFF_BASIS,df_chi,nodes_w3(:,df_w3))
+      end do
+    end do
 
     cell = 5
 

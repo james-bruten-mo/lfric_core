@@ -20,7 +20,7 @@ use argument_mod,            only : arg_type, func_type,                     &
                                     ANY_SPACE_9, ANY_SPACE_1,                &
                                     GH_BASIS,                                &
                                     CELLS,                                   &
-                                    EVALUATOR_XYZ
+                                    EVALUATOR
 use constants_mod,           only : r_def
 
 implicit none
@@ -39,7 +39,7 @@ type, public, extends(kernel_type) :: nodal_coordinates_kernel_type
        func_type(ANY_SPACE_9, GH_BASIS)                                &
        /)
   integer :: iterates_over = CELLS
-  integer :: evaluator_shape = EVALUATOR_XYZ
+  integer :: evaluator_shape = EVALUATOR
 contains
   procedure, nopass ::nodal_coordinates_code
 end type
@@ -48,7 +48,7 @@ end type
 ! Constructors
 !-------------------------------------------------------------------------------
 
-! overload the default structure constructor for function space
+! Overload the default structure constructor for function space
 interface nodal_coordinates_kernel_type
    module procedure nodal_coordinates_kernel_constructor
 end interface
@@ -86,7 +86,7 @@ subroutine nodal_coordinates_code(nlayers,                                    &
                                   basis_chi                                   &
                                   )
                            
-  !Arguments
+  ! Arguments
   integer, intent(in) :: nlayers
   integer, intent(in) :: ndf_x, ndf_chi, undf_x, undf_chi
   integer, dimension(ndf_x),   intent(in) :: map_x
@@ -95,7 +95,7 @@ subroutine nodal_coordinates_code(nlayers,                                    &
   real(kind=r_def), dimension(undf_chi),      intent(in)  :: chi1, chi2, chi3
   real(kind=r_def), dimension(1,ndf_chi,ndf_x), intent(in)  :: basis_chi
 
-  !Internal variables
+  ! Internal variables
   integer          :: df_x, df_chi, k
   real(kind=r_def) :: xyz(3)
   

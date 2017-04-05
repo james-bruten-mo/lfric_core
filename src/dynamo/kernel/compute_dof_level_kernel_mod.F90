@@ -14,7 +14,7 @@ use kernel_mod,              only : kernel_type
 use argument_mod,            only : arg_type, func_type,                     &
                                     GH_FIELD, GH_WRITE,                      &
                                     ANY_SPACE_1, GH_BASIS,                   &
-                                    CELLS, EVALUATOR_XYZ
+                                    CELLS
 use constants_mod,           only : r_def
 
 implicit none
@@ -37,7 +37,7 @@ end type
 ! Constructors
 !-------------------------------------------------------------------------------
 
-! overload the default structure constructor for function space
+! Overload the default structure constructor for function space
 interface compute_dof_level_kernel_type
    module procedure compute_dof_level_kernel_constructor
 end interface
@@ -65,9 +65,10 @@ subroutine compute_dof_level_code(nlayers,                                  &
                                   )
                            
   !Arguments
-  integer, intent(in) :: nlayers
-  integer, intent(in) :: ndf, undf
-  integer, dimension(ndf),            intent(in) :: map
+  integer, intent(in)                             :: nlayers
+  integer, intent(in)                             :: ndf
+  integer, intent(in)                             :: undf
+  integer, dimension(ndf),            intent(in)  :: map
   real(kind=r_def), dimension(undf),  intent(out) :: level
   real(kind=r_def), dimension(3,ndf), intent(in)  :: nodes
 

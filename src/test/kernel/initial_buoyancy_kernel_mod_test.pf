@@ -19,7 +19,6 @@ module initial_buoyancy_kernel_mod_test
   use function_space_mod,            only : function_space_type, W0, Wtheta
   use pFUnit_Mod
   use quadrature_mod,                only : quadrature_type, GAUSSIAN
-  use evaluator_xyz_mod,             only : evaluator_xyz_type
 
   implicit none 
 
@@ -35,7 +34,6 @@ module initial_buoyancy_kernel_mod_test
     type(field_type)                   :: buoyancy
     real(r_def), allocatable           :: basis_chi(:,:,:)
     integer(i_def)                     :: mesh_id
-    type(evaluator_xyz_type)           :: evaluator
   contains
     procedure setUp
     procedure tearDown
@@ -126,7 +124,6 @@ contains
 
     allocate( this%basis_chi(dim_chi, ndf_chi, ndf_buoyancy) )
 
-    this%evaluator = evaluator_xyz_type( this%wt_fs%get_ndf( ), this%wt_fs%get_nodes() )
   end subroutine setUp
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -169,11 +166,11 @@ contains
 
     integer          :: ndf_buoyancy, undf_buoyancy, &
                         ndf_chi, undf_chi, &
-                        nqp_h, nqp_v, dim_chi
-    real(kind=r_def), pointer :: nodes(:,:) => null()
-
-    integer, pointer :: map_buoyancy(:) => null(), &
-                        map_chi(:) => null()
+                        nqp_h, nqp_v, dim_chi, &
+                        df_wt, df_chi
+    real(kind=r_def), pointer :: nodes_buoyancy(:,:) => null()
+    integer, pointer          :: map_buoyancy(:) => null()
+    integer, pointer          :: map_chi(:) => null()
 
     real(r_def) :: answer
 
@@ -213,8 +210,16 @@ contains
     dim_chi = chi_p(1)%vspace%get_dim_space( )
     ndf_chi  = chi_p(1)%vspace%get_ndf( )
     undf_chi = chi_p(1)%vspace%get_undf( )
-    call this%evaluator%compute_evaluate( BASIS, chi_p(1)%vspace, &
-                                          dim_chi, ndf_chi, this%basis_chi)
+
+    nodes_buoyancy => buoyancy_p%vspace%get_nodes()
+
+    ! Evaluate the basis function
+    do df_wt = 1, ndf_buoyancy
+      do df_chi = 1, ndf_chi
+        this%basis_chi(:,df_chi,df_wt) = chi_p(1)%vspace%evaluate_function(BASIS,df_chi,nodes_buoyancy(:,df_wt))
+      end do
+    end do
+
     cell = 1
     map_buoyancy => buoyancy_p%vspace%get_cell_dofmap( cell )
     map_chi => chi_p(1)%vspace%get_cell_dofmap( cell )

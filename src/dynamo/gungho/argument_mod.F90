@@ -36,14 +36,14 @@ module argument_mod
 
   implicit none
 
-! argument types
+! Argument types
   integer, public, parameter :: GH_FIELD               = 1 
   integer, public, parameter :: GH_OPERATOR            = 2
   integer, public, parameter :: GH_COLUMNWISE_OPERATOR = 3
   integer, public, parameter :: GH_REAL                = 4
   integer, public, parameter :: GH_INTEGER             = 5
 
-! access descriptors
+! Access descriptors
   integer, public, parameter :: GH_READ  = 11
   integer, public, parameter :: GH_WRITE = 12
   integer, public, parameter :: GH_RW    = 13
@@ -52,7 +52,7 @@ module argument_mod
   integer, public, parameter :: GH_MIN   = 16
   integer, public, parameter :: GH_MAX   = 17
 
-! distinct any_space id's. Separate id's required as we may have groups of fields
+! Distinct any_space id's. Separate id's required as we may have groups of fields
 ! that must be on the same space within a kernel.
   integer, public, parameter :: ANY_SPACE_1  = 201
   integer, public, parameter :: ANY_SPACE_2  = 202
@@ -65,7 +65,7 @@ module argument_mod
   integer, public, parameter :: ANY_SPACE_9  = 209
   integer, public, parameter :: ANY_SPACE_10 = 210
 
-! function space attributes
+! Function space attributes
   integer, public, parameter :: GH_BASIS       = 301 
   integer, public, parameter :: GH_DIFF_BASIS  = 302
   integer, public, parameter :: GH_ORIENTATION = 303
@@ -73,17 +73,17 @@ module argument_mod
   integer, public, parameter :: GH_COLUMN_INDIRECTION_DOFMAP = 305
 
 
-! kernel iterator
+! Kernel iterator
   integer, public, parameter :: CELLS     = 401
   integer, public, parameter :: ALL_DOFS  = 402
 
+! Quadrature metadata
+  integer, public, parameter :: QUADRATURE_XYZ   = 501
+  integer, public, parameter :: QUADRATURE_XYoZ  = 502
+  integer, public, parameter :: QUADRATURE_XoYoZ = 503
+
 ! Evaluator metadata
-  integer, public, parameter :: EVALUATOR_XYZ    = 501
-  integer, public, parameter :: EVALUATOR_XYoZ   = 502
-  integer, public, parameter :: EVALUATOR_XoYoZ  = 503
-  integer, public, parameter :: QUADRATURE_XYZ   = 504
-  integer, public, parameter :: QUADRATURE_XYoZ  = 505
-  integer, public, parameter :: QUADRATURE_XoYoZ = 506
+  integer, public, parameter :: EVALUATOR        = 504
 
   type, public :: arg_type
      integer :: arg_type         ! {GH_FIELD, GH_OPERATOR, GH_COLUMNWISE_OPERATOR,&

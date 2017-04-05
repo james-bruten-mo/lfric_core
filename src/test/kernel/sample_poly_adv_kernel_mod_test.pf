@@ -20,7 +20,6 @@ module sample_poly_adv_kernel_mod_test
   use pFUnit_Mod
   use quadrature_mod,                only : quadrature_type, GAUSSIAN
   use stencil_dofmap_mod,            only : stencil_dofmap_type, STENCIL_CROSS
-  use evaluator_xyz_mod,             only : evaluator_xyz_type
 
   implicit none
 
@@ -35,7 +34,6 @@ module sample_poly_adv_kernel_mod_test
     type(field_type)                   :: theta, u, adv 
     real(r_def), allocatable           :: basis_u(:,:,:)
     type(stencil_dofmap_type), pointer :: stencil => null()
-    type(evaluator_xyz_type)           :: evaluator
    
   contains
     procedure setUp
@@ -91,8 +89,6 @@ contains
 
     allocate( this%basis_u(dim_u, ndf_u, ndf_t) )
 
-    this%evaluator = evaluator_xyz_type( this%wt_fs%get_ndf( ), this%wt_fs%get_nodes() )
-
   end subroutine setUp
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -133,21 +129,20 @@ contains
     ! Variables for testing sample_poly_adv
 
     integer          :: ndf_theta, undf_theta, dim_u, &
-                        ndf_u, undf_u
+                        ndf_u, undf_u, ndf_adv
+    integer          :: df_u, df_adv
 
-    integer, pointer :: stencil_map(:,:,:) => null(), &
-                        map_u(:,:) => null() 
+    integer, pointer          :: stencil_map(:,:,:) => null()
+    integer, pointer          :: map_u(:,:) => null() 
+    real(kind=r_def), pointer :: nodes_adv(:,:) => null()
 
     type(field_proxy_type)   :: adv_p, theta_p, u_p
-    type(evaluator_xyz_type) :: evaluator
 
     ! Test adv computation
 
     adv_p     = this%adv%get_proxy()
     theta_p   = this%theta%get_proxy()
     u_p       = this%u%get_proxy()
-    evaluator = this%evaluator
-
 
     ndf_u  = u_p%vspace%get_ndf( )
     undf_u = u_p%vspace%get_undf( )
@@ -156,7 +151,15 @@ contains
     ndf_theta  = theta_p%vspace%get_ndf( )
     undf_theta = theta_p%vspace%get_undf( )
 
-    call evaluator%compute_evaluate( BASIS, u_p%vspace, dim_u, ndf_u, this%basis_u)
+    ndf_adv   = adv_p%vspace%get_ndf()
+    nodes_adv => adv_p%vspace%get_nodes()
+
+    ! Evaluate the basis function
+    do df_adv = 1, ndf_adv
+      do df_u = 1, ndf_u
+        this%basis_u(:,df_u,df_adv) = u_p%vspace%evaluate_function(BASIS,df_u,nodes_adv(:,df_adv))
+      end do
+    end do
 
     stencil_map => this%stencil%get_whole_dofmap()
     map_u => u_p%vspace%get_whole_dofmap()

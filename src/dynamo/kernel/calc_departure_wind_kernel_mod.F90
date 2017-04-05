@@ -22,7 +22,7 @@ use argument_mod,            only : arg_type, func_type,                     &
                                     GH_FIELD, GH_READ, GH_WRITE,             &
                                     ANY_SPACE_9, W2,                         &
                                     GH_DIFF_BASIS, GH_BASIS,                 &
-                                    CELLS, EVALUATOR_XYZ
+                                    CELLS, EVALUATOR
 use constants_mod,           only : r_def
 
 implicit none
@@ -43,7 +43,7 @@ type, public, extends(kernel_type) :: calc_departure_wind_kernel_type
        func_type(ANY_SPACE_9, GH_DIFF_BASIS)                           &
        /)
   integer :: iterates_over = CELLS
-  integer :: evaluator_shape = EVALUATOR_XYZ
+  integer :: evaluator_shape = EVALUATOR
 contains
   procedure, nopass ::calc_departure_wind_code
 end type
@@ -52,7 +52,7 @@ end type
 ! Constructors
 !-------------------------------------------------------------------------------
 
-! overload the default structure constructor for function space
+! Overload the default structure constructor for function space
 interface calc_departure_wind_kernel_type
    module procedure calc_departure_wind_kernel_constructor
 end interface

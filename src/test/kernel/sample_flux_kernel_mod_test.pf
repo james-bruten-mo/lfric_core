@@ -19,7 +19,6 @@ module sample_flux_kernel_mod_test
   use function_space_mod,            only : function_space_type
   use pFUnit_Mod
   use quadrature_mod,                only : quadrature_type, GAUSSIAN
-  use evaluator_xyz_mod,             only : evaluator_xyz_type
 
   implicit none
 
@@ -33,7 +32,6 @@ module sample_flux_kernel_mod_test
     type(function_space_type), pointer :: w3_fs => null()
     type(field_type)                   :: rho, u
     real(r_def), allocatable           :: basis_rho(:,:,:)
-    type(evaluator_xyz_type)           :: evaluator
   contains
     procedure setUp
     procedure tearDown
@@ -85,8 +83,6 @@ contains
 
     allocate( this%basis_rho(dim_rho, ndf_rho, ndf_u) )
 
-    this%evaluator = evaluator_xyz_type( this%w2_fs%get_ndf( ), this%w2_fs%get_nodes() )
-
   end subroutine setUp
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -128,13 +124,14 @@ contains
     type(field_type) :: flux, m
 
     integer          :: ndf_rho, undf_rho, dim_rho, &
-                        ndf_u, undf_u, dim_u
+                        ndf_u, undf_u, dim_u,       &
+                        ndf_flux, df_flux, df_rho
 
-    integer, pointer :: map_rho(:) => null(), &
-                        map_u(:) => null() 
+    real(kind=r_def), pointer :: nodes_flux(:,:) => null()
+    integer, pointer          :: map_rho(:)      => null()
+    integer, pointer          :: map_u(:)        => null() 
 
     type(field_proxy_type)    :: flux_p, rho_p, u_p, m_p
-    type(evaluator_xyz_type)  :: evaluator
 
     ! Test flux computation
     flux = field_type( vector_space = this%w2_fs )
@@ -143,7 +140,6 @@ contains
     flux_p    = flux%get_proxy()
     rho_p     = this%rho%get_proxy()
     u_p       = this%u%get_proxy()
-    evaluator = this%evaluator
     m_p       = m%get_proxy()
 
     ndf_u  = u_p%vspace%get_ndf( )
@@ -153,7 +149,15 @@ contains
     undf_rho = rho_p%vspace%get_undf( )
     dim_rho  = rho_p%vspace%get_dim_space( )
 
-    call evaluator%compute_evaluate( BASIS, rho_p%vspace, dim_rho, ndf_rho, this%basis_rho)
+    nodes_flux => flux_p%vspace%get_nodes()
+    ndf_flux   = flux_p%vspace%get_ndf()
+
+    ! Evaluate the basis function
+    do df_flux = 1, ndf_flux
+      do df_rho = 1, ndf_rho
+        this%basis_rho(:,df_rho,df_flux) = rho_p%vspace%evaluate_function(BASIS,df_rho,nodes_flux(:,df_flux))
+      end do
+    end do
 
     cell = 5
     map_u   => u_p%vspace%get_cell_dofmap( cell )

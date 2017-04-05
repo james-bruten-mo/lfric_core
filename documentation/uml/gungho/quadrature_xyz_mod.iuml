@@ -1,0 +1,26 @@
+' (c) The copyright relating to this work is owned jointly by the Crown,
+' Met Office and NERC 2014. However, it has been created with the help of the
+' GungHo Consortium, whose members are identified at
+' https://puma.nerc.ac.uk/trac/GungHo/wiki
+
+class quadrature_xyz_mod::quadrature_xyz_type {
+
+  -np_xyz: integer
+  -weights_xyz: real[:]  <<allocatable>>
+  -points_xyz : real[::] <<allocatable>>
+
+  +<<create>>init_quadrature( <<in>>np_xyz: integer, <<in>>rule: quadrature_rule ) : quadrature_xyz_type
+  +compute_evaluate( <<in>>func_to_call: integer, <<in>> ef: evaluate_function_type, <<in>>ef_dim: integer, <<in>>ndf: integer, <<out>>basis: real[:::] )
+  +get_quadrature_proxy() : quadrature_3d_xyz_proxy_type
+  +<<destroy>>quadrature_destructor()
+
+}
+
+class quadrature_xyz_mod::quadrature_xyz_proxy_type {
+  +np_xyz: integer 
+  +weights_xyz: real[:]  <<pointer>>
+  +points_xyz : real[::] <<pointer>>
+}
+
+abstract_quadrature_mod::abstract_quadrature_type <|-- quadrature_xyz_mod::quadrature_xyz_type
+quadrature_xyz_mod::quadrature_xyz_proxy_type -> quadrature_xyz_mod::quadrature_xyz_type

@@ -31,8 +31,7 @@ use argument_mod,       only : arg_type, func_type,        &
                                GH_FIELD, GH_INC, GH_WRITE, &
                                W3,                         &
                                GH_BASIS,                   &
-                               CELLS,                      &
-                               EVALUATOR_XYZ
+                               CELLS
 use constants_mod,      only : r_def
 use subgrid_config_mod, only : subgrid_rho_approximation_constant_subgrid,     &
                                subgrid_rho_approximation_constant_positive,    &
@@ -64,7 +63,7 @@ end type
 ! Constructors
 !-------------------------------------------------------------------------------
 
-! overload the default structure constructor for function space
+! Overload the default structure constructor for function space
 interface subgrid_coeffs_kernel_type
    module procedure subgrid_coeffs_kernel_constructor
 end interface
@@ -110,7 +109,7 @@ subroutine subgrid_coeffs_code(                                               &
   use subgrid_rho_mod, only: minmod_function, maxmod_function, second_order_coeffs
   use cosmic_flux_mod,    only : stencil_ordering_and_orientation
 
-  !Arguments
+  ! Arguments
   integer, intent(in)               :: nlayers
   integer, intent(in)               :: subgridrho_option
   integer, intent(in)               :: undf_w3
