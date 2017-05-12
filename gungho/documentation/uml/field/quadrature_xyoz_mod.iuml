@@ -12,7 +12,8 @@ class quadrature_xyoz_mod::quadrature_xyoz_type {
   -points_xy : real[::] <<allocatable>>
   -points_z  : real[:]  <<allocatable>>
 
-  +<<create>>init_quadrature( <<in>>np_xy: integer, <<in>>np_z: integer, <<in>>rule: quadrature_rule ) : quadrature_xoyz_type
+  +<<create>>init_quadrature_variable( <<in>>np_x: integer, <<in>>np_y: integer, <<in>>np_z: integer, <<in>>rule: quadrature_rule ) : quadrature_xyoz_type
+  +<<create>>init_quadrature_symmetrical( <<in>>np: integer, <<in>>rule: quadrature_rule ) : quadrature_xyoz_type
   +compute_evaluate( <<in>>func_to_call: integer, <<in>> ef: evaluate_function_type, <<in>>ef_dim: integer, <<in>>ndf: integer, <<out>>basis: real[::::] )
   +get_quadrature_proxy() : quadrature_xyoz_proxy_type
   +<<destroy>>quadrature_destructor()

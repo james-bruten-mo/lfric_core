@@ -7,17 +7,25 @@
 !
 !-------------------------------------------------------------------------------
 
-!> @brief Contains quadrature_xyz_type and quadrature_xyz_type
+!> @brief Contains quadrature_xyz_type and quadrature_xyz_type.
 
-!> @details This module contains the quadrature_xyz_type
+!> @details This module contains the quadrature_xyz_type.
 
 !> This type contains points and weights stored in 3D (x-y-z). A proxy  
 !> is used to access the data. A type bound procedure 'compute_evaluate' 
 !> is also available. This method uses the evaluate_function defined in 
 !> objects of class evaluate_function_type (e.g. function space) for the 
 !> xyz data points.
+!>
+!> There are two constructors:
+!> init_quadrature_symmetrical(np, rule),
+!> init_quadrature_variable(np_x, np_y, np_z, rule)
+!> where rule is the quadrature rule and np is the number of points in each
+!> direction.
+
 
 module quadrature_xyz_mod
+
 use constants_mod,           only: r_def, i_def, PI, EPS
 use log_mod,                 only: LOG_LEVEL_ERROR, log_event, log_scratch_space
 use quadrature_rule_mod,     only: quadrature_rule_type
@@ -26,7 +34,9 @@ use function_space_mod,      only: function_space_type
 use evaluate_function_mod,   only: evaluate_function_type
 
 implicit none
+
 private
+
 !-------------------------------------------------------------------------------
 ! Public types
 !-------------------------------------------------------------------------------
@@ -36,6 +46,7 @@ private
 !-------------------------------------------------------------------------------
 
 type, public, extends(abstract_quadrature_type) :: quadrature_xyz_type
+
   private
 
   !> Allocatable arrays which holds the quadrature weights
@@ -68,21 +79,25 @@ end type quadrature_xyz_type
 type, public :: quadrature_xyz_proxy_type
 
   private
-  !> allocatable arrays which holds the values of the gaussian quadrature
+  !> Allocatable arrays which holds the values of the gaussian quadrature
   real(kind=r_def), pointer, public :: weights_xyz(:)  => null()
   real(kind=r_def), pointer, public :: points_xyz(:,:) => null()
 
   !> Number of points
-  integer, public                   :: np_xyz
+  integer(kind=i_def), public       :: np_xyz
 
 contains
+
 end type quadrature_xyz_proxy_type
 
 !-------------------------------------------------------------------------------
 ! Module parameters
 !-------------------------------------------------------------------------------
 interface quadrature_xyz_type
-  module procedure init_quadrature
+
+  module procedure init_quadrature_variable
+  module procedure init_quadrature_symmetrical
+
 end interface
 
 !-------------------------------------------------------------------------------
@@ -91,40 +106,103 @@ end interface
 contains
 
 !-------------------------------------------------------------------------------
-!> @brief Initialises the xyz quadrature type
-!> @param[in] np_xyz integer, The total number of points in x,y and z
-!> @param[in] rule quadrature_rule_type, The quadrature rule
-function init_quadrature(np_xyz, rule) result (self)
+!> @brief Initialises the xyz quadrature type.
+!> @param[in] np_x integer, The number of points in the x-direction
+!> @param[in] np_y integer, The number of points in the y-direction
+!> @param[in] np_z integer, The number of points in the z-direction
+!> @param[in] rule quadrature_rule_type, Quadrature rule to use
+!>
+!> @return An object of type quadrature_xyz_type.
+function init_quadrature_variable(np_x, np_y, np_z, rule) result (self)
 
   implicit none
 
   type(quadrature_xyz_type)               :: self
-  integer, intent(in)                     :: np_xyz
+  integer(kind=i_def), intent(in)         :: np_x, np_y, np_z
   class(quadrature_rule_type), intent(in) :: rule
 
-  self%np_xyz = np_xyz
-  call create_quadrature( self, rule )
+  real(kind=r_def), allocatable           :: points_weights_x(:,:)
+  real(kind=r_def), allocatable           :: points_weights_y(:,:)
+  real(kind=r_def), allocatable           :: points_weights_z(:,:)
 
-end function init_quadrature
+  ! Allocate space for the points and weights of the 1D with dimension defined
+  ! in quad type
+  allocate( points_weights_x( np_x,2 ) )
+  allocate( points_weights_y( np_y,2 ) )
+  allocate( points_weights_z( np_z,2 ) )
 
-!> @brief Distribute quadrature points and weights
-!> @param[in] self The calling quadrature_type
-!> @param[in] rule quadrature_rule_type Quadrature rule to use
-!> @todo This code is correct for quads but will need modification for
-!>       hexes/triangles)
-subroutine create_quadrature(self, rule)
+  ! Get a copy of the 1D points and weights
+  points_weights_x = rule % quadrature_rule( np_x )
+  points_weights_y = rule % quadrature_rule( np_y )
+  points_weights_z = rule % quadrature_rule( np_z )
+
+  ! Initialise object data
+  self%np_xyz = np_x*np_y*np_z
+  call create_quadrature( self, points_weights_x, points_weights_y, points_weights_z )
+
+  ! Tidy memory
+  deallocate( points_weights_x )
+  deallocate( points_weights_y )
+  deallocate( points_weights_z )
+
+end function init_quadrature_variable
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!> @brief Initialises the xyz quadrature type.
+!> @param[in] np integer, The number of points
+!> @param[in] rule quadrature_rule_type, Quadrature rule to use
+!>
+!> @return An object of type quadrature_xyz_type.
+function init_quadrature_symmetrical(np, rule) result (self)
 
   implicit none
 
-  class(quadrature_xyz_type)              :: self
+  type(quadrature_xyz_type)               :: self
+  integer(kind=i_def), intent(in)         :: np
   class(quadrature_rule_type), intent(in) :: rule
 
-  integer(kind=i_def)           :: i,j,k,ic, np_1d
-  real(kind=r_def), allocatable :: points_weights(:,:)
+  real(kind=r_def), allocatable, target   :: points_weights_x(:,:)
+  real(kind=r_def), pointer               :: points_weights_y(:,:) => null()
+  real(kind=r_def), pointer               :: points_weights_z(:,:) => null()
 
-  ! Currently assume that the space is symmetric so that can use the 1-D
-  ! quadrature rule
-  np_1d = int(self%np_xyz ** (1.0_r_def/3.0_r_def))
+  ! Allocate space for the points and weights of the 1D with dimension defined
+  ! in quad type
+  allocate( points_weights_x( np,2 ) )
+
+  ! Get a copy of the 1D points and weights
+  points_weights_x = rule % quadrature_rule( np )
+  points_weights_y => points_weights_x
+  points_weights_z => points_weights_x
+
+  ! Initialise object data
+  self%np_xyz = np*np*np
+
+  call create_quadrature( self, points_weights_x, points_weights_y, points_weights_z )
+
+  ! Tidy memory
+  deallocate( points_weights_x )
+
+end function init_quadrature_symmetrical
+
+!-------------------------------------------------------------------------------
+!> @brief Distribute quadrature points and weights.
+!> @param[in] self, The calling quadrature_type
+!> @param[in] points_weights_x real, 1D points and weights in x-direction
+!> @param[in] points_weights_y real, 1D points and weights in y-direction
+!> @param[in] points_weights_z real, 1D points and weights in z-direction
+!> @todo This code is correct for quads but will need modification for
+!>       hexes/triangles)
+subroutine create_quadrature(self, points_weights_x, points_weights_y, points_weights_z)
+
+  implicit none
+
+  class(quadrature_xyz_type)   :: self
+  real(kind=r_def), intent(in) :: points_weights_x(:,:)
+  real(kind=r_def), intent(in) :: points_weights_y(:,:)
+  real(kind=r_def), intent(in) :: points_weights_z(:,:)
+
+  integer(kind=i_def)          :: i, j, k, ic
 
   ! Allocate space for the points of points weights in the quad type
   allocate( self%points_xyz(3,self%np_xyz) )
@@ -132,34 +210,24 @@ subroutine create_quadrature(self, rule)
 
   ! Initialise all to zero
   self%points_xyz(:,:) = 0.0_r_def
-  self%weights_xyz(:) = 0.0_r_def
-
-  ! Allocate space for the points and weights of the 1D. The dimension assumes
-  ! symmetry in the space
-  allocate( points_weights( np_1d,2 ) )
-
-  ! Get a copy of the 1D points and weights
-  points_weights = rule % quadrature_rule( np_1d )
+  self%weights_xyz(:)  = 0.0_r_def
 
   ! Distribute the 1D points and weights
   ic = 1
-  do i=1,np_1d
-    do j=1,np_1d
-      do k=1,np_1d
-        self%points_xyz(1,ic) = points_weights(i,1)
-        self%points_xyz(2,ic) = points_weights(j,1)
-        self%points_xyz(3,ic) = points_weights(k,1)
-
-        self%weights_xyz(ic) = points_weights(i,2)*points_weights(j,2)*points_weights(k,2)
-
+  do i = 1, size(points_weights_x,1)
+    do j = 1, size(points_weights_y,1)
+      do k = 1, size(points_weights_z,1)
+        self%points_xyz(1,ic) = points_weights_x(i,1)
+        self%points_xyz(2,ic) = points_weights_y(j,1)
+        self%points_xyz(3,ic) = points_weights_z(k,1)
+        self%weights_xyz(ic)  = points_weights_x(i,2)*points_weights_y(j,2)*points_weights_z(k,2)
         ic = ic + 1
       end do
     end do
   end do
 
-  deallocate( points_weights )
-
   return
+
 end subroutine create_quadrature
 !-------------------------------------------------------------------------------
 
@@ -169,7 +237,7 @@ end subroutine create_quadrature
 !>
 !> @return The proxy type with public pointers to the elements of
 !> quadrature_xyz_type.
-type(quadrature_xyz_proxy_type ) function get_quadrature_proxy(self)
+type(quadrature_xyz_proxy_type) function get_quadrature_proxy(self)
 
   implicit none
 
@@ -182,13 +250,14 @@ type(quadrature_xyz_proxy_type ) function get_quadrature_proxy(self)
 end function get_quadrature_proxy
 !-------------------------------------------------------------------------------
 
-!-------------------------------------------------------------------------------
-!> @brief Evaluates the a given function for on a set of 3d points
-!> @param[in] func_to_call enumerator defining the function to call
-!> @param[in] ef object containing the function to evaluate
-!> @param[in] ndf integer number of dofs
-!> @param[out] basis real 3 dimensional array holding the evaluated
-!> function
+!--------------------------------------------------------------------------------
+!> @brief Evaluates the a given function for on a set of 3d points.
+!> @param[in] self, The calling quadrature_type
+!> @param[in] func_to_call integer, Enumerator defining the function to call
+!> @param[in] ef evaluate_function_type, Object containing the function to evaluate
+!> @param[in] ef_dim integer, Size of the evaluated function
+!> @param[in] ndf integer, Number of dofs
+!> @param[out] basis real, 3 dimensional array holding the evaluated function
 subroutine compute_evaluate(self, func_to_call, ef, ef_dim, ndf, basis)
   implicit none
 
@@ -199,7 +268,7 @@ subroutine compute_evaluate(self, func_to_call, ef, ef_dim, ndf, basis)
   integer(kind=i_def),                                  intent(in)  :: ndf
   real(kind=r_def), dimension(ef_dim,ndf,self%np_xyz),  intent(out) :: basis
 
-  ! local variables - loop counters
+  ! Local variables - loop counters
   integer(kind=i_def) :: df
   integer(kind=i_def) :: qp1
 
@@ -211,11 +280,13 @@ subroutine compute_evaluate(self, func_to_call, ef, ef_dim, ndf, basis)
 
 end subroutine compute_evaluate
 
-
 !-------------------------------------------------------------------------------
-!> @brief Routine to destroy quadrature
+!> @brief Routine to destroy quadrature.
+!> @param[in] self, The calling quadrature_type
 subroutine quadrature_destructor(self)
+
   implicit none
+
   type(quadrature_xyz_type) :: self
 
   if(allocated(self%points_xyz)) deallocate(self%points_xyz)
