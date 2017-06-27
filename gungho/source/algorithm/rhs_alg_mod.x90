@@ -21,7 +21,6 @@ module rhs_alg_mod
   use geopotential_gradient_kernel_mod,    only: geopotential_gradient_kernel_type
   use kinetic_energy_gradient_kernel_mod,  only: kinetic_energy_gradient_kernel_type
   use matrix_vector_kernel_mod,            only: matrix_vector_kernel_type
-  use multiplicity_kernel_mod,             only: multiplicity_kernel_type
   use operator_mod,                        only: operator_type
   use pressure_gradient_kernel_mod,        only: pressure_gradient_kernel_type
   use psykal_lite_mod,                     only: invoke_inc_xpby, &

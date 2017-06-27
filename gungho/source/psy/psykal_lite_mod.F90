@@ -2032,16 +2032,16 @@ contains
 !> (not quadrature) will be removed and the functionality will be implemented via
 !> PSY using kernal meta data. 
 !> PSyclone support is required - documented in #942
-  subroutine invoke_sample_flux_kernel(flux, u, multiplicity, q )
+  subroutine invoke_sample_flux_kernel(flux, u, rmultiplicity, q )
     use sample_flux_kernel_mod, only: sample_flux_code
     use mesh_mod,               only: mesh_type
 
     implicit none
 
-    type(field_type), intent(in)         :: u, multiplicity, q
+    type(field_type), intent(in)         :: u, rmultiplicity, q
     type(field_type), intent(inout)      :: flux
 
-    type(field_proxy_type)          :: u_p, m_p, q_p, flux_p
+    type(field_proxy_type)          :: u_p, rm_p, q_p, flux_p
     
     integer                 :: cell, nlayers
     integer                 :: ndf_f, ndf_q
@@ -2059,7 +2059,7 @@ contains
 
     u_p    = u%get_proxy()
     q_p    = q%get_proxy()
-    m_p    = multiplicity%get_proxy()
+    rm_p    = rmultiplicity%get_proxy()
     flux_p = flux%get_proxy()
 
     nlayers = flux_p%vspace%get_nlayers()
@@ -2082,7 +2082,7 @@ contains
 
     mesh => flux%get_mesh()
     if (flux_p%is_dirty(depth=1)) call flux_p%halo_exchange(depth=1)
-    if (   m_p%is_dirty(depth=1)) call    m_p%halo_exchange(depth=1)
+    if (  rm_p%is_dirty(depth=1)) call    rm_p%halo_exchange(depth=1)
     if (   u_p%is_dirty(depth=1)) call    u_p%halo_exchange(depth=1)
     if (   q_p%is_dirty(depth=1)) call    q_p%halo_exchange(depth=1)
 
@@ -2092,7 +2092,7 @@ contains
        map_q => q_p%vspace%get_cell_dofmap( cell )
        call sample_flux_code(nlayers, &
                              flux_p%data, & 
-                             m_p%data, &
+                             rm_p%data, &
                              u_p%data, &
                              q_p%data, &
                              ndf_f, & 
