@@ -61,10 +61,15 @@ all:
 	$(MAKE) test
 
 .PHONY: build
-build: build-gungho build-mesh_tools
+build:
+	$(MAKE) build-gungho
+	$(MAKE) build-mesh_tools
 
 .PHONY: test
-test: test-infrastructure test-gungho test-mesh_tools
+test:
+	$(MAKE) test-infrastructure
+	$(MAKE) test-gungho
+	$(MAKE) test-mesh_tools
 
 .PHONY: documentation doc docs
 documentation doc docs: document-infrastructure document-gungho
