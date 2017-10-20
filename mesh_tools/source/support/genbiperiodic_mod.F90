@@ -13,10 +13,15 @@
 !-------------------------------------------------------------------------------
 module genbiperiodic_mod
 !-------------------------------------------------------------------------------
-  use ugrid_generator_mod,   only : ugrid_generator_type
-  use constants_mod,         only : r_def, i_def, str_def, str_long
-  use log_mod,               only : log_event, LOG_LEVEL_ERROR
-  use reference_element_mod, only : W, S, E, N, SWB, SEB, NWB, NEB
+
+  use calc_global_cell_map_mod,       only: calc_global_cell_map
+  use constants_mod,                  only: r_def, i_def, str_def, str_long
+  use global_mesh_map_collection_mod, only: global_mesh_map_collection_type
+  use global_mesh_map_mod,            only: generate_global_mesh_map_id
+  use log_mod,                        only: log_event, log_scratch_space, &
+                                            LOG_LEVEL_ERROR
+  use reference_element_mod,          only: W, S, E, N, SWB, SEB, NWB, NEB
+  use ugrid_generator_mod,            only: ugrid_generator_type
 
   implicit none
 
@@ -27,6 +32,8 @@ module genbiperiodic_mod
   integer(i_def), parameter :: NE = NEB
   integer(i_def), parameter :: SE = SEB
   integer(i_def), parameter :: SW = SWB
+
+  integer(i_def), parameter :: NPANELS = 1
 
   ! Prefix for error messages
   character(len=*),   parameter :: PREFIX = "[Biperiodic Mesh] "
@@ -41,6 +48,14 @@ module genbiperiodic_mod
     character(str_long)         :: generator_inputs
     integer(i_def)              :: nx, ny
     real(r_def)                 :: dx, dy
+    integer(i_def)              :: npanels
+    integer(i_def)              :: nmaps
+
+    character(str_def), allocatable :: target_mesh_names(:)
+    integer(i_def),     allocatable :: target_edge_cells_x(:)
+    integer(i_def),     allocatable :: target_edge_cells_y(:)
+    type(global_mesh_map_collection_type), allocatable :: global_mesh_maps
+
     integer(i_def), allocatable :: cell_next(:,:)     ! (4, nx*ny)
     integer(i_def), allocatable :: verts_on_cell(:,:) ! (4, nx*ny)
     integer(i_def), allocatable :: edges_on_cell(:,:) ! (4, nx*ny)
@@ -56,6 +71,9 @@ module genbiperiodic_mod
     procedure :: get_dimensions
     procedure :: get_coordinates
     procedure :: get_connectivity
+    procedure :: get_global_mesh_maps
+
+
     procedure :: write_mesh
   end type genbiperiodic_type
 
@@ -79,7 +97,11 @@ contains
 !>
 !> @return    self       Instance of genbiperiodic_type
 !-------------------------------------------------------------------------------
-function genbiperiodic_constructor( mesh_name, nx, ny, domain_x, domain_y ) &
+function genbiperiodic_constructor( mesh_name, nx, ny,    &
+                                    domain_x, domain_y,   &
+                                    target_mesh_names,    &
+                                    target_edge_cells_x,  &
+                                    target_edge_cells_y ) &
                             result( self )
 
   implicit none
@@ -87,10 +109,19 @@ function genbiperiodic_constructor( mesh_name, nx, ny, domain_x, domain_y ) &
   character(len=*), intent(in) :: mesh_name
   integer(i_def),   intent(in) :: nx, ny
   real(r_def),      intent(in) :: domain_x, domain_y
+  character(str_def), optional, intent(in) :: target_mesh_names(:)
+  integer(i_def),     optional, intent(in) :: target_edge_cells_x(:)
+  integer(i_def),     optional, intent(in) :: target_edge_cells_y(:)
+
+
 
   type( genbiperiodic_type ) :: self
   character(str_def)         :: rchar1
   character(str_def)         :: rchar2
+
+  integer(i_def) ::i
+
+  integer(i_def) :: remainder=0
 
   if (nx < 2 .or. ny < 2) then
     call log_event( PREFIX//"Invalid dimension argument.", LOG_LEVEL_ERROR )
@@ -98,8 +129,11 @@ function genbiperiodic_constructor( mesh_name, nx, ny, domain_x, domain_y ) &
 
   self%mesh_name  = trim(mesh_name)
   self%mesh_class = trim(MESH_CLASS)
-  self%nx = nx
-  self%ny = ny
+  self%nx         = nx
+  self%ny         = ny
+  self%npanels    = NPANELS
+  self%nmaps      = 0
+
 
   if (domain_x < 0)                                                       &
       call log_event( PREFIX//" x-domain argument must be non-negative.", &
@@ -120,6 +154,82 @@ function genbiperiodic_constructor( mesh_name, nx, ny, domain_x, domain_y ) &
       ';edge_cells_y=', self%ny,                &
       ';domain_x='//trim(adjustl(rchar1))//     &
       ';domain_y='//trim(adjustl(rchar2))
+
+
+  if ( present(target_edge_cells_x) .and. &
+       present(target_edge_cells_y) .and. &
+       present(target_mesh_names) ) then
+
+    if ( size(target_edge_cells_x) == size(target_mesh_names) .and. &
+         size(target_edge_cells_y) == size(target_mesh_names) ) then
+
+      self%nmaps = size(target_mesh_names)
+      allocate(self%target_mesh_names(self%nmaps))
+      allocate(self%target_edge_cells_x(self%nmaps))
+      allocate(self%target_edge_cells_y(self%nmaps))
+
+
+      self%target_mesh_names(:)   = target_mesh_names(:)
+      self%target_edge_cells_x(:) = target_edge_cells_x(:)
+      self%target_edge_cells_y(:) = target_edge_cells_y(:)
+
+      do i=1, self%nmaps
+
+        ! Check that mesh is not being mapped to itself
+        if (self%nx == target_edge_cells_x(i) .and. &
+            self%ny == target_edge_cells_y(i)) then
+          write(log_scratch_space, '(A)') &
+               'Invalid target while attempting to map mesh to itself'
+          call log_event( trim(log_scratch_space), LOG_LEVEL_ERROR )
+        end if
+
+        ! for x-axis
+        if (target_edge_cells_x(i) < self%nx) then
+          remainder = mod(self%nx, target_edge_cells_x(i))
+          write(log_scratch_space,'(2(A,I0),A)')           &
+               'Target edge_cells[',target_edge_cells_x(i),  &
+               '] must be a factor of source edge_cells[', &
+               self%nx, ']'
+        else if (target_edge_cells_x(i) > self%nx) then
+          remainder = mod(target_edge_cells_x(i), self%nx)
+          write(log_scratch_space,'(2(A,I0),A)')           &
+               'Source edge_cells[',target_edge_cells_x(i),  &
+               '] must be a factor of target edge_cells[', &
+               self%nx, ']'
+        end if
+
+        if (remainder == 0) then
+          self%target_edge_cells_x(i) = target_edge_cells_x(i)
+        else
+          call log_event( trim(log_scratch_space), LOG_LEVEL_ERROR )
+        end if
+
+        ! for y-axis
+        if (target_edge_cells_y(i) < self%ny) then
+          remainder = mod(self%ny, target_edge_cells_y(i))
+          write(log_scratch_space,'(2(A,I0),A)')             &
+               'Target edge_cells[',target_edge_cells_y(i),  &
+               '] must be a factor of source edge_cells[',   &
+               self%ny, ']'
+        else if (target_edge_cells_y(i) > self%ny) then
+          remainder = mod(target_edge_cells_y(i), self%ny)
+          write(log_scratch_space,'(2(A,I0),A)')             &
+               'Source edge_cells[',target_edge_cells_y(i),  &
+               '] must be a factor of target edge_cells[',   &
+               self%ny, ']'
+        end if
+
+        if (remainder == 0) then
+          self%target_edge_cells_y(i) = target_edge_cells_y(i)
+        else
+          call log_event( trim(log_scratch_space), LOG_LEVEL_ERROR )
+        end if
+
+      end do
+
+    end if
+
+  end if
 
   return
 end function genbiperiodic_constructor
@@ -560,15 +670,61 @@ subroutine generate(self)
 
   implicit none
 
-  class(genbiperiodic_type), intent(inout)         :: self
+  class(genbiperiodic_type), intent(inout) :: self
 
   call calc_adjacency(self, self%cell_next)
   call calc_face_to_vert(self, self%verts_on_cell)
   call calc_edges(self, self%edges_on_cell, self%verts_on_edge)
+  if (self%nmaps > 0) call calc_global_mesh_maps(self)
   call calc_coords(self, self%vert_coords)
 
   return
 end subroutine generate
+
+
+!-------------------------------------------------------------------------------
+!> @brief   PRIVATE subroutine to generate the reqeusted global mesh maps.
+!> @details A map is generated for each requested target mesh based on this
+!>          mesh objects mesh details, and those of the requested target
+!>          meshes using calc_global_cell_map.
+!>
+!> @param[in,out]  self  The genbiperiodic_type instance reference.
+!-------------------------------------------------------------------------------
+subroutine calc_global_mesh_maps(self)
+
+  implicit none
+
+  class(genbiperiodic_type), intent(inout) :: self
+
+  integer(i_def) :: source_id, source_cpp, source_ncells, &
+                    target_edge_cells_x, target_edge_cells_y, target_cpp, &
+                    target_ncells, target_cells_per_source_cell,i
+  integer(i_def), allocatable :: cell_map(:,:)
+
+  allocate( self%global_mesh_maps, source=global_mesh_map_collection_type())
+
+  source_id  = 1
+  source_cpp = self%nx*self%ny
+  source_ncells = source_cpp*self%npanels
+
+  do i=1, size(self%target_mesh_names)
+
+    target_edge_cells_x = self%target_edge_cells_x(i)
+    target_edge_cells_y = self%target_edge_cells_y(i)
+    target_cpp          = target_edge_cells_x*target_edge_cells_y
+    target_ncells       = target_cpp*self%npanels
+    target_cells_per_source_cell = max(1,target_ncells/source_ncells)
+    allocate(cell_map(target_cells_per_source_cell,source_ncells))
+
+    call calc_global_cell_map(self, target_edge_cells_x, target_edge_cells_y, cell_map )
+    call self%global_mesh_maps%add_global_mesh_map( source_id, i+1, cell_map )
+    deallocate(cell_map)
+
+  end do
+  
+  return
+end subroutine calc_global_mesh_maps
+
 
 !-------------------------------------------------------------------------------
 !> @brief Writes out the mesh and connectivity for debugging purposes.
@@ -622,26 +778,86 @@ end subroutine write_mesh
 !-----------------------------------------------------------------------------
 !> @brief Returns mesh metadata information.
 !>
-!> @param[in]   self              The generator strategy object.
-!> @param[out]  mesh_name         The name of this mesh instance
-!> @param[out]  mesh_class        Primitive shape, i.e. plane
-!> @param[out]  generator_inputs  Inputs used to create this mesh from the
-!>                                mesh_generator
+!> @param[in]             self              The generator strategy object.
+!> @param[out, optional]  mesh_name         Name of mesh instance to generate
+!> @param[out, optional]  mesh_class        Primitive shape, i.e. sphere, plane
+!> @param[out, optional]  npanels           Number of panels use to describe mesh
+!> @param[out, optional]  edge_cells_x      Number of panel edge cells (x-axis).
+!> @param[out, optional]  edge_cells_y      Number of panel edge cells (y-axis).
+!> @param[out, optional]  generator_inputs  Inputs used to create this mesh from
+!>                                          the mesh_generator
+!> @param[out, optional]  nmaps             Number of maps to create with this mesh
+!>                                          as source mesh
+!> @param[out, optional]  maps_mesh_names   Mesh names of the target meshes that
+!>                                          this mesh has maps for.
+!> @param[out, optional]  maps_edge_cells_x Number of panel edge cells (x-axis) of
+!>                                          target mesh(es) to create map(s) for.
+!> @param[out, optional]  maps_edge_cells_y Number of panel edge cells (y-axis) of
+!>                                          target mesh(es) to create map(s) for.
 !-----------------------------------------------------------------------------
-subroutine get_metadata( self, mesh_name, mesh_class, generator_inputs )
+subroutine get_metadata( self,              &
+                         mesh_name,         &
+                         mesh_class,        &
+                         npanels,           &
+                         edge_cells_x,      &
+                         edge_cells_y,      &
+                         generator_inputs,  &
+                         nmaps,             &
+                         maps_mesh_names,   &
+                         maps_edge_cells_x, &
+                         maps_edge_cells_y )
+  implicit none
+
+  class(genbiperiodic_type),     intent(in)  :: self
+  character(str_def),  optional, intent(out) :: mesh_name
+  character(str_def),  optional, intent(out) :: mesh_class
+  integer(i_def),      optional, intent(out) :: npanels
+  integer(i_def),      optional, intent(out) :: edge_cells_x
+  integer(i_def),      optional, intent(out) :: edge_cells_y
+  integer(i_def),      optional, intent(out) :: nmaps
+  character(str_long), optional, intent(out) :: generator_inputs
+
+  character(str_def), optional, allocatable, intent(out) :: maps_mesh_names(:)
+  integer(i_def),     optional, allocatable, intent(out) :: maps_edge_cells_x(:)
+  integer(i_def),     optional, allocatable, intent(out) :: maps_edge_cells_y(:)
+
+  if (present(mesh_name))         mesh_name         = self%mesh_name
+  if (present(mesh_class))        mesh_class        = self%mesh_class
+  if (present(npanels))           npanels           = self%npanels
+  if (present(edge_cells_x))      edge_cells_x      = self%nx
+  if (present(edge_cells_y))      edge_cells_y      = self%ny
+  if (present(generator_inputs))  generator_inputs  = trim(self%generator_inputs)
+  if (present(nmaps))             nmaps             = self%nmaps
+
+  if (self%nmaps > 0) then
+    if (present(maps_mesh_names))   maps_mesh_names   = self%target_mesh_names
+    if (present(maps_edge_cells_x)) maps_edge_cells_x = self%target_edge_cells_x
+    if (present(maps_edge_cells_y)) maps_edge_cells_y = self%target_edge_cells_y
+  end if
+
+  return
+end subroutine get_metadata
+
+
+!-------------------------------------------------------------------------------
+!> @brief  Gets the global mesh map collection which uses
+!>         this mesh as the source mesh
+!>
+!> @return global_mesh_maps global_mesh_map_collection_type
+!-------------------------------------------------------------------------------
+function get_global_mesh_maps(self) result(global_mesh_maps)
 
   implicit none
 
-  class(genbiperiodic_type), intent(in) :: self
-  character(str_def),  intent(out) :: mesh_name
-  character(str_def),  intent(out) :: mesh_class
-  character(str_long), intent(out) :: generator_inputs
+  class(genbiperiodic_type), target, intent(in) :: self
 
-  mesh_name        = self%mesh_name
-  mesh_class       = self%mesh_class
-  generator_inputs = trim(self%generator_inputs)
+  type(global_mesh_map_collection_type), pointer :: global_mesh_maps
+
+  nullify(global_mesh_maps)
+  global_mesh_maps => self%global_mesh_maps
 
   return
-end subroutine  get_metadata
+end function get_global_mesh_maps
+
 !-------------------------------------------------------------------------------
 end module genbiperiodic_mod

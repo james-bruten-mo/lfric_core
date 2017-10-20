@@ -7,6 +7,8 @@ class ugrid_2d_mod::ugrid_2d_type {
   -mesh_name: string
   -mesh_class: string
   -generator_inputs: string
+  -edge_cells_x: integer
+  -edge_cells_y: integer
   -num_cells: integer
   -num_nodes: integer
   -num_edges: integer
@@ -20,6 +22,12 @@ class ugrid_2d_mod::ugrid_2d_type {
   -edge_node_connectivity: integer[::] <<allocatable>>
   -face_edge_connectivity: integer[::] <<allocatable>>
   -face_face_connectivity: integer[::] <<allocatable>>
+
+  -nmaps: integer
+  -target_mesh_names:   string[:] <<allocatable>>
+  -target_edge_cells_x: integer[:] <<allocatable>>
+  -target_edge_cells_y: integer[:] <<allocatable>>
+  -target_mesh_maps: target_mesh_maps <<pointer>>
 
   -file_handler: ugrid_file_type <<allocatable>>
 

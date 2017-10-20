@@ -15,7 +15,7 @@ module global_mesh_map_collection_mod
 
   use constants_mod,       only: i_def, l_def
   use linked_list_mod,     only: linked_list_type, linked_list_item_type
-  use global_mesh_map_mod, only: global_mesh_map_type
+  use global_mesh_map_mod, only: global_mesh_map_type, generate_global_mesh_map_id
   use log_mod,             only: log_event, log_scratch_space, &
                                  LOG_LEVEL_TRACE, LOG_LEVEL_ERROR
 
@@ -108,7 +108,8 @@ subroutine add_global_mesh_map( self,                  &
   logical(l_def) :: global_mesh_map_exists
 
   ! Create the global mesh map id
-  global_mesh_map_id = (1000*source_global_mesh_id) + target_global_mesh_id
+  global_mesh_map_id = generate_global_mesh_map_id( source_global_mesh_id, &
+                                                    target_global_mesh_id )
 
   ! Query the global mesh map collection to see if this
   ! global mesh map exists
@@ -157,7 +158,8 @@ function get_global_mesh_map( self,                   &
   ! Pointer to linked list - used for looping through the list
   type(linked_list_item_type),pointer :: loop => null()
 
-  global_mesh_map_id = 1000*source_global_mesh_id + target_global_mesh_id
+  global_mesh_map_id = generate_global_mesh_map_id( source_global_mesh_id, &
+                                                    target_global_mesh_id )
 
   global_mesh_map_exists = &
       self%global_mesh_map_list%item_exists(global_mesh_map_id)

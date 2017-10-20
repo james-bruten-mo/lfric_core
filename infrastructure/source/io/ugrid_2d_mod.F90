@@ -13,8 +13,10 @@ module ugrid_2d_mod
 
 use constants_mod,  only : i_def, r_def, str_def, str_long
 use ugrid_file_mod, only : ugrid_file_type
+use global_mesh_map_collection_mod, only: global_mesh_map_collection_type
 
 implicit none
+
 private
 
 !-------------------------------------------------------------------------------
@@ -34,6 +36,9 @@ type, public :: ugrid_2d_type
                                              !< i.e. sphere, plane
   character(str_long) :: generator_inputs    !< Inputs used to generate mesh 
 
+  integer(i_def) :: edge_cells_x !< Number of cells on panel edge x-axis
+  integer(i_def) :: edge_cells_y !< Number of cells on panel edge y-axis
+
   ! Numbers of different entities
   integer(i_def) :: num_cells                !< Number of cells
   integer(i_def) :: num_nodes                !< Number of nodes
@@ -45,6 +50,7 @@ type, public :: ugrid_2d_type
   integer(i_def) :: num_edges_per_face       !< Number of edges bordering each face
   integer(i_def) :: max_num_faces_per_node   !< Maximum number of faces surrounding each node
 
+
   ! Coordinates
   real(r_def), allocatable :: node_coordinates(:,:) !< Coordinates of nodes
 
@@ -53,6 +59,16 @@ type, public :: ugrid_2d_type
   integer(i_def), allocatable :: edge_node_connectivity(:,:) !< Nodes belonging to each edge
   integer(i_def), allocatable :: face_edge_connectivity(:,:) !< Edges belonging to each face
   integer(i_def), allocatable :: face_face_connectivity(:,:) !< Neighbouring faces of each face
+
+  ! Target mesh map variables
+  integer(i_def) :: nmaps !< Number of mesh maps for this mesh (as source)
+
+  character(str_def), allocatable :: target_mesh_names(:)   !< Target mesh names
+  integer(i_def),     allocatable :: target_edge_cells_x(:) !< Target meshes panel edge cells in x-axis
+  integer(i_def),     allocatable :: target_edge_cells_y(:) !< Target meshes panel edge cells in y-axis
+
+  ! Global mesh maps
+  type(global_mesh_map_collection_type), pointer :: target_mesh_maps => null() 
 
   ! File handler
   class(ugrid_file_type), allocatable :: file_handler
@@ -219,6 +235,13 @@ subroutine allocate_arrays(self, generator_strategy)
   allocate(self%face_edge_connectivity(self%num_edges_per_face, self%num_faces))
   allocate(self%face_face_connectivity(self%num_edges_per_face, self%num_faces))
 
+
+  if (self%nmaps > 0) then
+    allocate(self%target_mesh_names(self%nmaps))
+    allocate(self%target_edge_cells_x(self%nmaps))
+    allocate(self%target_edge_cells_y(self%nmaps))
+  end if
+
   return
 end subroutine allocate_arrays
 
@@ -278,23 +301,37 @@ subroutine set_by_generator(self, generator_strategy)
   class(ugrid_2d_type),        intent(inout) :: self
   class(ugrid_generator_type), intent(inout) :: generator_strategy
 
-
-  call generator_strategy%get_metadata( mesh_name=self%mesh_name,   &
-                                        mesh_class=self%mesh_class, &
-                                        generator_inputs=self%generator_inputs )
+  call generator_strategy%get_metadata            &
+      ( mesh_name        = self%mesh_name,        &
+        mesh_class       = self%mesh_class,       &
+        edge_cells_x     = self%edge_cells_x,     &
+        edge_cells_y     = self%edge_cells_y,     &
+        generator_inputs = self%generator_inputs, &
+        nmaps            = self%nmaps )
 
   call generator_strategy%generate()
 
   call allocate_arrays(self, generator_strategy)
 
-  call generator_strategy%get_coordinates( &
-         node_coordinates = self%node_coordinates)
+  if (self%nmaps > 0) then
+    call generator_strategy%get_metadata                &
+        ( maps_mesh_names   = self%target_mesh_names,   &
+          maps_edge_cells_x = self%target_edge_cells_x, &
+          maps_edge_cells_y = self%target_edge_cells_y )
+  end if
 
-  call generator_strategy%get_connectivity(                    &
-         face_node_connectivity = self%face_node_connectivity, &
-         edge_node_connectivity = self%edge_node_connectivity, &
-         face_edge_connectivity = self%face_edge_connectivity, &
-         face_face_connectivity = self%face_face_connectivity)
+  call generator_strategy%get_coordinates &
+      ( node_coordinates = self%node_coordinates )
+
+  call generator_strategy%get_connectivity                    &
+      ( face_node_connectivity = self%face_node_connectivity, &
+        edge_node_connectivity = self%edge_node_connectivity, &
+        face_edge_connectivity = self%face_edge_connectivity, &
+        face_face_connectivity = self%face_face_connectivity )
+
+  if (self%nmaps > 0) then
+    self%target_mesh_maps => generator_strategy%get_global_mesh_maps()
+  end if
 
   return
 end subroutine set_by_generator
@@ -442,19 +479,39 @@ subroutine append_to_file(self, filename)
   return
 end subroutine append_to_file
 
-
-subroutine get_metadata(self, mesh_name, mesh_class, generator_inputs)
+!-------------------------------------------------------------------------------
+!> @brief   Gets metadata of the current mesh in this object which was
+!>          set by the ugrid_generator_type or read in from NetCDF (UGRID) file.
+!>
+!> @param[in]            self             The calling ugrid object.
+!> @param[out, optional] mesh_name        Name of the current mesh topology.
+!> @param[out, optional] mesh_class       Primitive class of the mesh topology.
+!> @param[out, optional] edge_cells_x     Number of panel edge cells (x-axis).
+!> @param[out, optional] edge_cells_y     Number of panel edge cells (y-axis).
+!> @param[out, optional] generator_inputs Input arguments use to create this mesh.
+!> @param[out, optional] maps_mesh_names  Names of target mesh topologies in this file
+!>                                        which this mesh possesses cell-cell maps for.
+!-------------------------------------------------------------------------------
+subroutine get_metadata( self, mesh_name, mesh_class, &
+                         edge_cells_x, edge_cells_y,  &
+                         generator_inputs, maps_mesh_names )
 
   implicit none
 
-  class(ugrid_2d_type), intent(in)  :: self
-  character(str_def),   intent(out) :: mesh_name
-  character(str_def),   intent(out) :: mesh_class
-  character(str_long),  intent(out) :: generator_inputs
+  class(ugrid_2d_type), intent(in) :: self
+  character(str_def),   optional, intent(out) :: mesh_name
+  character(str_def),   optional, intent(out) :: mesh_class
+  integer(i_def),       optional, intent(out) :: edge_cells_x
+  integer(i_def),       optional, intent(out) :: edge_cells_y
+  character(str_long),  optional, intent(out) :: generator_inputs
+  character(str_def),   optional, allocatable, intent(out) :: maps_mesh_names(:)
 
-  mesh_name        = self%mesh_name
-  mesh_class       = self%mesh_class
-  generator_inputs = self%generator_inputs
+  if (present(mesh_name))        mesh_name        = self%mesh_name
+  if (present(mesh_class))       mesh_class       = self%mesh_class
+  if (present(generator_inputs)) generator_inputs = self%generator_inputs
+  if (present(edge_cells_x))     edge_cells_x     = self%edge_cells_x
+  if (present(edge_cells_y))     edge_cells_y     = self%edge_cells_y
+  if (present(maps_mesh_names))  maps_mesh_names  = self%target_mesh_names
 
 end subroutine get_metadata
 

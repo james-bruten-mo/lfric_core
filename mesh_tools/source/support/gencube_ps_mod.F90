@@ -21,11 +21,16 @@
 !-------------------------------------------------------------------------------
 module gencube_ps_mod
 !-------------------------------------------------------------------------------
-  use ugrid_generator_mod,   only : ugrid_generator_type
-  use constants_mod,         only : r_def, i_def, str_def, l_def, str_long
-  use log_mod,               only : log_event, log_scratch_space, &
-                                    LOG_LEVEL_ERROR, LOG_LEVEL_INFO
-  use reference_element_mod, only : W, S, E, N, SWB, SEB, NWB, NEB
+
+  use calc_global_cell_map_mod,       only: calc_global_cell_map
+  use constants_mod,                  only: r_def, i_def, str_def, l_def, &
+                                            str_long
+  use global_mesh_map_collection_mod, only: global_mesh_map_collection_type
+  use global_mesh_map_mod,            only: generate_global_mesh_map_id
+  use log_mod,                        only: log_event, log_scratch_space, &
+                                            LOG_LEVEL_ERROR
+  use reference_element_mod,          only: W, S, E, N, SWB, SEB, NWB, NEB
+  use ugrid_generator_mod,            only: ugrid_generator_type
 
   implicit none
 
@@ -38,7 +43,7 @@ module gencube_ps_mod
   integer(i_def), parameter :: SE = SEB
   integer(i_def), parameter :: SW = SWB
 
-  integer(i_def), parameter :: nPanels = 6
+  integer(i_def), parameter :: NPANELS = 6
 
   ! Prefix for error messages
   character(*),       parameter :: PREFIX = "[Cubed-Sphere Mesh] "
@@ -57,11 +62,20 @@ module gencube_ps_mod
     character(str_long)         :: generator_inputs
     integer(i_def)              :: edge_cells
     integer(i_def)              :: nsmooth
-    integer(i_def), allocatable :: cell_next(:,:)
-    integer(i_def), allocatable :: verts_on_cell(:,:)
-    integer(i_def), allocatable :: edges_on_cell(:,:)
-    integer(i_def), allocatable :: verts_on_edge(:,:)
-    real(r_def),    allocatable :: vert_coords(:,:)
+    integer(i_def)              :: npanels
+    integer(i_def)              :: nmaps
+
+    character(str_def), allocatable :: target_mesh_names(:)
+    integer(i_def),     allocatable :: target_edge_cells(:)
+    type(global_mesh_map_collection_type), allocatable :: global_mesh_maps
+
+    integer(i_def),     allocatable :: cell_next(:,:)
+    integer(i_def),     allocatable :: verts_on_cell(:,:)
+    integer(i_def),     allocatable :: edges_on_cell(:,:)
+    integer(i_def),     allocatable :: verts_on_edge(:,:)
+    real(r_def),        allocatable :: vert_coords(:,:)
+
+
   contains
     procedure :: calc_adjacency
     procedure :: calc_face_to_vert
@@ -72,6 +86,7 @@ module gencube_ps_mod
     procedure :: get_dimensions
     procedure :: get_coordinates
     procedure :: get_connectivity
+    procedure :: get_global_mesh_maps
     procedure :: write_mesh
     procedure :: orient_lfric
     procedure :: smooth
@@ -87,13 +102,19 @@ contains
 !> @brief   Constructor for gencube_ps_type.
 !> @details Accepts mesh dimension for initialisation and validation.
 !>
-!> @param[in]  mesh_name   Name of this mesh topology
-!> @param[in]  edge_cells  Number of cells per panel edge of the cubed-sphere.
-!>                         Each panel will contain edge_cells*edge_cells faces.
+!> @param[in] mesh_name          Name of this mesh topology
+!> @param[in] edge_cells         Number of cells per panel edge of the cubed-sphere.
+!>                               Each panel will contain edge_cells*edge_cells faces.
+!> @param[in] nsmooth            Number of smoothing passes to be performed on mesh nodes.
+!>                               Each panel will contain edge_cells*edge_cells faces.
+!> @param[in] target_mesh_names  [optional] Names of meshes to map to.
+!> @param[in] target_edge_cells  [optional] Number of cells per panel edge of the
+!>                               meshes to map to.
 !>
-!> @return  self  Instance of gencube_ps_type
+!> @return    self               Instance of gencube_ps_type
 !-------------------------------------------------------------------------------
-function gencube_ps_constructor( mesh_name, edge_cells, nsmooth )  &
+function gencube_ps_constructor( mesh_name, edge_cells, nsmooth,        &
+                                 target_mesh_names, target_edge_cells ) &
                          result( self )
 
   implicit none
@@ -102,7 +123,12 @@ function gencube_ps_constructor( mesh_name, edge_cells, nsmooth )  &
   integer(i_def),   intent(in) :: edge_cells
   integer(i_def),   intent(in) :: nsmooth
 
+  character(str_def), optional, intent(in) :: target_mesh_names(:)
+  integer(i_def),     optional, intent(in) :: target_edge_cells(:)
+
   type( gencube_ps_type ) :: self
+
+  integer(i_def) :: i, remainder
 
   if (edge_cells < 3) then
     write(log_scratch_space,'(A,I0,A)')               &
@@ -111,10 +137,55 @@ function gencube_ps_constructor( mesh_name, edge_cells, nsmooth )  &
     call log_event( trim(log_scratch_space), LOG_LEVEL_ERROR )
   end if
 
-  self%mesh_name  = (trim(mesh_name))
-  self%mesh_class = (trim(MESH_CLASS))
+  self%mesh_name  = trim(mesh_name)
+  self%mesh_class = trim(MESH_CLASS)
   self%edge_cells = edge_cells
   self%nsmooth    = nsmooth
+  self%npanels    = NPANELS
+  self%nmaps      = 0
+
+  if ( present(target_edge_cells) .and. &
+       present(target_mesh_names) ) then
+
+    if ( size(target_edge_cells) == size(target_mesh_names) ) then
+
+      self%nmaps = size(target_mesh_names)
+      allocate(self%target_edge_cells(self%nmaps))
+      allocate(self%target_mesh_names(self%nmaps))
+
+      self%target_mesh_names(:) = target_mesh_names(:)
+      self%target_edge_cells(:) = target_edge_cells(:)
+
+      do i=1, self%nmaps
+
+        if (target_edge_cells(i) < self%edge_cells) then
+          remainder = mod(self%edge_cells, target_edge_cells(i))
+          write(log_scratch_space,'(2(A,I0),A)')           &
+               'Target edge_cells[',target_edge_cells(i),  &
+               '] must be a factor of source edge_cells[', &
+               self%edge_cells, ']'
+        else if (target_edge_cells(i) > self%edge_cells) then
+          remainder = mod(target_edge_cells(i), self%edge_cells)
+          write(log_scratch_space,'(2(A,I0),A)')           &
+               'Source edge_cells[',target_edge_cells(i),  &
+               '] must be a factor of target edge_cells[', &
+               self%edge_cells, ']'
+        else
+          ! Don't map to oneself
+        end if
+
+        if (remainder == 0) then
+          self%target_edge_cells(i) = target_edge_cells(i)
+        else
+          call log_event( trim(log_scratch_space), LOG_LEVEL_ERROR )
+        end if
+
+      end do
+
+    end if
+  end if
+
+
   write(self%generator_inputs,'(2(A,I0))')       &
       'edge_cells=',    self%edge_cells,  ';' // &
       'smooth_passes=', self%nsmooth
@@ -144,7 +215,7 @@ subroutine calc_adjacency(self, cell_next)
 
   edge_cells = self%edge_cells
   cpp        = edge_cells*edge_cells
-  ncells     = cpp*nPanels
+  ncells     = cpp*self%npanels
 
   allocate(cell_next(4, ncells), stat=astat)
 
@@ -329,7 +400,7 @@ subroutine calc_face_to_vert(self, verts_on_cell)
 
   edge_cells = self%edge_cells
   cpp        = edge_cells*edge_cells
-  ncells     = cpp*nPanels
+  ncells     = cpp*self%npanels
 
   allocate(verts_on_cell(4, 6*cpp), stat=astat)
 
@@ -489,7 +560,7 @@ subroutine calc_edges(self, edges_on_cell, verts_on_edge)
 
   edge_cells = self%edge_cells
   cpp        = edge_cells*edge_cells
-  ncells     = cpp*nPanels
+  ncells     = cpp*self%npanels
 
   allocate(edges_on_cell(4, ncells), stat=astat)
 
@@ -663,7 +734,7 @@ subroutine calc_coords(self, vert_coords)
 
   edge_cells = self%edge_cells
   cpp        = edge_cells*edge_cells
-  ncells     = cpp*nPanels
+  ncells     = cpp*self%npanels
   nverts     = ncells+2
 
   allocate(vert_coords(2, nverts), stat=astat)
@@ -891,7 +962,7 @@ subroutine get_dimensions(self, num_nodes, num_edges, num_faces,        &
 
   edge_cells = self%edge_cells
   cpp        = edge_cells*edge_cells
-  ncells     = cpp*nPanels
+  ncells     = cpp*self%npanels
 
   num_faces = ncells
   num_nodes = ncells + 2
@@ -958,6 +1029,26 @@ subroutine get_connectivity(self, face_node_connectivity,   &
 end subroutine get_connectivity
 
 !-------------------------------------------------------------------------------
+!> @brief  Gets the global mesh map collection which uses
+!>         this mesh as the source mesh
+!>
+!> @return global_mesh_maps global_mesh_map_collection_type
+!-------------------------------------------------------------------------------
+function get_global_mesh_maps(self) result (global_mesh_maps)
+
+  implicit none
+
+  class(gencube_ps_type), target, intent(in) :: self
+
+  type(global_mesh_map_collection_type), pointer  :: global_mesh_maps
+
+  nullify(global_mesh_maps)
+  global_mesh_maps => self%global_mesh_maps
+
+  return
+end function get_global_mesh_maps
+
+!-------------------------------------------------------------------------------
 !> @brief   Generates the mesh and connectivity.
 !> @details Calls each of the instance methods which calculate the
 !>          specified mesh and populate the arrays.
@@ -973,6 +1064,7 @@ subroutine generate(self)
   call calc_adjacency(self, self%cell_next)
   call calc_face_to_vert(self, self%verts_on_cell)
   call calc_edges(self, self%edges_on_cell, self%verts_on_edge)
+  if (self%nmaps > 0) call calc_global_mesh_maps(self)
   call calc_coords(self, self%vert_coords)
   call orient_lfric(self)
   if (self%nsmooth > 0_i_def) call smooth(self)
@@ -980,6 +1072,52 @@ subroutine generate(self)
 
   return
 end subroutine generate
+
+!-------------------------------------------------------------------------------
+!> @brief   PRIVATE subroutine to generate the reqeusted global mesh maps.
+!> @details A map is generated for each requested target mesh based on this
+!>          mesh objects mesh details, and those of the requested target
+!>          meshes using calc_global_cell_map.
+!>
+!> @param[in,out]  self  The gencube_ps_type instance reference.
+!-------------------------------------------------------------------------------
+subroutine calc_global_mesh_maps(self)
+
+  implicit none
+
+  class(gencube_ps_type), intent(inout) :: self
+
+  integer(i_def) :: source_id, source_cpp, source_ncells, &
+                    target_edge_cells_x, target_edge_cells_y, target_cpp, &
+                    target_ncells, target_cells_per_source_cell,i
+  integer(i_def), allocatable :: cell_map(:,:)
+
+
+
+  allocate( self%global_mesh_maps, source=global_mesh_map_collection_type())
+
+  source_id  = 1
+  source_cpp = self%edge_cells*self%edge_cells
+  source_ncells = source_cpp*self%npanels
+
+  do i=1, size(self%target_mesh_names)
+
+    target_edge_cells_x = self%target_edge_cells(i)
+    target_edge_cells_y = target_edge_cells_x
+    target_cpp          = target_edge_cells_x*target_edge_cells_y
+    target_ncells       = target_cpp*self%npanels
+    target_cells_per_source_cell = max(1,target_ncells/source_ncells)
+    allocate(cell_map(target_cells_per_source_cell,source_ncells))
+    call calc_global_cell_map(self, target_edge_cells_x, target_edge_cells_y, cell_map )
+    call self%global_mesh_maps%add_global_mesh_map( source_id, i+1, cell_map )
+
+    deallocate(cell_map)
+
+  end do
+  
+  return
+end subroutine calc_global_mesh_maps
+
 
 !-------------------------------------------------------------------------------
 !> @brief Writes out the mesh and connectivity for debugging purposes.
@@ -997,7 +1135,7 @@ subroutine write_mesh(self)
 
   integer(i_def) :: i, cell, vert, ncells
 
-  ncells = nPanels*self%edge_cells*self%edge_cells
+  ncells = self%npanels*self%edge_cells*self%edge_cells
 
   write(stdout,*) "cell_next"
   do cell=1, ncells
@@ -1113,7 +1251,7 @@ subroutine smooth(self)
   ! Counters
   integer(i_def) :: i, j, smooth_pass, cell, vert
 
-  ncells = nPanels*self%edge_cells*self%edge_cells
+  ncells = self%npanels*self%edge_cells*self%edge_cells
   nverts = ncells + 2
 
   allocate( cell_on_vert(4,nverts) )
@@ -1185,24 +1323,65 @@ end subroutine smooth
 !-----------------------------------------------------------------------------
 !> @brief Returns mesh metadata information.
 !>
-!> @param[in]   self              The generator strategy object.
-!> @param[out]  mesh_name         The name of this mesh instance
-!> @param[out]  mesh_class        Primitive shape, i.e. sphere
-!> @param[out]  generator_inputs  Inputs used to create this mesh from the
-!>                                mesh_generator
+!> @param[in]             self              The generator strategy object.
+!> @param[out, optional]  mesh_name         Name of mesh instance to generate
+!> @param[out, optional]  mesh_class        Primitive shape, i.e. sphere, plane
+!> @param[out, optional]  npanels           Number of panels use to describe mesh
+!> @param[out, optional]  edge_cells_x      Number of panel edge cells (x-axis).
+!> @param[out, optional]  edge_cells_y      Number of panel edge cells (y-axis).
+!> @param[out, optional]  generator_inputs  Inputs used to create this mesh from
+!>                                          the mesh_generator
+!> @param[out, optional]  nmaps             Number of maps to create with this mesh
+!>                                          as source mesh
+!> @param[out, optional]  maps_mesh_names   Mesh names of the target meshes that
+!>                                          this mesh has maps for.
+!> @param[out, optional]  maps_edge_cells_x Number of panel edge cells (x-axis) of
+!>                                          target mesh(es) to create map(s) for.
+!> @param[out, optional]  maps_edge_cells_y Number of panel edge cells (y-axis) of
+!>                                          target mesh(es) to create map(s) for.
 !-----------------------------------------------------------------------------
-subroutine get_metadata( self, mesh_name, mesh_class, generator_inputs )
+subroutine get_metadata( self,              &
+                         mesh_name,         &
+                         mesh_class,        &
+                         npanels,           &
+                         edge_cells_x,      &
+                         edge_cells_y,      &
+                         generator_inputs,  &
+                         nmaps,             &
+                         maps_mesh_names,   &
+                         maps_edge_cells_x, &
+                         maps_edge_cells_y )
 
   implicit none
 
   class(gencube_ps_type), intent(in)  :: self
-  character(str_def),  intent(out) :: mesh_name
-  character(str_def),  intent(out) :: mesh_class
-  character(str_long), intent(out) :: generator_inputs
+  character(str_def), optional, intent(out) :: mesh_name
+  character(str_def), optional, intent(out) :: mesh_class
+  character(str_long),optional, intent(out) :: generator_inputs
 
-  mesh_name        = trim(self%mesh_name)
-  mesh_class       = trim(self%mesh_class)
-  generator_inputs = trim(self%generator_inputs)
+  integer(i_def),   optional,  intent(out) :: npanels
+  integer(i_def),   optional,  intent(out) :: edge_cells_x
+  integer(i_def),   optional,  intent(out) :: edge_cells_y
+
+  integer(i_def),   optional,  intent(out) :: nmaps
+  character(str_def), allocatable, optional,intent(out) :: maps_mesh_names(:)
+  integer(i_def),     allocatable, optional,intent(out) :: maps_edge_cells_x(:)
+  integer(i_def),     allocatable, optional,intent(out) :: maps_edge_cells_y(:)
+
+  if (present(mesh_name))    mesh_name    = trim(self%mesh_name)
+  if (present(mesh_class))   mesh_class   = trim(self%mesh_class)
+  if (present(npanels))      npanels      = self%npanels
+  if (present(edge_cells_x)) edge_cells_x = self%edge_cells
+  if (present(edge_cells_y)) edge_cells_y = self%edge_cells
+
+  if (present(generator_inputs)) generator_inputs = trim(self%generator_inputs)
+  if (present(nmaps)) nmaps = self%nmaps
+
+  if (self%nmaps > 0) then
+    if (present(maps_mesh_names))   maps_mesh_names    = self%target_mesh_names
+    if (present(maps_edge_cells_x)) maps_edge_cells_x  = self%target_edge_cells
+    if (present(maps_edge_cells_x)) maps_edge_cells_y  = self%target_edge_cells
+  end if
 
   return
 end subroutine get_metadata

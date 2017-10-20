@@ -11,6 +11,7 @@
 module ugrid_generator_mod
 
 use constants_mod, only : r_def, i_def, str_def, str_long
+use global_mesh_map_collection_mod, only: global_mesh_map_collection_type
 
 implicit none
 
@@ -23,11 +24,12 @@ type, abstract, public :: ugrid_generator_type
   private
 
 contains
-  procedure ( generate_interface         ), deferred :: generate
-  procedure ( get_metadata_interface     ), deferred :: get_metadata
-  procedure ( get_dimensions_interface   ), deferred :: get_dimensions
-  procedure ( get_coordinates_interface  ), deferred :: get_coordinates
-  procedure ( get_connectivity_interface ), deferred :: get_connectivity
+  procedure ( generate_interface         ),     deferred :: generate
+  procedure ( get_metadata_interface     ),     deferred :: get_metadata
+  procedure ( get_dimensions_interface   ),     deferred :: get_dimensions
+  procedure ( get_coordinates_interface  ),     deferred :: get_coordinates
+  procedure ( get_connectivity_interface ),     deferred :: get_connectivity
+  procedure ( get_global_mesh_maps_interface ), deferred :: get_global_mesh_maps
 end type ugrid_generator_type
 
 !-------------------------------------------------------------------------------
@@ -35,6 +37,16 @@ end type ugrid_generator_type
 !-------------------------------------------------------------------------------
 
 abstract interface
+
+
+  function get_global_mesh_maps_interface (self) result (global_mesh_maps)
+
+    import :: ugrid_generator_type, global_mesh_map_collection_type
+
+    class(ugrid_generator_type), target, intent(in) :: self
+    type(global_mesh_map_collection_type), pointer :: global_mesh_maps
+
+  end function get_global_mesh_maps_interface
 
   !-----------------------------------------------------------------------------
   !> @brief Interface: runs the mesh generator strategy.
@@ -51,20 +63,46 @@ abstract interface
   !-----------------------------------------------------------------------------
   !> @brief Interface: Returns mesh metadata information.
   !>
-  !> @param[in]   self              The generator strategy object.
-  !> @param[out]  mesh_name         Name of mesh instance to generate
-  !> @param[out]  mesh_class        Primitive shape, i.e. sphere, plane
-  !> @param[out]  generator_inputs  Inputs used to create this mesh from the
-  !>                                mesh_generator
+  !> @param[in]             self              The generator strategy object.
+  !> @param[out, optional]  mesh_name         Name of mesh instance to generate
+  !> @param[out, optional]  mesh_class        Primitive shape, i.e. sphere, plane
+  !> @param[out, optional]  npanels           Number of panels use to describe mesh
+  !> @param[out, optional]  edge_cells_x      Number of panel edge cells (x-axis).
+  !> @param[out, optional]  edge_cells_y      Number of panel edge cells (y-axis).
+  !> @param[out, optional]  generator_inputs  Inputs used to create this mesh from
+  !>                                          the mesh_generator
+  !> @param[out, optional]  nmaps             Number of maps to create with this mesh
+  !>                                          as source mesh
+  !> @param[out, optional]  maps_mesh_names   Mesh names of the target meshes that
+  !>                                          this mesh has maps for.
+  !> @param[out, optional]  maps_edge_cells_x Number of panel edge cells (x-axis) of
+  !>                                          target mesh(es) to create map(s) for.
+  !> @param[out, optional]  maps_edge_cells_y Number of panel edge cells (y-axis) of
+  !>                                          target mesh(es) to create map(s) for.
   !-----------------------------------------------------------------------------
-  subroutine get_metadata_interface ( self, mesh_name, mesh_class, generator_inputs )
+  subroutine get_metadata_interface ( self, mesh_name, mesh_class, npanels,     &
+                                      edge_cells_x, edge_cells_y,               &
+                                      generator_inputs, nmaps, maps_mesh_names, &
+                                      maps_edge_cells_x, maps_edge_cells_y )
 
-    import :: ugrid_generator_type, str_def, str_long
+    import :: ugrid_generator_type, i_def, str_def, str_long
 
-    class(ugrid_generator_type), intent(in)  :: self
-    character(str_def),          intent(out) :: mesh_name
-    character(str_def),          intent(out) :: mesh_class
-    character(str_long),         intent(out) :: generator_inputs
+    class(ugrid_generator_type),  intent(in)  :: self
+    character(str_def), optional, intent(out) :: mesh_name
+    character(str_def), optional, intent(out) :: mesh_class
+    character(str_long),optional, intent(out) :: generator_inputs
+    character(str_def), allocatable, &
+                        optional, intent(out) :: maps_mesh_names(:)
+
+    integer(i_def), allocatable, &
+                    optional, intent(out) :: maps_edge_cells_x(:)
+    integer(i_def), allocatable, &
+                    optional, intent(out) :: maps_edge_cells_y(:)
+    integer(i_def), optional, intent(out) :: npanels
+    integer(i_def), optional, intent(out) :: nmaps
+    integer(i_def), optional, intent(out) :: edge_cells_x
+    integer(i_def), optional, intent(out) :: edge_cells_y
+
 
   end subroutine get_metadata_interface
 

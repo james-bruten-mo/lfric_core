@@ -33,7 +33,7 @@ module global_mesh_collection_mod
     !> @brief Number of panels in the mesh layout. npanels is set to
     !>        be the same as the 1st global mesh loaded into the collection.
     !>        All subsequent global meshes added should have been specified
-    !>        with the same nume of panles
+    !>        with the same nume of panels
     !> @deprecated  Once multiple global meshes and associated mappings
     !>              are available in ugrid files.
 

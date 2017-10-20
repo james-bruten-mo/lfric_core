@@ -18,6 +18,7 @@ module global_mesh_map_mod
   implicit none
 
   private
+  public :: generate_global_mesh_map_id
 
   !----------------------------------------------------------------------------
   type, extends(linked_list_data_type), public :: global_mesh_map_type
@@ -107,7 +108,10 @@ contains
       return
     end if
 
-    global_mesh_map_id = 1000*source_global_mesh_id + target_global_mesh_id
+    ! Set the global mesh map id
+    !-------------------------------------------------
+    global_mesh_map_id = generate_global_mesh_map_id( source_global_mesh_id, &
+                                                      target_global_mesh_id )
     call instance%set_id(global_mesh_map_id)
 
     ntarget_cells_per_source_cell = size(map,1)
@@ -228,6 +232,25 @@ contains
 
   end subroutine global_mesh_map_destructor
 
+!> Returns a mesh map id using the ids of source and target meshes.
+!> @param[in] source_mesh_id  ID of source mesh object
+!> @param[in] target_mesh_id  ID of target mesh object
+!> @return    mesh_map_id
+!==============================================================================
+function generate_global_mesh_map_id( source_global_mesh_id,  &
+                                      target_global_mesh_id ) &
+                              result( global_mesh_map_id )
 
+implicit none
+
+integer(i_def), intent(in) :: source_global_mesh_id
+integer(i_def), intent(in) :: target_global_mesh_id
+
+integer(i_def) :: global_mesh_map_id
+
+global_mesh_map_id = 1000*source_global_mesh_id + target_global_mesh_id
+
+return
+end function generate_global_mesh_map_id
 end module global_mesh_map_mod
 

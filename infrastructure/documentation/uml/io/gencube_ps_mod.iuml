@@ -6,8 +6,14 @@ class gencube_ps_mod::gencube_ps_type {
   -mesh_name: string
   -mesh_class: string
   -generator_inputs: string
+  -npanels: integer
+  -nmaps: integer
   -edge_cells: integer
   -nsmooth: integer
+
+  -target_mesh_names: string[:] <<allocatable>>
+  -target_edge_cells: integer[:] <<allocatable>>
+  -global_mesh_maps: global_mesh_map_collection_type <<allocatable>>
 
   -cell_next: integer[::] <<allocatable>>
   -verts_on_cell: integer[::] <<allocatable>>
@@ -15,7 +21,7 @@ class gencube_ps_mod::gencube_ps_type {
   -verts_on_edge: integer[::] <<allocatable>>
   -vert_coords: real[::] <<allocatable>>
 
-  +<<create>>gencube_ps_constructor( <<in>> mesh_name: string, <<in>> edge_cells: integer, <<in>> nsmooth: integer ): gencube_ps_type
+  +<<create>>gencube_ps_constructor( <<in>> mesh_name: string, <<in>> edge_cells: integer, <<in>> nsmooth: integer, <<in>> target_mesh_names: string[:] <<optional>>, <<in>> target_edge_cells: integer[:] <<optional>> ): gencube_ps_type
 
   +calc_adjacency ( <<out>> cell_next:integer[::] <<allocatable>> )
   +calc_face_to_vert ( <<out>> verts_on_cell:integer[::] <<allocatable>> )
@@ -27,6 +33,7 @@ class gencube_ps_mod::gencube_ps_type {
   +get_dimensions( ... )
   +get_coordinates( ... )
   +get_connectivity( ... )
+  +get_global_mesh_maps( ... )
 
   +write_mesh()
   +orient_lfric()

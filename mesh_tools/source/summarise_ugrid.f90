@@ -86,7 +86,9 @@ program summarise_ugrid
                                     trim(adjustl(filename)) )
 
     ! Extract data on the current mesh in the ugrid file object
-    call infile%get_metadata( mesh_name, mesh_class, generator_inputs )
+    call infile%get_metadata( mesh_name=mesh_name,   &
+                              mesh_class=mesh_class, &
+                              generator_inputs=generator_inputs )
 
     call infile%get_dimensions( nodes, edges, faces, nodes_per_face, &
                                 edges_per_face, nodes_per_edge,      &
