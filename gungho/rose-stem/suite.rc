@@ -714,7 +714,7 @@ test -w "{{directory}}" -o ! -e "{{directory}}" && rm -rf {{directory}} || ( ech
                      """
         script = rose task-run --app-key=publish --command-key=directory
         [[[environment]]]
-            DIRECTORY = $SOURCE_DIRECTORY/documentation/*.pdf
+            DIRECTORY = $SOURCE_DIRECTORY/documents/*.pdf
             DESTINATION = {{publish_destination}}/documentation/design
 {%- endif %}
 

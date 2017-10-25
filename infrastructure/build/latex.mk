@@ -16,7 +16,8 @@
 export TEXINPUTS := $(WORKING_DIR)/figures:$(TEX_STUFF):$(TEXINPUTS)
 
 .PHONY: documents
-documents: $(patsubst $(SOURCE_DIR)/%.latex,$(WORKING_DIR)/%.pdf,$(DOCUMENTS))
+documents: $(patsubst $(SOURCE_DIR)/%.latex,$(WORKING_DIR)/%.pdf,$(DOCUMENTS)) \
+           | $(DOCUMENT_DIR)
 	$(Q)echo >/dev/null
 
 $(WORKING_DIR)/%.pdf: $(WORKING_DIR)/%.aux
@@ -32,14 +33,14 @@ $(WORKING_DIR)/%.pdf: $(WORKING_DIR)/%.aux
 
 .PRECIOUS: $(WORKING_DIR)/%.aux)
 $(WORKING_DIR)/%.aux: $(SOURCE_DIR)/%.latex \
-                      | $(WORKING_DIR)/figures \
-                      $$(WORKING_DIR)/figures/$$(dir $$*)
+                      $(WORKING_DIR)/figures.common \
+                      $(WORKING_DIR)/figures.$$(dir $$*)
 	$(call MESSAGE,Laying out,$@)
 	$(Q)mkdir -p $(dir $@)
 	$(Q)TEXINPUTS=$(WORKING_DIR)/figures/$(dir $*):$(TEXINPUTS); pdflatex -interaction errorstopmode -output-directory $(dir $@) $< $(VERBOSE_REDIRECT)
 
-.PHONY: $(WORKING_DIR)/figures
-$(WORKING_DIR)/figures: $(patsubst $(COMMON_FIGURES)/%,$(WORKING_DIR)/figures/%.pdf,$(basename $(wildcard $(COMMON_FIGURES)/*)))
+.PHONY: $(WORKING_DIR)/figures.common
+$(WORKING_DIR)/figures.common: $(patsubst $(COMMON_FIGURES)/%,$(WORKING_DIR)/figures/%.pdf,$(basename $(wildcard $(COMMON_FIGURES)/*)))
 	$(Q)echo >/dev/null
 
 .PRECIOUS: $(WORKING_DIR)/figures/%.pdf | $(WORKING_DIR)/figures
@@ -53,22 +54,23 @@ $(WORKING_DIR)/figures/%.pdf: $(COMMON_FIGURES)/%.eps | $(WORKING_DIR)/figures
 	$(Q)mkdir -p $(dir $@)
 	$(Q)eps2pdf --outfile=$@ $<
 
-.PHONY: $(WORKING_DIR)/figures/%
-$(WORKING_DIR)/figures/%: $$(patsubst $$(SOURCE_DIR)/$$*/figures/$$(PERCENT),$(WORKING_DIR)/figures/$$*/$$(PERCENT).pdf,$$(basename $$(wildcard $$(SOURCE_DIR)/$$*/figures/*)))
+.PHONY: $(WORKING_DIR)/figures.%
+$(WORKING_DIR)/figures.%: $$(patsubst $$(SOURCE_DIR)/$$*/figures/$$(PERCENT),$(WORKING_DIR)/figures/$$*/$$(PERCENT).pdf,$$(basename $$(wildcard $$(SOURCE_DIR)/$$*/figures/*)))
 	$(Q)echo >/dev/null
 
 .PRECIOUS: $(WORKING_DIR)/figures/%.pdf
-$(WORKING_DIR)/figures/%.pdf: $(SOURCE_DIR)/$$(dir $$*)/figures/$$(notdir $$*).svg | $(WORKING_DIR)/figures
+$(WORKING_DIR)/figures/%.pdf: $(SOURCE_DIR)/$$(dir $$*)/figures/$$(notdir $$*).svg | $(WORKING_DIR)/figures/$$(dir $$*)
 	$(call MESSAGE,Transcoding,$<)
 	$(Q)mkdir -p $(dir $@)
 	$(Q)inkscape -z -f $< -A $@
 
-$(WORKING_DIR)/figures/%.pdf: $(SOURCE_DIR)/$$(dir $$*)/figures/$$(notdir $$*).eps | $(WORKING_DIR)
+$(WORKING_DIR)/figures/%.pdf: $(SOURCE_DIR)/$$(dir $$*)/figures/$$(notdir $$*).eps | $(WORKING_DIR)/figures/$$(dir $$*)
 	$(call MESSAGE,Transcoding,$<)
 	$(Q)mkdir -p $(dir $@)
 	$(Q)epstopdf --outfile=$@ $<
 
-$(WORKING_DIR) $(WORKING_DIR)/figures: ALWAYS
+$(DOCUMENT_DIR) $(WORKING_DIR) $(WORKING_DIR)/figures \
+$(patsubst $(SOURCE_DIR)/%,$(WORKING_DIR)/figures/%,$(dir $(DOCUMENTS))): ALWAYS
 	$(call Message,Creating,$@)
 	$(Q)mkdir -p $@
 
