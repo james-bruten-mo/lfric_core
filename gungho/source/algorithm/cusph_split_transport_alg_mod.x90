@@ -22,6 +22,8 @@ module cusph_split_transport_alg_mod
                                                invoke_correct_cosmic_wind,   &
                                                invoke_set_field_scalar
 
+  use log_mod,                           only: LOG_LEVEL_INFO
+
   use oned_density_update_alg_mod,       only: oned_density_update_alg
   use conservative_flux_alg_mod,         only: conservative_flux_alg
 
@@ -150,6 +152,9 @@ contains
                    cell_orientation, x_direction, method, dep_pt_stencil_extent)
     call invoke_calc_deppts(corrected_dep_wind_y_n, corrected_dep_wind_y_np1, dep_pts_y,   &
                    cell_orientation, y_direction, method, dep_pt_stencil_extent)
+
+    call dep_pts_x%log_minmax(LOG_LEVEL_INFO, 'dep_pts_x')
+    call dep_pts_y%log_minmax(LOG_LEVEL_INFO, 'dep_pts_y')
 
     ! Perform two 1D advective updates in the x and y directions (horizontal)
     call oned_density_update_alg(x_direction, u_n, dep_pts_x,       &

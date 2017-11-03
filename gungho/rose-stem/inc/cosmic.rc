@@ -1,0 +1,73 @@
+{# Here we set a dictionary of jobs used in Cosmic transport tests. #}
+{# These can then be imported into the main rose stem groups as required #}
+
+{%- set cosmic_groups = {
+               'cosmic-northpole_cosine_hill':['science(northpole_cosine_hill,
+                                         resolutions=[["C24", 8100.0],
+                                                      ["C48", 4050.0],
+                                                      ["C96", 2025.0]],
+                                         env={"crun": 1,
+                                              "nrun":{("C24", 8100.0): 128,
+                                                      ("C48", 4050.0): 256,
+                                                      ("C96", 2025.0): 512
+                                                     },
+                                              "directives":
+                                                     {"default":
+                                                       {"mpi_parts":6,
+                                                        "threads":1,
+                                                        "wallclock":"00:20:00",
+                                                        "xios_nodes":1}
+                                                     }
+                                             },
+                                         checkkgo=False)'
+                               ],
+               'cosmic-equator_cosine_hill':['science(equator_cosine_hill,
+                                         resolutions=[["C24", 8100.0],
+                                                      ["C48", 4050.0],
+                                                      ["C96", 2025.0]],
+                                         env={"crun": 1,
+                                              "nrun":{("C24", 8100.0): 128,
+                                                      ("C48", 4050.0): 256,
+                                                      ("C96", 2025.0): 512
+                                                     },
+                                              "directives":
+                                                     {"default":
+                                                       {"mpi_parts":6,
+                                                        "threads":1,
+                                                        "wallclock":"00:20:00",
+                                                        "xios_nodes":1}
+                                                     }
+                                             },
+                                         checkkgo=False)'
+                               ],
+               'cosmic-corner_cosine_hill':['science(corner_cosine_hill,
+                                         resolutions=[["C24", 8100.0],
+                                                      ["C48", 4050.0],
+                                                      ["C96", 2025.0]],
+                                         env={"crun": 1,
+                                              "nrun":{("C24", 8100.0): 128,
+                                                      ("C48", 4050.0): 256,
+                                                      ("C96", 2025.0): 512
+                                                     },
+                                              "directives":
+                                                     {"default":
+                                                       {"mpi_parts":6,
+                                                        "threads":1,
+                                                        "wallclock":"00:20:00",
+                                                        "xios_nodes":1}
+                                                     }
+                                             },
+                                         checkkgo=False)'
+                               ]
+                  }
+%}
+
+{# If we want to run all the tests in one go, then collect them into a single group... #}
+{% if 'cosmic-all' not in cosmic_groups.keys() %}
+{%   do cosmic_groups.update({'cosmic-all':[]}) %}
+{% endif %}
+{% for cosmic_subgroup in cosmic_groups.keys() %}
+{%   if cosmic_subgroup != 'cosmic-all' %}
+{%     do cosmic_groups['cosmic-all'].extend(cosmic_groups[cosmic_subgroup]) %}
+{%   endif %}
+{% endfor %}

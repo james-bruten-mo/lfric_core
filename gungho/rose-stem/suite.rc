@@ -8,6 +8,7 @@
                                  'straka_x', 'straka_y', 'straka_y_ugrid', 'straka_200m',
                                  'biperiodic-cosmic', 'weak_hs_short',
                                  'cosine_hill_45deg','divergence_cosmic',
+                                 'northpole_cosine_hill', 'equator_cosine_hill', 'corner_cosine_hill',
                                  'baroclinic'%}
 {%- set miniapp_configurations = ['gravity_wave', 'miniapp_skeleton', 'io_miniapp'] %}
 {%- set canned_configurations  = ['gungho', 'gravity_wave'] %}
@@ -91,6 +92,8 @@
 {# The csar groups are now included in the following #}
 %include inc/csar.rc
 {%- do groups.update(csar_groups) %}
+%include inc/cosmic.rc
+{%- do groups.update(cosmic_groups) %}
 
 {%- set mesh_types = ['cubedsphere', 'biperiodic'] %}
 {%- set plot_config = {} %}
