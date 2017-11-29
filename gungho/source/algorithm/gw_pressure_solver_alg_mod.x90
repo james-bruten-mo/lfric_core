@@ -311,7 +311,7 @@ contains
 
     do iter = 1, maximum_iterations
 
-      call invoke ( X_innerproduct_Y(rho, res, rhs) )
+      call invoke( X_innerproduct_Y(rho, res, rhs) )
       beta = (rho/norm) * (alpha/omega)
       ! p = r + beta*(p - omega*v)
       const1 = -beta*omega

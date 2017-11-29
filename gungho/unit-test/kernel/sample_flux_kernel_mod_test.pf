@@ -176,8 +176,8 @@ contains
 
     call sample_flux_code(flux_p%vspace%get_nlayers(), &
                           flux_p%data, & 
-                          rm_p%data, &
                           u_p%data, &
+                          rm_p%data, &
                           rho_p%data, &
                           ndf_u, & 
                           undf_u, &

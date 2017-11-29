@@ -24,13 +24,13 @@ module init_prognostic_fields_alg_mod
 
   ! PsyKAl-lite kernels
   use psykal_lite_mod,                 only: invoke_initial_mr_kernel, &
-                                             invoke_initial_theta_kernel, &
                                              invoke_initial_rho_sample_kernel
 
   ! PsyKAl PSYClone kernels
   use set_rho_kernel_mod,              only: set_rho_kernel_type
   use initial_u_kernel_mod,            only: initial_u_kernel_type
   use enforce_bc_kernel_mod,           only: enforce_bc_kernel_type
+  use initial_theta_kernel_mod,        only: initial_theta_kernel_type
 
   ! Derived Types
   use field_mod,                       only: field_type
@@ -87,7 +87,7 @@ contains
       ! Initialise Xi
       call invoke( setval_c( xi, 0.0_r_def ) )
       ! Initialise theta
-      call invoke_initial_theta_kernel( theta, chi )
+      call invoke( initial_theta_kernel_type( theta, chi ) )
 
       initial_time = 0.0_r_def
 

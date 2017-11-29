@@ -35,151 +35,7 @@ module psykal_lite_mod
 
 contains
 
-    !------------------------------------------------------------------------------------------
-    !> In #937, the evaluator was removed in the PSy-lite layer. In #938, evaluator
-    !> (not quadrature) will be removed and the functionality will be implemented via
-    !> PSY using kernal meta data. 
-    !> PSyclone support is required - documented in #942.
-    SUBROUTINE invoke_compute_geopotential_kernel_type(geopotential, chi)
-      USE compute_geopotential_kernel_mod, ONLY: compute_geopotential_code
-      use mesh_mod, only: mesh_type
-      TYPE(field_type), intent(inout)      :: geopotential, chi(3)
 
-      INTEGER, pointer :: map_w0(:) => null()
-      INTEGER, pointer :: map_chi(:) => null()
-      REAL(kind=r_def), pointer :: nodes_w0(:,:) => null()
-      INTEGER cell
-      REAL(KIND=r_def), allocatable :: basis_chi(:,:,:)
-      INTEGER ndf_w0, undf_w0, ndf_chi, undf_chi, dim_chi
-      INTEGER :: df_w0, df_chi
-      type(mesh_type), pointer :: mesh => null()
-      INTEGER nlayers
-      type(field_proxy_type) geopotential_proxy, chi_proxy(3)
-      !
-      ! Initialise field proxies
-      !
-      geopotential_proxy = geopotential%get_proxy()
-      chi_proxy(1) = chi(1)%get_proxy()
-      chi_proxy(2) = chi(2)%get_proxy()
-      chi_proxy(3) = chi(3)%get_proxy()
-      !
-      ! Initialise number of layers
-      !
-      nlayers = geopotential_proxy%vspace%get_nlayers()
-      !
-      ! Create a mesh object
-      !
-      mesh => geopotential%get_mesh()
-      !
-      ! Initialise sizes and allocate any basis arrays for w0
-      !
-      ndf_w0 = geopotential_proxy%vspace%get_ndf()
-      undf_w0 = geopotential_proxy%vspace%get_undf()
-      nodes_w0 => geopotential_proxy%vspace%get_nodes()
-
-      !
-      ndf_chi  = chi_proxy(1)%vspace%get_ndf( )
-      undf_chi  = chi_proxy(1)%vspace%get_undf( )
-      dim_chi  = chi_proxy(1)%vspace%get_dim_space( )
-
-      ! Evaluate the basis function
-      allocate( basis_chi(dim_chi, ndf_chi, ndf_w0) )
-      do df_w0 = 1, ndf_w0
-        do df_chi = 1, ndf_chi
-          basis_chi(:,df_chi,df_w0) = chi_proxy(1)%vspace%call_function(BASIS,df_chi,nodes_w0(:,df_w0))
-        end do
-      end do
-
-      DO cell=1, geopotential_proxy%vspace%get_ncell()
-
-        map_w0 => geopotential_proxy%vspace%get_cell_dofmap(cell)
-        map_chi => chi_proxy(1)%vspace%get_cell_dofmap(cell)
-
-        CALL compute_geopotential_code(nlayers, geopotential_proxy%data, chi_proxy(1)%data, chi_proxy(2)%data, chi_proxy(3)%data, ndf_w0, undf_w0, map_w0, ndf_chi, undf_chi, map_chi, basis_chi)
-      END DO
-    END SUBROUTINE invoke_compute_geopotential_kernel_type
-
-  !------------------------------------------------------------------------------
-  !> invoke_initial_theta_kernel: invoke the potential temperature initialization for a generic space
-  !> In #937, the evaluator was removed in the PSy-lite layer. In #938, evaluator
-  !> (not quadrature) will be removed and the functionality will be implemented via
-  !> PSY using kernal meta data.
-  !> PSyclone support is required - documented in #942
-  subroutine invoke_initial_theta_kernel( theta, chi )
-
-    use initial_theta_kernel_mod, only : initial_theta_code
-    use mesh_mod,                 only : mesh_type
-    implicit none
-
-    type( field_type ), intent( inout )  :: theta
-    type( field_type ), intent( in )     :: chi(3)
-
-    integer          :: cell
-    integer          :: ndf_wtheta, undf_wtheta, &
-                        ndf_chi, undf_chi, dim_chi, &
-                        df_wtheta, df_chi
-    integer, pointer :: map_wtheta(:) => null()
-    integer, pointer :: map_chi(:)    => null()
-    real(kind=r_def), pointer :: nodes_wtheta(:,:) => null()
-
-    type( field_proxy_type ) :: theta_proxy
-    type( field_proxy_type ) :: chi_proxy(3)
-
-    real(kind=r_def), allocatable :: basis_chi(:,:,:)
-
-    type(mesh_type), pointer :: mesh => null()
-
-    theta_proxy  = theta%get_proxy()
-    chi_proxy(1) = chi(1)%get_proxy()
-    chi_proxy(2) = chi(2)%get_proxy()
-    chi_proxy(3) = chi(3)%get_proxy()
-
-    ndf_wtheta   = theta_proxy%vspace%get_ndf( )
-    undf_wtheta  = theta_proxy%vspace%get_undf( )
-    nodes_wtheta => theta_proxy%vspace%get_nodes()
-
-    ndf_chi  = chi_proxy(1)%vspace%get_ndf( )
-    undf_chi  = chi_proxy(1)%vspace%get_undf( )
-    dim_chi  = chi_proxy(1)%vspace%get_dim_space( )
-
-    ! Evaluate the basis function
-    allocate( basis_chi(dim_chi, ndf_chi, ndf_wtheta) )
-    do df_wtheta = 1, ndf_wtheta
-      do df_chi = 1, ndf_chi
-        basis_chi(:,df_chi,df_wtheta) = &
-                  chi_proxy(1)%vspace%call_function(BASIS,df_chi,nodes_wtheta(:,df_wtheta))
-      end do
-    end do
-
-
-    if (chi_proxy(1)%is_dirty(depth=1)) call chi_proxy(1)%halo_exchange(depth=1)
-    if (chi_proxy(2)%is_dirty(depth=1)) call chi_proxy(2)%halo_exchange(depth=1)
-    if (chi_proxy(3)%is_dirty(depth=1)) call chi_proxy(3)%halo_exchange(depth=1)
-
-    mesh => theta%get_mesh()
-    do cell = 1, mesh%get_last_halo_cell(1)
-
-      map_wtheta => theta_proxy%vspace%get_cell_dofmap( cell )
-      map_chi => chi_proxy(1)%vspace%get_cell_dofmap( cell )
-
-      call initial_theta_code(       &
-        theta_proxy%vspace%get_nlayers(),   &
-        ndf_wtheta,                         &
-        undf_wtheta,                        &
-        map_wtheta,                         &
-        theta_proxy%data,                   &
-        ndf_chi,                            &
-        undf_chi,                           &
-        map_chi,                            &
-        basis_chi,                          &
-        chi_proxy(1)%data,                  &
-        chi_proxy(2)%data,                  &
-        chi_proxy(3)%data                   &
-        )
-    end do
-
-    call theta_proxy%set_dirty()
-  end subroutine invoke_initial_theta_kernel
 
   !------------------------------------------------------------------------------
   !> invoke_initial_rho_sample_kernel: invoke the density initialization for a generic space
@@ -2025,95 +1881,10 @@ contains
 !-------------------------------------------------------------------------------   
 !> Non pointwise Kernels
 
-
-!------------------------------------------------------------------------------- 
-!> invoke_sample_flux_kernel: Retrieve values from flux kernel 
-!> In #937, the evaluator was removed in the PSy-lite layer. In #938, evaluator
-!> (not quadrature) will be removed and the functionality will be implemented via
-!> PSY using kernal meta data. 
-!> PSyclone support is required - documented in #942
-  subroutine invoke_sample_flux_kernel(flux, u, rmultiplicity, q )
-    use sample_flux_kernel_mod, only: sample_flux_code
-    use mesh_mod,               only: mesh_type
-
-    implicit none
-
-    type(field_type), intent(in)         :: u, rmultiplicity, q
-    type(field_type), intent(inout)      :: flux
-
-    type(field_proxy_type)          :: u_p, rm_p, q_p, flux_p
-    
-    integer                 :: cell, nlayers
-    integer                 :: ndf_f, ndf_q
-    integer                 :: undf_f, undf_q
-    integer                 :: dim_q
-    integer                 :: df_f, df_q
-
-    integer, pointer        :: map_f(:) => null()
-    integer, pointer        :: map_q(:) => null()
-    real(kind=r_def), pointer :: nodes_f(:,:) => null()
-
-    real(kind=r_def), allocatable  :: basis_q(:,:,:)
-
-    type(mesh_type), pointer :: mesh => null()
-
-    u_p    = u%get_proxy()
-    q_p    = q%get_proxy()
-    rm_p    = rmultiplicity%get_proxy()
-    flux_p = flux%get_proxy()
-
-    nlayers = flux_p%vspace%get_nlayers()
-
-    ndf_f  = flux_p%vspace%get_ndf( )
-    undf_f = flux_p%vspace%get_undf()
-    nodes_f => flux_p%vspace%get_nodes()
-
-    ndf_q  = q_p%vspace%get_ndf( )
-    dim_q  = q_p%vspace%get_dim_space( )
-    undf_q = q_p%vspace%get_undf()
-
-    ! Evaluate the basis function
-    allocate(basis_q(dim_q, ndf_q, ndf_f))
-    do df_f = 1, ndf_f
-      do df_q = 1, ndf_q
-        basis_q(:,df_q,df_f) = q_p%vspace%call_function(BASIS,df_q,nodes_f(:,df_f))
-      end do
-    end do
-
-    mesh => flux%get_mesh()
-    if (flux_p%is_dirty(depth=1)) call flux_p%halo_exchange(depth=1)
-    if (  rm_p%is_dirty(depth=1)) call    rm_p%halo_exchange(depth=1)
-    if (   u_p%is_dirty(depth=1)) call    u_p%halo_exchange(depth=1)
-    if (   q_p%is_dirty(depth=1)) call    q_p%halo_exchange(depth=1)
-
-
-    do cell = 1, mesh%get_last_halo_cell(1)
-       map_f => flux_p%vspace%get_cell_dofmap( cell )
-       map_q => q_p%vspace%get_cell_dofmap( cell )
-       call sample_flux_code(nlayers, &
-                             flux_p%data, & 
-                             rm_p%data, &
-                             u_p%data, &
-                             q_p%data, &
-                             ndf_f, & 
-                             undf_f, &
-                             map_f, &
-                             ndf_q, &
-                             undf_q, &
-                             map_q, &
-                             basis_q &
-                            )
-    end do
-
-    call flux_p%set_dirty()
-
-  end subroutine invoke_sample_flux_kernel
-
   !-------------------------------------------------------------------------------
-  !> In #937, the evaluator was removed in the PSy-lite layer. In #938, evaluator
-  !> (not quadrature) will be removed and the functionality will be implemented via
-  !> PSY using kernal meta data. 
-  !> PSyclone support is required - documented in #942
+  !> io_mod uses this routine. However, because io_mod is not a algorithm its currently
+  !> not clear if it should call into psy. #1253 will address this point and remove
+  !> once decided.
   subroutine invoke_nodal_coordinates_kernel(nodal_coords, chi )
     use nodal_coordinates_kernel_mod, only: nodal_coordinates_code
     use mesh_mod,                     only: mesh_type
@@ -2197,231 +1968,7 @@ contains
     deallocate(basis_chi)
   end subroutine invoke_nodal_coordinates_kernel
 
-  !-------------------------------------------------------------------------------   
-  !> In #937, the evaluator was removed in the PSy-lite layer. In #938, evaluator
-  !> (not quadrature) will be removed and the functionality will be implemented via
-  !> PSY using kernal meta data.
-  !> PSyclone support is required - documented in #942
-  subroutine invoke_convert_hcurl_field(phys_field, comp_field, chi )
-    use convert_hcurl_field_kernel_mod, only: convert_hcurl_field_code
-    use mesh_mod,                       only: mesh_type
-    implicit none
-    
-    type(field_type), intent(inout)      :: phys_field(3)
-    type(field_type), intent(in)         :: chi(3), comp_field
- 
-    type(field_proxy_type) :: phys_p(3), chi_p(3), comp_p
-   
-    integer                 :: cell, nlayers
-    integer                 :: ndf_chi, ndf_comp, ndf_phys
-    integer                 :: undf_chi, undf_comp
-    integer                 :: diff_dim_chi, dim_comp
-    integer                 :: df_comp, df_chi, df_phys
 
-    integer, pointer        :: map_chi(:) => null()
-    integer, pointer        :: map(:) => null()
-    real(kind=r_def), pointer :: nodes_phys(:,:) => null()
-
-    real(kind=r_def), allocatable  :: diff_basis_chi(:,:,:), basis_comp(:,:,:)
-    integer(kind=i_def) :: i
-    type(mesh_type), pointer :: mesh => null()
-
-    do i = 1,3
-      phys_p(i) = phys_field(i)%get_proxy()
-      chi_p(i)  = chi(i)%get_proxy()
-    end do
-    comp_p = comp_field%get_proxy()
-
-    ndf_phys   = phys_p(1)%vspace%get_ndf()
-    nodes_phys => phys_p(1)%vspace%get_nodes()
-
-    nlayers = comp_p%vspace%get_nlayers()
-
-    ndf_comp  = comp_p%vspace%get_ndf()
-    undf_comp = comp_p%vspace%get_undf()
-    dim_comp  = comp_p%vspace%get_dim_space()
-
-    ndf_chi  = chi_p(1)%vspace%get_ndf( )
-    undf_chi = chi_p(1)%vspace%get_undf()
-    diff_dim_chi = chi_p(1)%vspace%get_dim_space_diff( )
-
-    ! Evaluate the diff basis function
-    allocate(diff_basis_chi(diff_dim_chi, ndf_chi, ndf_phys))
-    do df_phys = 1, ndf_phys
-      do df_chi = 1, ndf_chi
-        diff_basis_chi(:,df_chi,df_phys) = chi_p(1)%vspace%call_function(DIFF_BASIS,df_chi,nodes_phys(:,df_phys))
-      end do
-    end do
-
-    ! Evaluate the basis function
-    allocate(basis_comp(dim_comp, ndf_comp, ndf_phys))
-    do df_phys = 1, ndf_phys
-      do df_comp = 1, ndf_comp
-        basis_comp(:,df_comp,df_phys) = comp_p%vspace%call_function(BASIS,df_comp,nodes_phys(:,df_phys))
-      end do
-    end do
-
-    if (chi_p(1)%is_dirty(depth=1)) then
-      call chi_p(1)%halo_exchange(depth=1)
-    end if
-    if (chi_p(2)%is_dirty(depth=1)) then
-      call chi_p(2)%halo_exchange(depth=1)
-    end if
-    if (chi_p(3)%is_dirty(depth=1)) then
-      call chi_p(3)%halo_exchange(depth=1)
-    end if
-
-    if (phys_p(1)%is_dirty(depth=1)) then
-      call phys_p(1)%halo_exchange(depth=1)
-    end if
-    if (phys_p(2)%is_dirty(depth=1)) then
-      call phys_p(2)%halo_exchange(depth=1)
-    end if
-    if (phys_p(3)%is_dirty(depth=1)) then
-      call phys_p(3)%halo_exchange(depth=1)
-    end if
-
-    if (comp_p%is_dirty(depth=1)) then
-      call comp_p%halo_exchange(depth=1)
-    end if
-    mesh => phys_field(1)%get_mesh()
-
-    do cell = 1, mesh%get_last_halo_cell(1)
-       map     => comp_p%vspace%get_cell_dofmap( cell )
-       map_chi => chi_p(1)%vspace%get_cell_dofmap( cell )
-       call convert_hcurl_field_code(nlayers, &
-                                     phys_p(1)%data, &
-                                     phys_p(2)%data, &
-                                     phys_p(3)%data, &
-                                     comp_p%data, &
-                                     chi_p(1)%data, &
-                                     chi_p(2)%data, &
-                                     chi_p(3)%data, &
-                                     ndf_comp, undf_comp, map, &
-                                     ndf_chi, undf_chi, map_chi, &
-                                     basis_comp, &
-                                     diff_basis_chi &
-                                    )
-    end do
-
-    call phys_p(1)%set_dirty()
-    call phys_p(2)%set_dirty()
-    call phys_p(3)%set_dirty()
-
-    deallocate(diff_basis_chi, basis_comp)
-  end subroutine invoke_convert_hcurl_field
-
-  !-------------------------------------------------------------------------------
-  !> In #937, the evaluator was removed in the PSy-lite layer. In #938, evaluator
-  !> (not quadrature) will be removed and the functionality will be implemented via
-  !> PSY using kernal meta data.
-  !> PSyclone support is required - documented in #942
-  subroutine invoke_convert_hdiv_field(phys_field, comp_field, chi )
-    use convert_hdiv_field_kernel_mod, only: convert_hdiv_field_code
-    use mesh_mod,                      only: mesh_type
-    implicit none
-    
-    type(field_type), intent(inout)      :: phys_field(3)
-    type(field_type), intent(in)         :: chi(3), comp_field
-
-    type(field_proxy_type) :: phys_p(3), chi_p(3), comp_p
-   
-    integer                 :: cell, nlayers
-    integer                 :: ndf_chi, ndf_comp
-    integer                 :: undf_chi, undf_comp
-    integer                 :: diff_dim_chi, dim_comp
-    integer                 :: df_comp1, df_comp2, df_chi
-    integer, pointer        :: map(:) => null()
-    integer, pointer        :: map_chi(:) => null()
-    real(kind=r_def), pointer :: nodes_phys(:,:) => null()
-
-    real(kind=r_def), allocatable  :: diff_basis_chi(:,:,:), basis_comp(:,:,:)
-    integer :: i
-    type(mesh_type), pointer :: mesh => null()
-    do i = 1,3
-      phys_p(i) = phys_field(i)%get_proxy()
-      chi_p(i)  = chi(i)%get_proxy()
-    end do
-    comp_p = comp_field%get_proxy()
-
-    nodes_phys => phys_p(1)%vspace%get_nodes()
-
-    nlayers = comp_p%vspace%get_nlayers()
-
-    ndf_comp  = comp_p%vspace%get_ndf()
-    undf_comp = comp_p%vspace%get_undf()
-    dim_comp  = comp_p%vspace%get_dim_space()
-
-    ndf_chi  = chi_p(1)%vspace%get_ndf( )
-    undf_chi = chi_p(1)%vspace%get_undf()
-    diff_dim_chi = chi_p(1)%vspace%get_dim_space_diff( )
-
-    ! Evaluate the diff basis function
-    allocate(diff_basis_chi(diff_dim_chi, ndf_chi, ndf_comp))
-    do df_comp2 = 1, ndf_comp
-      do df_chi = 1, ndf_chi
-        diff_basis_chi(:,df_chi,df_comp2) = chi_p(1)%vspace%call_function(DIFF_BASIS,df_chi,nodes_phys(:,df_comp2))
-      end do
-    end do
-
-    ! Evaluate the diff basis function
-    allocate(basis_comp(dim_comp, ndf_comp, ndf_comp) )
-    do df_comp2 = 1, ndf_comp
-      do df_comp1 = 1, ndf_comp
-        basis_comp(:,df_comp1,df_comp2) = comp_p%vspace%call_function(BASIS,df_comp1,nodes_phys(:,df_comp2))
-      end do
-    end do
-
-
-    if (chi_p(1)%is_dirty(depth=1)) then
-      call chi_p(1)%halo_exchange(depth=1)
-    end if
-    if (chi_p(2)%is_dirty(depth=1)) then
-      call chi_p(2)%halo_exchange(depth=1)
-    end if
-    if (chi_p(3)%is_dirty(depth=1)) then
-      call chi_p(3)%halo_exchange(depth=1)
-    end if
-
-    if (phys_p(1)%is_dirty(depth=1)) then
-      call phys_p(1)%halo_exchange(depth=1)
-    end if
-    if (phys_p(2)%is_dirty(depth=1)) then
-      call phys_p(2)%halo_exchange(depth=1)
-    end if
-    if (phys_p(3)%is_dirty(depth=1)) then
-      call phys_p(3)%halo_exchange(depth=1)
-    end if
-
-    if (comp_p%is_dirty(depth=1)) then
-      call comp_p%halo_exchange(depth=1)
-    end if
-    mesh => comp_field%get_mesh()
-    do cell = 1, mesh%get_last_halo_cell(1)
-       map     => comp_p%vspace%get_cell_dofmap( cell )
-       map_chi => chi_p(1)%vspace%get_cell_dofmap( cell )
-       call convert_hdiv_field_code(nlayers, &
-                                    phys_p(1)%data, &
-                                    phys_p(2)%data, &
-                                    phys_p(3)%data, &
-                                    comp_p%data, &
-                                    chi_p(1)%data, &
-                                    chi_p(2)%data, &
-                                    chi_p(3)%data, &
-                                    ndf_comp, undf_comp, map, &
-                                    ndf_chi, undf_chi, map_chi, &
-                                    basis_comp, &
-                                    diff_basis_chi &
-                                   )
-    end do
-
-    call phys_p(1)%set_dirty()
-    call phys_p(2)%set_dirty()
-    call phys_p(3)%set_dirty()
-
-    deallocate(diff_basis_chi, basis_comp)
-  end subroutine invoke_convert_hdiv_field
-!-------------------------------------------------------------------------------   
   subroutine invoke_convert_cart2sphere_vector( field, coords)
     use coord_transform_mod, only: cart2sphere_vector
     implicit none
@@ -3097,101 +2644,6 @@ subroutine invoke_fv_mass_fluxes( rho,            &
 
 end subroutine invoke_fv_mass_fluxes
 
-!-------------------------------------------------------------------------------
-!> In #937, the evaluator was removed in the PSy-lite layer. In #938, evaluator
-!> (not quadrature) will be removed and the functionality will be implemented via
-!> PSY using kernal meta data. 
-!> PSyclone support is required - documented in #942
-subroutine invoke_calc_departure_wind(u_departure_wind, u_piola, chi )
-  use calc_departure_wind_kernel_mod, only: calc_departure_wind_code
-  use mesh_mod,                       only: mesh_type
-  implicit none
-
-  type(field_type), intent(inout)      :: u_departure_wind
-  type(field_type), intent(in)         :: chi(3), u_piola
-
-  type(field_proxy_type) :: u_departure_wind_p, chi_p(3), u_piola_p
-
-  integer                 :: cell, nlayers
-  integer                 :: ndf_chi, ndf_u, ndf_udep
-  integer                 :: undf_chi, undf_u
-  integer                 :: dim_u, diff_dim_chi
-  integer                 :: df_u, df_chi, df_udep
-
-  integer, pointer        :: map_chi(:) => null()
-  integer, pointer        :: map(:) => null()
-  real(kind=r_def), pointer :: nodes_udep(:,:) => null()
-
-  real(kind=r_def), allocatable  :: nodal_basis_u(:,:,:)
-  real(kind=r_def), allocatable  :: diff_basis_chi(:,:,:)
-  integer :: ii
-  type(mesh_type), pointer :: mesh => null()
-
-  do ii = 1,3
-    chi_p(ii)  = chi(ii)%get_proxy()
-  end do
-  u_piola_p = u_piola%get_proxy()
-  u_departure_wind_p = u_departure_wind%get_proxy()
-
-  nlayers = u_piola_p%vspace%get_nlayers()
-
-  ndf_udep   = u_departure_wind_p%vspace%get_ndf()
-  nodes_udep => u_departure_wind_p%vspace%get_nodes()
-
-  ndf_u  = u_piola_p%vspace%get_ndf()
-  undf_u = u_piola_p%vspace%get_undf()
-  dim_u = u_piola_p%vspace%get_dim_space()
-
-  ndf_chi  = chi_p(1)%vspace%get_ndf()
-  undf_chi = chi_p(1)%vspace%get_undf()
-  diff_dim_chi = chi_p(1)%vspace%get_dim_space_diff()
-
-  ! Evaluate the basis function
-  allocate(diff_basis_chi(diff_dim_chi, ndf_chi, ndf_u))
-  do df_udep = 1, ndf_udep
-    do df_chi = 1, ndf_chi
-      diff_basis_chi(:,df_chi,df_udep) = chi_p(1)%vspace%call_function(DIFF_BASIS,df_chi,nodes_udep(:,df_udep))
-    end do
-  end do
-
-  ! Evaluate the basis function
-  allocate(nodal_basis_u(dim_u, ndf_u, ndf_u))
-  do df_udep = 1, ndf_udep
-    do df_u = 1, ndf_u
-      nodal_basis_u(:,df_u,df_udep) = u_piola_p%vspace%call_function(BASIS,df_u,nodes_udep(:,df_udep))
-    end do
-  end do
-
-
-  if (u_piola_p%is_dirty(depth=1)) call u_piola_p%halo_exchange(depth=1)
-  if (chi_p(1)%is_dirty(depth=1))  call chi_p(1)%halo_exchange(depth=1)
-  if (chi_p(2)%is_dirty(depth=1))  call chi_p(2)%halo_exchange(depth=1)
-  if (chi_p(3)%is_dirty(depth=1))  call chi_p(3)%halo_exchange(depth=1)
-
-  mesh => u_piola%get_mesh()
-  !NOTE: The default looping limits for this type of field would be 
-  ! mesh%get_last_halo_cell(1) but this kernel requires a modified loop limit
-  ! in order to function correctly. See ticket #1058.
-  ! The kernel loops over all core and all halo cells.
-  do cell = 1,mesh%get_ncells_2d()
-     map     => u_piola_p%vspace%get_cell_dofmap( cell )
-     map_chi => chi_p(1)%vspace%get_cell_dofmap( cell )
-     call calc_departure_wind_code( nlayers,                                  &
-                                    u_departure_wind_p%data,                  &
-                                    u_piola_p%data,                           &
-                                    chi_p(1)%data,                            &
-                                    chi_p(2)%data,                            &
-                                    chi_p(3)%data,                            &
-                                    ndf_u, undf_u, map, nodal_basis_u,        &
-                                    ndf_chi, undf_chi, map_chi,               &
-                                    diff_basis_chi                            &
-                                     )
-  end do
-  deallocate(nodal_basis_u)
-  deallocate(diff_basis_chi)
-  call u_departure_wind_p%set_dirty()
-end subroutine invoke_calc_departure_wind
-!-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
 !> invoke_calc_deppts: Invoke the calculation of departure points in 1D
@@ -3595,12 +3047,11 @@ end subroutine invoke_calc_deppts
 
 
 !-------------------------------------------------------------------------------   
-
-!-------------------------------------------------------------------------------
-!> In #937, the evaluator was removed in the PSy-lite layer. In #938, evaluator
-!> (not quadrature) will be removed and the functionality will be implemented via
-!> PSY using kernal meta data. 
-!> PSyclone support is required - documented in #942
+!> This (and other) psy-lite functions were added because evaluator was not
+!> available in PSyClone as documented in #942. Since #1188, all psy-lite code that
+!> had a dependency on support for evaluators in PSyClone have been removed (they
+!> use PSyClone auto-generated code instead). However, this call requires more
+!> information than a standard call and this will be fixed in #919
 subroutine invoke_sample_poly_flux( flux, wind, density, stencil_extent )
 
   use sample_poly_flux_kernel_mod, only: sample_poly_flux_code
@@ -3695,11 +3146,13 @@ subroutine invoke_sample_poly_flux( flux, wind, density, stencil_extent )
   call flux_proxy%set_dirty()
 
 end subroutine invoke_sample_poly_flux
+
 !-------------------------------------------------------------------------------
-!> In #937, the evaluator was removed in the PSy-lite layer. In #938, evaluator
-!> (not quadrature) will be removed and the functionality will be implemented via
-!> PSY using kernal meta data. 
-!> PSyclone support is required - documented in #942
+!> This (and other) psy-lite functions were added because evaluator was not
+!> available in PSyClone as documented in #942. Since #1188, all psy-lite code that
+!> had a dependency on support for evaluators in PSyClone have been removed (they
+!> use PSyClone auto-generated code instead). However, this call requires more
+!> information than a standard call and this will be fixed in #919
 subroutine invoke_sample_poly_adv( adv, tracer, wind, stencil_extent )
 
   use sample_poly_adv_kernel_mod, only: sample_poly_adv_code
@@ -3796,228 +3249,7 @@ subroutine invoke_sample_poly_adv( adv, tracer, wind, stencil_extent )
   call adv_proxy%set_dirty()
 
 end subroutine invoke_sample_poly_adv
-!------------------------------------------------------------------------------- 
-!> In #937, the evaluator was removed in the PSy-lite layer. In #938, evaluator
-!> (not quadrature) will be removed and the functionality will be implemented via
-!> PSY using kernal meta data. 
-!> PSyclone support is required - documented in #942
-    subroutine invoke_compute_tri_precon_kernel(tri_precon, theta, rho, chi, m3_inv )
-      use compute_tri_precon_kernel_mod, only: compute_tri_precon_code
-      use mesh_mod, only: mesh_type
-      type(field_type), intent(inout) :: tri_precon(3)
-      type(field_type), intent(in) :: theta, rho, chi(3)
-      type(operator_type), intent(in) :: m3_inv
 
-      integer, pointer :: map_w3(:) => null(), map_wtheta(:) => null(), map_any_space_1_chi(:) => null()
-      real(kind=r_def), pointer :: nodes_w3(:,:) => null()
-      integer :: cell
-      integer :: ndf_w3, undf_w3, ndf_wtheta, undf_wtheta, ndf_any_space_1_chi, undf_any_space_1_chi
-      integer :: df_w3, df_chi
-      type(mesh_type), pointer :: mesh => null()
-      integer :: nlayers
-      type(field_proxy_type) :: tri_precon_proxy(3), theta_proxy, rho_proxy, chi_proxy(3)
-      type(operator_proxy_type) :: m3_inv_proxy
-      real(kind=r_def), allocatable :: diff_basis_chi(:,:,:)
-      integer :: diff_dim_chi
-      !
-      ! Initialise field proxies
-      !
-      tri_precon_proxy(1) = tri_precon(1)%get_proxy()
-      tri_precon_proxy(2) = tri_precon(2)%get_proxy()
-      tri_precon_proxy(3) = tri_precon(3)%get_proxy()
-      theta_proxy = theta%get_proxy()
-      rho_proxy = rho%get_proxy()
-      chi_proxy(1) = chi(1)%get_proxy()
-      chi_proxy(2) = chi(2)%get_proxy()
-      chi_proxy(3) = chi(3)%get_proxy()
-      m3_inv_proxy = m3_inv%get_proxy()
-      !
-      ! Initialise number of layers
-      !
-      nlayers = tri_precon_proxy(1)%vspace%get_nlayers()
-      !
-      ! Create a mesh object
-      !
-      mesh => tri_precon(1)%get_mesh()
-      !
-      ! Initialise sizes and allocate any basis arrays for w3
-      !
-      ndf_w3 = tri_precon_proxy(1)%vspace%get_ndf()
-      undf_w3 = tri_precon_proxy(1)%vspace%get_undf()
-      nodes_w3 => tri_precon_proxy(1)%vspace%get_nodes()
-      !
-      ! Initialise sizes and allocate any basis arrays for w0
-      !
-      ndf_wtheta = theta_proxy%vspace%get_ndf()
-      undf_wtheta = theta_proxy%vspace%get_undf()
-      !
-      ! Initialise sizes and allocate any basis arrays for any_space_1_chi
-      !
-      ndf_any_space_1_chi = chi_proxy(1)%vspace%get_ndf()
-      undf_any_space_1_chi = chi_proxy(1)%vspace%get_undf()
-
-      ! Compute nodal basis functions
-      diff_dim_chi  = chi_proxy(1)%vspace%get_dim_space_diff( )
-
-      ! Evaluate the basis function
-      allocate( diff_basis_chi(diff_dim_chi, ndf_any_space_1_chi, ndf_w3) )
-      do df_w3 = 1, ndf_w3
-        do df_chi = 1, ndf_any_space_1_chi
-          diff_basis_chi(:,df_chi,df_w3) = chi_proxy(1)%vspace%call_function(DIFF_BASIS,df_chi,nodes_w3(:,df_w3))
-        end do
-      end do
-
-      !
-      ! Call kernels and communication routines
-      !
-      if (theta_proxy%is_dirty(depth=1)) then
-        call theta_proxy%halo_exchange(depth=1)
-      end if 
-      !
-      if (rho_proxy%is_dirty(depth=1)) then
-        call rho_proxy%halo_exchange(depth=1)
-      end if 
-      !
-      if (chi_proxy(1)%is_dirty(depth=1)) then
-        CALL chi_proxy(1)%halo_exchange(depth=1)
-      end if 
-      !
-      if (chi_proxy(2)%is_dirty(depth=1)) then
-        CALL chi_proxy(2)%halo_exchange(depth=1)
-      end if 
-      !
-      if (chi_proxy(3)%is_dirty(depth=1)) then
-        CALL chi_proxy(3)%halo_exchange(depth=1)
-      end if 
-      !
-      do cell=1,mesh%get_last_edge_cell()
-        !
-        map_w3 => tri_precon_proxy(1)%vspace%get_cell_dofmap(cell)
-        map_wtheta => theta_proxy%vspace%get_cell_dofmap(cell)
-        map_any_space_1_chi => chi_proxy(1)%vspace%get_cell_dofmap(cell)
-        !
-        CALL compute_tri_precon_code(cell, nlayers, &
-                                     tri_precon_proxy(1)%data, &
-                                     tri_precon_proxy(2)%data, &
-                                     tri_precon_proxy(3)%data, &
-                                     theta_proxy%data, &
-                                     rho_proxy%data, &
-                                     chi_proxy(1)%data, &
-                                     chi_proxy(2)%data, &
-                                     chi_proxy(3)%data, &
-                                     m3_inv_proxy%ncell_3d, &
-                                     m3_inv_proxy%local_stencil, &
-                                     ndf_w3, &
-                                     undf_w3, &
-                                     map_w3, &
-                                     ndf_wtheta, &
-                                     undf_wtheta, &
-                                     map_wtheta, &
-                                     ndf_any_space_1_chi, &
-                                     undf_any_space_1_chi, &
-                                     map_any_space_1_chi, &
-                                     diff_basis_chi)
-      end do 
-      !
-      ! Set halos dirty for fields modified in the above loop
-      !
-      call tri_precon_proxy(1)%set_dirty()
-      call tri_precon_proxy(2)%set_dirty()
-      call tri_precon_proxy(3)%set_dirty()
-       
-       
-    end subroutine invoke_compute_tri_precon_kernel
-
-!------------------------------------------------------------------------------- 
-!> In #937, the evaluator was removed in the PSy-lite layer. In #938, evaluator
-!> (not quadrature) will be removed and the functionality will be implemented via
-!> PSY using kernal meta data. 
-!> PSyclone support is required - documented in #942
-!> invoke_initial_buoyancy_kernel: invoke the buoyancy initialization
-  subroutine invoke_initial_buoyancy_kernel( b, chi )
-
-    use initial_buoyancy_kernel_mod, only : initial_buoyancy_code
-    use mesh_mod,                    only : mesh_type
-
-    implicit none
-
-    type( field_type ), intent( inout ) :: b
-    type( field_type ), intent( in )    :: chi(3)
-
-    integer          :: cell
-    integer          :: ndf_wt, undf_wt, &
-                        ndf_chi, undf_chi, dim_chi, &
-                        df_wt, df_chi
-
-    integer, pointer        :: map_wt(:) => null()
-    integer, pointer        :: map_chi(:)    => null()
-    real(kind=r_def), pointer :: nodes_wt(:,:) => null()
-
-
-    type( field_proxy_type )        :: b_proxy
-    type( field_proxy_type )        :: chi_proxy(3)
-
-    real(kind=r_def), allocatable :: basis_chi(:,:,:)
-
-    type(mesh_type),  pointer :: mesh => null()
-
-    b_proxy  = b%get_proxy()
-    chi_proxy(1) = chi(1)%get_proxy()
-    chi_proxy(2) = chi(2)%get_proxy()
-    chi_proxy(3) = chi(3)%get_proxy()
-
-    mesh => b%get_mesh()
-
-    ndf_wt  = b_proxy%vspace%get_ndf( )
-    undf_wt = b_proxy%vspace%get_undf( )
-    nodes_wt => b_proxy%vspace%get_nodes()
-
-    ndf_chi  = chi_proxy(1)%vspace%get_ndf( )
-    undf_chi  = chi_proxy(1)%vspace%get_undf( )
-    dim_chi  = chi_proxy(1)%vspace%get_dim_space( )
-
-    ! Evaluate the basis function
-    allocate( basis_chi(dim_chi, ndf_chi, ndf_wt) )
-    do df_wt = 1, ndf_wt
-      do df_chi = 1, ndf_chi
-        basis_chi(:,df_chi,df_wt) = chi_proxy(1)%vspace%call_function(BASIS,df_chi,nodes_wt(:,df_wt))
-      end do
-    end do
-
-
-    if (chi_proxy(1)%is_dirty(depth=1)) then
-      call chi_proxy(1)%halo_exchange(depth=1)
-    end if
-    if (chi_proxy(2)%is_dirty(depth=1)) then
-      call chi_proxy(2)%halo_exchange(depth=1)
-    end if
-    if (chi_proxy(3)%is_dirty(depth=1)) then
-      call chi_proxy(3)%halo_exchange(depth=1)
-    end if
- 
-    do cell = 1,mesh%get_last_edge_cell()
-
-      map_wt => b_proxy%vspace%get_cell_dofmap( cell )
-      map_chi => chi_proxy(1)%vspace%get_cell_dofmap( cell )
-
-      call initial_buoyancy_code(       &
-        b_proxy%vspace%get_nlayers(),   &
-        b_proxy%data,                   &
-        chi_proxy(1)%data,              &
-        chi_proxy(2)%data,              &
-        chi_proxy(3)%data,              &
-        ndf_wt,                         &
-        undf_wt,                        &
-        map_wt,                         &
-        ndf_chi,                        &
-        undf_chi,                       &
-        map_chi,                        &
-        basis_chi                       &
-        )
-    end do
-
-    call b_proxy%set_dirty()
-  end subroutine invoke_initial_buoyancy_kernel
   !------------------------------------------------------------------------------
   ! Needs correct loop limits in the presence of colouring for psyclone
   ! implementation
@@ -4424,94 +3656,7 @@ end subroutine invoke_sample_poly_adv
   end subroutine invoke_inc_X_times_Y
 
   !-------------------------------------------------------------------------------
-  !> In #937, the evaluator was removed in the PSy-lite layer. In #938, evaluator
-  !> (not quadrature) will be removed and the functionality will be implemented via
-  !> PSY using kernal meta data. 
-  !> PSyclone support is required - documented in #942
-  subroutine invoke_get_height_kernel(height, chi )
-    use get_height_kernel_mod, only: get_height_code
-    use mesh_mod,              only: mesh_type
-    implicit none
-    
-    type(field_type), intent(inout)      :: height
-    type(field_type), intent(in)         :: chi(3) 
-
-    type(field_proxy_type) :: x_p, chi_p(3)
-   
-    integer                 :: cell, nlayers
-    integer                 :: ndf_chi, ndf_x
-    integer                 :: undf_chi, undf_x
-    integer                 :: dim_chi
-    integer                 :: df_x, df_chi
-
-    integer, pointer        :: map_chi(:) => null()
-    integer, pointer        :: map_x(:) => null()
-    real(kind=r_def), pointer :: nodes_x(:,:) => null()
-
-    real(kind=r_def), allocatable  :: basis_chi(:,:,:)
-    integer :: i
-    type(mesh_type), pointer :: mesh => null()
-
-    x_p   = height%get_proxy()
-    do i = 1,3
-      chi_p(i) = chi(i)%get_proxy()
-    end do
-
-    nlayers = x_p%vspace%get_nlayers()
-
-    ndf_x  = x_p%vspace%get_ndf( )
-    undf_x = x_p%vspace%get_undf()
-    nodes_x => x_p%vspace%get_nodes()
-
-    ndf_chi  = chi_p(1)%vspace%get_ndf( )
-    undf_chi = chi_p(1)%vspace%get_undf()
-    dim_chi = chi_p(1)%vspace%get_dim_space( )
-
-    ! Evaluate the basis function
-    allocate(basis_chi(dim_chi, ndf_chi, ndf_x))
-    do df_x = 1, ndf_x
-      do df_chi = 1, ndf_chi
-        basis_chi(:,df_chi,df_x) = chi_p(1)%vspace%call_function(BASIS,df_chi,nodes_x(:,df_x))
-      end do
-    end do
-
-    if (chi_p(1)%is_dirty(depth=1)) then
-       call chi_p(1)%halo_exchange(depth=1)
-    end if
-      !
-    if (chi_p(2)%is_dirty(depth=1)) then
-       call chi_p(2)%halo_exchange(depth=1)
-    end if
-      !
-    if (chi_p(3)%is_dirty(depth=1)) then
-       call chi_p(3)%halo_exchange(depth=1)
-    end if
-    mesh => height%get_mesh()
-
-    do cell = 1, mesh%get_last_halo_cell(1)
-       map_x   => x_p%vspace%get_cell_dofmap( cell )
-       map_chi => chi_p(1)%vspace%get_cell_dofmap( cell )
-       call get_height_code(nlayers,                    &
-                            x_p%data,                   &
-                            chi_p(1)%data,              &
-                            chi_p(2)%data,              &
-                            chi_p(3)%data,              &
-                            ndf_x, undf_x, map_x,       &
-                            ndf_chi, undf_chi, map_chi, &
-                            basis_chi                   &
-                            )
-    end do
-
-    call x_p%set_dirty()
-
-    deallocate(basis_chi)
-  end subroutine invoke_get_height_kernel
-  
-  !-------------------------------------------------------------------------------
-  !> In #937, the evaluator was removed in the PSy-lite layer. In #938, evaluator
-  !> (not quadrature) will be removed and the functionality will be implemented via
-  !> PSY using kernal meta data. 
-  !> PSyclone support is required - documented in #942
+  !> PSyclone support is required - This routine will be removed by #1261 
   subroutine invoke_mpi_detj_at_w2(detj_at_w2, chi)
     use calc_detj_at_w2_kernel_mod, only : calc_detj_at_w2_code
     use mesh_mod, only                   : mesh_type
@@ -4589,8 +3734,7 @@ end subroutine invoke_sample_poly_adv
     deallocate(diff_basis_chi)
 
   end subroutine invoke_mpi_detj_at_w2
-
-
+ 
   !-------------------------------------------------------------------------------
   !> This routine is called from psykal_lite due to the variable cell_orientation
   !> being passed into the kernel.
@@ -4772,7 +3916,6 @@ end subroutine invoke_sample_poly_adv
 
   end subroutine invoke_extract_xy
 
-
   !-------------------------------------------------------------------------------
   ! Ticket #1156. Stephen Pring
   ! This code is implemented in psykal-lite because the cells to
@@ -4780,6 +3923,7 @@ end subroutine invoke_sample_poly_adv
   ! iteration is over core cells and a halo depth of 1. The cosmic transport scheme
   ! uses a larger halo depth and this routine requires iteration over all values
   ! in the halo as well.
+  ! PSyclone support is required - This routine will be removed by #1261
   subroutine invoke_cosmic_departure_wind(dep_wind_x,dep_wind_y,u_piola_x,u_piola_y,chi,direction)
     use cosmic_departure_wind_kernel_mod, only: cosmic_departure_wind_code
     use mesh_mod,                         only: mesh_type

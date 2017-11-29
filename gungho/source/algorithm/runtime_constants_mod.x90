@@ -32,11 +32,9 @@ module runtime_constants_mod
   use quadrature_mod,                    only: quadrature_type, GAUSSIAN
 
   ! PsyKAl-lite kernels
-  use psykal_lite_mod,                   only: invoke_compute_geopotential_kernel_type, &
-                                               invoke_mpi_calc_cell_orientation,        &
-                                               invoke_get_height_kernel,                &
-                                               invoke_mpi_detj_at_w2,                   &
-                                               invoke_raise_field
+  use psykal_lite_mod,                   only: invoke_mpi_calc_cell_orientation, &
+                                               invoke_raise_field,               &
+                                               invoke_mpi_detj_at_w2
 
   use multiplicity_kernel_mod,           only: multiplicity_kernel_type
 
@@ -54,6 +52,8 @@ module runtime_constants_mod
   use compute_div_operator_kernel_mod,       only: compute_div_operator_kernel_type
   use matrix_vector_kernel_mod,              only: matrix_vector_kernel_type
   use get_height_kernel_mod,                 only: get_height_kernel_type
+  use compute_geopotential_kernel_mod,       only: compute_geopotential_kernel_type
+  use calc_detj_at_w2_kernel_mod,            only: calc_detj_at_w2_kernel_type
 
   use output_config_mod,                     only: subroutine_timers 
   use timer_mod,                             only: timer
@@ -170,7 +170,7 @@ contains
     !=================== Create geopotential field ============================!
 
     geopotential = field_type( vector_space = w0_fs )
-    call invoke_compute_geopotential_kernel_type( geopotential, chi )
+    call invoke( compute_geopotential_kernel_type( geopotential, chi ) )
 
     !=================== Create cell orientation field ========================!
 
@@ -280,9 +280,8 @@ contains
     ! levels being -ve. This should be reviewed with ticket #562
     height_w3  = field_type( vector_space = w3_k0_fs )
     height_wth = field_type( vector_space = wth_k0_fs )
-    call invoke_get_height_kernel(height_w3, chi) 
-    call invoke_get_height_kernel(height_wth, chi) 
-    
+    call invoke( get_height_kernel_type(height_w3, chi) )
+    call invoke( get_height_kernel_type(height_wth, chi) )
 
     !=== Create multiplicity for horizontally continuous fields ===!
     ! NB most of the time we want 1/multiplicity

@@ -21,11 +21,11 @@ module split_transport_alg_mod
   use flux_direction_mod,                only: x_direction, y_direction
   use biperiodic_deppt_config_mod,       only: method
   use subgrid_config_mod,                only: dep_pt_stencil_extent
-  use psykal_lite_mod,                   only: invoke_calc_departure_wind,     &
-                                               invoke_calc_deppts
+  use psykal_lite_mod,                   only: invoke_calc_deppts
 
   use oned_density_update_alg_mod,       only: oned_density_update_alg
   use oned_conservative_flux_alg_mod,    only: oned_conservative_flux_alg
+  use calc_departure_wind_kernel_mod,    only: calc_departure_wind_kernel_type
 
   implicit none
 
@@ -89,8 +89,8 @@ contains
     call invoke( setval_X(rho_n, rho) )
 
     ! Calculate the departure wind used to calculate the departure points
-    call invoke_calc_departure_wind(departure_wind_n,u_n,chi)
-    call invoke_calc_departure_wind(departure_wind_np1,u_np1,chi)
+    call invoke( calc_departure_wind_kernel_type(departure_wind_n,u_n,chi) )
+    call invoke( calc_departure_wind_kernel_type(departure_wind_np1,u_np1,chi) )
 
     ! Calculate the departure points for W2 nodal points at lowest order
     call invoke( name = "Initialise departure points",  &

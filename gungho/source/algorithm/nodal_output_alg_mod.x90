@@ -6,24 +6,24 @@
 
 module nodal_output_alg_mod
 
-use base_mesh_config_mod,          only: geometry, &
-                                         base_mesh_geometry_spherical
-use constants_mod,                 only: r_def, str_max_filename, i_def
-use field_mod,                     only: field_type
-use finite_element_config_mod,     only: element_order
-use fs_continuity_mod,             only: W0, W1, W2, W3
-use log_mod,                       only: log_event,         &
-                                         log_scratch_space, &
-                                         LOG_LEVEL_INFO
-use psykal_lite_mod,               only: invoke_nodal_coordinates_kernel,   &
-                                         invoke_convert_hcurl_field,        &
-                                         invoke_convert_hdiv_field,         &
-                                         invoke_convert_cart2sphere_vector, &
-                                         invoke_pointwise_convert_xyz2llr,  &
-                                         invoke_compute_dof_level_kernel
+use base_mesh_config_mod,           only: geometry, &
+                                          base_mesh_geometry_spherical
+use constants_mod,                  only: r_def, str_max_filename, i_def
+use field_mod,                      only: field_type
+use finite_element_config_mod,      only: element_order
+use fs_continuity_mod,              only: W0, W1, W2, W3
+use log_mod,                        only: log_event,         &
+                                          log_scratch_space, &
+                                          LOG_LEVEL_INFO
+use psykal_lite_mod,                only: invoke_convert_cart2sphere_vector, &
+                                          invoke_pointwise_convert_xyz2llr,  &
+                                          invoke_compute_dof_level_kernel
+use function_space_mod,             only: function_space_type
+use runtime_constants_mod,          only: get_coordinates, get_rmultiplicity
+use convert_hdiv_field_kernel_mod,  only: convert_hdiv_field_kernel_type
+use convert_hcurl_field_kernel_mod, only: convert_hcurl_field_kernel_type
+use nodal_coordinates_kernel_mod,   only: nodal_coordinates_kernel_type
 
-use function_space_mod,            only: function_space_type
-use runtime_constants_mod,         only: get_coordinates, get_rmultiplicity
 implicit none
 
 contains
@@ -53,7 +53,7 @@ subroutine nodal_output_alg(field, chi, nodal_output, nodal_coordinates, level)
     !(2) Convert field to physical nodal output & sample chi on nodal points
     ! If the field is a vector space we provide the 3 components as separate
     ! output fields
-    call invoke_nodal_coordinates_kernel(nodal_coordinates, chi)
+    call invoke( nodal_coordinates_kernel_type(nodal_coordinates, chi) )
 
     select case ( output_fs )
       case ( W0 ) 
@@ -61,10 +61,10 @@ subroutine nodal_output_alg(field, chi, nodal_output, nodal_coordinates, level)
         call invoke( setval_X(nodal_output(1), field) )
         output_dim = 1
       case ( W1 )
-        call invoke_convert_hcurl_field(nodal_output, field, chi)
+        call invoke( convert_hcurl_field_kernel_type(nodal_output, field, chi) )
         output_dim = 3
       case ( W2 )
-        call invoke_convert_hdiv_field(nodal_output, field, chi)
+        call invoke( convert_hdiv_field_kernel_type(nodal_output, field, chi) )
         output_dim = 3
       case ( W3 ) 
         ! For L2 spaces no conversion is currently required (due to

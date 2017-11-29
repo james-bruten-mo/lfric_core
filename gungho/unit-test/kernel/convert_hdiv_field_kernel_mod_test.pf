@@ -216,8 +216,8 @@ contains
                                  chi_p(2)%data, &
                                  chi_p(3)%data, &
                                  ndf_comp, undf_comp, map, &
-                                 ndf_chi, undf_chi, map_chi, &
                                  this%basis, &
+                                 ndf_chi, undf_chi, map_chi, &
                                  this%diff_basis_chi &
                                  )
 

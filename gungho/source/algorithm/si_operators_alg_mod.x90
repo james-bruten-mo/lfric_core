@@ -118,8 +118,9 @@ subroutine compute_si_operators(ref_state)
                                        only: weighted_proj_theta2_wt_kernel_type
   use weighted_proj_3theta_kernel_mod, only: weighted_proj_3theta_kernel_type
   use compound_operator_kernel_mod,    only: compound_operator_kernel_type
-  use psykal_lite_mod,                 only: invoke_sample_flux_kernel,                  &
-                                             invoke_compute_tri_precon_kernel,           &
+  use compute_tri_precon_kernel_mod,   only: compute_tri_precon_kernel_type
+  use sample_flux_kernel_mod,          only: sample_flux_kernel_type
+  use psykal_lite_mod,                 only: invoke_weighted_div_bd_kernel_type,         &
                                              invoke_weighted_div_bd_kernel_type,         &
                                              invoke_weighted_proj_2theta_bd_kernel_type, &
                                              invoke_weighted_proj_theta2_bd_kernel_type, &
@@ -191,14 +192,14 @@ subroutine compute_si_operators(ref_state)
   call invoke( setval_c(ones,     1.0_r_def), &
                setval_c(rho_at_u, 0.0_r_def) )
   ! Calculate rho^ref
-  call invoke_sample_flux_kernel( rho_at_u, ones, w2_rmultiplicity, rho)
+  call invoke( sample_flux_kernel_type( rho_at_u, ones, w2_rmultiplicity, rho) )
 
   call invoke( compound_operator_kernel_type(compound_div, m3_rho_star, m3_inv, div, &
                                              rho_at_u, tau_r) )
 
   ! Compute terms for tridiagonal preconditioner
   if ( si_pressure_preconditioner == solver_si_pressure_preconditioner_tridiagonal ) then
-    call invoke_compute_tri_precon_kernel(tri_precon, theta, rho, chi, m3_inv)
+    call invoke( compute_tri_precon_kernel_type(tri_precon, theta, rho, chi, m3_inv) )
   end if
   if ( normalise ) then
     if ( si_pressure_preconditioner == solver_si_pressure_preconditioner_tridiagonal) then

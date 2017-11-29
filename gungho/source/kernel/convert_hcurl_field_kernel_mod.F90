@@ -86,8 +86,8 @@ subroutine convert_hcurl_field_code(nlayers,                                  &
                                     computational_field,                      &
                                     chi1, chi2, chi3,                         &
                                     ndf, undf, map,                           &
-                                    ndf_chi, undf_chi, map_chi,               &
                                     basis,                                    &
+                                    ndf_chi, undf_chi, map_chi,               &
                                     diff_basis_chi                            &
                                   )
 

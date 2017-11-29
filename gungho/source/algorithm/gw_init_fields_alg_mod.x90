@@ -21,12 +21,10 @@ module gw_init_fields_alg_mod
   use finite_element_config_mod,       only: element_order
   use restart_control_mod,             only: restart_type
 
-  ! PsyKAl-lite kernels
-  use psykal_lite_mod,                 only: invoke_initial_buoyancy_kernel
-
   ! PsyKAl PSYClone kernels
   use initial_u_kernel_mod,              only: initial_u_kernel_type
   use compute_mass_matrix_kernel_w2_mod, only: compute_mass_matrix_kernel_w2_type
+  use initial_buoyancy_kernel_mod,       only: initial_buoyancy_kernel_type
 
   ! Derived Types
   use function_space_collection_mod,   only: function_space_collection
@@ -78,7 +76,7 @@ contains
 
       call log_event( "Gravity waves: Initialising prognostic fields", LOG_LEVEL_INFO )
 
-      call invoke_initial_buoyancy_kernel( buoyancy, chi )
+      call invoke( initial_buoyancy_kernel_type(buoyancy, chi) )
 
       ! Initialise U and p according to formulation
       r_u = field_type( vector_space = wind%get_function_space() )

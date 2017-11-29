@@ -448,7 +448,7 @@ contains
       qr = quadrature_type(element_order+3, GAUSSIAN)
       call invoke( setval_c(rtheta, 0.0_r_def) )
       if ( wtheta_on ) then
-        call invoke ( rtheta_wtheta_kernel_type (rtheta, theta, wind, qr) )
+        call invoke( rtheta_wtheta_kernel_type (rtheta, theta, wind, qr) )
         call invoke_rtheta_bd_kernel ( rtheta, theta, wind, qr )
       else
         call invoke( rtheta_kernel_type(rtheta, theta, wind, qr) )

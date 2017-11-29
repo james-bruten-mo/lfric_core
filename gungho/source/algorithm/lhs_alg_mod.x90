@@ -119,9 +119,8 @@ contains
   use rtheta_wtheta_kernel_mod,          only: rtheta_wtheta_kernel_type
   use pert_pressure_gradient_kernel_mod, only: pert_pressure_gradient_kernel_type
   use exner_gradient_kernel_mod,         only: exner_gradient_kernel_type
-  use psykal_lite_mod,                   only: invoke_sample_flux_kernel,               &
-                                               invoke_rtheta_bd_kernel,                 &
-                                               invoke_exner_gradient_bd_kernel,         &
+  use psykal_lite_mod,                   only: invoke_rtheta_bd_kernel,               &
+                                               invoke_exner_gradient_bd_kernel,       &
                                                invoke_pert_pressure_gradient_bd_kernel
   use matrix_vector_kernel_mod,          only: matrix_vector_kernel_type
   use operator_mod,                      only: operator_type
@@ -130,6 +129,7 @@ contains
   use w3_solver_kernel_mod,              only: w3_solver_kernel_type
   use derived_config_mod,                only: si_bundle_size, bundle_size
   use lhs_exner_kernel_mod,              only: lhs_exner_kernel_type
+  use sample_flux_kernel_mod,            only: sample_flux_kernel_type
 
   implicit none
 
@@ -224,7 +224,7 @@ contains
   call invoke( setval_c( f_star,         0.0_r_def ), &
                setval_c( r_rho,          0.0_r_def ), &
                setval_c( lhs_tmp(igh_d), 0.0_r_def ) )
-  call invoke_sample_flux_kernel( f_star, u, w2_rmultiplicity, rho_ref )
+  call invoke( sample_flux_kernel_type(f_star, u, w2_rmultiplicity, rho_ref) )
   call invoke( name = "Compute lhs rho",                                      &
                matrix_vector_kernel_type( r_rho, f_star, div ),               &
                inc_a_times_X( minus_one, r_rho ),                             &

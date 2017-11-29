@@ -79,7 +79,7 @@ end function sample_flux_kernel_constructor
 !! @param[in] basis_q Basis functions evaluated at gaussian quadrature points 
 !! @param[in] q Advected field
 subroutine sample_flux_code(nlayers,                                           &
-                            flux, rmultiplicity, u, q,                          &
+                            flux, u, rmultiplicity, q,                         &
                             ndf_f, undf_f, map_f,                              &
                             ndf_q, undf_q, map_q, basis_q                      &
                             )

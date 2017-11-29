@@ -77,8 +77,8 @@ contains
     !! @param[inout] chi_1 X component of the chi coordinate field
     !! @param[inout] chi_2 Y component of the chi coordinate field
     !! @param[inout] chi_3 Z component of the chi coordinate field
-    subroutine initial_theta_code(nlayers, ndf_wtheta, undf_wtheta, map_wtheta, theta, &
-                                  ndf_chi, undf_chi, map_chi, chi_basis, chi_1, chi_2, chi_3)
+    subroutine initial_theta_code(nlayers, theta, chi_1, chi_2, chi_3, ndf_wtheta, &
+                                  undf_wtheta, map_wtheta, ndf_chi, undf_chi, map_chi, chi_basis)
 
         use analytic_temperature_profiles_mod, only : analytic_temperature
 
