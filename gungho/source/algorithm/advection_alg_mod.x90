@@ -28,7 +28,9 @@ module advection_alg_mod
   use psykal_lite_mod,                only: invoke_sample_poly_flux,    &
                                             invoke_sample_poly_adv,     &
                                             invoke_rtheta_bd_kernel
-  use quadrature_mod,                 only: quadrature_type, GAUSSIAN
+  use quadrature_xyoz_mod,            only: quadrature_xyoz_type
+  use quadrature_rule_gaussian_mod,   only: quadrature_rule_gaussian_type
+
   use rtheta_kernel_mod,              only: rtheta_kernel_type
   use rtheta_wtheta_kernel_mod,       only: rtheta_wtheta_kernel_type
   use rtheta_supg_kernel_mod,         only: rtheta_supg_kernel_type
@@ -145,7 +147,9 @@ contains
   type(operator_type), pointer :: mm_wt => null(), mm_w3_inv => null(), &
                                   div => null(), curl => null()
 
-  type(quadrature_type)     :: qr
+  type(quadrature_xyoz_type)          :: qr
+  type(quadrature_rule_gaussian_type) :: quadrature_rule
+
   type(field_type), pointer :: u => null() ,theta => null(), rho  => null()
   type(field_type)          :: r_xi, mass_flux, r_rho, rho_adv, mf, &
                                theta_adv, r_theta, u_grad_theta
@@ -180,7 +184,7 @@ contains
   r_rho     = field_type( vector_space = rho_fs )
   r_theta   = field_type( vector_space = theta_fs)
 
-  qr = quadrature_type(element_order+3, GAUSSIAN)
+  qr = quadrature_xyoz_type(element_order+3, quadrature_rule)
 
   ! Predictor fields used to store the right hand side at each stage of the
   ! Runge-Kutta algorithm
@@ -394,8 +398,9 @@ contains
   type(operator_type), pointer :: mm_w2 => null()
   type(field_type),    pointer :: mmd_w2 => null()
 
-  type(quadrature_type)     :: qr
-  type(field_type)          :: rhs_f 
+  type(quadrature_xyoz_type)          :: qr
+  type(quadrature_rule_gaussian_type) :: quadrature_rule
+  type(field_type)                    :: rhs_f 
 
   type(function_space_type), pointer :: u_fs  => null()
 
@@ -409,7 +414,8 @@ contains
                                    flux_stencil_extent )
     case(transport_operators_fem)  
       ! Project density*wind into the mass flux space    
-      qr = quadrature_type(element_order+3, GAUSSIAN)
+      qr = quadrature_xyoz_type(element_order+3, quadrature_rule)
+
       mm_w2  => get_mass_matrix(w2_id)
       mmd_w2 => get_mass_matrix_diagonal(w2_id)
       chi    => get_coordinates()
@@ -432,9 +438,10 @@ contains
 !>@param[in]    wind Advecting wind field
   subroutine advective_inc_alg(rtheta, theta, wind)
   implicit none
-  type(field_type), intent(in)    :: theta, wind
-  type(field_type), intent(inout) :: rtheta
-  type(quadrature_type)           :: qr
+  type(field_type), intent(in)        :: theta, wind
+  type(field_type), intent(inout)     :: rtheta
+  type(quadrature_xyoz_type)          :: qr
+  type(quadrature_rule_gaussian_type) :: quadrature_rule
 
   select case(operators)
     case(transport_operators_fv)
@@ -445,7 +452,7 @@ contains
          
     case(transport_operators_fem)
      ! Use project u.grad(theta) into the theta function space
-      qr = quadrature_type(element_order+3, GAUSSIAN)
+      qr = quadrature_xyoz_type(element_order+3, quadrature_rule)
       call invoke( setval_c(rtheta, 0.0_r_def) )
       if ( wtheta_on ) then
         call invoke( rtheta_wtheta_kernel_type (rtheta, theta, wind, qr) )

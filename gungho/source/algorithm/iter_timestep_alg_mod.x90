@@ -8,65 +8,65 @@
 !>       3D equations
 module iter_timestep_alg_mod
 
-  use constants_mod,                     only: i_def,r_def
-  use log_mod,                           only: log_event,         &
-                                               log_scratch_space, &
-                                               LOG_LEVEL_INFO,    &
-                                               LOG_LEVEL_TRACE
+  use constants_mod,                 only: i_def,r_def
+  use log_mod,                       only: log_event,         &
+                                           log_scratch_space, &
+                                           LOG_LEVEL_INFO,    &
+                                           LOG_LEVEL_TRACE
 
   ! Configuration options
-  use restart_control_mod,       only: restart_type
-  use formulation_config_mod,    only: use_moisture, use_physics
-  use output_config_mod,         only: diagnostic_frequency, subroutine_timers
-  use solver_config_mod,         only: method, helmholtz_solve, use_operators
-  use timestepping_config_mod,   only: dt, alpha, &
-                                       outer_iterations, inner_iterations, &
-                                       spinup_period, spinup_alpha, spinup_winds
-  use derived_config_mod,        only: bundle_size
-  use runtime_constants_mod,     only: get_qr, get_coordinates, get_height
-  use fs_continuity_mod,         only: W3, Wtheta
+  use restart_control_mod,          only: restart_type
+  use formulation_config_mod,       only: use_moisture, use_physics
+  use output_config_mod,            only: diagnostic_frequency, subroutine_timers
+  use solver_config_mod,            only: method, helmholtz_solve, use_operators
+  use timestepping_config_mod,      only: dt, alpha, &
+                                          outer_iterations, inner_iterations, &
+                                          spinup_period, spinup_alpha, spinup_winds
+  use derived_config_mod,           only: bundle_size
+  use runtime_constants_mod,        only: get_qr, get_coordinates, get_height
+  use fs_continuity_mod,            only: W3, Wtheta
 
   ! PsyKAl-lite kernels
-  use psykal_lite_mod,           only: invoke_tracer_viscosity, &
-                                       invoke_momentum_viscosity
+  use psykal_lite_mod,              only: invoke_tracer_viscosity, &
+                                          invoke_momentum_viscosity
 
-  use field_bundle_mod,          only: clone_bundle,      & 
-                                       bundle_axpy,       & 
-                                       bundle_axpby,      &
-                                       add_bundle,        &
-                                       copy_bundle,       &
-                                       set_bundle_scalar, &
-                                       bundle_ax 
+  use field_bundle_mod,             only: clone_bundle,      & 
+                                          bundle_axpy,       & 
+                                          bundle_axpby,      &
+                                          add_bundle,        &
+                                          copy_bundle,       &
+                                          set_bundle_scalar, &
+                                          bundle_ax 
 
   ! Derived Types
-  use field_mod,                 only: field_type
-  use quadrature_mod,            only: quadrature_type
+  use field_mod,                    only: field_type
+  use quadrature_xyoz_mod,          only: quadrature_xyoz_type
 
   ! Algorithms
-  use solver_mod,                only: solver_algorithm
-  use rhs_alg_mod,               only: rhs_alg
-  use advection_alg_mod,         only: advection_alg, advection_alg_init, advection_mr_alg
-  use si_solver_alg_mod,         only: si_solver_alg, si_solver_init
-  use si_operators_alg_mod,      only: create_si_operators, compute_si_operators
-  use helmholtz_solver_alg_mod,  only: helmholtz_solver_init, &
-                                       compute_inv_hb
-  use fast_physics_alg_mod,      only: fast_physics
-  use slow_physics_alg_mod,      only: slow_physics
-
+  use solver_mod,                   only: solver_algorithm
+  use rhs_alg_mod,                  only: rhs_alg
+  use advection_alg_mod,            only: advection_alg, advection_alg_init, advection_mr_alg
+  use si_solver_alg_mod,            only: si_solver_alg, si_solver_init
+  use si_operators_alg_mod,         only: create_si_operators, compute_si_operators
+  use helmholtz_solver_alg_mod,     only: helmholtz_solver_init, &
+                                          compute_inv_hb
+  use fast_physics_alg_mod,         only: fast_physics
+  use slow_physics_alg_mod,         only: slow_physics
+ 
   ! Field mappings
-  use map_rho_to_theta_mod,      only: map_rho_to_theta
-  use map_physics_fields_alg_mod,only: map_physics_fields_alg
+  use map_rho_to_theta_mod,         only: map_rho_to_theta
+  use map_physics_fields_alg_mod,   only: map_physics_fields_alg
 
   ! Moisture species
-  use mr_indices_mod,            only: nummr
+  use mr_indices_mod,               only: nummr
 
   ! Field indices
-  use field_indices_mod,         only: igh_u, igh_t, igh_d, igh_p
+  use field_indices_mod,            only: igh_u, igh_t, igh_d, igh_p
 
   ! Mixing settings
-  use mixing_config_mod,         only: viscosity
+  use mixing_config_mod,            only: viscosity
 
-  use timer_mod,                 only: timer
+  use timer_mod,                    only: timer
 
   implicit none
 
@@ -198,12 +198,12 @@ contains
     integer, intent(in) :: timestep  
 
     ! Quadrature object
-    type(quadrature_type)       :: qr
+    type( quadrature_xyoz_type ) :: qr
     ! Coordinate fields
-    type( field_type ), pointer :: chi(:) => null()
+    type( field_type ), pointer  :: chi(:) => null()
 
-    type( field_type ), pointer :: height_w3  => null()
-    type( field_type ), pointer :: height_wth => null()
+    type( field_type ), pointer  :: height_w3  => null()
+    type( field_type ), pointer  :: height_wth => null()
 
     integer            :: outer, inner
     real(kind=r_def)   :: varalpha, varbeta ! alpha, beta weight to use

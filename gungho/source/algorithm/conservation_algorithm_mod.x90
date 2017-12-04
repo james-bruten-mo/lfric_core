@@ -23,7 +23,8 @@ module conservation_algorithm_mod
   use log_mod,                         only: log_event,         &
                                              log_scratch_space, &
                                              LOG_LEVEL_INFO
-  use quadrature_mod,                  only: quadrature_type, GAUSSIAN
+  use quadrature_xyoz_mod,             only: quadrature_xyoz_type
+  use quadrature_rule_gaussian_mod,    only: quadrature_rule_gaussian_type
   use runtime_constants_mod,           only: get_geopotential, &
                                              get_coordinates
   use output_config_mod,               only: subroutine_timers 
@@ -58,7 +59,8 @@ contains
 
     ! Local variables
     type( field_type ), pointer :: geopotential => null()
-    type(quadrature_type)       :: qr
+    type( quadrature_xyoz_type ) :: qr
+    type( quadrature_rule_gaussian_type ) :: quadrature_rule
     ! Coordinate fields
     type( field_type ), pointer :: chi(:) => null()
 
@@ -74,7 +76,7 @@ contains
     chi          => get_coordinates()
 
     ! Get a quadrature rule
-    qr = quadrature_type(element_order+3,GAUSSIAN)
+    qr = quadrature_xyoz_type(element_order+3, quadrature_rule)
     mesh = rho%get_mesh_id()
     w3_fs => function_space_collection%get_fs( mesh, element_order, W3)
    

@@ -17,7 +17,6 @@ module cusph_fv_density_update_alg_mod
                                                invoke_fv_divergence,    &
                                                invoke_multiply_field_data
   use dg_matrix_vector_kernel_mod,       only: dg_matrix_vector_kernel_type
-  use quadrature_mod,                    only: quadrature_type, GAUSSIAN
   use operator_mod,                      only: operator_type
   use runtime_constants_mod,             only: get_mass_matrix, w3inv_id
   use flux_direction_mod,                only: x_direction, y_direction

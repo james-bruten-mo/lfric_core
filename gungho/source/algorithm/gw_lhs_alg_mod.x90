@@ -29,20 +29,22 @@ contains
 
 !>@brief Initialise fields to be used for computing the lhs
   subroutine gw_lhs_init(state)
-    use finite_element_config_mod, only: element_order
-    use function_space_mod,        only: function_space_type
-    use mesh_mod,                  only: mesh_type
-    use derived_config_mod,        only: bundle_size
-    use quadrature_mod,            only: quadrature_type, GAUSSIAN
+    use finite_element_config_mod,     only: element_order
+    use function_space_mod,            only: function_space_type
+    use mesh_mod,                      only: mesh_type
+    use derived_config_mod,            only: bundle_size
+    use quadrature_xyoz_mod,           only: quadrature_xyoz_type
+    use quadrature_rule_gaussian_mod,  only: quadrature_rule_gaussian_type
     use compute_q_operator_kernel_mod, only: compute_q_operator_type
     implicit none
 
-    type(field_type), intent(in) :: state(bundle_size)
-    type(function_space_type), pointer :: u_fs => null(), &
-                                          b_fs => null(), &
-                                          p_fs => null()
-    integer(i_def),                    :: mesh_id
-    type(quadrature_type)              :: qr
+    type(field_type), intent(in)          :: state(bundle_size)
+    type(function_space_type), pointer    :: u_fs => null(), &
+                                             b_fs => null(), &
+                                             p_fs => null()
+    integer(i_def),                       :: mesh_id
+    type( quadrature_xyoz_type )          :: qr
+    type( quadrature_rule_gaussian_type ) :: quadrature_rule
 
     mesh_id = state(igw_u)%get_mesh_id()
     u_fs => function_space_collection%get_fs ( mesh_id, element_order,   &
@@ -56,7 +58,7 @@ contains
                                                state(igw_b)%which_function_space() )
 
     Q = operator_type( u_fs, b_fs)
-    qr = quadrature_type(element_order+2, GAUSSIAN)
+    qr = quadrature_xyoz_type(element_order+2, quadrature_rule)
     call invoke( compute_q_operator_type(Q, qr) )
 
   end subroutine gw_lhs_init

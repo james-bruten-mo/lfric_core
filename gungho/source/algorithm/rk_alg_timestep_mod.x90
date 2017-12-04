@@ -56,7 +56,7 @@ module rk_alg_timestep_mod
 
   ! Derived Types
   use field_mod,                         only: field_type
-  use quadrature_mod,                    only: quadrature_type
+  use quadrature_xyoz_mod,               only: quadrature_xyoz_type
   use operator_mod,                      only: operator_type
 
   ! Algorithms
@@ -159,7 +159,7 @@ contains
     type( field_type ), intent( inout ) :: u, rho, theta, xi
 
     ! The quadrature object
-    type( quadrature_type )    :: qr
+    type( quadrature_xyoz_type ) :: qr
 
     ! Temporary items
     type( field_type )    :: diagnostic_field

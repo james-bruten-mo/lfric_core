@@ -13,13 +13,12 @@
 
 module psykal_lite_mod
 
-  use field_mod,             only : field_type, field_proxy_type 
-  use scalar_mod,            only : scalar_type
-  use operator_mod,          only : operator_type, operator_proxy_type
-  use quadrature_mod,        only : quadrature_type
-  use constants_mod,         only : r_def, i_def, cache_block
-  use mesh_mod,              only : mesh_type
-  use function_space_mod,    only : BASIS, DIFF_BASIS
+  use field_mod,                    only : field_type, field_proxy_type 
+  use scalar_mod,                   only : scalar_type
+  use operator_mod,                 only : operator_type, operator_proxy_type
+  use constants_mod,                only : r_def, i_def, cache_block
+  use mesh_mod,                     only : mesh_type
+  use function_space_mod,           only : BASIS, DIFF_BASIS
 
   ! The following modules are not currently implemented as part of the main
   ! code but they do have unit tests so need to be declared here so they are
@@ -29,6 +28,11 @@ module psykal_lite_mod
   use quadrature_xyz_mod
   use quadrature_xyoz_mod, only : quadrature_xyoz_type, &
                                   quadrature_xyoz_proxy_type
+
+
+!  use quadrature_xyoz_mod,          only : quadrature_xyoz_type
+!  use quadrature_rule_gaussian_mod, only : quadrature_rule_gaussian_type
+
 
   implicit none
   public
@@ -223,7 +227,9 @@ contains
     type (mesh_type), pointer            :: mesh => null()
     type( field_type ), intent( in )     :: theta, u
     type( field_type ), intent( inout )  :: r_theta_bd
-    type( quadrature_type), intent( in ) :: qr
+    type(quadrature_xyoz_type), intent( in ) :: qr
+
+    type(quadrature_xyoz_proxy_type) :: qr_proxy
 
     type(stencil_dofmap_type), pointer :: cross_stencil_w2 => null()
     type(stencil_dofmap_type), pointer :: cross_stencil_wtheta => null()
@@ -267,12 +273,14 @@ contains
     cross_stencil_wtheta_size = cross_stencil_wtheta%get_size()
 
     nlayers = theta_proxy%vspace%get_nlayers()
-    nqp_h=qr%get_nqp_h()
-    nqp_v=qr%get_nqp_v()
-    xp=>qr%get_xqp_h()
-    zp=>qr%get_xqp_v()
-    wh=>qr%get_wqp_h()
-    wv=>qr%get_wqp_v()
+
+    qr_proxy = qr%get_quadrature_proxy()
+    nqp_h=qr_proxy%np_xy
+    nqp_v=qr_proxy%np_z
+    xp=>qr_proxy%points_xy
+    zp=>qr_proxy%points_z
+    wh=>qr_proxy%weights_xy
+    wv=>qr_proxy%weights_z
 
     ! Assumes same number of horizontal quad points in x and y
     nqp_h_1d = int(sqrt(real(nqp_h)))
@@ -362,8 +370,9 @@ contains
     type( mesh_type ), pointer           :: mesh => null()
     type( field_type ), intent( in )     :: rho, theta
     type( field_type ), intent( inout )  :: r_u_bd
-    type( quadrature_type), intent( in ) :: qr
+    type( quadrature_xyoz_type ), intent( in ) :: qr
 
+    type(quadrature_xyoz_proxy_type) :: qr_proxy
     type(stencil_dofmap_type), pointer :: cross_stencil_w3 => null()
     type(stencil_dofmap_type), pointer :: cross_stencil_wtheta => null()
 
@@ -409,12 +418,13 @@ contains
     cross_stencil_wtheta_size = cross_stencil_wtheta%get_size()
 
     nlayers = rho_proxy%vspace%get_nlayers()
-    nqp_h=qr%get_nqp_h()
-    nqp_v=qr%get_nqp_v()
-    zp=>qr%get_xqp_v()
-    xp=>qr%get_xqp_h()
-    wh=>qr%get_wqp_h()
-    wv=>qr%get_wqp_v()
+    qr_proxy = qr%get_quadrature_proxy()
+    nqp_h=qr_proxy%np_xy
+    nqp_v=qr_proxy%np_z
+    xp=>qr_proxy%points_xy
+    zp=>qr_proxy%points_z
+    wh=>qr_proxy%weights_xy
+    wv=>qr_proxy%weights_z
 
     ! Assumes same number of horizontal qp in x and y
     nqp_h_1d = int(sqrt(real(nqp_h)))  ! use sqrt
@@ -518,8 +528,9 @@ contains
     type( mesh_type ), pointer           :: mesh => null()
     type( field_type ), intent( in )     :: exner, theta
     type( field_type ), intent( inout )  :: r_u_bd
-    type( quadrature_type), intent( in ) :: qr
+    type( quadrature_xyoz_type ), intent( in ) :: qr
 
+    type(quadrature_xyoz_proxy_type) :: qr_proxy
     type(stencil_dofmap_type), pointer :: cross_stencil_w3 => null()
 
     integer                 :: cell, nlayers, nqp_h, nqp_v, nqp_h_1d
@@ -559,12 +570,13 @@ contains
     cross_stencil_w3_size = cross_stencil_w3%get_size()
 
     nlayers = exner_proxy%vspace%get_nlayers()
-    nqp_h=qr%get_nqp_h()
-    nqp_v=qr%get_nqp_v()
-    zp=>qr%get_xqp_v()
-    xp=>qr%get_xqp_h()
-    wh=>qr%get_wqp_h()
-    wv=>qr%get_wqp_v()
+    qr_proxy = qr%get_quadrature_proxy()
+    nqp_h=qr_proxy%np_xy
+    nqp_v=qr_proxy%np_z
+    xp=>qr_proxy%points_xy
+    zp=>qr_proxy%points_z
+    wh=>qr_proxy%weights_xy
+    wv=>qr_proxy%weights_z
 
     ! Assumes same number of horizontal qp in x and y
     nqp_h_1d = int(sqrt(real(nqp_h)))  ! use sqrt
@@ -668,8 +680,9 @@ contains
     type( mesh_type ), pointer           :: mesh => null()
     type( field_type ), intent( in )     :: rho, theta, rho_ref, theta_ref
     type( field_type ), intent( inout )  :: r_u_bd
-    type( quadrature_type), intent( in ) :: qr
+    type( quadrature_xyoz_type), intent( in ) :: qr
 
+    type(quadrature_xyoz_proxy_type) :: qr_proxy
     type(stencil_dofmap_type), pointer :: cross_stencil_w3 => null()
     type(stencil_dofmap_type), pointer :: cross_stencil_wtheta => null()
 
@@ -717,12 +730,14 @@ contains
     cross_stencil_wtheta_size = cross_stencil_wtheta%get_size()
 
     nlayers = rho_proxy%vspace%get_nlayers()
-    nqp_h=qr%get_nqp_h()
-    nqp_v=qr%get_nqp_v()
-    zp=>qr%get_xqp_v()
-    xp=>qr%get_xqp_h()
-    wh=>qr%get_wqp_h()
-    wv=>qr%get_wqp_v()
+    qr_proxy = qr%get_quadrature_proxy()
+    nqp_h=qr_proxy%np_xy
+    nqp_v=qr_proxy%np_z
+    xp=>qr_proxy%points_xy
+    zp=>qr_proxy%points_z
+    wh=>qr_proxy%weights_xy
+    wv=>qr_proxy%weights_z
+
 
     ! Assumes same number of horizontal qp in x and y
     nqp_h_1d = int(sqrt(real(nqp_h)))  ! use sqrt
@@ -828,8 +843,9 @@ contains
       type( mesh_type ), pointer           :: mesh => null()
       type(field_type), intent(in)         :: theta
       type(operator_type), intent(inout)   :: div_star
-      type(quadrature_type), intent(in)    :: qr
+      type(quadrature_xyoz_type), intent(in)    :: qr
 
+      type(quadrature_xyoz_proxy_type) :: qr_proxy
       integer :: cell, nlayers, nqp_h, nqp_v, nqp_h_1d
       integer :: ndf_w2, ndf_w3, ndf_wtheta, undf_wtheta
       integer :: dim_w2, dim_w3, dim_wtheta
@@ -871,12 +887,14 @@ contains
       !
       ! Initialise qr values
       !
-      nqp_h=qr%get_nqp_h()
-      nqp_v=qr%get_nqp_v()
-      zp=>qr%get_xqp_v()
-      xp=>qr%get_xqp_h()
-      wh=>qr%get_wqp_h()
-      wv=>qr%get_wqp_v()
+      qr_proxy = qr%get_quadrature_proxy()
+      nqp_h=qr_proxy%np_xy
+      nqp_v=qr_proxy%np_z
+      xp=>qr_proxy%points_xy
+      zp=>qr_proxy%points_z
+      wh=>qr_proxy%weights_xy
+      wv=>qr_proxy%weights_z
+
 
       ! Assumes same number of horizontal qp in x and y
       nqp_h_1d = int(sqrt(real(nqp_h)))  ! use sqrt
@@ -977,8 +995,9 @@ contains
       type( mesh_type ), pointer           :: mesh => null()
       type(field_type), intent(in)         :: theta, rho
       type(operator_type), intent(inout)   :: p2theta
-      type(quadrature_type), intent(in)    :: qr
+      type(quadrature_xyoz_type), intent(in)    :: qr
 
+      type(quadrature_xyoz_proxy_type) :: qr_proxy
       integer :: cell, nlayers, nqp_h, nqp_v, nqp_h_1d
       integer :: ndf_w2, ndf_w3, undf_w3, ndf_wtheta, undf_wtheta
       integer :: dim_w2, dim_w3, dim_wtheta
@@ -1023,11 +1042,12 @@ contains
       !
       ! Initialise qr values
       !
-      nqp_h=qr%get_nqp_h()
-      nqp_v=qr%get_nqp_v()
-      zp=>qr%get_xqp_v()
-      xp=>qr%get_xqp_h()
-      wv=>qr%get_wqp_v()
+      qr_proxy = qr%get_quadrature_proxy()
+      nqp_h=qr_proxy%np_xy
+      nqp_v=qr_proxy%np_z
+      xp=>qr_proxy%points_xy
+      zp=>qr_proxy%points_z
+      wv=>qr_proxy%weights_z
 
       ! Assumes same number of horizontal qp in x and y
       nqp_h_1d = int(sqrt(real(nqp_h)))  ! use sqrt
@@ -1139,8 +1159,9 @@ contains
       type( mesh_type ), pointer           :: mesh => null()
       type(field_type), intent(in)         :: theta
       type(operator_type), intent(inout)   :: ptheta2
-      type(quadrature_type), intent(in)    :: qr
+      type(quadrature_xyoz_type), intent(in)    :: qr
 
+      type(quadrature_xyoz_proxy_type) :: qr_proxy
       integer :: cell, nlayers, nqp_h, nqp_v, nqp_h_1d
       integer :: ndf_w2, ndf_wtheta, undf_wtheta
       integer :: dim_w2, dim_wtheta
@@ -1180,11 +1201,12 @@ contains
       !
       ! Initialise qr values
       !
-      nqp_h=qr%get_nqp_h()
-      nqp_v=qr%get_nqp_v()
-      zp=>qr%get_xqp_v()
-      xp=>qr%get_xqp_h()
-      wv=>qr%get_wqp_v()
+      qr_proxy = qr%get_quadrature_proxy()
+      nqp_h=qr_proxy%np_xy
+      nqp_v=qr_proxy%np_z
+      xp=>qr_proxy%points_xy
+      zp=>qr_proxy%points_z
+      wv=>qr_proxy%weights_z
 
       ! Assumes same number of horizontal qp in x and y
       nqp_h_1d = int(sqrt(real(nqp_h)))  ! use sqrt

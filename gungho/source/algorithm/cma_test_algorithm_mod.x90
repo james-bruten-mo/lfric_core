@@ -44,7 +44,8 @@ module cma_test_algorithm_mod
   use function_space_collection_mod,  only : function_space_collection, &
                                              function_space_collection_type
   use field_mod,                      only : field_type
-  use quadrature_mod,                 only : quadrature_type, GAUSSIAN
+  use quadrature_xyoz_mod,            only : quadrature_xyoz_type
+  use quadrature_rule_gaussian_mod,   only : quadrature_rule_gaussian_type
   use operator_mod,                   only : operator_type, &
                                              columnwise_operator_type
   use fs_continuity_mod,              only : W0,W1,W2,W2V,W2H,W3,Wchi
@@ -87,7 +88,8 @@ module cma_test_algorithm_mod
   ! Coordinate field
   type(field_type) :: chi(3)
   ! Quadrature rule
-  type(quadrature_type) :: qr
+  type( quadrature_xyoz_type ) :: qr
+  type( quadrature_rule_gaussian_type ) :: quadrature_rule
   ! Function spaces
   ! coordinates
   type(function_space_type), pointer :: fs_coord => null()
@@ -188,7 +190,7 @@ contains
     call assign_coordinate_field(chi, mesh_id)
 
     ! Construct quadrature rule
-    qr = quadrature_type(3, GAUSSIAN)
+    qr = quadrature_xyoz_type(3, quadrature_rule)
 
     ! Extract function spaces from mesh
     fs_vel_v    => function_space_collection%get_fs(mesh_id,       &

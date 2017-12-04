@@ -15,7 +15,9 @@ module function_space_mod_test
                                     mesh_collection
   use mesh_mod,              only : mesh_type
   use pFUnit_Mod
-  use quadrature_mod,        only : quadrature_type, GAUSSIAN
+  use quadrature_xyoz_mod,   only: quadrature_xyoz_type, &
+                                   quadrature_xyoz_proxy_type
+  use quadrature_rule_gaussian_mod, only: quadrature_rule_gaussian_type
   use reference_element_mod, only : N, E, S, W
 
   implicit none 
@@ -166,7 +168,9 @@ contains
 
     real(r_def), parameter :: margin = 1.0e-14_r_def
 
-    type(quadrature_type) :: qr
+    type( quadrature_xyoz_type )          :: qr
+    type(quadrature_xyoz_proxy_type)      :: qr_proxy
+    type( quadrature_rule_gaussian_type ) :: quadrature_rule
 
     type(function_space_description_type) :: description
 
@@ -186,9 +190,10 @@ contains
 
     integer :: cell
 
-    qr = quadrature_type(3, GAUSSIAN)
-    xp => qr%get_xqp_h()
-    zp => qr%get_xqp_v()
+    qr = quadrature_xyoz_type(3, quadrature_rule)
+    qr_proxy = qr%get_quadrature_proxy()
+    xp=>qr_proxy%points_xy
+    zp=>qr_proxy%points_z
 
     description = function_space_description(this%function_space)
 

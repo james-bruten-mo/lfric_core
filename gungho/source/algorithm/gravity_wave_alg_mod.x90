@@ -65,7 +65,8 @@ contains
   !> @param[inout] pressure The pressure field
   !> @param[inout] buoyancy The buoyancy field
   subroutine gravity_wave_alg_init( mesh_id, wind, pressure, buoyancy)
-    use quadrature_mod,                only: quadrature_type, GAUSSIAN
+    use quadrature_xyoz_mod,           only: quadrature_xyoz_type
+    use quadrature_rule_gaussian_mod,  only: quadrature_rule_gaussian_type
     use compute_q_operator_kernel_mod, only: compute_q_operator_type, &
                                              compute_q_operator_init
     use mesh_mod,                      only: mesh_type
@@ -79,13 +80,15 @@ contains
     ! Prognostic fields    
     type( field_type ), intent( inout ) :: wind, pressure, buoyancy
 
-    type(function_space_type), pointer :: u_fs => null()
-    type(function_space_type), pointer :: p_fs => null()
-    type(function_space_type), pointer :: b_fs => null()
-    type(quadrature_type)              :: qr
-    real(kind=r_def), allocatable      :: dz(:)
-    type(mesh_type),           pointer :: mesh => null()
-    integer(kind=i_def)                :: nlayers
+    type(function_space_type), pointer  :: u_fs => null()
+    type(function_space_type), pointer  :: p_fs => null()
+    type(function_space_type), pointer  :: b_fs => null()
+    type(quadrature_xyoz_type)          :: qr
+    type(quadrature_rule_gaussian_type) :: quadrature_rule
+
+    real(kind=r_def), allocatable       :: dz(:)
+    type(mesh_type),           pointer  :: mesh => null()
+    integer(kind=i_def)                 :: nlayers
 
     !=== Allocate internal state field arrays ================================!
     allocate(state(bundle_size))
@@ -114,7 +117,7 @@ contains
 
     ! Create Q operator
     Q = operator_type( u_fs, b_fs)
-    qr = quadrature_type(element_order+2, GAUSSIAN)
+    qr = quadrature_xyoz_type(element_order+2, quadrature_rule)
     mesh => mesh_collection%get_mesh( mesh_id )
     nlayers = mesh%get_nlayers()
     allocate ( dz(nlayers) )

@@ -7,15 +7,15 @@
 !>@brief Initialisation of prognostic fields for the gravity wave equations
 module gw_init_fields_alg_mod
 
-  use log_mod,                         only: log_event,         &
-                                             log_scratch_space, &
-                                             LOG_LEVEL_INFO,    &
-                                             LOG_LEVEL_TRACE,   &
-                                             LOG_LEVEL_ERROR
-  use constants_mod,                   only: r_def, i_def
+  use log_mod,                           only: log_event,         &
+                                               log_scratch_space, &
+                                               LOG_LEVEL_INFO,    &
+                                               LOG_LEVEL_TRACE,   &
+                                               LOG_LEVEL_ERROR
+  use constants_mod,                     only: r_def, i_def
 
-  use solver_mod,                      only: solver_algorithm
-  use runtime_constants_mod,           only: get_coordinates 
+  use solver_mod,                        only: solver_algorithm
+  use runtime_constants_mod,             only: get_coordinates 
 
   ! Configuration and restart/checkpoint options
   use finite_element_config_mod,       only: element_order
@@ -27,14 +27,15 @@ module gw_init_fields_alg_mod
   use initial_buoyancy_kernel_mod,       only: initial_buoyancy_kernel_type
 
   ! Derived Types
-  use function_space_collection_mod,   only: function_space_collection
-  use function_space_mod,              only: function_space_type
-  use field_mod,                       only: field_type
-  use quadrature_mod,                  only: quadrature_type, GAUSSIAN
-  use operator_mod,                    only: operator_type
+  use function_space_collection_mod,     only: function_space_collection
+  use function_space_mod,                only: function_space_type
+  use field_mod,                         only: field_type
+  use quadrature_xyoz_mod,               only: quadrature_xyoz_type
+  use quadrature_rule_gaussian_mod,      only: quadrature_rule_gaussian_type
+  use operator_mod,                      only: operator_type
 
   ! Handles
-  use fs_continuity_mod,               only: W0, W2, W3, Wtheta
+  use fs_continuity_mod,                 only: W0, W2, W3, Wtheta
 
 
   implicit none
@@ -54,12 +55,13 @@ contains
     implicit none
 
     ! Prognostic fields
-    type( field_type ),   intent(inout) :: wind, pressure, buoyancy
+    type( field_type ),   intent(inout)   :: wind, pressure, buoyancy
     ! Control
-    type( restart_type ), intent(in)    :: restart
+    type( restart_type ), intent(in)      :: restart
 
-    type( quadrature_type )            :: qr
-    type( field_type )                 :: r_u
+    type( quadrature_xyoz_type )          :: qr
+    type( quadrature_rule_gaussian_type ) :: quadrature_rule
+    type( field_type )                    :: r_u
 
     ! Coordinate fields
     type( field_type ), pointer :: chi(:) => null()
@@ -68,7 +70,7 @@ contains
 
     chi => get_coordinates()
 
-    qr = quadrature_type( element_order + 3, GAUSSIAN )
+    qr = quadrature_xyoz_type(element_order+3, quadrature_rule)
 
     !=== Initialise global prognostic fields ==================================!
 

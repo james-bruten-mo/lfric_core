@@ -11,7 +11,8 @@ module map_rho_to_theta_mod
   use field_mod,                             only: field_type
   use function_space_mod,                    only: function_space_type
   use function_space_collection_mod,         only: function_space_collection
-  use quadrature_mod,                        only: quadrature_type, GAUSSIAN 
+  use quadrature_xyoz_mod,                   only: quadrature_xyoz_type
+  use quadrature_rule_gaussian_mod,          only: quadrature_rule_gaussian_type
   use finite_element_config_mod,             only: element_order
   use galerkin_projection_algorithm_mod,     only: galerkin_projection_algorithm
   ! PsyKAl-lite kernels
@@ -34,14 +35,15 @@ contains
   subroutine map_rho_to_theta(rho, theta, rho_in_wth)
     
     ! Prognostic fields
-    type( field_type ), intent( inout ) :: rho, theta
-    type( field_type ), intent( inout ) :: rho_in_wth
+    type( field_type ), intent( inout )   :: rho, theta
+    type( field_type ), intent( inout )   :: rho_in_wth
     ! quatrature rule
-    type( quadrature_type )  :: qr
-    type( field_type )       :: projected_field(1)
-    integer(i_def)           :: mesh_id
+    type( quadrature_xyoz_type )          :: qr
+    type( quadrature_rule_gaussian_type ) :: quadrature_rule
+    type( field_type )                    :: projected_field(1)
+    integer(i_def)                        :: mesh_id
 
-    qr = quadrature_type( element_order + 3, GAUSSIAN )
+    qr = quadrature_xyoz_type(element_order+3, quadrature_rule)
     mesh_id =  theta%get_mesh_id()
     projected_field(1) = field_type( vector_space = theta%get_function_space() )
     call galerkin_projection_algorithm(projected_field, rho, mesh_id, &

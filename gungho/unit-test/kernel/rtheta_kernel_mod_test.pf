@@ -18,7 +18,9 @@ module rtheta_kernel_mod_test
   use fs_continuity_mod,             only : W0, W2, W3
   use function_space_mod,            only : function_space_type
   use pFUnit_Mod
-  use quadrature_mod,                only : quadrature_type, GAUSSIAN
+  use quadrature_xyoz_mod,               only: quadrature_xyoz_type, &
+                                               quadrature_xyoz_proxy_type
+  use quadrature_rule_gaussian_mod,      only: quadrature_rule_gaussian_type
 
   implicit none
 
@@ -28,7 +30,8 @@ module rtheta_kernel_mod_test
   @TestCase
   type, extends(TestCase), public :: rtheta_test_type
     private
-    type(quadrature_type)              :: qr
+    type( quadrature_xyoz_type )       :: qr
+    type(quadrature_xyoz_proxy_type)   :: qr_proxy
     type(function_space_type), pointer :: w0_fs => null()
     type(function_space_type), pointer :: w2_fs => null()
     type(field_type)                   :: r_theta, u
@@ -57,18 +60,19 @@ contains
 
     class(rtheta_test_type), intent(inout) :: this
 
-
     type(field_proxy_type) :: r_theta_proxy, u_proxy
+    type( quadrature_rule_gaussian_type ) :: quadrature_rule
 
     integer(i_def)         :: nqp_h, nqp_v
     integer(i_def)         :: ndf_w0, undf_w0, dim_w0, dim_diff_w0
     integer(i_def)         :: ndf_w2, undf_w2, dim_w2
     integer(i_def)         :: mesh_id
 
-    this%qr  = quadrature_type(3, GAUSSIAN)
+    this%qr = quadrature_xyoz_type(3, quadrature_rule)
 
-    nqp_h=this%qr%get_nqp_h()
-    nqp_v=this%qr%get_nqp_v()
+    this%qr_proxy = this%qr%get_quadrature_proxy()
+    nqp_h=this%qr_proxy%np_xy
+    nqp_v=this%qr_proxy%np_z
 
     reference_element = finite_element_cellshape_quadrilateral
     call reference_cube()
@@ -169,12 +173,12 @@ contains
 
     nlayers = r_theta_proxy%vspace%get_nlayers()
 
-    nqp_h=this%qr%get_nqp_h()
-    nqp_v=this%qr%get_nqp_v()
-    zp=>this%qr%get_xqp_v()
-    xp=>this%qr%get_xqp_h()
-    wh=>this%qr%get_wqp_h()
-    wv=>this%qr%get_wqp_v()
+    nqp_h=this%qr_proxy%np_xy
+    nqp_v=this%qr_proxy%np_z
+    xp=>this%qr_proxy%points_xy
+    zp=>this%qr_proxy%points_z
+    wh=>this%qr_proxy%weights_xy
+    wv=>this%qr_proxy%weights_z
 
     ndf_w2      = u_proxy%vspace%get_ndf( )
     undf_w2     = u_proxy%vspace%get_undf()

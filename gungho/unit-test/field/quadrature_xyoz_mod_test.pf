@@ -23,10 +23,10 @@ contains
 
     real(kind=r_def) :: epsilon
 
-    real(kind=r_def) :: points_z(npoints), points_xy(2,npoints*npoints)
+    real(kind=r_def) :: points_z(npoints), points_xy(npoints*npoints,2)
     real(kind=r_def) :: weights_z(npoints), weights_xy(npoints*npoints)
 
-    real(kind=r_def) :: test_points_z(npoints), test_points_xy(2,npoints*npoints)
+    real(kind=r_def) :: test_points_z(npoints), test_points_xy(npoints*npoints,2)
     real(kind=r_def) :: test_weights_z(npoints), test_weights_xy(npoints*npoints)
 
     type(quadrature_xyoz_type)          :: qr
@@ -45,7 +45,7 @@ contains
                            5.000000000000000E-001_r_def, &
                            8.872983346207417E-001_r_def]
 
-    test_points_xy(1,:) = [1.127016653792583E-001_r_def, &
+    test_points_xy(:,1) = [1.127016653792583E-001_r_def, &
                            1.127016653792583E-001_r_def, &
                            1.127016653792583E-001_r_def, &
                            5.000000000000000E-001_r_def, &
@@ -55,7 +55,7 @@ contains
                            8.872983346207417E-001_r_def, &
                            8.872983346207417E-001_r_def]
 
-    test_points_xy(2,:) = [1.127016653792583E-001_r_def, &
+    test_points_xy(:,2) = [1.127016653792583E-001_r_def, &
                            5.000000000000000E-001_r_def, &
                            8.872983346207417E-001_r_def, &
                            1.127016653792583E-001_r_def, &
@@ -108,10 +108,10 @@ contains
 
     real(kind=r_def) :: epsilon
 
-    real(kind=r_def) :: points_z(npoints_z), points_xy(2,npoints_x*npoints_y)
+    real(kind=r_def) :: points_z(npoints_z), points_xy(npoints_x*npoints_y,2)
     real(kind=r_def) :: weights_z(npoints_z), weights_xy(npoints_x*npoints_y)
 
-    real(kind=r_def) :: test_points_z(npoints_z), test_points_xy(2,npoints_x*npoints_y)
+    real(kind=r_def) :: test_points_z(npoints_z), test_points_xy(npoints_x*npoints_y,2)
     real(kind=r_def) :: test_weights_z(npoints_z), test_weights_xy(npoints_x*npoints_y)
 
     type(quadrature_xyoz_type)          :: qr
@@ -130,7 +130,7 @@ contains
                            5.000000000000000E-001_r_def, &
                            8.872983346207417E-001_r_def]
 
-    test_points_xy(1,:) = [1.127016653792583E-001_r_def, &
+    test_points_xy(:,1) = [1.127016653792583E-001_r_def, &
                            1.127016653792583E-001_r_def, &
                            1.127016653792583E-001_r_def, &
                            5.000000000000000E-001_r_def, &
@@ -140,7 +140,7 @@ contains
                            8.872983346207417E-001_r_def, &
                            8.872983346207417E-001_r_def]
 
-    test_points_xy(2,:) = [1.127016653792583E-001_r_def, &
+    test_points_xy(:,2) = [1.127016653792583E-001_r_def, &
                            5.000000000000000E-001_r_def, &
                            8.872983346207417E-001_r_def, &
                            1.127016653792583E-001_r_def, &

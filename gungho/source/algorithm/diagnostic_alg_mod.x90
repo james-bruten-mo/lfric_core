@@ -81,14 +81,14 @@ contains
 
 !=============================================================================!
   subroutine pressure_diagnostic_alg(rho, theta, t, mesh_id)
-    use runtime_constants_mod,       only: get_mass_matrix, &
-                                           get_qr, &
-                                           get_coordinates, &
-                                           w3inv_id
-    use operator_mod,                only: operator_type
-    use field_mod,                   only: field_type, write_interface
-    use project_pressure_kernel_mod, only: project_pressure_kernel_type
-    use quadrature_mod,              only: quadrature_type
+    use runtime_constants_mod,        only: get_mass_matrix, &
+                                            get_qr, &
+                                            get_coordinates, &
+                                            w3inv_id
+    use operator_mod,                 only: operator_type
+    use field_mod,                    only: field_type, write_interface
+    use project_pressure_kernel_mod,  only: project_pressure_kernel_type
+    use quadrature_xyoz_mod,          only: quadrature_xyoz_type
     implicit none 
 
     type(field_type), intent(in) :: rho, theta
@@ -96,10 +96,10 @@ contains
 
     type(field_type)             :: exner
     type(operator_type), pointer :: m3_inv => null()
-    type(quadrature_type)        :: qr
+    type(quadrature_xyoz_type)   :: qr
     type(field_type), pointer    :: chi(:) => null()
 
-    procedure(write_interface), pointer  :: tmp_ptr
+    procedure(write_interface), pointer :: tmp_ptr
 
     m3_inv => get_mass_matrix(w3inv_id)
     qr = get_qr()
@@ -136,15 +136,15 @@ contains
   !> @param[in] rho Density
   !> @param[in] timestep Timestep
   subroutine density_diagnostic_alg(rho, timestep)
-    use runtime_constants_mod,       only: get_qr, &
-                                           get_coordinates
-    use operator_mod,                only: operator_type
-    use field_mod,                   only: field_type
-    use quadrature_mod,              only: quadrature_type
-    use set_rho_alg_mod,             only: set_rho_alg
-    use log_mod,                     only: log_event,         &
-                                           log_scratch_space, &
-                                           LOG_LEVEL_INFO
+    use runtime_constants_mod,        only: get_qr, &
+                                            get_coordinates
+    use operator_mod,                 only: operator_type
+    use field_mod,                    only: field_type
+    use quadrature_xyoz_mod,          only: quadrature_xyoz_type
+    use set_rho_alg_mod,              only: set_rho_alg
+    use log_mod,                      only: log_event,         &
+                                            log_scratch_space, &
+                                            LOG_LEVEL_INFO
 
     implicit none
 
@@ -153,7 +153,8 @@ contains
 
     type(field_type)             :: rho_analytic
     type(field_type)             :: rho_diff
-    type(quadrature_type)        :: qr
+    type(quadrature_xyoz_type)   :: qr
+
     type(field_type), pointer    :: chi(:) => null()
     real(r_def)                  :: l2
 

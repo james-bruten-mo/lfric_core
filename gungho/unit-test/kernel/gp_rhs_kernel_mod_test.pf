@@ -9,7 +9,10 @@ module gp_rhs_kernel_mod_test
 
   use constants_mod,  only : i_def, r_def
   use pFUnit_Mod
-  use quadrature_mod, only : quadrature_type, GAUSSIAN
+  use quadrature_xyoz_mod,               only: quadrature_xyoz_type, &
+                                               quadrature_xyoz_proxy_type
+  use quadrature_rule_gaussian_mod,      only: quadrature_rule_gaussian_type
+
 
   implicit none
 
@@ -42,14 +45,17 @@ contains
 
     class(gp_rhs_test_type), intent(inout) :: this
 
-    type(quadrature_type) :: qr
+    type( quadrature_xyoz_type )          :: qr
+    type(quadrature_xyoz_proxy_type) :: qr_proxy
+    type( quadrature_rule_gaussian_type ) :: quadrature_rule
 
     integer(i_def) :: nqp_h, nqp_v
 
-    qr = quadrature_type(3, GAUSSIAN)
+    qr = quadrature_xyoz_type(3, quadrature_rule)
 
-    nqp_h = qr%get_nqp_h()
-    nqp_v = qr%get_nqp_v()
+    qr_proxy = qr%get_quadrature_proxy()
+    nqp_h=qr_proxy%np_xy
+    nqp_v=qr_proxy%np_z
 
     allocate( this%basis_f   (1,ndf_f,nqp_h,nqp_v), &
               this%basis     (1,ndf_w0,nqp_h,nqp_v), &
@@ -79,7 +85,9 @@ contains
     class(gp_rhs_test_type), intent(inout) :: this
 
     integer :: num_layers
-    type(quadrature_type) :: qr
+    type(quadrature_xyoz_type) :: qr
+    type(quadrature_xyoz_proxy_type) :: qr_proxy
+    type( quadrature_rule_gaussian_type ) :: quadrature_rule
     real(kind=r_def) :: f_data(1), rhs(8)
     real(kind=r_def) :: answer, tol
     integer :: map_w0(8), map_f(1)
@@ -91,14 +99,15 @@ contains
     real(kind=r_def) :: fx, fy, fz
     integer :: df, dim, qp1, qp2
 
-    qr = quadrature_type(3, GAUSSIAN)
+    qr = quadrature_xyoz_type(3, quadrature_rule)
 
-    xqp_h => qr%get_xqp_h()
-    xqp_v => qr%get_xqp_v()
-    wh    => qr%get_wqp_h()
-    wv    => qr%get_wqp_v()
-    nqp_h = qr%get_nqp_h()
-    nqp_v = qr%get_nqp_v()
+    qr_proxy = qr%get_quadrature_proxy()
+    nqp_h=qr_proxy%np_xy
+    nqp_v=qr_proxy%np_z
+    xqp_h=>qr_proxy%points_xy
+    xqp_v=>qr_proxy%points_z
+    wh=>qr_proxy%weights_xy
+    wv=>qr_proxy%weights_z
 
     x_vert(1,:) = (/ 0.0_r_def, 0.0_r_def, 0.0_r_def /)
     x_vert(2,:) = (/ 1.0_r_def, 0.0_r_def, 0.0_r_def /)

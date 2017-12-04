@@ -11,7 +11,8 @@ module physics_mappings_mod
   use field_mod,                             only: field_type
   use function_space_mod,                    only: function_space_type
   use function_space_collection_mod,         only: function_space_collection
-  use quadrature_mod,                        only: quadrature_type, GAUSSIAN 
+  use quadrature_xyoz_mod,                   only: quadrature_xyoz_type
+  use quadrature_rule_gaussian_mod,          only: quadrature_rule_gaussian_type
   use finite_element_config_mod,             only: element_order
   use galerkin_projection_algorithm_mod,     only: galerkin_projection_algorithm
 
@@ -33,12 +34,12 @@ contains
     type( field_type ), intent( inout ) :: target_field
     type( field_type ), intent( inout ) :: source_field
     ! quatrature rule
-    type( quadrature_type )  :: qr
-    type( field_type )       :: projected_field(1)
-    integer(i_def)           :: mesh_id
+    type( quadrature_xyoz_type )          :: qr
+    type( quadrature_rule_gaussian_type ) :: quadrature_rule
+    type( field_type )                    :: projected_field(1)
+    integer(i_def)                        :: mesh_id
 
-    qr = quadrature_type( element_order + 3, GAUSSIAN )
-    
+    qr = quadrature_xyoz_type(element_order+3, quadrature_rule)    
     mesh_id =  source_field%get_mesh_id() ! Currently only coded for fields on the same mesh
     projected_field(1) = field_type( vector_space = target_field%get_function_space() )
     call galerkin_projection_algorithm(projected_field, source_field, mesh_id, &
@@ -59,12 +60,13 @@ contains
     type( field_type ), intent( inout ) :: u1_field, u2_field, u3_field
     type( field_type ), intent( inout ) :: source_field
     ! quatrature rule
-    type( quadrature_type )  :: qr
-    type( field_type )       :: projected_field(3)
-    integer(i_def)           :: mesh_id
+    type( quadrature_xyoz_type )          :: qr
+    type( quadrature_rule_gaussian_type ) :: quadrature_rule
+    type( field_type )                    :: projected_field(3)
+    integer(i_def)                        :: mesh_id
 
-    qr = quadrature_type( element_order + 3, GAUSSIAN )
-    
+    qr = quadrature_xyoz_type(element_order+3, quadrature_rule)
+
     mesh_id =  source_field%get_mesh_id() ! Currently only coded for fields on the same mesh
     projected_field(1) = field_type( vector_space = u1_field%get_function_space() )
     projected_field(2) = field_type( vector_space = u2_field%get_function_space() )

@@ -9,7 +9,6 @@
 module gp_rhs_kernel_mod
 use kernel_mod,              only : kernel_type
 use constants_mod,           only : r_def
-use quadrature_mod,          only : quadrature_type
 use argument_mod,            only : arg_type, func_type,           &
                                     GH_FIELD, GH_INC, GH_READ,     &
                                     ANY_SPACE_9, ANY_SPACE_1,      &

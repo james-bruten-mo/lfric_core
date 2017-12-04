@@ -17,7 +17,6 @@ module sample_poly_flux_kernel_mod_test
   use fs_continuity_mod,             only : W2, W3
   use function_space_mod,            only : function_space_type
   use pFUnit_Mod
-  use quadrature_mod,                only : quadrature_type, GAUSSIAN
   use stencil_dofmap_mod,            only : stencil_dofmap_type, STENCIL_CROSS
 
   implicit none

@@ -108,7 +108,8 @@ end subroutine create_si_operators
 
 !> Subroutine to compute the si operators
 subroutine compute_si_operators(ref_state)
-  use quadrature_mod,                  only: quadrature_type, GAUSSIAN
+  use quadrature_xyoz_mod,             only: quadrature_xyoz_type
+  use quadrature_rule_gaussian_mod,    only: quadrature_rule_gaussian_type
   use weighted_m3_rho_kernel_mod,      only: weighted_m3_rho_kernel_type
   use weighted_m3_exner_kernel_mod,    only: weighted_m3_exner_kernel_type
   use weighted_div_kernel_mod,         only: weighted_div_kernel_type
@@ -140,7 +141,8 @@ subroutine compute_si_operators(ref_state)
 
   type(field_type), target, intent(in) :: ref_state(bundle_size) ! (u, theta, rho)
   type(field_type),            pointer :: theta => null(), rho => null()
-  type(quadrature_type)                :: qr
+  type(quadrature_xyoz_type)           :: qr
+  type(quadrature_rule_gaussian_type)  :: quadrature_rule
   type(field_type),            pointer :: chi(:) => null()
   type(operator_type),         pointer :: m3_inv => null(), div => null()
   type(field_type)                     :: ones
@@ -150,7 +152,7 @@ subroutine compute_si_operators(ref_state)
   if ( subroutine_timers ) call timer('si_operators_alg:compute')
   call log_event( "Gungho: computing si_operators", LOG_LEVEL_INFO )
 
-  qr = quadrature_type(element_order+3, GAUSSIAN)
+  qr = quadrature_xyoz_type(element_order+3, quadrature_rule)
   theta  => ref_state(igh_t)
   rho    => ref_state(igh_d)  
   chi    => get_coordinates()

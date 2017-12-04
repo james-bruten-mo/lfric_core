@@ -16,7 +16,8 @@ module set_rho_alg_mod
 
   ! Derived Types
   use field_mod,                       only: field_type
-  use quadrature_mod,                  only: quadrature_type, GAUSSIAN
+  use quadrature_xyoz_mod,             only: quadrature_xyoz_type
+  use quadrature_rule_gaussian_mod,    only: quadrature_rule_gaussian_type
 
   implicit none
 
@@ -32,17 +33,19 @@ contains
     implicit none
 
     ! Mesh id, timestep
-    integer(i_def),  intent(in)         :: timestep
+    integer(i_def),  intent(in) :: timestep
     ! Prognostic fields
     type( field_type ), intent( inout ) :: rho
 
-    type( quadrature_type )             :: qr
+    type( quadrature_xyoz_type ) :: qr
+    type( quadrature_rule_gaussian_type ) :: quadrature_rule
     ! Coordinate fields
     type( field_type ), pointer :: chi(:) => null()
 
     real(kind=r_def) :: time
 
-    qr = quadrature_type( element_order + 3, GAUSSIAN )
+
+    qr = quadrature_xyoz_type(element_order+3, quadrature_rule)
     chi => get_coordinates()
     ! Set rho according to formulation
     time = real(timestep,r_def)*dt

@@ -26,7 +26,8 @@ module cosmic_transport_alg_mod
   use split_transport_alg_mod,           only: split_transport_alg
   use runtime_constants_mod,             only: get_coordinates
   use initial_u_kernel_mod,              only: initial_u_kernel_type
-  use quadrature_mod,                    only: quadrature_type, GAUSSIAN
+  use quadrature_xyoz_mod,               only: quadrature_xyoz_type
+  use quadrature_rule_gaussian_mod,      only: quadrature_rule_gaussian_type
   use timestepping_config_mod,           only: dt
   use solver_mod,                        only: solver_algorithm
 
@@ -52,17 +53,18 @@ contains
 
     implicit none
 
-    integer(i_def),      intent(in)    :: mesh_id
-    integer(i_def),      intent(in)    :: timestep
+    integer(i_def),      intent(in)     :: mesh_id
+    integer(i_def),      intent(in)     :: timestep
 
     ! Prognostic wind field    
     type( field_type ), intent( inout ) :: u
 
-    type(function_space_type), pointer :: w2_fs   => null()
-    type(function_space_type), pointer :: w3_fs   => null()
-    type( quadrature_type )            :: qr
-    type(field_type),          pointer :: chi(:) => null()
-    real(r_def)                        :: time
+    type(function_space_type), pointer  :: w2_fs   => null()
+    type(function_space_type), pointer  :: w3_fs   => null()
+    type(quadrature_xyoz_type)          :: qr
+    type(quadrature_rule_gaussian_type) :: quadrature_rule
+    type(field_type),          pointer  :: chi(:) => null()
+    real(r_def)                         :: time
 
     w2_fs   => function_space_collection%get_fs( mesh_id, element_order, W2 )
     w3_fs   => function_space_collection%get_fs( mesh_id, element_order, W3 )
@@ -74,7 +76,7 @@ contains
     mass_flux = field_type( vector_space = w2_fs )
     r_u       = field_type( vector_space = w2_fs )
 
-    qr = quadrature_type(element_order+2, GAUSSIAN)
+    qr = quadrature_xyoz_type(element_order+2, quadrature_rule)
     chi => get_coordinates()
 
     time = dt*real(timestep,r_def)

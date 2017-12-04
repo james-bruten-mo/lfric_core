@@ -124,7 +124,8 @@ contains
                                                invoke_pert_pressure_gradient_bd_kernel
   use matrix_vector_kernel_mod,          only: matrix_vector_kernel_type
   use operator_mod,                      only: operator_type
-  use quadrature_mod,                    only: quadrature_type, GAUSSIAN
+  use quadrature_xyoz_mod,               only: quadrature_xyoz_type
+  use quadrature_rule_gaussian_mod,      only: quadrature_rule_gaussian_type
   use rrho_kernel_mod,                   only: rrho_kernel_type
   use w3_solver_kernel_mod,              only: w3_solver_kernel_type
   use derived_config_mod,                only: si_bundle_size, bundle_size
@@ -139,7 +140,9 @@ contains
   type(field_type), target,     intent(in)    :: ref_state(bundle_size)
   type(field_type),             intent(inout) :: lhs(si_bundle_size)
 
-  type(quadrature_type)        :: qr
+  type( quadrature_xyoz_type )          :: qr
+  type( quadrature_rule_gaussian_type ) :: quadrature_rule
+
   type(field_type),    pointer :: chi(:)=> null()
   type(operator_type), pointer :: mm_w2 => null(),     &
                                   mm_w3_inv => null(), &
@@ -172,7 +175,7 @@ contains
   theta_ref => ref_state(igh_t)
   rho_ref   => ref_state(igh_d)
 
-  qr = quadrature_type(element_order+2, GAUSSIAN)
+  qr = quadrature_xyoz_type(element_order+2, quadrature_rule)
 
   ! Compute lhs_u
   call invoke( setval_c( lhs_tmp(igh_u), 0.0_r_def ), &
@@ -204,8 +207,7 @@ contains
   call invoke( inc_X_minus_bY( lhs(igh_u), tau_u_dt, lhs_tmp(igh_u) ), &
                enforce_bc_kernel_type( lhs(igh_u) ) )
  
-  qr = quadrature_type(element_order+1, GAUSSIAN)
-
+  qr = quadrature_xyoz_type(element_order+1, quadrature_rule)
   ! Compute lhs_theta
   call invoke( setval_c( lhs_tmp(igh_t), 0.0_r_def ), &
                setval_c( lhs(igh_t),     0.0_r_def ) )

@@ -18,7 +18,6 @@ module invert_local_operator_kernel_mod_test
   use function_space_mod,            only : function_space_type
   use operator_mod,                  only : operator_type, operator_proxy_type
   use pFUnit_Mod
-  use quadrature_mod,                only : quadrature_type, GAUSSIAN
 
   implicit none
 

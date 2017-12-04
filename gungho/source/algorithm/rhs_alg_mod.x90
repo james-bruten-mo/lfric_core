@@ -22,7 +22,8 @@ module rhs_alg_mod
   use operator_mod,                        only: operator_type
   use hydrostatic_kernel_mod,              only: hydrostatic_kernel_type
   use psykal_lite_mod,                     only: invoke_ru_bd_kernel
-  use quadrature_mod,                      only: quadrature_type, GAUSSIAN
+  use quadrature_xyoz_mod,                 only: quadrature_xyoz_type
+  use quadrature_rule_gaussian_mod,        only: quadrature_rule_gaussian_type
   use rotation_kernel_mod,                 only: rotation_kernel_type
   use derived_config_mod,                  only: bundle_size
   use field_indices_mod,                   only: igh_u, igh_t, igh_d
@@ -65,11 +66,12 @@ contains
   type(field_type), pointer :: chi(:), geopotential => null()
   type(operator_type), pointer :: mm_w2 => null(), mm_wtheta => null()
 
-  type( quadrature_type )   :: qr 
-  type(field_type), pointer :: u     => null(), &
-                               theta => null(), &
-                               rho   => null()
-  type(field_type)          :: rhs_tmp
+  type(quadrature_xyoz_type)          :: qr
+  type(quadrature_rule_gaussian_type ):: quadrature_rule
+  type(field_type), pointer           :: u     => null(), &
+                                         theta => null(), &
+                                         rho   => null()
+  type(field_type)                    :: rhs_tmp
 
   if ( subroutine_timers ) call timer('rhs_alg')
 
@@ -83,7 +85,7 @@ contains
   rho   => state(igh_d)
  
   rhs_tmp = field_type( vector_space=rhs(igh_u)%get_function_space() )
-  qr = quadrature_type(element_order+2, GAUSSIAN)
+  qr = quadrature_xyoz_type(element_order+2, quadrature_rule)
 
   ! Initialise RHS u and theta fields
   call invoke( name = "Initialise RHS u and theta fields", &

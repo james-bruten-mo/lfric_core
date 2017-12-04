@@ -26,7 +26,8 @@ module cusph_cosmic_transport_alg_mod
   use cusph_fv_density_update_alg_mod,   only: cusph_fv_density_update_alg
   use flux_direction_mod,                only: x_direction, y_direction
   use initial_u_kernel_mod,              only: initial_u_kernel_type
-  use quadrature_mod,                    only: quadrature_type, GAUSSIAN
+  use quadrature_xyoz_mod,               only: quadrature_xyoz_type
+  use quadrature_rule_gaussian_mod,      only: quadrature_rule_gaussian_type
   use timestepping_config_mod,           only: dt
   use solver_mod,                        only: solver_algorithm
 
@@ -59,9 +60,11 @@ contains
     ! Prognostic wind field
     type( field_type ), intent( inout ) :: u
 
-    type(function_space_type), pointer :: w2_fs   => null()
-    type(function_space_type), pointer :: w3_fs   => null()
-    type( quadrature_type )            :: qr
+    type(function_space_type), pointer    :: w2_fs   => null()
+    type(function_space_type), pointer    :: w3_fs   => null()
+    type( quadrature_xyoz_type )          :: qr
+    type( quadrature_rule_gaussian_type ) :: quadrature_rule
+
     type(field_type),          pointer :: chi(:) => null()
     real(r_def)                        :: time
 
@@ -77,7 +80,7 @@ contains
     mass_flux_y = field_type( vector_space = w2_fs )
     r_u         = field_type( vector_space = w2_fs )
 
-    qr = quadrature_type(element_order+2, GAUSSIAN)
+    qr = quadrature_xyoz_type(element_order+2, quadrature_rule)
     chi => get_coordinates()
 
 

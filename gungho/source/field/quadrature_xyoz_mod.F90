@@ -214,7 +214,7 @@ subroutine create_quadrature(self,points_weights_x,points_weights_y,&
   ! Allocate space for the points of points weights in the quad type
   allocate( self%points_z(self%np_z) )
   allocate( self%weights_z(self%np_z) )
-  allocate( self%points_xy(2,self%np_xy) )
+  allocate( self%points_xy(self%np_xy,2) )
   allocate( self%weights_xy(self%np_xy) )
 
   ! Initialise all to zero
@@ -231,8 +231,8 @@ subroutine create_quadrature(self,points_weights_x,points_weights_y,&
   ic = 1
   do i = 1, size(points_weights_x,1)
     do j = 1, size(points_weights_y,1)
-      self%points_xy(1,ic) = points_weights_x(i,1)
-      self%points_xy(2,ic) = points_weights_y(j,1)
+      self%points_xy(ic,1) = points_weights_x(i,1)
+      self%points_xy(ic,2) = points_weights_y(j,1)
       self%weights_xy(ic) = points_weights_x(i,2)*points_weights_y(j,2)
       ic = ic + 1
     end do
@@ -296,8 +296,8 @@ subroutine compute_function(self, function_to_call, function_space, &
   do qp2 = 1, self%np_z
     xyz(3) = self%points_z(qp2)
     do qp1 = 1, self%np_xy
-      xyz(1) = self%points_xy(1,qp1)
-      xyz(2) = self%points_xy(2,qp1)
+      xyz(1) = self%points_xy(qp1,1)
+      xyz(2) = self%points_xy(qp1,2)
       do df = 1, ndf
           basis(:,df,qp1,qp2) = function_space%call_function(&
                                                function_to_call,df,xyz)

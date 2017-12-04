@@ -35,7 +35,8 @@ contains
     use function_space_collection_mod,  only: function_space_collection
     use fs_continuity_mod,         only: W0, W1, W2, W3
     use mesh_mod,                  only: mesh_type
-    use quadrature_mod,            only: quadrature_type, GAUSSIAN
+    use quadrature_xyoz_mod,               only: quadrature_xyoz_type
+    use quadrature_rule_gaussian_mod,      only: quadrature_rule_gaussian_type
     use galerkin_projection_algorithm_mod, only: galerkin_projection_algorithm
 
     implicit none
@@ -52,12 +53,13 @@ contains
     integer(i_def),     intent(in)                 :: mesh_id
 
 
-    type(quadrature_type)                 :: qr
+    type( quadrature_xyoz_type )          :: qr
+    type( quadrature_rule_gaussian_type ) :: quadrature_rule
     integer(i_def)                        :: dir, fs_handle
     procedure(write_interface), pointer   :: tmp_ptr
 
 
-    qr = quadrature_type(element_order+3, GAUSSIAN)
+    qr = quadrature_xyoz_type(element_order+3, quadrature_rule)
 
     ! determine the input function space
     fs_handle = field%which_function_space()  

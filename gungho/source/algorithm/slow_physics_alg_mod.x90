@@ -20,7 +20,6 @@ module slow_physics_alg_mod
   
   ! Derived Types
   use field_mod,                 only: field_type
-  use quadrature_mod,            only: quadrature_type
   ! Field indices
   use field_indices_mod,         only: igh_u, igh_t, igh_d
   

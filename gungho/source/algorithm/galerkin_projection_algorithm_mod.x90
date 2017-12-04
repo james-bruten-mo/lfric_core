@@ -18,7 +18,7 @@ module galerkin_projection_algorithm_mod
   use gp_vector_rhs_kernel_mod,        only: gp_vector_rhs_kernel_type
   use log_mod,                         only: log_event, log_scratch_space, LOG_LEVEL_INFO
   use operator_mod,                    only: operator_type
-  use quadrature_mod,                  only: quadrature_type
+  use quadrature_xyoz_mod,             only: quadrature_xyoz_type
   use solver_mod,                      only: solver_algorithm
   use runtime_constants_mod,           only: get_coordinates
 
@@ -54,9 +54,9 @@ contains
 ! Field to output
     type( field_type ), intent(inout) :: f_out(space_dimension)
 ! Field to intput
-    type( field_type ), intent(inout) :: f_in  
-    integer( i_def ),   intent(in)    :: mesh
-    type( quadrature_type ), intent(in) :: qr
+    type( field_type ), intent(inout)        :: f_in  
+    integer( i_def ),   intent(in)           :: mesh
+    type( quadrature_xyoz_type ), intent(in) :: qr
 ! Coordinate fields
     type( field_type ), pointer :: chi(:) => null()
 

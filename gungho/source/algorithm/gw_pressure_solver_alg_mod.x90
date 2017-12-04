@@ -69,7 +69,8 @@ contains
   subroutine gw_pressure_solver_init(state)
     use function_space_mod,            only: function_space_type
     use finite_element_config_mod,     only: element_order
-    use quadrature_mod,                only: quadrature_type, GAUSSIAN
+    use quadrature_xyoz_mod,           only: quadrature_xyoz_type
+    use quadrature_rule_gaussian_mod,  only: quadrature_rule_gaussian_type
     use compute_q_operator_kernel_mod, only: compute_q_operator_type
     use matrix_vector_kernel_mod,      only: matrix_vector_kernel_type
     use transpose_matrix_vector_kernel_mod, &
@@ -79,11 +80,12 @@ contains
 
     implicit none
 
-    type(field_type), intent(in)       :: state(bundle_size)
-    type(function_space_type), pointer :: wp => null(), wu => null(), wb => null()
-    type(field_type)                   :: ones, M_lumped, QT1
-    type(operator_type), pointer       :: Mb => null(), Mu => null()
-    type(quadrature_type)              :: qr
+    type(field_type), intent(in)        :: state(bundle_size)
+    type(function_space_type), pointer  :: wp => null(), wu => null(), wb => null()
+    type(field_type)                    :: ones, M_lumped, QT1
+    type(operator_type), pointer        :: Mb => null(), Mu => null()
+    type(quadrature_xyoz_type)          :: qr
+    type(quadrature_rule_gaussian_type) :: quadrature_rule
 
     call log_event( 'Constructing pressure solver...', LOG_LEVEL_INFO )
 
@@ -138,7 +140,7 @@ contains
     
     ! Compute Q operator 
     Q = operator_type( wu, wb )
-    qr = quadrature_type(element_order+2, GAUSSIAN)
+    qr = quadrature_xyoz_type(element_order+2, quadrature_rule)
     call invoke( compute_q_operator_type(Q, qr) )
 
    ! Compute inverse approximate HB

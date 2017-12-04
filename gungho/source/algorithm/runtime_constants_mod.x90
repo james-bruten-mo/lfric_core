@@ -29,7 +29,8 @@ module runtime_constants_mod
   use fs_continuity_mod,                 only: W0, W1, W2, W2H, W3, Wtheta, Wchi
   use mesh_mod,                          only: mesh_type
   use operator_mod,                      only: operator_type
-  use quadrature_mod,                    only: quadrature_type, GAUSSIAN
+  use quadrature_xyoz_mod,               only: quadrature_xyoz_type
+  use quadrature_rule_gaussian_mod,      only: quadrature_rule_gaussian_type
 
   ! PsyKAl-lite kernels
   use psykal_lite_mod,                   only: invoke_mpi_calc_cell_orientation, &
@@ -64,33 +65,34 @@ module runtime_constants_mod
   ! Variables private to this module that can only be accessed by public
   ! functions returning pointers to them 
 
-  type(field_type), target        :: mm0_diag 
-  type(field_type), target        :: mm1_diag
-  type(field_type), target        :: mm2_diag
-  type(field_type), target        :: mm3_diag
-  type(field_type), target        :: eye
-  type(field_type), target        :: mmtheta_diag
-  type(operator_type), target     :: mm_w0
-  type(operator_type), target     :: mm_w1
-  type(operator_type), target     :: mm_w2
-  type(operator_type), target     :: mm_w3
-  type(operator_type), target     :: mm_w3_inv
-  type(operator_type), target     :: mm_wtheta
-  type(field_type), target        :: geopotential
-  type(field_type), pointer       :: coords(:)
-  type(field_type), target        :: temp_w2_field
-  type(field_type), target        :: cell_orientation
-  type(field_type), target        :: detj_at_w2
-  type(operator_type), target     :: grad, curl, div
-  type(quadrature_type), target   :: qr
-  type(field_type), target        :: m0_lumped_inv
-  type(field_type), target        :: m1_lumped_inv
-  type(field_type), target        :: mt_lumped_inv
-  type(field_type), target        :: height_wth, height_w3
-  type(field_type), target        :: nodal_rmultiplicity_w1
-  type(field_type), target        :: nodal_rmultiplicity_w2
-  type(field_type), target        :: nodal_rmultiplicity_w2h
-  type(field_type), target        :: nodal_rmultiplicity_w0
+  type(field_type), target              :: mm0_diag 
+  type(field_type), target              :: mm1_diag
+  type(field_type), target              :: mm2_diag
+  type(field_type), target              :: mm3_diag
+  type(field_type), target              :: eye
+  type(field_type), target              :: mmtheta_diag
+  type(operator_type), target           :: mm_w0
+  type(operator_type), target           :: mm_w1
+  type(operator_type), target           :: mm_w2
+  type(operator_type), target           :: mm_w3
+  type(operator_type), target           :: mm_w3_inv
+  type(operator_type), target           :: mm_wtheta
+  type(field_type), target              :: geopotential
+  type(field_type), pointer             :: coords(:)
+  type(field_type), target              :: temp_w2_field
+  type(field_type), target              :: cell_orientation
+  type(field_type), target              :: detj_at_w2
+  type(operator_type), target           :: grad, curl, div
+  type( quadrature_xyoz_type ),target   :: qr
+  type( quadrature_rule_gaussian_type ) :: quadrature_rule
+  type(field_type), target              :: m0_lumped_inv
+  type(field_type), target              :: m1_lumped_inv
+  type(field_type), target              :: mt_lumped_inv
+  type(field_type), target              :: height_wth, height_w3
+  type(field_type), target              :: nodal_rmultiplicity_w1
+  type(field_type), target              :: nodal_rmultiplicity_w2
+  type(field_type), target              :: nodal_rmultiplicity_w2h
+  type(field_type), target              :: nodal_rmultiplicity_w0
 
   ! Enumerated types
   integer(i_def), parameter, public :: w0_id    = 0_i_def
@@ -164,8 +166,7 @@ contains
     wth_k0_fs => function_space_collection%get_fs( mesh_id,             0, Wtheta )
 
     !================= Create quadrature object =====================!
-
-    qr = quadrature_type(element_order+3, GAUSSIAN)
+    qr = quadrature_xyoz_type(element_order+3, quadrature_rule)
 
     !=================== Create geopotential field ============================!
 
@@ -496,7 +497,7 @@ contains
   !> @return The quadrature object
   function get_qr() result(qr_obj)
 
-    type(quadrature_type), pointer :: qr_obj
+    type(quadrature_xyoz_type), pointer :: qr_obj
     qr_obj => qr
 
   end function get_qr

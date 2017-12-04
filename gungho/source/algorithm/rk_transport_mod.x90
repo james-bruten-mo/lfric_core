@@ -50,7 +50,7 @@ module rk_transport_mod
   ! Derived Types
   use field_mod,                         only: field_type
   use function_space_mod,                only: function_space_type
-  use quadrature_mod,                    only: quadrature_type, GAUSSIAN
+  use quadrature_xyoz_mod,               only: quadrature_xyoz_type
   use operator_mod,                      only: operator_type
 
   ! Algorithms
@@ -184,7 +184,7 @@ contains
     type( field_type ), intent( inout ) :: u, rho, theta
 
     ! The quadrature object
-    type( quadrature_type )          :: qr
+    type( quadrature_xyoz_type )          :: qr
     ! Coordinate fields
     type( field_type ), pointer :: chi(:) => null()
 
