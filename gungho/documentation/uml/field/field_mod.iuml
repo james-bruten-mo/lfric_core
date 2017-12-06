@@ -24,7 +24,6 @@ class field_mod::field_type {
   +log_minmax( <<in>>log_level: integer, <<in>>label: string )
   +which_function_space() : integer
   +which_output_function_space() : integer
-  +write_checksum( <<in>>stream: integer, <<in>>label: string )
   +get_mesh() : mesh_type <<pointer>>
   +get_mesh_id() : integer
   +write_field( <<in>> character: field_name)

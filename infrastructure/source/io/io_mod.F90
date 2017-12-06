@@ -10,7 +10,6 @@
 !-------------------------------------------------------------------------------
 module io_mod
   use constants_mod,                 only: i_def, r_def, dp_xios, str_max_filename, PI
-  use output_config_mod,             only: diag_stem_name
   use field_mod,                     only: field_type, field_proxy_type
   use finite_element_config_mod,     only: element_order
   use base_mesh_config_mod,          only: geometry, &

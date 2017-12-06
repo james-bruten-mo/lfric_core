@@ -80,12 +80,6 @@ contains
 
     implicit none
 
-    integer(i_def), intent(out) :: cell_next( nfaces, ncells_3d )
-    integer(i_def), intent(out) :: vert_on_cell( nverts, ncells_3d )
-    real(r_def),    intent(out) :: vertex_coords( 3, nverts_3d )
-    integer(i_def), intent(in)  :: cell_next_2d ( nedges_per_2d_cell, ncells_2d)
-    integer(i_def), intent(in)  :: vert_on_cell_2d(nverts_per_2d_cell,ncells_2d)
-    real(r_def),    intent(in)  :: vertex_coords_2d( 3, nverts_2d )
     integer(i_def), intent(in)  :: nverts_per_2d_cell
     integer(i_def), intent(in)  :: nedges_per_2d_cell
     integer(i_def), intent(in)  :: nverts_2d
@@ -93,7 +87,13 @@ contains
     integer(i_def), intent(in)  :: ncells_2d
     integer(i_def), intent(in)  :: ncells_3d
     integer(i_def), intent(in)  :: nlayers
+    integer(i_def), intent(in)  :: cell_next_2d ( nedges_per_2d_cell, ncells_2d)
+    integer(i_def), intent(in)  :: vert_on_cell_2d(nverts_per_2d_cell,ncells_2d)
+    real(r_def),    intent(in)  :: vertex_coords_2d( 3, nverts_2d )
     real(r_def),    intent(in)  :: dz( nlayers )
+    integer(i_def), intent(out) :: cell_next( nfaces, ncells_3d )
+    integer(i_def), intent(out) :: vert_on_cell( nverts, ncells_3d )
+    real(r_def),    intent(out) :: vertex_coords( 3, nverts_3d )
 
     ! Loop indices
     integer(i_def) :: i, j, k, id, jd, iedge, ivert, base_id
