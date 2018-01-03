@@ -17,7 +17,7 @@ use argument_mod,            only : arg_type, func_type,           &
                                     ANY_SPACE_9, W2,               &
                                     GH_BASIS, GH_DIFF_BASIS,       &
                                     CELLS, GH_QUADRATURE_XYoZ,     &
-                                    QUADRATURE_XYoZ, GH_REAL
+                                    GH_REAL
 use constants_mod,           only : r_def, PI
 use kernel_mod,              only : kernel_type
 use initial_wind_config_mod, only : profile, sbr_angle_lat, sbr_angle_lon, u0, v0
@@ -41,8 +41,6 @@ type, public, extends(kernel_type) :: initial_u_kernel_type
        /)
   integer :: iterates_over = CELLS
   integer :: gh_shape = GH_QUADRATURE_XYoZ
-  ! gh_shape replaces evaluator_shape and will be removed by #1066
-  integer :: evaluator_shape = QUADRATURE_XYoZ
 contains
   procedure, public, nopass :: initial_u_code
 end type

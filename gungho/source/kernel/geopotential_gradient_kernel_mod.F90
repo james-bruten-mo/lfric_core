@@ -29,8 +29,7 @@ use kernel_mod,              only : kernel_type
 use argument_mod,            only : arg_type, func_type,                 &
                                     GH_FIELD, GH_READ, GH_INC,           &
                                     W0, W2,GH_BASIS, GH_DIFF_BASIS,      &
-                                    CELLS, GH_QUADRATURE_XYoZ,           &
-                                    QUADRATURE_XYoZ 
+                                    CELLS, GH_QUADRATURE_XYoZ
 use constants_mod,           only : r_def
 
 implicit none
@@ -51,8 +50,6 @@ type, public, extends(kernel_type) :: geopotential_gradient_kernel_type
        /)
   integer :: iterates_over = CELLS
   integer :: gh_shape = GH_QUADRATURE_XYoZ
-  ! gh_shape replaces evaluator_shape and will be removed by #1066
-  integer :: evaluator_shape = QUADRATURE_XYoZ
 contains
   procedure, nopass ::geopotential_gradient_code
 end type

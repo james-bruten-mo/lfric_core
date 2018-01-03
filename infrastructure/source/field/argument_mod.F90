@@ -78,12 +78,13 @@ module argument_mod
   integer, public, parameter :: ALL_DOFS  = 402
 
 ! Quadrature metadata
-  integer, public, parameter :: QUADRATURE_XYZ      = 501
-  integer, public, parameter :: QUADRATURE_XYoZ     = 502
-  integer, public, parameter :: QUADRATURE_XoYoZ    = 503
-  integer, public, parameter :: GH_QUADRATURE_XYZ   = 504
-  integer, public, parameter :: GH_QUADRATURE_XYoZ  = 505
-  integer, public, parameter :: GH_QUADRATURE_XoYoZ = 506
+  integer, public, parameter :: GH_QUADRATURE_XYZ   = 501
+  integer, public, parameter :: GH_QUADRATURE_XYoZ  = 502
+  integer, public, parameter :: GH_QUADRATURE_XoYoZ = 503
+
+! Evaluator metadata
+  integer, public, parameter :: GH_EVALUATOR        = 504
+
 
 ! Stencil metadata
   integer, public, parameter               :: XORY1D = 1
@@ -91,9 +92,6 @@ module argument_mod
   integer, public, parameter               :: Y1D    = 3
   integer, public, parameter               :: CROSS  = 4
   integer, public, parameter, dimension(4) :: STENCIL = -1
-! Evaluator metadata
-  integer, public, parameter :: EVALUATOR           = 507
-  integer, public, parameter :: GH_EVALUATOR        = 508
 
 ! Metadata argument type 
   type, public :: arg_type

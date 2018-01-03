@@ -22,7 +22,7 @@ module ru_bd_kernel_mod
     GH_FIELD, GH_READ, GH_INC,                                              &
     W2, W3, Wtheta, GH_BASIS,                                               &
     GH_DIFF_BASIS, CELLS,                                                   &
-    GH_QUADRATURE_XYoZ, QUADRATURE_XYoZ
+    GH_QUADRATURE_XYoZ
   use constants_mod,            only : r_def, i_def
   use cross_product_mod,        only : cross_product
   use planet_config_mod,        only : cp
@@ -49,8 +49,6 @@ module ru_bd_kernel_mod
       /)
     integer :: iterates_over = CELLS
     integer :: gh_shape = GH_QUADRATURE_XYoZ
-    ! gh_shape replaces evaluator_shape and will be removed by #1066
-    integer :: evaluator_shape = QUADRATURE_XYoZ
   contains
     procedure, nopass ::ru_bd_code
   end type

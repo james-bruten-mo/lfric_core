@@ -18,7 +18,7 @@ use argument_mod,            only : arg_type, func_type,                     &
                                     GH_FIELD, GH_READ, GH_INC,               &
                                     W0, W2, ANY_SPACE_1,                     &
                                     GH_BASIS, GH_DIFF_BASIS,                 &
-                                    CELLS, GH_EVALUATOR, EVALUATOR
+                                    CELLS, GH_EVALUATOR
 use constants_mod,           only : r_def
 
 implicit none
@@ -39,8 +39,6 @@ type, public, extends(kernel_type) :: sample_flux_kernel_type
        func_type(ANY_SPACE_1, GH_BASIS)                                &
        /)
   integer :: iterates_over = CELLS
-  integer :: evaluator_shape = EVALUATOR
-  ! gh_shape replaces evaluator_shape and will be removed by #1066
   integer :: gh_shape = GH_EVALUATOR
 contains
   procedure, nopass ::sample_flux_code

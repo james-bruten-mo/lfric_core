@@ -15,7 +15,7 @@ use argument_mod,               only : arg_type, func_type,            &
                                        ANY_SPACE_9, W3,                &
                                        GH_BASIS, GH_DIFF_BASIS,        &
                                        CELLS, GH_QUADRATURE_XYoZ,      &
-                                       GH_REAL, QUADRATURE_XYoZ
+                                       GH_REAL
 use constants_mod,              only : r_def
 use idealised_config_mod,       only : test
 use kernel_mod,                 only : kernel_type
@@ -39,8 +39,6 @@ type, public, extends(kernel_type) :: set_rho_kernel_type
        /)
   integer :: iterates_over = CELLS
   integer :: gh_shape = GH_QUADRATURE_XYoZ
-  ! gh_shape replaces evaluator_shape and will be removed by #1066
-  integer :: evaluator_shape = QUADRATURE_XYoZ
 contains
   procedure, nopass ::set_rho_code
 end type

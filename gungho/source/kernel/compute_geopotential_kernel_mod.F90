@@ -16,7 +16,7 @@ module compute_geopotential_kernel_mod
 use argument_mod,           only : arg_type, func_type,                      &
                                    GH_FIELD, GH_READ, GH_WRITE,              &
                                    W0, ANY_SPACE_9, GH_BASIS,                &
-                                   CELLS, GH_EVALUATOR, EVALUATOR
+                                   CELLS, GH_EVALUATOR
 use base_mesh_config_mod,   only : geometry, &
                                    base_mesh_geometry_spherical
 use constants_mod,          only : r_def
@@ -41,8 +41,6 @@ type, public, extends(kernel_type) :: compute_geopotential_kernel_type
        /)
   integer :: iterates_over = CELLS
   integer :: gh_shape = GH_EVALUATOR
-  ! gh_shape replaces evaluator_shape and will be removed by #1066
-  integer :: evaluator_shape = EVALUATOR
 contains
   procedure, nopass :: compute_geopotential_code
 end type

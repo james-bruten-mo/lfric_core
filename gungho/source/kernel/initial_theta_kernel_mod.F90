@@ -17,7 +17,7 @@ module initial_theta_kernel_mod
         GH_FIELD, GH_WRITE, GH_READ,                    &
         ANY_SPACE_9, ANY_SPACE_1, GH_BASIS,             &
         GH_DIFF_BASIS,                                  &
-        CELLS, GH_EVALUATOR, EVALUATOR
+        CELLS, GH_EVALUATOR
     use constants_mod,                 only: r_def, i_def
     use kernel_mod,                    only: kernel_type
     use idealised_config_mod,          only: test
@@ -39,8 +39,6 @@ module initial_theta_kernel_mod
              /)
         integer :: iterates_over = CELLS
         integer :: gh_shape = GH_EVALUATOR
-        ! gh_shape replaces evaluator_shape and will be removed by #1066
-        integer :: evaluator_shape = EVALUATOR
     contains
         procedure, nopass :: initial_theta_code
     end type

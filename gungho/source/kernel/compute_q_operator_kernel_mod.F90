@@ -13,8 +13,7 @@ use argument_mod,              only: arg_type, func_type,            &
                                      GH_READ, GH_WRITE,              &
                                      W2, ANY_SPACE_1,                &
                                      GH_BASIS,                       &
-                                     CELLS, GH_QUADRATURE_XYoZ,      &
-                                     QUADRATURE_XYoZ
+                                     CELLS, GH_QUADRATURE_XYoZ
 use constants_mod,             only: r_def, i_def
 use kernel_mod,                only: kernel_type
 
@@ -38,8 +37,6 @@ type, public, extends(kernel_type) :: compute_q_operator_type
        /)
   integer :: iterates_over = CELLS
   integer :: gh_shape = GH_QUADRATURE_XYoZ
-  ! gh_shape replaces evaluator_shape and will be removed by #1066
-  integer :: evaluator_shape = QUADRATURE_XYoZ
 contains
   procedure, nopass :: compute_q_operator_code
 end type

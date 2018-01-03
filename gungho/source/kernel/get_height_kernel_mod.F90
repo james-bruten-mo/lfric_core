@@ -16,7 +16,7 @@ use argument_mod,             only: arg_type, func_type,                 &
                                     GH_FIELD, GH_WRITE, GH_READ, GH_INC, &
                                     W0, W2, W3, ANY_SPACE_9,             &
                                     GH_BASIS,                            &
-                                    CELLS, GH_EVALUATOR, EVALUATOR
+                                    CELLS, GH_EVALUATOR
 
 use constants_mod,            only: r_def
 use base_mesh_config_mod,     only: geometry,                            &
@@ -41,8 +41,6 @@ type, public, extends(kernel_type) :: get_height_kernel_type
        /)
   integer :: iterates_over = CELLS
   integer :: gh_shape = GH_EVALUATOR
-  ! gh_shape replaces evaluator_shape and will be removed by #1066
-  integer :: evaluator_shape = EVALUATOR
 contains
   procedure, nopass :: get_height_code
 end type

@@ -22,8 +22,7 @@ use argument_mod,  only : arg_type, func_type,                  &
                           GH_FIELD, GH_WRITE, GH_READ,          &
                           W2, Wtheta, ANY_SPACE_1,              &
                           GH_BASIS, GH_DIFF_BASIS, CELLS,       &
-                          GH_EVALUATOR, EVALUATOR
-
+                          GH_EVALUATOR
 use constants_mod,         only: r_def, i_def
 use kernel_mod,            only: kernel_type
 use reference_element_mod, only: W, E, N, S
@@ -59,8 +58,6 @@ type, public, extends(kernel_type) :: sample_poly_adv_kernel_type
        /)
   integer :: iterates_over = CELLS
   integer :: gh_shape = GH_EVALUATOR
-  ! gh_shape replaces evaluator_shape and will be removed by #1066
-  integer :: evaluator_shape = EVALUATOR
 contains
   procedure, nopass ::sample_poly_adv_code
 end type

@@ -12,7 +12,7 @@ use kernel_mod,              only : kernel_type
 use argument_mod,            only : arg_type, func_type,                     &
                                     GH_FIELD, GH_READ, GH_WRITE,             &
                                     W0, W2, GH_DIFF_BASIS,                   &
-                                    CELLS, EVALUATOR, GH_EVALUATOR
+                                    CELLS, GH_EVALUATOR
 use constants_mod,           only : r_def
 
 implicit none
@@ -32,8 +32,6 @@ type, public, extends(kernel_type) :: calc_detj_at_w2_kernel_type
        /)
   integer :: iterates_over = CELLS
   integer :: gh_shape = GH_EVALUATOR
-  ! gungho_shape replaces evaluator_shape and will be removed by #1066
-  integer :: evaluator_shape = EVALUATOR
 contains
   procedure, nopass ::calc_detj_at_w2_code
 end type

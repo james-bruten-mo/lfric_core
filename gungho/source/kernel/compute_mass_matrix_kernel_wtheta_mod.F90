@@ -16,7 +16,7 @@ use argument_mod,              only: arg_type, func_type,                      &
                                      GH_OPERATOR, GH_FIELD, GH_READ, GH_WRITE, &
                                      ANY_SPACE_1, Wtheta,                      &
                                      GH_BASIS, GH_DIFF_BASIS,                  &
-                                     CELLS, GH_QUADRATURE_XYoZ, QUADRATURE_XYoZ
+                                     CELLS, GH_QUADRATURE_XYoZ
 use coordinate_jacobian_mod,   only: coordinate_jacobian
 use constants_mod,             only: r_def
 use kernel_mod,                only: kernel_type
@@ -38,8 +38,6 @@ type, public, extends(kernel_type) :: compute_mass_matrix_kernel_wtheta_type
        /)
   integer :: iterates_over = CELLS
   integer :: gh_shape = GH_QUADRATURE_XYoZ
-  ! gh_shape replaces evaluator_shape and will be removed by #1066
-  integer :: evaluator_shape = QUADRATURE_XYoZ
 contains
   procedure, nopass :: compute_mass_matrix_wtheta_code
 end type compute_mass_matrix_kernel_wtheta_type

@@ -19,7 +19,6 @@ use argument_mod,            only : arg_type, func_type,                     &
                                     ANY_SPACE_9, ANY_SPACE_1,                &
                                     GH_BASIS,                                &
                                     CELLS,                                   &
-                                    EVALUATOR,                               &
                                     GH_EVALUATOR
 use constants_mod,           only : r_def
 
@@ -40,8 +39,6 @@ type, public, extends(kernel_type) :: nodal_coordinates_kernel_type
        /)
   integer :: iterates_over = CELLS
   integer :: gh_shape = GH_EVALUATOR
-  ! gh_shape replaces evaluator_shape and will be removed by #1066
-  integer :: evaluator_shape = EVALUATOR
 contains
   procedure, nopass ::nodal_coordinates_code
 end type
