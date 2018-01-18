@@ -93,7 +93,7 @@ contains
     real(r_def)      :: psi, analytic_psi
     real(r_def)      :: A, B, C, tau1, intt
 
-    real(r_def), parameter :: tol = 1.0e-14
+    real(r_def), parameter :: tol = 1.0e-13
 
     llr = (/ pi/9.0_r_def, 2.0*pi/9.0_r_def, scaled_radius/)
     call deep_baroclinic_wave(llr(1), llr(2), 0.0_r_def, &
