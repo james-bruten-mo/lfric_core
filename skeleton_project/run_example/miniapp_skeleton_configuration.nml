@@ -35,6 +35,9 @@ radius=6371229.0,
 rd=287.05,
 scaling_factor=125.0,
 /
+&restart
+  filename = 'skeleton_restart.nml'
+/
 &partitioning
 auto=.true.,
 /

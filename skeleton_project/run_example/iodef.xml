@@ -15,6 +15,11 @@
       <domain id="node" name="Mesh2d" nvertex="1"/>
       <domain id="face_half_levels" name="Mesh2d_half_levels" nvertex="4"/>
       <domain id="face_full_levels" name="Mesh2d_full_levels" nvertex="4"/>
+      <domain id="restart_100" name="restart_100" nvertex="1"/>
+      <domain id="restart_101" name="restart_101" nvertex="1"/>
+      <domain id="restart_102" name="restart_102" nvertex="1"/>
+      <domain id="restart_103" name="restart_103" nvertex="1"/>
+      <domain id="restart_104" name="restart_104" nvertex="1"/>
    </domain_definition>
    
    <grid_definition>
@@ -43,13 +48,20 @@
    <file_definition 
       type="one_file" 
       par_access="collective"
-      time_counter="none"
-      enabled=".TRUE.">
+      time_counter="none">
       
-      
-      <file id="skeleton_field" name="skeleton_field" output_freq="1ts" convention="UGRID">
-        <field field_ref="skeleton_field"/>
+      <!-- File definition for checkpoint write -->
+      <file id="lfric_checkpoint" name="lfric_checkpoint" output_freq="1ts" convention="CF" enabled=".FALSE.">
       </file> 
+      
+     <!-- file definition for restart read -->
+      <file id="lfric_restart" name="lfric_checkpoint" mode="read" output_freq="1ts" cyclic="true" enabled=".FALSE.">
+      </file>
+      
+      
+     <file id="lfric_diag" name="skeleton_diag" output_freq="1ts" convention="UGRID" enabled=".TRUE.">
+       <field field_ref="skeleton_field"/>
+     </file> 
       
    
  

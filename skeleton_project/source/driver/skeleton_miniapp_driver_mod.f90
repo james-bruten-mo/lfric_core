@@ -28,6 +28,8 @@ module skeleton_miniapp_driver_mod
                                              LOG_LEVEL_INFO
   use output_config_mod,              only : write_nodal_output, &
                                              write_xios_output
+  use restart_config_mod,             only : restart_filename => filename
+  use restart_control_mod,            only : restart_type
   use io_mod,                         only : output_nodal, &
                                              output_xios_nodal, &
                                              xios_domain_init
@@ -41,6 +43,8 @@ module skeleton_miniapp_driver_mod
 
   private
   public initialise, run, finalise
+
+  type(restart_type) :: restart
 
   ! Prognostic fields
   type( field_type ) :: field_1
@@ -105,7 +109,9 @@ contains
 
 
     call load_configuration( filename )
-    call set_derived_config()
+    call set_derived_config( .true. )
+
+    restart = restart_type( restart_filename, local_rank, total_ranks )
 
     !-------------------------------------------------------------------------
     ! Model init
@@ -131,14 +137,17 @@ contains
     ! IO init
     !-------------------------------------------------------------------------
 
-    ! If xios output then set up XIOS domain and context
-    if (write_xios_output) then
+    ! If using XIOS for diagnostic output or checkpointing, then set up
+    ! XIOS domain and context
+
+    if ( (write_xios_output) .or. (restart%use_xios()) ) then
 
       dtime = 1
 
       call xios_domain_init( xios_ctx,   &
                              comm,       &
                              dtime,      &
+                             restart,    &
                              mesh_id,    &
                              chi,        &
                              vm,         &
@@ -206,8 +215,8 @@ contains
     ! Driver layer finalise
     !-------------------------------------------------------------------------
 
-    ! Finalise XIOS context if we used it for IO
-    if (write_xios_output) then
+   ! Finalise XIOS context if we used it for diagnostic output or checkpointing
+    if ( (write_xios_output) .or. (restart%use_xios()) ) then
       call xios_context_finalize()
     end if
 

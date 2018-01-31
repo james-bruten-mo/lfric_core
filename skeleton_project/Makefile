@@ -6,6 +6,8 @@
 
 PROJECT_NAME = skeleton
 
+PROFILE ?= fast-debug
+
 export IGNORE_DEPENDENCIES = netcdf MPI ESMF pfunit_mod planet_constants_mod xios mod_wait
 export EXTERNAL_DYNAMIC_LIBRARIES = esmf netcdff netcdf hdf5
 export EXTERNAL_STATIC_LIBRARIES = xios
@@ -36,6 +38,9 @@ documentation doc docs: document-uml document-latex document-api
 	$(Q)echo > /dev/null
 
 include $(ROOT_DIR)/infrastructure/build/lfric.mk
+
+export FFLAGS  := $(FFLAGS) $(OPENMP_ARG)
+export LDFLAGS := $(LDFLAGS) $(OPENMP_ARG)
 
 ##############################################################################
 
@@ -146,7 +151,7 @@ unit-tests: export IGNORE_DEPENDENCIES       += pfunit_mod
 unit-tests: export EXTERNAL_STATIC_LIBRARIES += pfunit
 unit-tests: export FFLAGS      += $(FFLAGS_DEBUG) $(FFLAGS_NO_OPTIMISATION) $(FFLAGS_INIT)
 unit-tests: export PRE_PROCESS_MACROS = \
-                                 PFUNIT_EXTRA_USAGE=gungho_suite_fixture_mod \
+                                 PFUNIT_EXTRA_USAGE=skeleton_suite_fixture_mod \
                                  PFUNIT_EXTRA_INITIALIZE=set_up_suite \
                                  PFUNIT_EXTRA_FINALIZE=tear_down_suite
 unit-tests:run-unit-tests
@@ -155,7 +160,8 @@ unit-tests:run-unit-tests
 .PHONY: generate-unit-tests
 generate-unit-tests: extract-unit-tests
 	$(MAKE) -C $(LFRIC_INFRASTRUCTURE) extract WORKING_DIR=$(realpath $(WORKING_DIR))
-	$(MAKE) extract
+	$(MAKE) extract WITHOUT_PROGRAMS=1
+	$(MAKE) extract-gungho
 	$(MAKE) generate-configuration
 	$(MAKE) generate-psykal
 	$(MAKE) pfunit
