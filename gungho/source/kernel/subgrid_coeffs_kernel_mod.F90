@@ -124,8 +124,9 @@ subroutine subgrid_coeffs_code(                                               &
   real(kind=r_def)               :: coeffs(1:3)
   real(kind=r_def)               :: rho_local(1:stencil_length)
 
-  integer :: k, ii
-  integer :: stencil_ordering(1:stencil_length)
+  integer(i_def) :: k, ii
+  integer(i_def) :: stencil_ordering(1:stencil_length)
+  integer(i_def) :: int_cell_orientation
 
   logical :: positive,monotone
 
@@ -133,8 +134,10 @@ subroutine subgrid_coeffs_code(                                               &
   ! (/ 4, 2, 1, 3, 5 /) or (/ 5, 3, 1, 2, 4 /) depending on the cell orientation and
   ! direction (x or y)
 
-  if (cell_orientation(stencil_map(1,1)) > 0_i_def .and. cell_orientation(stencil_map(1,1)) < 5_i_def) then
-    call stencil_ordering_and_orientation(stencil_length,int(cell_orientation(stencil_map(1,1)),i_def),direction,stencil_ordering)
+  int_cell_orientation = int(cell_orientation(stencil_map(1,1)),i_def)
+
+  if (int_cell_orientation > 0_i_def .and. int_cell_orientation < 5_i_def) then
+    call stencil_ordering_and_orientation(stencil_length,int_cell_orientation,direction,stencil_ordering)
 
 
     do k=0,nlayers-1
@@ -178,8 +181,7 @@ subroutine subgrid_coeffs_code(                                               &
       end select
 
     end do
-  else
-    call log_event( "Cell orientation not assigned in subgrid_coeffs", LOG_LEVEL_INFO )
+
   end if
 
 

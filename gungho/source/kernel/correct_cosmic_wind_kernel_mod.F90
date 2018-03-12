@@ -12,7 +12,7 @@ use kernel_mod,              only : kernel_type
 use argument_mod,            only : arg_type, func_type,                     &
                                     GH_FIELD, GH_READ, GH_WRITE,             &
                                     W3, W2, CELLS
-use constants_mod,           only : r_def
+use constants_mod,           only : r_def, i_def
 use cosmic_flux_mod,         only : dof_to_update
 
 implicit none
@@ -95,16 +95,19 @@ end function correct_cosmic_wind_kernel_constructor
 
     !Internal variables
     integer          :: df, k, local_dofs_x(1:2), local_dofs_y(1:2)
+    integer(i_def)   :: int_orientation
 
-    if (orientation(map_w3(1)) < 4.5_r_def) then
+    int_orientation = int(orientation(map_w3(1)),i_def)
 
-      local_dofs_x = dof_to_update(int(orientation(map_w3(1))),x_direction)
-      local_dofs_y = dof_to_update(int(orientation(map_w3(1))),y_direction)
+    if (int_orientation > 0_i_def .and. int_orientation < 5_i_def) then
+
+      local_dofs_x = dof_to_update(int_orientation,x_direction)
+      local_dofs_y = dof_to_update(int_orientation,y_direction)
 
       do k = 0, nlayers-1
 
           if (direction == x_direction ) then
-            if (int(orientation(map_w3(1))+k) == 3 .or. int(orientation(map_w3(1))+k) == 2) then
+            if (int_orientation == 3 .or. int_orientation == 2) then
               wind_out(map_w2(local_dofs_x(1)) + k) = -1.0_r_def*wind_in(map_w2(local_dofs_x(1)) + k)
               wind_out(map_w2(local_dofs_x(2)) + k) = -1.0_r_def*wind_in(map_w2(local_dofs_x(2)) + k)
             else
@@ -112,7 +115,7 @@ end function correct_cosmic_wind_kernel_constructor
               wind_out(map_w2(local_dofs_x(2)) + k) = wind_in(map_w2(local_dofs_x(2)) + k)
             end if
           elseif (direction == y_direction) then
-            if (int(orientation(map_w3(1))+k) == 3 .or. int(orientation(map_w3(1))+k) == 4) then
+            if (int_orientation == 3 .or. int_orientation == 4) then
               wind_out(map_w2(local_dofs_y(1)) + k) = -1.0_r_def*wind_in(map_w2(local_dofs_y(1)) + k)
               wind_out(map_w2(local_dofs_y(2)) + k) = -1.0_r_def*wind_in(map_w2(local_dofs_y(2)) + k)
             else

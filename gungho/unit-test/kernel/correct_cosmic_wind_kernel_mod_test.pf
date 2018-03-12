@@ -25,18 +25,18 @@ module correct_cosmic_wind_kernel_mod_test
     real(kind=r_def), allocatable :: wind_in(:), wind_out(:)
 
     integer(i_def) :: map_w3(1)
-    integer(i_def) :: map_w2(1:4)
+    integer(i_def) :: map_w2(1:6)
   contains
     procedure setUp
     procedure tearDown
     procedure test_all
   end type correct_cosmic_wind_test_type
 
-    integer(i_def), parameter :: nlayers = 1
-    integer(i_def), parameter :: ndf_w2  = 4
-    integer(i_def), parameter :: undf_w2 = 4
+    integer(i_def), parameter :: nlayers = 2
+    integer(i_def), parameter :: ndf_w2  = 6
+    integer(i_def), parameter :: undf_w2 = 11
     integer(i_def), parameter :: ndf_w3  = 1
-    integer(i_def), parameter :: undf_w3 = 1
+    integer(i_def), parameter :: undf_w3 = 2
 
 contains
 
@@ -50,11 +50,11 @@ contains
     integer :: ii
 
     this%map_w3 = 1
-    this%map_w2 = (/ 1,2,3,4 /)
+    this%map_w2 = (/ 1,3,5,7,9,10 /)
 
-    allocate( this%orientation(1) )
-    allocate( this%wind_in(1:4) )
-    allocate( this%wind_out(1:4) )
+    allocate( this%orientation(undf_w3) )
+    allocate( this%wind_in(undf_w2) )
+    allocate( this%wind_out(undf_w2) )
 
   end subroutine setUp
 
@@ -83,10 +83,12 @@ contains
     class(correct_cosmic_wind_test_type), intent(inout) :: this
 
     real(r_def), parameter :: tol    = 1.0e-6_r_def
-    integer(i_def) :: map_w2(1:4)
 
-    this%wind_out(1:4) = (/ -99.0_r_def,-99.0_r_def,-99.0_r_def,-99.0_r_def /)
-    this%wind_in(1:4) = (/ 101.0_r_def,102.0_r_def,103.0_r_def,104.0_r_def /)
+    this%wind_in(1:11) = (/ 101.0_r_def,102.0_r_def,  & ! "west"  face at level 0 and 1
+                            103.0_r_def,104.0_r_def,  & ! "south" face at level 0 and 1
+                            105.0_r_def,106.0_r_def,  & ! "east"  face at level 0 and 1
+                            107.0_r_def,108.0_r_def,  & ! "north" face at level 0 and 1
+                            109.0_r_def,110.0_r_def,111.0_r_def /) ! vertical faces
 
     ! Test for cell orientation=1 in x_direction
 
@@ -102,8 +104,12 @@ contains
                                    ndf_w3,                       &
                                    this%map_w3,                  &
                                    x_direction )
+    ! Level 0 and 1 "west" faces
     @assertEqual( this%wind_out(1), this%wind_in(1), tol)
-    @assertEqual( this%wind_out(3), this%wind_in(3), tol)
+    @assertEqual( this%wind_out(2), this%wind_in(2), tol)
+    ! Level 0 and 1 "east" faces
+    @assertEqual( this%wind_out(5), this%wind_in(5), tol)
+    @assertEqual( this%wind_out(6), this%wind_in(6), tol)
 
 
     ! Test for cell orientation=2 in x_direction
@@ -121,8 +127,12 @@ contains
                                    ndf_w3,                       &
                                    this%map_w3,                  &
                                    x_direction )
-    @assertEqual( -this%wind_out(2), this%wind_in(2), tol)
+    ! Level 0 and 1 "south" faces
+    @assertEqual( -this%wind_out(3), this%wind_in(3), tol)
     @assertEqual( -this%wind_out(4), this%wind_in(4), tol)
+    ! Level 0 and 1 "north" faces
+    @assertEqual( -this%wind_out(7), this%wind_in(7), tol)
+    @assertEqual( -this%wind_out(8), this%wind_in(8), tol)
 
 
     ! Test for cell orientation=3 in x_direction
@@ -141,12 +151,14 @@ contains
                                    this%map_w3,                  &
                                    x_direction )
     @assertEqual( -this%wind_out(1), this%wind_in(1), tol)
-    @assertEqual( -this%wind_out(3), this%wind_in(3), tol)
+    @assertEqual( -this%wind_out(2), this%wind_in(2), tol)
+    @assertEqual( -this%wind_out(5), this%wind_in(5), tol)
+    @assertEqual( -this%wind_out(6), this%wind_in(6), tol)
 
 
     ! Test for cell orientation=4 in x_direction
 
-    this%wind_out(1:4) = (/ -99.0_r_def,-99.0_r_def,-99.0_r_def,-99.0_r_def /)
+
     this%orientation(1) = 4.0_r_def
     call correct_cosmic_wind_code( nlayers,                      &
                                    this%wind_out,                &
@@ -159,13 +171,14 @@ contains
                                    ndf_w3,                       &
                                    this%map_w3,                  &
                                    x_direction )
-    @assertEqual( this%wind_out(2), this%wind_in(2), tol)
+    @assertEqual( this%wind_out(3), this%wind_in(3), tol)
     @assertEqual( this%wind_out(4), this%wind_in(4), tol)
+    @assertEqual( this%wind_out(7), this%wind_in(7), tol)
+    @assertEqual( this%wind_out(8), this%wind_in(8), tol)
 
 
     ! Test for cell orientation=1 in y_direction
 
-    this%wind_out(1:4) = (/ -99.0_r_def,-99.0_r_def,-99.0_r_def,-99.0_r_def /)
     this%orientation(1) = 1.0_r_def
     call correct_cosmic_wind_code( nlayers,                      &
                                    this%wind_out,                &
@@ -178,13 +191,14 @@ contains
                                    ndf_w3,                       &
                                    this%map_w3,                  &
                                    y_direction )
-    @assertEqual( this%wind_out(2), this%wind_in(2), tol)
+    @assertEqual( this%wind_out(3), this%wind_in(3), tol)
     @assertEqual( this%wind_out(4), this%wind_in(4), tol)
+    @assertEqual( this%wind_out(7), this%wind_in(7), tol)
+    @assertEqual( this%wind_out(8), this%wind_in(8), tol)
 
 
     ! Test for cell orientation=2 in y_direction
 
-    this%wind_out(1:4) = (/ -99.0_r_def,-99.0_r_def,-99.0_r_def,-99.0_r_def /)
     this%orientation(1) = 2.0_r_def
     call correct_cosmic_wind_code( nlayers,                      &
                                    this%wind_out,                &
@@ -198,12 +212,13 @@ contains
                                    this%map_w3,                  &
                                    y_direction )
     @assertEqual( this%wind_out(1), this%wind_in(1), tol)
-    @assertEqual( this%wind_out(3), this%wind_in(3), tol)
+    @assertEqual( this%wind_out(2), this%wind_in(2), tol)
+    @assertEqual( this%wind_out(5), this%wind_in(5), tol)
+    @assertEqual( this%wind_out(6), this%wind_in(6), tol)
 
 
     ! Test for cell orientation=3 in y_direction
 
-    this%wind_out(1:4) = (/ -99.0_r_def,-99.0_r_def,-99.0_r_def,-99.0_r_def /)
     this%orientation(1) = 3.0_r_def
     call correct_cosmic_wind_code( nlayers,                      &
                                    this%wind_out,                &
@@ -216,13 +231,14 @@ contains
                                    ndf_w3,                       &
                                    this%map_w3,                  &
                                    y_direction )
-    @assertEqual( -this%wind_out(2), this%wind_in(2), tol)
+    @assertEqual( -this%wind_out(3), this%wind_in(3), tol)
     @assertEqual( -this%wind_out(4), this%wind_in(4), tol)
+    @assertEqual( -this%wind_out(7), this%wind_in(7), tol)
+    @assertEqual( -this%wind_out(8), this%wind_in(8), tol)
 
 
     ! Test for cell orientation=4 in y_direction
 
-    this%wind_out(1:4) = (/ -99.0_r_def,-99.0_r_def,-99.0_r_def,-99.0_r_def /)
     this%orientation(1) = 4.0_r_def
     call correct_cosmic_wind_code( nlayers,                      &
                                    this%wind_out,                &
@@ -236,7 +252,9 @@ contains
                                    this%map_w3,                  &
                                    y_direction )
     @assertEqual( -this%wind_out(1), this%wind_in(1), tol)
-    @assertEqual( -this%wind_out(3), this%wind_in(3), tol)
+    @assertEqual( -this%wind_out(2), this%wind_in(2), tol)
+    @assertEqual( -this%wind_out(5), this%wind_in(5), tol)
+    @assertEqual( -this%wind_out(6), this%wind_in(6), tol)
 
 
   end subroutine test_all
