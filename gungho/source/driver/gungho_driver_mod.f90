@@ -324,7 +324,7 @@ contains
             ! Initialise and output initial conditions on first timestep
             if (timestep == restart%ts_start()) then
               call runge_kutta_init()
-              call iter_alg_init(mesh_id, u, rho, theta, exner, &
+              call iter_alg_init(mesh_id, u, rho, theta, exner, mr, &
                                  tstar_2d, zh_2d, z0msea_2d)
               call conservation_algorithm(timestep, rho, u, theta, exner, xi)
             end if
@@ -431,7 +431,12 @@ contains
     call u%log_field(     LOG_LEVEL_DEBUG, 'u' )
 
     ! Write checksums to file
-    call checksum_alg('gungho', rho, 'rho', theta, 'theta', u, 'u')
+    if (use_moisture)then
+      call checksum_alg('gungho', rho, 'rho', theta, 'theta', u, 'u', &
+         field_bundle=mr, bundle_name='mr')
+    else
+      call checksum_alg('gungho', rho, 'rho', theta, 'theta', u, 'u')
+    end if
 
     ! Write checkpoint files if required
     if( restart%checkpoint() ) then 

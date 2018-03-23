@@ -106,6 +106,7 @@ module iter_timestep_alg_mod
   ! 'State' items private to the algorithm that need to be 
   !  created once but used every step
   type( field_type ), allocatable :: state(:), state_n(:), reference_state(:)
+  type( field_type ), allocatable :: mr_n(:), mr_inc(:)
   type( field_type ), allocatable :: rhs_n(:), rhs_np1(:), rhs_adv(:)
   type( field_type ), allocatable :: rhs_phys(:), inc(:)
   type( field_type ) :: u_adv   ! Advective wind (centered in time)
@@ -129,7 +130,7 @@ contains
   !> @param[inout] tstar_2d   Surface tempature
   !> @param[inout] zh_2d      Boundary layer depth
   !> @param[inout] z0msea_2d  Roughness length
-  subroutine iter_alg_init( mesh_id, u, rho, theta, exner, &
+  subroutine iter_alg_init( mesh_id, u, rho, theta, exner, mr, &
                             tstar_2d, zh_2d, z0msea_2d )
 
     implicit none
@@ -140,6 +141,7 @@ contains
     ! Prognostic fields
     type( field_type ), intent( inout ) :: u, rho, theta, exner, &
                                            tstar_2d, zh_2d, z0msea_2d
+    type( field_type ), intent( inout ) :: mr(nummr)
 
     !--------------------------------------------------------------------
     ! Allocate internal state field arrays
@@ -153,6 +155,10 @@ contains
     allocate(rhs_adv(bundle_size))
     allocate(rhs_phys(bundle_size))
     allocate(inc(bundle_size))
+    if (use_moisture)then
+      allocate(mr_n(nummr))
+      allocate(mr_inc(nummr))
+    end if
 
     !--------------------------------------------------------------------
     ! Initialise internal state field objects
@@ -175,6 +181,11 @@ contains
     call u%copy_field_properties(du)
     call u%copy_field_properties(u_physics)
     call theta%copy_field_properties(w_physics)
+
+    if (use_moisture)then
+      call clone_bundle(mr, mr_n, nummr)
+      call clone_bundle(mr, mr_inc, nummr)
+    end if
 
     !--------------------------------------------------------------------
     ! If held-suarez forcing is not used, then we want the following to be 
@@ -291,7 +302,7 @@ contains
     type(operator_type), pointer :: m3_inv => null()
     type( field_type ), pointer  :: dA => null() ! Areas of faces
 
-    integer(kind=i_def):: outer, inner, iter
+    integer(kind=i_def):: outer, inner, iter, imr
     real(kind=r_def)   :: varalpha, varbeta ! alpha, beta weight to use
                                             ! these may differ from input values
                                             ! during the spinup period
@@ -358,7 +369,10 @@ contains
 
     if (use_wavedynamics) then
 
+      ! Update state_n and mr_n with start of timestep + slow physics values
       call copy_bundle(state, state_n, bundle_size)
+      if (use_moisture)call copy_bundle(mr, mr_n, nummr)
+
       call rhs_alg(rhs_n, varbeta*dt, state_n, .false., .false.)
 
       !============================================================================
@@ -385,7 +399,12 @@ contains
         ! Set advecting velocity & terms
         call invoke( aX_plus_bY(u_adv, varbeta, state_n(igh_u), varalpha, state(igh_u)) )
         call advection_alg(rhs_adv, state_n, xi, u_adv)
-        if ( use_moisture ) call advection_mr_alg(mr, u_adv)
+        if ( use_moisture )then
+          ! Advect mr_n values with latest advecting velocity 
+          call advection_mr_alg(mr_inc, mr_n, u_adv)
+          ! Update latest value for mr
+          call add_bundle(mr_inc, mr_n, mr, nummr)
+        end if
         call bundle_ax(dt, rhs_adv, rhs_adv, bundle_size) 
 
         !============================================================================
@@ -507,6 +526,7 @@ contains
       call invoke( setval_X(theta, state(igh_t)), &
                    setval_X(rho,   state(igh_d)), &
                    setval_X(exner, state(igh_p)) )
+
     else
       !--------------------------------------------------------------------
       ! Return field in theta array only

@@ -380,19 +380,20 @@ contains
 
   !>@details A wrapper algorithm for computing the advection of the moisture 
   !>         prognostic
-  !> @param[inout] advection Field array containing the advective terms
+  !> @param[inout] mr_inc Field array Increment to mixing ratios
   !> @param[in]    mr Field array. Mixing ratios
   !> @param[in]    wind Field array. Winds
-  subroutine advection_mr_alg( mr, wind )
+  subroutine advection_mr_alg( mr_inc, mr, wind )
 
     use matrix_vector_kernel_mod, only: matrix_vector_kernel_type
     implicit none
-    type(field_type), intent(inout),    target  :: mr(nummr)
-    type(field_type), intent(in),       target  :: wind
+    type(field_type), intent(inout), target  :: mr_inc(nummr)
+    type(field_type), intent(in),    target  :: mr(nummr)
+    type(field_type), intent(in),    target  :: wind
 
     type(function_space_type), pointer :: theta_fs  => null()
 
-    type(field_type)          :: mr_inc, mr_adv, mr_n
+    type(field_type)          :: mr_adv, mr_latest
     type(field_type), pointer :: mt_lumped_inv => null()
 
     integer :: imr, stage, st
@@ -402,26 +403,30 @@ contains
 
     theta_fs => mr(1)%get_function_space()
 
-    mr_inc = field_type( vector_space = theta_fs )
     mr_adv = field_type( vector_space = theta_fs )
-    mr_n   = field_type( vector_space = theta_fs )
+    mr_latest = field_type( vector_space = theta_fs )
     do stage = 1,nstage_adv
       mr_prediction(stage) = field_type( vector_space = theta_fs )
     end do
 
     ! Runge-Kutta algorithm
     do imr = 1,nummr
-      call invoke( setval_X(mr_n, mr(imr)) )
+      call invoke( setval_X(mr_latest, mr(imr)) )
       do stage = 1,nstage_adv
-        call advective_inc_alg(mr_prediction(stage), mr(imr), wind)
+        call advective_inc_alg(mr_prediction(stage), mr_latest, wind)
         call invoke( setval_c(mr_adv, 0.0_r_def) )
         do st = 1, stage
           call invoke( inc_X_minus_bY(mr_adv, ak_adv(stage,st), mr_prediction(st)) )
         end do
         ! Use lumped mass matrix     
         mt_lumped_inv => get_inverse_lumped_mass_matrix(theta_space_id)
-        call invoke( X_times_Y(mr_inc, mr_adv, mt_lumped_inv), &         
-                     aX_plus_Y(mr(imr), dt, mr_inc, mr_n) )
+        ! Here we: 
+        !  (1) update mr_inc(imr) to be in strong form by multiplying by inverse MM,
+        !  (2) then make this into an increment by multiplying by dt,
+        !  (3) then update the mr_latest by adding this increment to mr(imr)
+        call invoke( X_times_Y(mr_inc(imr), mr_adv, mt_lumped_inv) , &
+                     inc_a_times_X(dt, mr_inc(imr)),                 &
+                     X_plus_Y(mr_latest, mr_inc(imr), mr(imr)) )
       end do
     end do
     if ( subroutine_timers ) call timer('advection_mr_alg')

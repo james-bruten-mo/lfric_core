@@ -58,7 +58,7 @@
     'run_application( gungho, robert,                 resolutions=[("BiP50x4-20x20",2.5)], env={"crun":3, "nrun":144},
                       plotstr="robert_plot.py $NODAL_DATA_DIR 50 4 theta:w3projection_xi2 T000000:T000288:T000432 $PLOT_DIR")',
     'run_application( gungho, robert-moist,           resolutions=[("BiP50x4-20x20",2.5)], env={"crun":3, "nrun":144}, 
-                      plotstr="robert_plot.py $NODAL_DATA_DIR 50 4 theta:w3projection_xi2 T000000:T000288:T000432 $PLOT_DIR")',
+                      plotstr="robert_plot.py $NODAL_DATA_DIR 50 4 theta:w3projection_xi2:m_v T000000:T000288:T000432 $PLOT_DIR")',
     'run_application( gungho, hs_short,          resolutions=[("C24",600.0,900.0)],
                       env={"crun":3,
                            "nrun":{("C24",600.0):15,
