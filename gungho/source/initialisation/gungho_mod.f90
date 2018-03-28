@@ -34,7 +34,7 @@ contains
   !>
   subroutine load_configuration( filename )
 
-
+    use check_configuration_mod,  only : check_configuration
 
     implicit none
 
@@ -85,7 +85,9 @@ contains
     end if
 
     deallocate( success_map )
-
+    
+    call check_configuration()
+ 
   end subroutine load_configuration
 
 end module gungho_mod
