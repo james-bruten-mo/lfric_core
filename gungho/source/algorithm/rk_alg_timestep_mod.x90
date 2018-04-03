@@ -30,7 +30,8 @@ module rk_alg_timestep_mod
                                        get_inverse_lumped_mass_matrix, &
                                        theta_space_id, &
                                        w3inv_id, &
-                                       get_coordinates 
+                                       get_coordinates, &
+                                       get_coriolis 
   use transport_config_mod,      only: operators, &
                                        transport_operators_fv
   use mixing_config_mod,         only: viscosity
@@ -49,10 +50,10 @@ module rk_alg_timestep_mod
   
   ! PsyKAl PSYClone kernels
   use enforce_bc_kernel_mod,               only: enforce_bc_kernel_type
-  use rotation_kernel_mod,                 only: rotation_kernel_type
   use hydrostatic_kernel_mod,              only: hydrostatic_kernel_type
   use kinetic_energy_gradient_kernel_mod,  only: kinetic_energy_gradient_kernel_type
   use project_pressure_kernel_mod,         only: project_pressure_kernel_type
+  use matrix_vector_kernel_mod,            only: matrix_vector_kernel_type
 
   ! Derived Types
   use field_mod,                         only: field_type
@@ -168,7 +169,8 @@ contains
     type(field_type),    pointer :: mm_lumped_inv_wtheta => null()
     type(field_type),    pointer :: geopotential => null()
     type( field_type ),  pointer :: chi(:) => null()
-    type(operator_type), pointer :: m3_inv => null()
+    type(operator_type), pointer :: m3_inv => null(), &
+                                    coriolis => null()
 
     integer(i_def) :: st, stage
     if ( subroutine_timers ) call timer('rk_alg')
@@ -193,8 +195,11 @@ contains
       call advection_alg( rhs_prediction(:,stage), &
                           state_n, xi, state(igh_u))
       ! Compute new rhs
-      if ( rotating ) &
-        call invoke( rotation_kernel_type( rhs_prediction(igh_u,stage), state(igh_u), chi, qr ) )
+      if ( rotating ) then
+        coriolis => get_coriolis()
+        call invoke( matrix_vector_kernel_type( rhs_prediction(igh_u,stage),   &
+                                                state(igh_u), coriolis ) )
+      end if
       call invoke_ru_bd_kernel ( rhs_prediction(igh_u, stage), state(igh_p), state(igh_t), qr ) 
       call invoke( name = "Compute new rhs",                            &
                    hydrostatic_kernel_type       &

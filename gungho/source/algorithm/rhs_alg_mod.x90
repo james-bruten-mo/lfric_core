@@ -15,7 +15,8 @@ module rhs_alg_mod
                                                  get_mass_matrix,  &
                                                  w2_id,            &
                                                  theta_space_id,   &
-                                                 w3inv_id, dl_id
+                                                 w3inv_id, dl_id,  &
+                                                 get_coriolis
   use field_mod,                           only: field_type
   use finite_element_config_mod,           only: element_order
   use formulation_config_mod,              only: rotating
@@ -26,7 +27,6 @@ module rhs_alg_mod
   use psykal_lite_mod,                     only: invoke_ru_bd_kernel
   use quadrature_xyoz_mod,                 only: quadrature_xyoz_type
   use quadrature_rule_gaussian_mod,        only: quadrature_rule_gaussian_type
-  use rotation_kernel_mod,                 only: rotation_kernel_type
   use derived_config_mod,                  only: bundle_size
   use field_indices_mod,                   only: igh_u, igh_t, igh_d, igh_p
   use output_config_mod,                   only: subroutine_timers 
@@ -75,7 +75,8 @@ contains
 
     type(operator_type), pointer :: mm_vel    => null(), &
                                     mm_wtheta => null(), &
-                                    mm_w3_inv => null()
+                                    mm_w3_inv => null(), &
+                                    coriolis  => null()
     type(field_type), pointer :: chi(:)       => null(), &
                                  geopotential => null(), &
                                  u            => null(), &
@@ -122,8 +123,10 @@ contains
                  hydrostatic_kernel_type( rhs_tmp, exner, theta, geopotential,qr ),   &
                  kinetic_energy_gradient_kernel_type( rhs_tmp, u, chi, qr ), &
                  matrix_vector_kernel_type( rhs(igh_u), u, mm_vel ) )
-    if ( rotating ) &
-      call invoke( rotation_kernel_type( rhs_tmp, u, chi, qr ) )
+    if ( rotating ) then
+      coriolis => get_coriolis()
+      call invoke( matrix_vector_kernel_type( rhs_tmp, u, coriolis ) )
+    end if
 
     call invoke( name = "Compute rhs_u evaluation",                 &
                  inc_X_plus_bY( rhs(igh_u), alpha_dt, rhs_tmp ),    &

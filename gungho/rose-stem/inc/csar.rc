@@ -105,7 +105,7 @@
                                                    }
                                              },
                                          checkkgo=False,
-                                         plotstr="baroclinic.py diagDynamo $NODAL_DATA_DIR theta:exner:w3projection_u1:w3projection_u2:w3projection_u3 T000096:T0000192:T000384:T000480:T000960:T001920 $PLOT_DIR 1")'
+                                         plotstr="baroclinic.py diagDynamo $NODAL_DATA_DIR theta:exner:w3projection_u1:w3projection_u2:w3projection_u3 T000096:T0000192:T000384:T000480:T000768:T000960:T001536:T001920 $PLOT_DIR 1")'
                               ],
                 'csar-hiwpp':['run_application(gungho, baroclinic,
                                       resolutions=[("C192", 450.0),

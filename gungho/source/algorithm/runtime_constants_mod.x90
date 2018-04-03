@@ -17,7 +17,8 @@ module runtime_constants_mod
                                                LOG_LEVEL_ERROR
   ! Configuration
   use finite_element_config_mod,         only: element_order
-  use formulation_config_mod,            only: transport_only, dlayer_on
+  use formulation_config_mod,            only: transport_only, dlayer_on, &
+                                               rotating
   use transport_config_mod,              only: scheme,                     &
                                                transport_scheme_cusph_cosmic
 
@@ -50,7 +51,7 @@ module runtime_constants_mod
   use calc_detj_at_w2_kernel_mod,            only: calc_detj_at_w2_kernel_type
   use calc_dA_at_w2_kernel_mod,              only: calc_dA_at_w2_kernel_type
   use w2_normalisation_kernel_mod,           only: w2_normalisation_kernel_type
-
+  use compute_coriolis_matrix_kernel_mod,    only: compute_coriolis_matrix_kernel_type
   use output_config_mod,                     only: subroutine_timers 
   use timer_mod,                             only: timer
   implicit none
@@ -91,6 +92,7 @@ module runtime_constants_mod
   type(field_type), target              :: nodal_rmultiplicity_w2h
   type(field_type), target              :: nodal_rmultiplicity_w0
   type(field_type), target              :: w2_normalisation
+  type(operator_type), target           :: coriolis
 
   ! Enumerated types
   integer(i_def), parameter, public :: w0_id    = 0_i_def
@@ -123,6 +125,7 @@ module runtime_constants_mod
   public :: get_inverse_lumped_mass_matrix
   public :: get_height
   public :: get_normalisation
+  public :: get_coriolis
 
 contains
   !>@brief Subroutine to create the runtime constants
@@ -332,6 +335,12 @@ contains
                  w2_normalisation_kernel_type(w2_normalisation, chi),      &
                  inc_X_divideby_Y(w2_normalisation, nodal_multiplicity_w2) )
     call invoke_raise_field(w2_normalisation, -1_i_def)
+
+    ! Compute Coriolis operator
+    if ( rotating ) then
+      coriolis = operator_type( w2_fs, w2_fs )
+      call invoke( compute_coriolis_matrix_kernel_type(coriolis, chi, qr) )
+    end if
 
     ! Store pointer to chi field so things downstream can access it via
     ! runtime_constants
@@ -594,6 +603,19 @@ contains
     end select
 
   end function get_normalisation
+
+  !> @brief Function to return the Coriolis operator
+  !> @return The Coriolis operator
+  function get_coriolis() result(coriolis_op)
+    implicit none
+    type(operator_type), pointer :: coriolis_op
+    if ( rotating ) then
+      coriolis_op => coriolis
+    else
+      call log_event( "Coriolis operator not computed for nonrotating flow", &
+                      LOG_LEVEL_ERROR)
+    end if
+  end function get_coriolis
 
   !> @brief Explicitly reclaim memory from module scope variables
   !

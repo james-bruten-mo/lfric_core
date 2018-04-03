@@ -644,7 +644,7 @@ and then solving $L\mathbf{x}'=-\mathbf{R}\left(\mathbf{x}^{(k)}\right).$
 The form of $L$ implemented is 
 \begin{equation}
 L\mathbf{x}'=\begin{cases}
-\left(1+\mu\Delta t\mathbf{k}\right)\mathbf{u}'+\tau_u\Delta tc_{pd}\left(\theta^{*}\nabla\Pi'+\theta'\nabla\Pi^{*}\right),\\
+\left(1+\mu\Delta t\mathbf{k}+2\tau_u\Delta t \bm{\Omega}\times\right)\mathbf{u}'+\tau_u\Delta tc_{pd}\left(\theta^{*}\nabla\Pi'+\theta'\nabla\Pi^{*}\right),\\
 \theta'+\tau_\theta\Delta t\mathbf{u}'.\nabla\theta^{*},\\
 \rho'+\tau_\rho\Delta t\nabla\cdot\left(\rho^{*}\mathbf{u}'\right),\\
 \frac{1-\kappa_d}{\kappa_d}\frac{\Pi'}{\Pi^*} -\frac{\rho'}{\rho^*} - \frac{\theta'}{\theta^*},\\
@@ -695,14 +695,14 @@ There are a number of options for types of solvers  to used in each of stages 1-
 \subsubsection{Outer (Mixed) Solve\label{sub:OuterSolve}}
 The continuous in space equations that we wish to solve (motivated by the form used in the ENDGame incremental formulation) are
 \begin{eqnarray}
-\left(1+\mu\Delta t\mathbf{k}\right)\mathbf{u}' + \tau_{u}\Delta t c_{pd} \left(\theta'\nabla\Pi^{*} + \theta^{*}\nabla\Pi'\right) & = & R_{\mathbf{u}},\label{eq:si_u_continuous}\\
+\left(1+\mu\Delta t\mathbf{k}+2\tau_u\Delta t \bm{\Omega}\times\right)\mathbf{u}' + \tau_{u}\Delta t c_{pd} \left(\theta'\nabla\Pi^{*} + \theta^{*}\nabla\Pi'\right) & = & R_{\mathbf{u}},\label{eq:si_u_continuous}\\
 \theta' + \tau_{\theta}\Delta t\mathbf{u}'.\nabla\theta^{*} & = & R_{\theta},\label{eq:si_theta_continuous}\\
 \rho' + \tau_{\rho}\Delta t\nabla\cdot\left(\rho^{*}\mathbf{u}'\right) & = & R_{\rho},\label{eq:si_rho_continuous}\\
 \frac{1-\kappa}{\kappa}\frac{\Pi'}{\Pi^{*}} - \frac{\rho'}{\rho^{*}} - \frac{\theta'}{\theta^{*}} & = & R_{\Pi}.\label{eq:si_exner_continuous}
 \end{eqnarray}
 The finite element discretisation is applied to  \eqref{eq:si_u_continuous}-\eqref{eq:si_exner_continuous} and they are rewritten in operator format
 \begin{eqnarray}
-N_u\left\{M_{2}u' - \left[P_{2\theta}^{\Pi^{*}}\theta' + \left(D^{\theta^{*}}\right)^{T}\Pi'\right]\right\} & = & N_u R_{\mathbf{u}},\label{eq:si_u_discrete}\\
+N_u\left\{\left(M_{2}+C\right)u' - \left[P_{2\theta}^{\Pi^{*}}\theta' + \left(D^{\theta^{*}}\right)^{T}\Pi'\right]\right\} & = & N_u R_{\mathbf{u}},\label{eq:si_u_discrete}\\
 N_\theta\left(M_{\theta}\theta' + P_{\theta2}^{\theta^{*}}u'\right) & = & N_\theta R_{\theta},\label{eq:si_theta_discrete}\\
 N_\rho \left[M_{3}\rho' + \tau_{\rho}\Delta tD\left(\rho^{*}u'\right)\right] & = & N_\rho R_{\rho},\label{eq:si_rho_discrete}\\
 N_\Pi \left(M_{3}^{\Pi^{*}}\Pi' - M_{3}^{\rho^{*}}\rho' - P_{3\theta}^{*}\theta'\right) & = & N_\Pi R_{\Pi},\label{eq:si_exner_discrete}
@@ -710,6 +710,7 @@ N_\Pi \left(M_{3}^{\Pi^{*}}\Pi' - M_{3}^{\rho^{*}}\rho' - P_{3\theta}^{*}\theta'
 where now the primed variables correspond to the degree of freedom vectors and the right hand side arrays are the integrated residual terms  \eqref{eq:Ru_combined}-\eqref{eq:Rpi_combined}. The mass matrices are given by \eqref{eq:M0_mass_matrix} - \eqref{eq:M3_mass_matrix}. When the Rayleigh damping is active, the bottom $m$ rows
 of $M_2$, where $m$ is the number of degrees of freedom corresponding to the vertical velocity, are multiplied by $(1+\mu\Delta t)$. The other operators are
 \begin{eqnarray}
+C & = & \tau_u\Delta t\left<\mathbf{v},2\bm{\Omega}\times\mathbf{v}\right>,\label{eq:coriolis_operator}\\
 D & = & \left<\sigma,\nabla\cdot\mathbf{v}\right>,\label{eq:divergence_operator}\\
 D^{\theta^{*}} & = & \tau_u \Delta t c_{pd}\left[\left<\sigma,\theta^{*}\nabla\cdot\mathbf{v} + \nabla\theta^{*}.\mathbf{v} \right> - \llangle \{\sigma\}, \theta^{*}\mathbf{v}.\mathbf{n}\rrangle\right],\label{eq:div_theta_star_operatort}\\
 P_{2\theta}^{\Pi^{*}} & = & \tau_u \Delta t c_{pd} \left[\left<\nabla\cdot\mathbf{v},\Pi^{*}\gamma\right> + \left<\mathbf{v},\Pi^{*}\nabla\gamma \right> - \llangle \mathbf{v}.\mathbf{n},\{\Pi^{*}\}\gamma\rrangle\right],\label{eq:Ptheta2_star_operator}\\
@@ -749,7 +750,7 @@ N_u\left\{M^*_{2}u' - \left[P_{2\theta}^{\Pi^{*}}\theta' + \left(D^{\theta^{*}}\
 \rho' + \tau_{\rho}\Delta t N_\rho D\left(\rho^{*}u'\right) & = & N_\rho R_{\rho},\label{eq:si_rho_discrete_helm}\\
 N_\Pi \left\{M_{3}^{\Pi^{*}}\Pi' - M_{3}^{\rho^{*}}\rho' - P_{3\theta}^{*}\theta'\right\} & = & N_\Pi R_{\Pi},\label{eq:si_exner_discrete_helm}
 \end{eqnarray}
-where $M^*_{2}$ is the lumped form of the $\mathbb{W}_2$ mass matrix and $P_{\theta2V}^{\theta^{*}}$ is the restriction of $P_{\theta2}^{\theta^{*}}$ to the vertical components (essentially $\left(0,0,\partial\theta^*/\partial\chi_3\right).\mathbf{v}$).
+where $M^*_{2}$ is the lumped form of the $\mathbb{W}_2$ mass matrix and $P_{\theta2V}^{\theta^{*}}$ is the restriction of $P_{\theta2}^{\theta^{*}}$ to the vertical components (essentially $\left(0,0,\partial\theta^*/\partial\chi_3\right).\mathbf{v}$). Additionally the Coriolis operator $C$ has been dropped from the outer (mixed) system of equations.
 
 The elimination procedure is as follows: first eliminate $\theta'$ from \eqref{eq:si_u_discrete_helm} using \eqref{eq:si_theta_discrete_helm}
 \begin{equation}

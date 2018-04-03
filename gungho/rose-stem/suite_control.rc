@@ -28,9 +28,9 @@
 'developer': [
     'run_application( gungho, agnesi_orog_cartesian,  resolutions=[("BiP40x4-100x100",3.0)] )',
     'run_application( gungho, baroclinic,             resolutions=[("C24",1800.0)],
-                      env={"crun":1, "nrun":10,
+                      env={"crun":1, "nrun":48,
                            "directives":{"default":{"mpi_parts":6,"threads":1,"wallclock":"00:15:00"} } },
-                      plotstr="baroclinic.py diagDynamo $NODAL_DATA_DIR theta:rho:exner:w3projection_u1:w3projection_u2:w3projection_u3:w3projection_xi1:w3projection_xi2:w3projection_xi3 T000010 $PLOT_DIR 1" )',
+                      plotstr="baroclinic.py diagDynamo $NODAL_DATA_DIR theta:rho:exner:w3projection_u1:w3projection_u2:w3projection_u3:w3projection_xi1:w3projection_xi2:w3projection_xi3 T000048 $PLOT_DIR 1" )',
     'run_application( gungho, biperiodic_p0_gw,       resolutions=[("BiP300x4-1000x2000",10.0)],
                       plotstr="gw_cart_plot.py $NODAL_DATA_DIR 300 4 theta T000000:T000100:T000200:T000300 $PLOT_DIR" )',
     'run_application( gungho, biperiodic_p1_gw,       resolutions=[("BiP75x4-4000x2000",10.0)],
