@@ -97,41 +97,41 @@ contains
     ! Hence the x-direction divergence will be 7 and in the y-direction 8.
     call fv_divergence_code( nlayers,                     &
                              this%mass_divergence,        &
-                             undf_w3,                     &
-                             ndf_w3,                      &
-                             this%map_w3,                 &
                              this%cell_orientation,       &
-                             undf_w2,                     &
-                             ndf_w2,                      &
-                             this%map_w2,                 &
                              this%mass_flux,              &
-                             x_direction )
+                             x_direction,                 &
+                             ndf_w3,                      &
+                             undf_w3,                     &
+                             this%map_w3,                 &
+                             ndf_w2,                      &
+                             undf_w2,                     &
+                             this%map_w2 )
     @assertEqual(this%mass_divergence(1), 7.0_r_def, tol)
 
     call fv_divergence_code( nlayers,                     &
                              this%mass_divergence,        &
-                             undf_w3,                     &
-                             ndf_w3,                      &
-                             this%map_w3,                 &
                              this%cell_orientation,       &
-                             undf_w2,                     &
-                             ndf_w2,                      &
-                             this%map_w2,                 &
                              this%mass_flux,              &
-                             y_direction )
+                             y_direction,                 &
+                             ndf_w3,                      &
+                             undf_w3,                     &
+                             this%map_w3,                 &
+                             ndf_w2,                      &
+                             undf_w2,                     &
+                             this%map_w2 )
     @assertEqual(this%mass_divergence(1), 8.0_r_def, tol)
 
     call fv_divergence_code( nlayers,                     &
                              this%mass_divergence,        &
-                             undf_w3,                     &
-                             ndf_w3,                      &
-                             this%map_w3,                 &
                              this%cell_orientation,       &
-                             undf_w2,                     &
-                             ndf_w2,                      &
-                             this%map_w2,                 &
                              this%mass_flux,              &
-                             z_direction )
+                             z_direction,                 &
+                             ndf_w3,                      &
+                             undf_w3,                     &
+                             this%map_w3,                 &
+                             ndf_w2,                      &
+                             undf_w2,                     &
+                             this%map_w2 )
     @assertEqual(this%mass_divergence(1), 6.0_r_def, tol)
 
     this%cell_orientation = 2.0_r_def
@@ -143,41 +143,41 @@ contains
     ! Hence the x-direction divergence will be 7 and in the y-direction 8.
     call fv_divergence_code( nlayers,                     &
                              this%mass_divergence,        &
-                             undf_w3,                     &
-                             ndf_w3,                      &
-                             this%map_w3,                 &
                              this%cell_orientation,       &
-                             undf_w2,                     &
-                             ndf_w2,                      &
-                             this%map_w2,                 &
                              this%mass_flux,              &
-                             x_direction )
+                             x_direction,                 &
+                             ndf_w3,                      &
+                             undf_w3,                     &
+                             this%map_w3,                 &
+                             ndf_w2,                      &
+                             undf_w2,                     &
+                             this%map_w2 )
     @assertEqual(this%mass_divergence(1), 8.0_r_def, tol)
 
     call fv_divergence_code( nlayers,                     &
                              this%mass_divergence,        &
-                             undf_w3,                     &
-                             ndf_w3,                      &
-                             this%map_w3,                 &
                              this%cell_orientation,       &
-                             undf_w2,                     &
-                             ndf_w2,                      &
-                             this%map_w2,                 &
                              this%mass_flux,              &
-                             y_direction )
+                             y_direction,                 &
+                             ndf_w3,                      &
+                             undf_w3,                     &
+                             this%map_w3,                 &
+                             ndf_w2,                      &
+                             undf_w2,                     &
+                             this%map_w2 )
     @assertEqual(this%mass_divergence(1), -7.0_r_def, tol)
 
     call fv_divergence_code( nlayers,                     &
                              this%mass_divergence,        &
-                             undf_w3,                     &
-                             ndf_w3,                      &
-                             this%map_w3,                 &
                              this%cell_orientation,       &
-                             undf_w2,                     &
-                             ndf_w2,                      &
-                             this%map_w2,                 &
                              this%mass_flux,              &
-                             z_direction )
+                             z_direction,                 &
+                             ndf_w3,                      &
+                             undf_w3,                     &
+                             this%map_w3,                 &
+                             ndf_w2,                      &
+                             undf_w2,                     &
+                             this%map_w2 )
     @assertEqual(this%mass_divergence(1), -4.0_r_def, tol)
 
     this%cell_orientation = 3.0_r_def
@@ -189,41 +189,41 @@ contains
     ! Hence the x-direction divergence will be -7 and in the y-direction -8.
     call fv_divergence_code( nlayers,                     &
                              this%mass_divergence,        &
-                             undf_w3,                     &
-                             ndf_w3,                      &
-                             this%map_w3,                 &
                              this%cell_orientation,       &
-                             undf_w2,                     &
-                             ndf_w2,                      &
-                             this%map_w2,                 &
                              this%mass_flux,              &
-                             x_direction )
+                             x_direction,                 &
+                             ndf_w3,                      &
+                             undf_w3,                     &
+                             this%map_w3,                 &
+                             ndf_w2,                      &
+                             undf_w2,                     &
+                             this%map_w2 )
     @assertEqual(this%mass_divergence(1), -7.0_r_def, tol)
 
     call fv_divergence_code( nlayers,                     &
                              this%mass_divergence,        &
-                             undf_w3,                     &
-                             ndf_w3,                      &
-                             this%map_w3,                 &
                              this%cell_orientation,       &
-                             undf_w2,                     &
-                             ndf_w2,                      &
-                             this%map_w2,                 &
                              this%mass_flux,              &
-                             y_direction )
+                             y_direction,                 &
+                             ndf_w3,                      &
+                             undf_w3,                     &
+                             this%map_w3,                 &
+                             ndf_w2,                      &
+                             undf_w2,                     &
+                             this%map_w2 )
     @assertEqual(this%mass_divergence(1), -8.0_r_def, tol)
 
     call fv_divergence_code( nlayers,                     &
                              this%mass_divergence,        &
-                             undf_w3,                     &
-                             ndf_w3,                      &
-                             this%map_w3,                 &
                              this%cell_orientation,       &
-                             undf_w2,                     &
-                             ndf_w2,                      &
-                             this%map_w2,                 &
                              this%mass_flux,              &
-                             z_direction )
+                             z_direction,                 &
+                             ndf_w3,                      &
+                             undf_w3,                     &
+                             this%map_w3,                 &
+                             ndf_w2,                      &
+                             undf_w2,                     &
+                             this%map_w2 )
     @assertEqual(this%mass_divergence(1), -7.0_r_def, tol)
 
     this%cell_orientation = 4.0_r_def
@@ -235,41 +235,41 @@ contains
     ! Hence the x-direction divergence will be -7 and in the y-direction -8.
     call fv_divergence_code( nlayers,                     &
                              this%mass_divergence,        &
-                             undf_w3,                     &
-                             ndf_w3,                      &
-                             this%map_w3,                 &
                              this%cell_orientation,       &
-                             undf_w2,                     &
-                             ndf_w2,                      &
-                             this%map_w2,                 &
                              this%mass_flux,              &
-                             x_direction )
+                             x_direction,                 &
+                             ndf_w3,                      &
+                             undf_w3,                     &
+                             this%map_w3,                 &
+                             ndf_w2,                      &
+                             undf_w2,                     &
+                             this%map_w2 )
     @assertEqual(this%mass_divergence(1), -8.0_r_def, tol)
 
     call fv_divergence_code( nlayers,                     &
                              this%mass_divergence,        &
-                             undf_w3,                     &
-                             ndf_w3,                      &
-                             this%map_w3,                 &
                              this%cell_orientation,       &
-                             undf_w2,                     &
-                             ndf_w2,                      &
-                             this%map_w2,                 &
                              this%mass_flux,              &
-                             y_direction )
+                             y_direction,                 &
+                             ndf_w3,                      &
+                             undf_w3,                     &
+                             this%map_w3,                 &
+                             ndf_w2,                      &
+                             undf_w2,                     &
+                             this%map_w2 )
     @assertEqual(this%mass_divergence(1), 7.0_r_def, tol)
 
     call fv_divergence_code( nlayers,                     &
                              this%mass_divergence,        &
-                             undf_w3,                     &
-                             ndf_w3,                      &
-                             this%map_w3,                 &
                              this%cell_orientation,       &
-                             undf_w2,                     &
-                             ndf_w2,                      &
-                             this%map_w2,                 &
                              this%mass_flux,              &
-                             y_direction )
+                             y_direction,                 &
+                             ndf_w3,                      &
+                             undf_w3,                     &
+                             this%map_w3,                 &
+                             ndf_w2,                      &
+                             undf_w2,                     &
+                             this%map_w2 )
     @assertEqual(this%mass_divergence(1), 7.0_r_def, tol)
 
   end subroutine test_all

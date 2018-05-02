@@ -16,7 +16,7 @@ module fv_divergence_kernel_mod
 
   use argument_mod,      only : arg_type, func_type,         &
                                 GH_FIELD, GH_WRITE, GH_READ, &
-                                GH_BASIS, CELLS
+                                GH_BASIS, CELLS, GH_INTEGER
   use constants_mod,      only : r_def, i_def
   use flux_direction_mod, only : z_direction
   use fs_continuity_mod,  only : W0, W2, W3
@@ -32,15 +32,11 @@ module fv_divergence_kernel_mod
   !>
   type, public, extends(kernel_type) :: fv_divergence_kernel_type
     private
-    type(arg_type) :: meta_args(3) = (/     &
+    type(arg_type) :: meta_args(4) = (/     &
         arg_type(GH_FIELD,   GH_WRITE, W3), &
+        arg_type(GH_FIELD,   GH_READ,  W3), &
         arg_type(GH_FIELD,   GH_READ,  W2), &
-        arg_type(GH_FIELD,   GH_READ,  W3)  &
-        /)
-    type(func_type) :: meta_funcs(3) = (/ &
-        func_type(W3, GH_BASIS),          &
-        func_type(W2, GH_BASIS),          &
-        func_type(W3, GH_BASIS)           &
+        arg_type(GH_INTEGER, GH_READ )      &
         /)
     integer :: iterates_over = CELLS
   contains
@@ -70,50 +66,52 @@ end function fv_divergence_kernel_constructor
 !> @brief Computes the finite-volume divergence in either the x or y direction.
 !! @param[in]  nlayers             The number of layers
 !! @param[out] mass_divergence     The mass_divergence values in W3 space
-!! @param[in]  undf_w3             The number of unique degrees of freedom
-!! @param[in]  ndf_w3              The number of degrees of freedom per cell
-!! @param[in]  map_w3              The dofmap for the cell at the base of the column
 !! @param[in]  cell_orientation    The orientation of the cells
-!! @param[in]  undf_w2             The number of unique degrees of freedom
-!! @param[in]  ndf_w2              The number of degrees of freedom per cell
-!! @param[in]  map_w2              The dofmap for the cell at the base of the column
 !! @param[in]  mass_flux           The flux values which are calculated
 !! @param[in]  direction           The direction in which to calculate the fluxes
+!! @param[in]  ndf_w3              The number of degrees of freedom per cell
+!! @param[in]  undf_w3             The number of unique degrees of freedom
+!! @param[in]  map_w3              The dofmap for the cell at the base of the column
+!! @param[in]  ndf_w2              The number of degrees of freedom per cell
+!! @param[in]  undf_w2             The number of unique degrees of freedom
+!! @param[in]  map_w2              The dofmap for the cell at the base of the column
 subroutine fv_divergence_code( nlayers,              &
                                mass_divergence,      &
-                               undf_w3,              &
-                               ndf_w3,               &
-                               map_w3,               &
                                cell_orientation,     &
-                               undf_w2,              &
-                               ndf_w2,               &
-                               map_w2,               &
                                mass_flux,            &
-                               direction )
+                               direction,            &
+                               ndf_w3,               &
+                               undf_w3,              &
+                               map_w3,               &
+                               ndf_w2,               &
+                               undf_w2,              &
+                               map_w2 )
 
   use cosmic_flux_mod, only : dof_to_update
 
+  implicit none
+
   ! Arguments
-  integer, intent(in)                                   :: nlayers
-  integer, intent(in)                                   :: ndf_w3
-  integer, intent(in)                                   :: undf_w3
-  integer, dimension(ndf_w3), intent(in)                :: map_w3
+  integer(kind=i_def), intent(in)                       :: nlayers
+  integer(kind=i_def), intent(in)                       :: ndf_w3
+  integer(kind=i_def), intent(in)                       :: undf_w3
+  integer(kind=i_def), dimension(ndf_w3), intent(in)    :: map_w3
   real(kind=r_def), dimension(undf_w3), intent(out)     :: mass_divergence
   real(kind=r_def), dimension(undf_w3), intent(in)      :: cell_orientation
-  integer, intent(in)                                   :: ndf_w2
-  integer, intent(in)                                   :: undf_w2
-  integer, dimension(ndf_w2), intent(in)                :: map_w2
+  integer(kind=i_def), intent(in)                       :: ndf_w2
+  integer(kind=i_def), intent(in)                       :: undf_w2
+  integer(kind=i_def), dimension(ndf_w2), intent(in)    :: map_w2
   real(kind=r_def), dimension(undf_w2), intent(in)      :: mass_flux
-  integer, intent(in)                                   :: direction
+  integer(kind=i_def), intent(in)                       :: direction
 
-  integer :: k
-  integer :: local_dofs(1:2)
+  integer(kind=i_def) :: k
+  integer(kind=i_def) :: local_dofs(1:2)
 
   if (direction == z_direction) then
     local_dofs(1) = 5_i_def
     local_dofs(2) = 6_i_def
   else
-    local_dofs = dof_to_update(int(cell_orientation(map_w3(1))),direction)
+    local_dofs = dof_to_update(int(cell_orientation(map_w3(1)),i_def),direction)
   end if
 
   ! This kernel has been designed to work with lowest order W2 and W3 spaces.

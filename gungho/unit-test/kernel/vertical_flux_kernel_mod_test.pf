@@ -52,7 +52,7 @@ contains
 
     class(vertical_flux_test_type), intent(inout) :: this
 
-    integer :: ii
+    integer(i_def) :: ii
 
     this%map_w2 = (/ 1,6,11,16,21,22 /)
 
@@ -100,7 +100,7 @@ contains
 
     real(r_def), parameter :: tol    = 1.0e-6_r_def
 
-    integer :: map_w3(1)
+    integer(i_def) :: map_w3(1)
 
     map_w3(1) = 1
 
@@ -125,12 +125,12 @@ contains
                              this%a1_coeffs,   &
                              this%a2_coeffs,   &
                              deltaT,           &
-                             ndf_w3,           &
-                             undf_w3,          &
-                             map_w3,           &
                              ndf_w2,           &
                              undf_w2,          &
-                             this%map_w2 )
+                             this%map_w2,      &
+                             ndf_w3,           &
+                             undf_w3,          &
+                             map_w3 )
 
     ! The density values for the 5 layers are (1.0,3.0,6.5,11.5,18.0)
     ! The mass flux is a half for all cells except the middle cell since this is
@@ -156,7 +156,7 @@ contains
 
     real(r_def), parameter :: tol    = 1.0e-6_r_def
 
-    integer :: map_w3(1)
+    integer(i_def) :: map_w3(1)
 
     map_w3(1) = 1
 
@@ -175,12 +175,12 @@ contains
                              this%a1_coeffs,   &
                              this%a2_coeffs,   &
                              deltaT,           &
-                             ndf_w3,           &
-                             undf_w3,          &
-                             map_w3,           &
                              ndf_w2,           &
                              undf_w2,          &
-                             this%map_w2 )
+                             this%map_w2,      &
+                             ndf_w3,           &
+                             undf_w3,          &
+                             map_w3 )
 
     @assertEqual(0.0_r_def, this%flux(21), tol)
     @assertEqual(0.5_r_def, this%flux(22), tol)
@@ -203,7 +203,7 @@ contains
 
     real(r_def), parameter :: tol    = 1.0e-6_r_def
 
-    integer :: map_w3(1)
+    integer(i_def) :: map_w3(1)
 
     map_w3(1) = 1
 
@@ -222,12 +222,12 @@ contains
                              this%a1_coeffs,   &
                              this%a2_coeffs,   &
                              deltaT,           &
-                             ndf_w3,           &
-                             undf_w3,          &
-                             map_w3,           &
                              ndf_w2,           &
                              undf_w2,          &
-                             this%map_w2 )
+                             this%map_w2,      &
+                             ndf_w3,           &
+                             undf_w3,          &
+                             map_w3 )
 
     @assertEqual(0.0_r_def, this%flux(21), tol)
     @assertEqual(-0.9_r_def, this%flux(22), tol)
@@ -250,7 +250,7 @@ contains
 
     real(r_def), parameter :: tol    = 1.0e-6_r_def
 
-    integer :: map_w3(1)
+    integer(i_def) :: map_w3(1)
 
     map_w3(1) = 1
 
@@ -269,12 +269,12 @@ contains
                              this%a1_coeffs,   &
                              this%a2_coeffs,   &
                              deltaT,           &
-                             ndf_w3,           &
-                             undf_w3,          &
-                             map_w3,           &
                              ndf_w2,           &
                              undf_w2,          &
-                             this%map_w2 )
+                             this%map_w2,      &
+                             ndf_w3,           &
+                             undf_w3,          &
+                             map_w3 )
 
     @assertEqual(0.0_r_def, this%flux(21), tol)
     @assertEqual(-1.5_r_def, this%flux(22), tol)

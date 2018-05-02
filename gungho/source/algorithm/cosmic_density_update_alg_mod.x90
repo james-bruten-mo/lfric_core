@@ -1,0 +1,105 @@
+!-----------------------------------------------------------------------------
+! (C) Crown copyright 2018 Met Office. All rights reserved.
+! For further details please refer to the file COPYRIGHT.txt
+! which you should have received as part of this distribution.
+!-----------------------------------------------------------------------------
+!
+!-------------------------------------------------------------------------------
+!> @brief Algorithm which updates rho using rho_n - dt * div(mass_flux)
+!> @details  Inputs are the the mass flux and rho at time level n. Output is rho at
+!>           time level n+1. The divergence of the mass flux is calculated and
+!>           multiplied by dt and added to the density rho at time n. The divergence
+!>           is calculated in the x, y or z direction separately.
+module cosmic_density_update_alg_mod
+
+  use constants_mod,                     only: i_def, r_def
+  use field_mod,                         only: field_type
+  use log_mod,                           only: log_event, LOG_LEVEL_ERROR
+  use runtime_constants_mod,             only: get_mass_matrix, w3inv_id
+  use operator_mod,                      only: operator_type
+  use dg_matrix_vector_kernel_mod,       only: dg_matrix_vector_kernel_type
+  use fv_divergence_kernel_mod,          only: fv_divergence_kernel_type
+  use psykal_lite_mod,                   only: invoke_fv_divergence
+  use flux_direction_mod,                only: x_direction, y_direction, z_direction
+  use timestepping_config_mod,           only: dt
+
+  implicit none
+
+  private
+  public :: cosmic_density_update_alg
+
+contains
+
+  !> @brief Algorithm which updates rho using rho_n - dt * div(mass_flux)
+  !> @details  Inputs are the the mass flux and rho at time level n. Output is rho at
+  !>           time level n+1. The divergence of the mass flux is calculated and
+  !>           multiplied by dt and added to the density rho at time n.
+  !> @param[inout] rho              Density at time n+1
+  !> @param[in]    rho_n            Density at time n
+  !> @param[in]    mass_flux        mass flux
+  !> @param[in]    detj_at_w2       Det(J) located at W2 dofs
+  !> @param[in]    cell_orientation Cell orientation values
+  !> @param[in]    direction        The direction in which to calculate the
+  !>                                divergence, x, y or z
+  subroutine cosmic_density_update_alg( rho,               &
+                                        rho_n,             &
+                                        mass_flux,         &
+                                        detj_at_w2,        &
+                                        cell_orientation,  &
+                                        direction  )
+
+    implicit none
+ 
+    type(field_type),    intent(inout)    :: rho
+    type(field_type),    intent(in)       :: rho_n
+    type(field_type),    intent(in)       :: mass_flux
+    type(field_type),    intent(in)       :: detj_at_w2
+    type(field_type),    intent(in)       :: cell_orientation
+    integer(kind=i_def), intent(in)       :: direction
+
+    type(field_type)                      :: div, div_temp, mass_flux_mult
+    type(operator_type), pointer          :: m3_inv => null()
+    real(kind=r_def)                      :: minus_dt
+
+    m3_inv => get_mass_matrix(w3inv_id)
+
+    div            = field_type( vector_space = rho_n%get_function_space() )
+    div_temp       = field_type( vector_space = rho_n%get_function_space() )
+    mass_flux_mult = field_type( vector_space = detj_at_w2%get_function_space() )
+
+    !
+    ! Part 1. Calculate div(mass_flux) = (1/detj_at_w3)*d(detj_at_w2 * mass_flux)/dx
+    !
+    ! Multiply mass fluxes by detj at W2 values
+    call invoke( X_times_Y(mass_flux_mult, mass_flux, detj_at_w2) )
+
+    ! Differentiate detj_at_w2*mass_flux
+    if (direction == x_direction .or. direction == y_direction) then
+      call invoke_fv_divergence( div_temp,                 &
+                                 mass_flux_mult,           &
+                                 mass_flux_mult,           &
+                                 cell_orientation,         &
+                                 direction )
+    elseif (direction == z_direction) then
+      call invoke(fv_divergence_kernel_type( div_temp,            &
+                                             cell_orientation,    &
+                                             mass_flux_mult,      &
+                                             direction) )
+    else
+      call log_event( "Error: unspecified direction for Cosmic update", LOG_LEVEL_ERROR )
+    end if
+
+    ! Divide the divergence by detj located at W3 dofs.
+    call invoke( dg_matrix_vector_kernel_type(div, div_temp, m3_inv) )
+
+    !
+    ! Part2. Calculate rho_n - dt*div(mass_flux)
+    !
+    minus_dt = -dt
+    call invoke( aX_plus_Y(rho, minus_dt, div, rho_n) )
+
+    nullify( m3_inv )
+
+  end subroutine cosmic_density_update_alg
+
+end module cosmic_density_update_alg_mod

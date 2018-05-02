@@ -71,15 +71,15 @@ end function vertical_trapezoidal_kernel_constructor
 !! @param[in]  dep_pts_z           The departure distances in the vertical
 !! @param[in]  u_n                 The wind field at time level n
 !! @param[in]  u_np1               The wind field at time level n+1
-!! @param[in]  undf_w2             The number of unique degrees of freedom
 !! @param[in]  ndf_w2              The number of degrees of freedom per cell
+!! @param[in]  undf_w2             The number of unique degrees of freedom
 !! @param[in]  map_w2              The dofmap for the cell at the base of the column
 subroutine vertical_trapezoidal_code(  nlayers,              &
                                        dep_pts_z,            &
                                        u_n,                  &
                                        u_np1,                &
-                                       undf_w2,              &
                                        ndf_w2,               &
+                                       undf_w2,              &
                                        map_w2 )
 
   use biperiodic_deppts_mod,       only : calc_dep_point,           &

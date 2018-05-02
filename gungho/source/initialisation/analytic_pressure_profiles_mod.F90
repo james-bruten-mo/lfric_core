@@ -20,6 +20,7 @@ use idealised_config_mod,       only : idealised_test_cold_bubble_x,           &
                                        idealised_test_warm_bubble_3d,          &
                                        idealised_test_gaussian_hill,           &
                                        idealised_test_cosine_hill,             &
+                                       idealised_test_yz_cosine_hill,          &
                                        idealised_test_slotted_cylinder,        &
                                        idealised_test_constant_field,          &
                                        idealised_test_cosine_stripe,           &
@@ -33,7 +34,7 @@ use idealised_config_mod,       only : idealised_test_cold_bubble_x,           &
                                        idealised_test_isot_cold_atm,           &
                                        idealised_test_const_lapse_rate,        &
                                        idealised_test_dry_cbl
-use initial_density_config_mod, only : r1, x1, y1, r2, x2, y2,     &
+use initial_density_config_mod, only : r1, x1, y1, z1, r2, x2, y2, z2, &
                                        tracer_max, tracer_background
 use base_mesh_config_mod,       only : geometry, &
                                        base_mesh_geometry_spherical
@@ -228,7 +229,11 @@ contains
     case (idealised_test_vortex_field)
       pressure = vortex_field(lat,long,radius,time)
   
-    case (idealised_test_solid_body_rotation,                                  &
+    case( idealised_test_yz_cosine_hill )
+      ! This case is for transport of tracers and density only so it is not
+      ! calculated here.
+
+    case (idealised_test_solid_body_rotation, &
           idealised_test_solid_body_rotation_alt)
       t0 = 280.0_r_def
       temperature = analytic_temperature(chi, choice)

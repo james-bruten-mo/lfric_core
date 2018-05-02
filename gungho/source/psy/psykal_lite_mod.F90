@@ -3822,15 +3822,15 @@ end subroutine invoke_sample_poly_adv
 
         call  fv_divergence_code(  nlayers,                             &
                                    mass_divergence_proxy%data,          &
-                                   undf_w3,                             &
-                                   ndf_w3,                              &
-                                   map_w3(:,cell),                      &
                                    cell_orientation_proxy%data,         &
-                                   undf_w2,                             &
-                                   ndf_w2,                              &
-                                   map_w2(:,cell),                      &
                                    mass_flux_x_proxy%data,              &
-                                   direction )
+                                   direction,                           &
+                                   ndf_w3,                              &
+                                   undf_w3,                             &
+                                   map_w3(:,cell),                      &
+                                   ndf_w2,                              &
+                                   undf_w2,                             &
+                                   map_w2(:,cell) )
 
       end do
 
@@ -3840,15 +3840,15 @@ end subroutine invoke_sample_poly_adv
 
         call  fv_divergence_code(  nlayers,                             &
                                    mass_divergence_proxy%data,          &
-                                   undf_w3,                             &
-                                   ndf_w3,                              &
-                                   map_w3(:,cell),                      &
                                    cell_orientation_proxy%data,         &
-                                   undf_w2,                             &
-                                   ndf_w2,                              &
-                                   map_w2(:,cell),                      &
                                    mass_flux_y_proxy%data,              &
-                                   direction )
+                                   direction,                           &
+                                   ndf_w3,                              &
+                                   undf_w3,                             &
+                                   map_w3(:,cell),                      &
+                                   ndf_w2,                              &
+                                   undf_w2,                             &
+                                   map_w2(:,cell) )
 
       end do
 

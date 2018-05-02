@@ -79,12 +79,12 @@ end function vertical_flux_kernel_constructor
 !! @param[in] a1_coeffs Coefficients for the subgrid approximation of density
 !! @param[in] a2_coeffs Coefficients for the subgrid approximation of density
 !! @param[in] deltaT Length of a timestep
-!! @param[in] ndf_w3 Number of degrees of freedom per cell
-!! @param[in] undf_w3 Number of unique degrees of freedom
-!! @param[in] map_w3 Dofmap for the cell at the base of the column
 !! @param[in] ndf_w2 Number of degrees of freedom per cell
 !! @param[in] undf_w2 Number of unique degrees of freedom
 !! @param[in] map_w2 Dofmap for the cell at the base of the column
+!! @param[in] ndf_w3 Number of degrees of freedom per cell
+!! @param[in] undf_w3 Number of unique degrees of freedom
+!! @param[in] map_w3 Dofmap for the cell at the base of the column
 subroutine vertical_flux_code( nlayers,             &
                                flux,                &
                                dep_pts,             &
@@ -93,12 +93,12 @@ subroutine vertical_flux_code( nlayers,             &
                                a1_coeffs,           &
                                a2_coeffs,           &
                                deltaT,              &
-                               ndf_w3,              &
-                               undf_w3,             &
-                               map_w3,              &
                                ndf_w2,              &
                                undf_w2,             &
-                               map_w2 )
+                               map_w2,              &
+                               ndf_w3,              &
+                               undf_w3,             &
+                               map_w3 )
 
   use cosmic_flux_mod,    only : frac_and_int_part,                    &
                                  calc_integration_limits,              &
@@ -107,7 +107,7 @@ subroutine vertical_flux_code( nlayers,             &
 
   implicit none
 
-  !Arguments
+  ! Arguments
   integer(kind=i_def), intent(in)                       :: nlayers
   integer(kind=i_def), intent(in)                       :: ndf_w3
   integer(kind=i_def), intent(in)                       :: undf_w3
@@ -123,7 +123,7 @@ subroutine vertical_flux_code( nlayers,             &
   real(kind=r_def), dimension(undf_w2), intent(in)      :: dep_pts
   real(kind=r_def), intent(in)                          :: deltaT
 
-  !Internal variables
+  ! Internal variables
   integer(kind=i_def) :: k
   integer(kind=i_def) :: ii
   integer(kind=i_def) :: edge

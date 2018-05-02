@@ -1,0 +1,103 @@
+!-----------------------------------------------------------------------------
+! (C) Crown copyright 2018 Met Office. All rights reserved.
+! For further details please refer to the file COPYRIGHT.txt
+! which you should have received as part of this distribution.
+!-----------------------------------------------------------------------------
+!
+!-------------------------------------------------------------------------------
+!> @brief Calculates density when advected in the z direction.
+!>
+!> @details The algorithm calculates the density which solves the advection equation
+!> drho/dt + u dot grad(rho) = 0. The wind u is taken outside of the divergence term.
+module vert_advective_cosmic_alg_mod
+
+  use constants_mod,                     only: r_def, i_def
+  use field_mod,                         only: field_type
+  use function_space_mod,                only: function_space_type
+  use vert_conservative_cosmic_alg_mod,  only: vert_conservative_cosmic_alg
+  use cosmic_density_update_alg_mod,     only: cosmic_density_update_alg
+  use runtime_constants_mod,             only: get_detJ_at_w2
+  use flux_direction_mod,                only: x_direction, z_direction
+
+  implicit none
+
+  private
+  public :: vert_advective_cosmic_alg
+
+contains
+
+  !> @brief Calculates density when advected in the z direction.
+  !>
+  !> @details The algorithm calculates the density which solves the advection equation
+  !> drho/dt + u dot grad(rho) = 0. The wind u is taken outside of the divergence term.
+  !> @param[in]  rho_adv           Advected density at time level n+1
+  !> @param[in]  rho               Density at time level n
+  !> @param[in]  dep_pts           Winds at time level n
+  !> @param[in]  cell_orientation  Cell orientation
+  !> @param[in]  dt                Time step length
+  subroutine  vert_advective_cosmic_alg( rho_adv,           &
+                                         rho,               &
+                                         dep_pts,           &
+                                         cell_orientation,  &
+                                         dt )
+
+    implicit none
+
+    type(field_type),    intent(inout)  :: rho_adv
+    type(field_type),    intent(in)     :: rho
+    type(field_type),    intent(inout)  :: dep_pts
+    type(field_type),    intent(in)     :: cell_orientation
+    real(r_def),         intent(in)     :: dt
+
+    type(field_type) :: rho_n
+    type(field_type) :: rho_np1
+    type(field_type) :: rho_constant_1
+    type(field_type) :: rho_constant_1_np1
+    type(field_type) :: mass_flux
+
+    type(function_space_type), pointer :: w3_fs     => null()
+    type(function_space_type), pointer :: w2_fs     => null()
+
+    type(field_type), pointer :: detj_at_w2 => null()
+
+    w2_fs => dep_pts%get_function_space()
+    w3_fs => rho%get_function_space()
+    detj_at_w2 => get_detj_at_w2()
+
+    rho_n              = field_type( vector_space = w3_fs )
+    rho_np1            = field_type( vector_space = w3_fs )
+    rho_constant_1     = field_type( vector_space = w3_fs )
+    rho_constant_1_np1 = field_type( vector_space = w3_fs )
+    mass_flux          = field_type( vector_space = w2_fs )
+
+    ! To calculate the advective step we use the following equation
+    !
+    ! rho_advected = (rho_n - dt*div(mass_flux(rho=rho_n)))/(rho=1 - dt*div(mass_flux(rho=1)))
+    !
+    ! See Putman and Lin, 2007, equations (17) and (18) for more details.
+
+    !
+    ! Part 1. Calculate rho_n - dt*div(mass_flux(rho=rho_n))
+    !
+    call invoke( setval_c(mass_flux,-999999.0_r_def) )
+    call vert_conservative_cosmic_alg(mass_flux, rho, dep_pts, dt )
+    call cosmic_density_update_alg(rho_np1, rho, mass_flux, detj_at_w2, cell_orientation, z_direction)
+
+    !
+    ! Part 2. Calculate (rho=1) - dt*div(mass_flux(rho=1))
+    !
+    call invoke( setval_c(rho_constant_1,1.0_r_def) )
+    call invoke( setval_c(mass_flux,-999999.0_r_def) )
+    call vert_conservative_cosmic_alg(mass_flux, rho_constant_1, dep_pts, dt)
+    call cosmic_density_update_alg(rho_constant_1_np1, rho_constant_1, mass_flux, detj_at_w2, cell_orientation, z_direction)
+
+    !
+    ! Part 3. Division
+    !
+    call invoke( X_divideby_Y(rho_adv,rho_np1,rho_constant_1) )
+
+    nullify( w2_fs, w3_fs, detj_at_w2 )
+
+  end subroutine vert_advective_cosmic_alg
+
+end module vert_advective_cosmic_alg_mod
