@@ -18,6 +18,8 @@ module calc_dA_at_w2_kernel_mod_test
     use function_space_mod,            only : function_space_type, DIFF_BASIS
     use pFUnit_Mod
     use reference_element_mod,         only : N,S,E,W,T,B
+    use yaxt,                          only : xt_initialize, xt_finalize
+    use mpi_mod,                       only : store_comm
 
   implicit none
 
@@ -25,7 +27,7 @@ module calc_dA_at_w2_kernel_mod_test
   public :: test_all
 
   @TestCase
-  type, extends(TestCase), public :: calc_dA_at_w2_test_type
+  type, extends(MPITestCase), public :: calc_dA_at_w2_test_type
     private
     type(function_space_type), pointer :: w0_fs => null()
     type(function_space_type), pointer :: w2_fs => null()
@@ -60,6 +62,11 @@ contains
     integer(kind=i_def) :: ndf_chi, ndf_w2
 
     integer(kind=i_def) :: i
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     ! Create top level mesh collection
     mesh_collection = mesh_collection_type()
@@ -99,6 +106,9 @@ contains
 
     class(calc_dA_at_w2_test_type), intent(inout) :: this
 
+    ! Finalise YAXT
+    call xt_finalize()
+
     deallocate( this%diff_basis_chi)
 
     call mesh_collection%clear()
@@ -107,7 +117,7 @@ contains
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use calc_dA_at_w2_kernel_mod, only : calc_dA_at_w2_code

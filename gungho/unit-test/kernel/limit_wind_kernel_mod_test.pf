@@ -17,6 +17,8 @@ module limit_wind_kernel_mod_test
   use fs_continuity_mod,             only: W2
   use function_space_mod,            only: function_space_type
   use pFUnit_Mod
+  use yaxt,                          only : xt_initialize, xt_finalize
+  use mpi_mod,                       only : store_comm
 
   implicit none
 
@@ -24,7 +26,7 @@ module limit_wind_kernel_mod_test
   public :: test_all
 
   @TestCase
-  type, extends(TestCase), public :: limit_wind_test_type
+  type, extends(MPITestCase), public :: limit_wind_test_type
     private
     type(function_space_type), pointer :: w2_fs => null()
     type(field_type)                   :: wind, dJ_on_w2
@@ -68,6 +70,11 @@ contains
     integer(i_def)         :: ndf_w2, undf_w2, dim_w2
 
     integer(i_def)         :: mesh_id
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     call feign_base_mesh_config( filename='foo', prime_mesh_name='unit_test', &
                                  geometry=base_mesh_geometry_planar,          &
@@ -116,10 +123,13 @@ contains
     call function_space_collection%clear()
     call mesh_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use limit_wind_kernel_mod, only: limit_wind_code

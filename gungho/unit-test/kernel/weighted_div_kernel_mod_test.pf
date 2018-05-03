@@ -21,13 +21,15 @@ module weighted_div_kernel_mod_test
     use quadrature_rule_gaussian_mod,  only : quadrature_rule_gaussian_type
     use mesh_collection_mod,           only : mesh_collection_type, &
                                               mesh_collection
+    use yaxt,                          only : xt_initialize, xt_finalize
+    use mpi_mod,                       only : store_comm
   implicit none
 
   private
   public :: test_all
 
   @TestCase
-  type, extends(TestCase), public :: weighted_div_test_type
+  type, extends(MPITestCase), public :: weighted_div_test_type
     private
     integer(i_def)                     :: mesh_id
     type( quadrature_xyoz_type )          :: qr
@@ -72,6 +74,11 @@ contains
     integer :: nqp_h, nqp_v
 
     integer :: i
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     call feign_finite_element_config( finite_element_cellshape_quadrilateral, &
                                       0, 1, .true., .false., .false.)
@@ -132,10 +139,13 @@ contains
     call function_space_collection%clear()
     call mesh_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use weighted_div_kernel_mod, only : weighted_div_code

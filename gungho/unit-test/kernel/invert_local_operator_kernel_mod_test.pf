@@ -17,6 +17,8 @@ module invert_local_operator_kernel_mod_test
   use fs_continuity_mod,             only : W3
   use function_space_mod,            only : function_space_type
   use operator_mod,                  only : operator_type, operator_proxy_type
+  use yaxt,                          only : xt_initialize, xt_finalize
+  use mpi_mod,                       only : store_comm
   use pFUnit_Mod
 
   implicit none
@@ -25,7 +27,7 @@ module invert_local_operator_kernel_mod_test
   public :: test_all
 
   @TestCase
-  type, extends(TestCase), public :: invert_local_operator_test_type
+  type, extends(MPITestCase), public :: invert_local_operator_test_type
     private
     type(operator_type)       :: mm, mm_inv
     integer(i_def)            :: mesh_id
@@ -51,6 +53,11 @@ contains
 
 
     type(function_space_type), pointer :: w3_fs => null()
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     ! Create top level mesh collection
     mesh_collection = mesh_collection_type()
@@ -78,10 +85,13 @@ contains
     call function_space_collection%clear()
     call mesh_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use invert_local_operator_kernel_mod, only : invert_local_operator_code

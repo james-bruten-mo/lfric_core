@@ -43,7 +43,7 @@ module constants_mod
 
   integer, parameter :: i_def        = int32       !< Default integer kind for application.
   integer, parameter :: i_native     = kind(i_val) !< Native kind for integer.
-  integer, parameter :: i_halo_index = int32       !< Integer kind for the index used in halo swapping
+  integer, parameter :: i_halo_index = int64       !< Integer kind for the index used in halo swapping
   !> @}
 
   !> @name Set up default kinds for logicals.

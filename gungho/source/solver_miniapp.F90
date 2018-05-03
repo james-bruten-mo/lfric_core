@@ -21,6 +21,8 @@ program solver_miniapp
   use init_fem_mod,                   only : init_fem  
   use init_solver_miniapp_mod,        only : init_solver_miniapp
   use ESMF
+  use yaxt,                           only : xt_initialize, xt_finalize
+  use mpi_mod,                        only : initialise_comm, finalise_comm
   use global_mesh_collection_mod,     only : global_mesh_collection, &
                                              global_mesh_collection_type
   use field_mod,                      only : field_type
@@ -43,6 +45,7 @@ program solver_miniapp
   integer(i_def)     :: rc
   integer(i_def)     :: total_ranks, local_rank
   integer(i_def)     :: petCount, localPET
+  integer(i_def)     :: comm = -999
 
   integer(i_def)     :: mesh_id, twod_mesh_id
 
@@ -53,6 +56,12 @@ program solver_miniapp
   !-----------------------------------------------------------------------------
   ! Driver layer init
   !-----------------------------------------------------------------------------
+
+  ! Initialise MPI communicatios and get a valid communicator
+  call initialise_comm(comm)
+
+  ! Initialise YAXT
+  call xt_initialize(comm)
 
   ! Initialise ESMF 
   ! and get the rank information from the virtual machine
@@ -128,6 +137,12 @@ program solver_miniapp
 
   ! Finalise ESMF
   call ESMF_Finalize(endflag=ESMF_END_KEEPMPI,rc=rc)
+
+  ! Finalise YAXT
+  call xt_finalize()
+
+  ! Finalise MPI communications
+  call finalise_comm()
 
 end program solver_miniapp
 

@@ -19,6 +19,8 @@ module mesh_colouring_mod_test
   use global_mesh_mod,            only: global_mesh_type
   use mesh_collection_mod,        only: mesh_collection_type,                  &
                                         mesh_collection
+  use yaxt,                       only : xt_initialize, xt_finalize
+  use mpi_mod,                    only : store_comm
 
   use pFUnit_Mod
   use gungho_suite_fixture_mod,   only : get_esmf_handle
@@ -31,7 +33,7 @@ module mesh_colouring_mod_test
                           test_compute_colours_generic
 
   @testCase
-  type, public, extends(TestCase) :: compute_colours_test_type
+  type, public, extends(MPITestCase) :: compute_colours_test_type
     integer       :: total_ranks, local_rank
     integer       :: xproc, yproc
     integer       :: num_layers
@@ -58,6 +60,11 @@ subroutine setUp(this)
   class(compute_colours_test_type), intent(inout)  :: this
   type(ESMF_VM)  :: vm
   integer        :: rc, local_pet, pet_count
+
+  ! Initialise YAXT
+  call xt_initialize(this%getMpiCommunicator())
+  !Store the MPI communicator for later use
+  call store_comm(this%getMpiCommunicator())
 
   call ESMF_VMGet(get_esmf_handle(),  &
                   localPet=local_pet, &
@@ -89,9 +96,12 @@ subroutine tearDown(this)
   call global_mesh_collection%clear()
   call mesh_collection%clear()
 
+  ! Finalise YAXT
+  call xt_finalize()
+
 end subroutine tearDown
 !-------------------------------------------------------------------------------
-@test
+@Test( npes=[1] )
 subroutine test_compute_colours_cubedsphere(this)
 
   use mesh_mod,             only : mesh_type
@@ -187,7 +197,7 @@ subroutine test_compute_colours_cubedsphere(this)
   return
 end subroutine test_compute_colours_cubedsphere
 !-------------------------------------------------------------------------------
-@test
+@Test( npes=[1] )
 subroutine test_compute_colours_biperiodic(this)
 
   use extrusion_config_mod, only : extrusion_method_uniform
@@ -284,7 +294,7 @@ subroutine test_compute_colours_biperiodic(this)
 end subroutine test_compute_colours_biperiodic
 ! This test uses a cubed sphere mesh but sneakily does not set panel number to 6 so
 ! forcing the colour algorithm to use the generic colour test
-@test
+@Test( npes=[1] )
 subroutine test_compute_colours_generic(this)
 
   use mesh_mod,             only : mesh_type

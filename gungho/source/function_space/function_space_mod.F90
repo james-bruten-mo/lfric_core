@@ -21,10 +21,8 @@ use mesh_mod,              only: mesh_type
 use master_dofmap_mod,     only: master_dofmap_type
 use stencil_dofmap_mod,    only: stencil_dofmap_type, STENCIL_POINT,           &
                                  generate_stencil_dofmap_id
-use ESMF,                  only: ESMF_RouteHandle, ESMF_DistGrid, ESMF_Array   &
-                               , ESMF_Success, ESMF_DistGridCreate             &
-                               , ESMF_ArrayCreate, ESMF_ArrayHaloStore         &
-                               , ESMF_ArrayDestroy, ESMF_TYPEKIND_R8
+use yaxt,                  only: xt_redist
+use mpi_mod,               only: generate_redistribution_map, get_mpi_datatype
 use log_mod,               only: log_event, log_scratch_space                  &
                                , LOG_LEVEL_DEBUG, LOG_LEVEL_ERROR              &
                                , LOG_LEVEL_INFO
@@ -152,12 +150,8 @@ type, extends(linked_list_data_type), public :: function_space_type
   !> function space
   logical(l_def) :: comms_fs
 
-  !> A list of the routing tables needed to perform halo swaps to various depths
-  !! of halo
-  type(ESMF_RouteHandle), allocatable :: haloHandle(:)
-
-  !> An ESMF distributed grid description
-  type(ESMF_DistGrid) :: distgrid
+  !> YAXT redistribution maps
+  type(xt_redist), allocatable :: redist(:)
 
 contains
 
@@ -281,14 +275,10 @@ contains
   !> @brief Returns the order of a function space
   procedure, public :: get_fs_order
 
-  !> @brief Gets a routing table for halo swapping
+  !> @brief Gets a YAXT redistribution map for halo swapping
   !> @param[in] depth The depth of halo swap to perform  
-  !> @return haloHandle The routing table for swapping halos to the depth required
-  procedure get_haloHandle
-
-  !> @brief Gets the ESMF distributed grid description for the function space
-  !> @return distgrid The ESMF distributed grid description
-  procedure get_distgrid
+  !> @return redist The YAXT redistrubution map for swapping halos to the depth required
+  procedure get_redist
 
   !> Gets the array that holds the global indices of all dofs
   procedure get_global_dof_id
@@ -414,8 +404,6 @@ subroutine init_function_space( self )
 
   integer(i_def), allocatable :: dofmap(:,:)
 
-  type(ESMF_Array) :: temporary_esmf_array
-
   ncells_2d            = self%mesh % get_ncells_2d()
   ncells_2d_with_ghost = self%mesh % get_ncells_2d_with_ghost()
 
@@ -491,8 +479,8 @@ subroutine init_function_space( self )
   ! create the linked list
   self%dofmap_list = linked_list_type()
 
-  !Set up routing tables for halo exchanges
-  allocate(self%haloHandle(size(self%last_dof_halo)))
+  !Set up YAXT redistribution map for halo exchanges
+  allocate(self%redist(size(self%last_dof_halo)))
 
   ! Don't set up routing tables for WCHI. Fields on this function space are
   ! constant so will never need to be halo exchanged
@@ -500,11 +488,6 @@ subroutine init_function_space( self )
     self%comms_fs=.false.
   else
     self%comms_fs=.true.
-    rc = ESMF_SUCCESS
-    ! Create an ESMF DistGrid, which describes which partition owns which cells
-    self%distgrid = ESMF_DistGridCreate( arbSeqIndexList= &
-                                    self%global_dof_id(1:self%last_dof_owned), &
-                                         rc=rc )
 
     do idepth = 1, size(self%last_dof_halo)
 
@@ -515,33 +498,13 @@ subroutine init_function_space( self )
         halo_start  = self%last_dof_halo(idepth)
         halo_finish = self%last_dof_halo(idepth) - 1
       end if
-      ! Can only halo-swap an ESMF array so set up a temporary one that's big
-      ! enough to hold all the owned cells and all the halos
-      if (rc == ESMF_SUCCESS)                                                 &
-        temporary_esmf_array =                                                &
-          ESMF_ArrayCreate( distgrid=self%distgrid,                           &
-                            typekind=ESMF_TYPEKIND_R8,                        &
-                            haloSeqIndexList=                                 &
-                                self%global_dof_id( halo_start:halo_finish ), &
-                            rc=rc )
 
-      ! Calculate the routing table required to perform the halo-swap, so the
-      ! code knows where to find the values it needs to fill in the halos
-      if (rc == ESMF_SUCCESS) &
-        call ESMF_ArrayHaloStore( array=temporary_esmf_array, &
-                                  routehandle=self%haloHandle(idepth), &
-                                  rc=rc )
-      ! Clean up the temporary array used to generate the routing table 
-      if (rc == ESMF_SUCCESS) &
-        call ESMF_ArrayDestroy(array=temporary_esmf_array, &
-                               noGarbage=.TRUE. , &
-                               rc=rc)
-
+      !Get the redistribution map objects for doing halo exchanges later
+      self%redist(idepth) = generate_redistribution_map( &
+                                 self%global_dof_id(1:self%last_dof_owned), &
+                                 self%global_dof_id( halo_start:halo_finish ), &
+                                 get_mpi_datatype(r_def) )
     end do
-
-    if (rc /= ESMF_SUCCESS) call log_event( &
-      'ESMF failed to generate the halo routing table', &
-      LOG_LEVEL_ERROR )
 
   end if
 
@@ -1010,35 +973,20 @@ function get_mesh_id(self) result (mesh_id)
 end function get_mesh_id
 
 !-----------------------------------------------------------------------------
-! Gets a routing table for halo swapping
+! Gets a YAXT redistribution map for halo swapping
 !-----------------------------------------------------------------------------
-function get_haloHandle(self, depth) result (haloHandle)
+function get_redist(self, depth) result (redist)
 
   implicit none
   class(function_space_type) :: self
   integer(i_def) , intent(in) :: depth
 
-  type(ESMF_RouteHandle) :: haloHandle
+  type(xt_redist) :: redist
 
-  haloHandle = self%haloHandle(depth)
-
-  return
-end function get_haloHandle
-
-!-----------------------------------------------------------------------------
-! Gets the ESMF distributed grid description for the function space
-!-----------------------------------------------------------------------------
-function get_distgrid(self) result (distgrid)
-
-  implicit none
-  class(function_space_type) :: self
-
-  type(ESMF_DistGrid) :: distgrid
-
-  distgrid = self%distgrid
+  redist = self%redist(depth)
 
   return
-end function get_distgrid
+end function get_redist
 
 !-----------------------------------------------------------------------------
 ! Gets the array that holds the global indices of all dofs
@@ -1240,18 +1188,15 @@ subroutine clear(self)
 
   class (function_space_type), intent(inout) :: self
 
-  integer(i_def) :: rc, i
-
   if (allocated(self%nodal_coords))      deallocate( self%nodal_coords )
   if (allocated(self%basis_order))       deallocate( self%basis_order )
   if (allocated(self%basis_index))       deallocate( self%basis_index )
   if (allocated(self%basis_vector))      deallocate( self%basis_vector )
   if (allocated(self%basis_x))           deallocate( self%basis_x )
-  if (allocated(self%fractional_levels)) deallocate( self%fractional_levels )
   if (allocated(self%global_dof_id))     deallocate( self%global_dof_id )
   if (allocated(self%last_dof_halo))     deallocate( self%last_dof_halo )
-
-  if (allocated(self%haloHandle))        deallocate( self%haloHandle )
+  if (allocated(self%redist))            deallocate( self%redist)
+  if (allocated(self%fractional_levels)) deallocate( self%fractional_levels )
   if (allocated(self%dof_on_vert_boundary)) &
                                          deallocate( self%dof_on_vert_boundary )
   call self%master_dofmap%clear()

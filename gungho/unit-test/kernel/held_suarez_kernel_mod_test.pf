@@ -22,6 +22,8 @@ module held_suarez_kernel_mod_test
                                            quadrature_xyoz_proxy_type
   use quadrature_rule_gaussian_mod,  only: quadrature_rule_gaussian_type
   use coord_transform_mod,           only: llr2xyz
+  use yaxt,                          only : xt_initialize, xt_finalize
+  use mpi_mod,                       only : store_comm
 
   implicit none
 
@@ -29,7 +31,7 @@ module held_suarez_kernel_mod_test
   public :: test_all
 
   @TestCase
-  type, extends(TestCase), public :: held_suarez_test_type
+  type, extends(MPITestCase), public :: held_suarez_test_type
     private
     type( quadrature_xyoz_type )          :: qr
     type(quadrature_xyoz_proxy_type) :: qr_proxy
@@ -90,6 +92,11 @@ contains
     integer(i_def)                 :: mesh_id
 
     integer(i_def)                 :: i
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     call feign_base_mesh_config( filename='foo', prime_mesh_name='unit_test', &
                                  geometry=base_mesh_geometry_planar,          &
@@ -171,10 +178,13 @@ contains
     call function_space_collection%clear()
     call mesh_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use held_suarez_fv_kernel_mod,       only : held_suarez_fv_code

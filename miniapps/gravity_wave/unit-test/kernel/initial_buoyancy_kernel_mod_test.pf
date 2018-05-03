@@ -16,6 +16,8 @@ module initial_buoyancy_kernel_mod_test
   use field_mod,                     only : field_type,      &
                                             field_proxy_type
   use function_space_mod,            only : function_space_type, W0, Wtheta
+  use yaxt,                       only : xt_initialize, xt_finalize
+  use mpi_mod,                    only : store_comm
   use pFUnit_Mod
 
   implicit none 
@@ -24,7 +26,7 @@ module initial_buoyancy_kernel_mod_test
   public :: initial_buoyancy_kernel_test_type, test_all
 
   @TestCase
-  type, extends(TestCase) :: initial_buoyancy_kernel_test_type
+  type, extends(MPITestCase) :: initial_buoyancy_kernel_test_type
     private
     type(function_space_type), pointer :: w0_fs => null()
     type(function_space_type), pointer :: wt_fs => null()
@@ -78,6 +80,11 @@ contains
                       ndf_chi, dim_chi
 
     integer :: i
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     call feign_base_mesh_config( filename='foo', prime_mesh_name='unit_test', &
                                  geometry=base_mesh_geometry_planar,          &
@@ -133,10 +140,13 @@ contains
 
     call function_space_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use initial_buoyancy_kernel_mod, only : initial_buoyancy_code

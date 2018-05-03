@@ -37,7 +37,10 @@ program cma_test
                                              ESMF_LOGKIND_MULTI, &
                                              ESMF_SUCCESS,       &
                                              ESMF_REDUCE_SUM,    &
-                                             ESMF_VM
+                                             ESMF_VM,            &
+                                             ESMF_END_KEEPMPI
+  use yaxt,                           only : xt_initialize, xt_finalize
+  use mpi_mod,                        only : initialise_comm, finalise_comm
   use field_mod,                      only : field_type
   use finite_element_config_mod,      only : element_order
   use fs_continuity_mod,              only : W0,W1,W2,W3
@@ -64,6 +67,8 @@ program cma_test
   integer(kind=i_def) :: rc
   ! Number of processes and local rank
   integer(kind=i_def) :: petCount, localPET
+  ! MPI communicator
+  integer(kind=i_def) :: comm
   ! Mesg index
   integer(kind=i_def) :: mesh_id, twod_mesh_id
   ! Number of processes and local rank
@@ -115,11 +120,19 @@ program cma_test
   ! Error tolerance for tests
   real(kind=r_def), parameter :: tolerance=1.0E-12
 
+  ! Initialise MPI communicatios and get a valid communicator
+  call initialise_comm(comm)
+
+  ! Initialise YAXT
+  call xt_initialize(comm)
+
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! Initialise ESMF and get the rank information from the virtual machine
   !
   CALL ESMF_Initialize(vm=vm, defaultlogfilename="cma_test.Log", &
-                       logkindflag=ESMF_LOGKIND_MULTI, rc=rc)
+                       logkindflag=ESMF_LOGKIND_MULTI, &
+                       mpiCommunicator=comm, &
+                       rc=rc)
   if (rc /= ESMF_SUCCESS) then
     call log_event( 'Failed to initialise ESMF.', &
                     LOG_LEVEL_ERROR )
@@ -306,6 +319,12 @@ program cma_test
   ! Finalise and close down
   !
   call log_event( ' CMA functional testing completed ...', LOG_LEVEL_INFO )
-  call ESMF_Finalize()
+  call ESMF_Finalize(endflag=ESMF_END_KEEPMPI,rc=rc)
+
+  ! Finalise YAXT
+  call xt_finalize()
+
+  ! Finalise MPI communications
+  call finalise_comm()
 
 end program cma_test

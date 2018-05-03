@@ -18,6 +18,8 @@ program io_miniapp
   use init_fem_mod,                   only : init_fem
   use init_io_miniapp_mod,            only : init_io_miniapp
   use ESMF
+  use yaxt,                           only : xt_initialize, xt_finalize
+  use mpi_mod,                        only : store_comm
   use field_mod,                      only : field_type
   use finite_element_config_mod,      only : element_order
   use global_mesh_collection_mod,    only: global_mesh_collection, &
@@ -77,6 +79,9 @@ program io_miniapp
   call init_wait()
   call xios_initialize(xios_id, return_comm = comm)
 
+  ! Initialise YAXT
+  call xt_initialize(comm)
+
   ! Initialise ESMF using mpi communicator initialised by XIOS
   ! and get the rank information from the virtual machine
   call ESMF_Initialize(vm=vm, &
@@ -92,6 +97,9 @@ program io_miniapp
 
   total_ranks = petCount
   local_rank  = localPET
+
+  !Store the MPI communicator for later use
+  call store_comm(comm)
 
   call log_event( 'IO mini app running...', LOG_LEVEL_INFO )
 
@@ -163,6 +171,9 @@ program io_miniapp
 
   ! Finalise ESMF
   call ESMF_Finalize(endflag=ESMF_END_KEEPMPI,rc=rc)
+
+  ! Finalise YAXT
+  call xt_finalize()
 
   ! Finalise mpi
   call mpi_finalize(ierr)

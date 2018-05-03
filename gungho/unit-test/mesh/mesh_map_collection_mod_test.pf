@@ -24,6 +24,8 @@ module mesh_map_collection_mod_test
   use mesh_map_mod,               only: mesh_map_type
   use mesh_map_collection_mod,    only: mesh_map_collection_type
   use mesh_collection_mod,        only: mesh_collection_type, mesh_collection
+  use yaxt,                       only : xt_initialize, xt_finalize
+  use mpi_mod,                    only : store_comm
 
   use pFUnit_Mod
 
@@ -34,7 +36,7 @@ module mesh_map_collection_mod_test
   public :: mesh_map_collection_test_type, test_mesh_map_collection
 
   @testCase
-  type, extends( TestCase ) :: mesh_map_collection_test_type
+  type, extends( MPITestCase ) :: mesh_map_collection_test_type
     private
 
     type(global_mesh_map_type), pointer :: CoarseToFine_global_mesh_map => null()
@@ -107,6 +109,11 @@ contains
     type(mesh_map_type), pointer :: mesh_map => null()
 
     procedure (partitioner_interface), pointer :: partitioner_ptr => null()
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     call feign_base_mesh_config                               &
              ( filename='foo', prime_mesh_name=mesh_name,     &
@@ -196,10 +203,13 @@ contains
     call global_mesh_collection%clear()
     call mesh_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_mesh_map_collection( this )
 
     implicit none

@@ -18,6 +18,8 @@ module sample_poly_adv_kernel_mod_test
   use function_space_mod,            only : function_space_type
   use pFUnit_Mod
   use stencil_dofmap_mod,            only : stencil_dofmap_type, STENCIL_CROSS
+  use yaxt,                          only : xt_initialize, xt_finalize
+  use mpi_mod,                       only : store_comm
 
   implicit none
 
@@ -25,7 +27,7 @@ module sample_poly_adv_kernel_mod_test
   public :: test_all
 
   @TestCase
-  type, extends(TestCase), public :: sample_poly_adv_test_type
+  type, extends(MPITestCase), public :: sample_poly_adv_test_type
     private
     type(function_space_type), pointer :: w2_fs => null()
     type(function_space_type), pointer :: wt_fs => null()
@@ -68,6 +70,11 @@ contains
     integer(i_def) :: dim_u, ndf_u, ndf_t
     integer(i_def) :: ndf_chi, undf_chi, dim_chi, dim_diff_chi
     integer :: i
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     call feign_base_mesh_config( filename='foo', prime_mesh_name='unit_test', &
                                  geometry=base_mesh_geometry_planar,          &
@@ -135,10 +142,13 @@ contains
     call function_space_collection%clear()
     call mesh_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use sample_poly_adv_kernel_mod,     only : sample_poly_adv_code, &

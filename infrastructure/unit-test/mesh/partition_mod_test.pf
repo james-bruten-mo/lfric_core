@@ -18,6 +18,8 @@ module partition_mod_test
   use partition_mod
   use pFUnit_Mod
   use reference_element_mod,            only: reference_cube_type
+  use yaxt, only : xt_initialize, xt_finalize
+  use mpi_mod, only: store_comm
 
   implicit none
 
@@ -26,7 +28,7 @@ module partition_mod_test
             test_partition_CubedSphere, test_partition_BiPeriodic
 
   @testCase
-  type, public, extends( TestCase ) :: partition_test_type
+  type, public, extends( MPITestCase ) :: partition_test_type
     private
     integer :: dummy ! This is here only so procedures which do not use "this"
                      ! have something they can hit.
@@ -66,6 +68,11 @@ contains
 
     global_mesh_collection = global_mesh_collection_type()
 
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
+
   end subroutine setUp
 
   subroutine tearDown( this )
@@ -78,11 +85,14 @@ contains
 
     call global_mesh_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine teardown
 
   !> Test partition module functionality
   !>
-  @test
+  @Test( npes=[1] )
   subroutine test_partition_BiPeriodic( this )
 
     implicit none
@@ -221,7 +231,7 @@ contains
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! Test partition_cubedsphere_serial (on a single process)
   !
-  @test
+  @Test( npes=[1] )
   subroutine test_partition_CubedSphere( this )
 
     implicit none

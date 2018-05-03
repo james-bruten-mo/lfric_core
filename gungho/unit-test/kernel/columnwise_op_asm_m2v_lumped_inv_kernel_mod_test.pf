@@ -22,6 +22,8 @@ module columnwise_op_asm_m2v_lumped_inv_kernel_mod_test
                                             operator_proxy_type,           &
                                             columnwise_operator_type,      &
                                             columnwise_operator_proxy_type
+  use yaxt,                          only : xt_initialize, xt_finalize
+  use mpi_mod,                       only : store_comm
   use pFUnit_Mod
 
   implicit none
@@ -30,7 +32,7 @@ module columnwise_op_asm_m2v_lumped_inv_kernel_mod_test
   public :: test_all
 
   @TestCase
-  type, extends(TestCase), public :: columnwise_op_asm_m2v_lumped_inv_test_type
+  type, extends(MPITestCase), public :: columnwise_op_asm_m2v_lumped_inv_test_type
     private
     type(function_space_type), pointer :: w2v_fs => null()
     type(operator_type)                :: mm
@@ -59,6 +61,11 @@ contains
 
     integer :: i
     integer :: alpha, beta, gamma_m, gamma_p
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     call feign_finite_element_config( finite_element_cellshape_quadrilateral, &
                                       0, 0, .true., .false., .false.)
@@ -96,10 +103,13 @@ contains
 
     call function_space_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use columnwise_op_asm_m2v_lumped_inv_kernel_mod, only : &

@@ -18,6 +18,8 @@ module compute_tri_precon_kernel_mod_test
   use pFUnit_Mod
   use timestepping_config_mod,  only : timestepping_runge_kutta_method_ssp4, &
                                             timestepping_method_semi_implicit
+  use yaxt,                          only : xt_initialize, xt_finalize
+  use mpi_mod,                       only : store_comm
 
   implicit none
 
@@ -25,7 +27,7 @@ module compute_tri_precon_kernel_mod_test
   public :: compute_tri_precon_test_type, test_all
 
   @TestCase
-  type, extends(TestCase) :: compute_tri_precon_test_type
+  type, extends(MPITestCase) :: compute_tri_precon_test_type
     private
     type(function_space_type), pointer :: w0_fs => null()
     type(function_space_type), pointer :: w3_fs => null()
@@ -88,6 +90,11 @@ contains
     integer(i_def)         :: ndf_chi, diff_dim_chi, ndf_exner
     integer(i_def)         :: mesh_id
 
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
+
     call feign_base_mesh_config( filename='foo', prime_mesh_name='unit_test', &
                                  geometry=base_mesh_geometry_planar,          &
                                  partitioner=base_mesh_partitioner_planar,    &
@@ -146,10 +153,13 @@ contains
     call function_space_collection%clear()
     call mesh_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use compute_tri_precon_kernel_mod, only: compute_tri_precon_code

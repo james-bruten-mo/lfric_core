@@ -14,6 +14,8 @@ module operator_mod_test
                                             function_space_collection
   use mesh_collection_mod,           only : mesh_collection_type, &
                                             mesh_collection
+  use yaxt,                          only : xt_initialize, xt_finalize
+  use mpi_mod,                       only : store_comm
   use pFUnit_Mod
 
   implicit none
@@ -22,7 +24,7 @@ module operator_mod_test
   public :: test_all
 
   @TestCase
-  type, extends(TestCase), public :: operator_test_type
+  type, extends(MPITestCase), public :: operator_test_type
     private
   contains
     procedure setUp
@@ -42,6 +44,11 @@ contains
 
     class(operator_test_type), intent(inout) :: this
 
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
+
     ! Create top level mesh collection
     mesh_collection = mesh_collection_type()
     ! Create top level function space collection
@@ -59,10 +66,13 @@ contains
     call function_space_collection%clear()
     call mesh_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use operator_mod,       only: operator_type, operator_proxy_type

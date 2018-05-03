@@ -32,8 +32,8 @@ PROJECT_NAME = mesh_tools
 
 PROFILE ?= fast-debug
 
-export IGNORE_DEPENDENCIES = netcdf MPI ESMF pfunit_mod planet_constants_mod xios mod_wait
-export EXTERNAL_DYNAMIC_LIBRARIES = esmf netcdff netcdf hdf5
+export IGNORE_DEPENDENCIES = netcdf MPI ESMF yaxt pfunit_mod planet_constants_mod xios mod_wait
+export EXTERNAL_DYNAMIC_LIBRARIES = esmf netcdff netcdf hdf5 yaxt yaxt_c
 
 PROJECT_DIR := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 ROOT_DIR    ?= ../

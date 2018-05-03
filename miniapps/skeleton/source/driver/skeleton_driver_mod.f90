@@ -16,6 +16,8 @@ module skeleton_driver_mod
   use init_fem_mod,                   only : init_fem
   use init_skeleton_mod,              only : init_skeleton
   use ESMF
+  use yaxt,                           only : xt_initialize, xt_finalize
+  use mpi_mod,                        only : store_comm
   use global_mesh_collection_mod,     only : global_mesh_collection, &
                                              global_mesh_collection_type
   use field_mod,                      only : field_type
@@ -84,6 +86,9 @@ contains
     call init_wait()
     call xios_initialize(xios_id, return_comm = comm)
 
+    ! Initialise YAXT
+    call xt_initialize(comm)
+
     ! Initialise ESMF using mpi communicator initialised by XIOS
     ! and get the rank information from the virtual machine
     call ESMF_Initialize(vm=vm, &
@@ -102,6 +107,9 @@ contains
 
     total_ranks = petCount
     local_rank  = localPET
+
+    !Store the MPI communicator for later use
+    call store_comm(comm)
 
     ! Currently log_event can only use ESMF so it cannot be used before ESMF
     ! is initialised.
@@ -224,6 +232,9 @@ contains
 
     ! Finalise ESMF
     call ESMF_Finalize(endflag=ESMF_END_KEEPMPI,rc=rc)
+
+    ! Finalise YAXT
+    call xt_finalize()
 
     ! Finalise mpi
     call mpi_finalize(ierr)

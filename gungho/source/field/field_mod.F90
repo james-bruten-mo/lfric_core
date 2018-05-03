@@ -17,7 +17,9 @@ module field_mod
   use function_space_mod, only: function_space_type
   use mesh_mod,           only: mesh_type
 
-  use ESMF
+  use yaxt,               only: xt_redist,  xt_request, &
+                                xt_redist_s_exchange, &
+                                xt_redist_a_exchange, xt_request_wait
 
   implicit none
 
@@ -43,8 +45,6 @@ module field_mod
     integer(kind=i_def)                          :: ospace
     !> Allocatable array of type real which holds the values of the field
     real(kind=r_def), allocatable :: data( : )
-    !> The data for each field is held within an ESMF array component
-    type(ESMF_Array) :: esmf_array
     !> Flag that holds whether each depth of halo is clean or dirty (dirty=1)
     integer(kind=i_def), allocatable :: halo_dirty(:)
     !> Flag that determines whether the copy constructor should copy the data.
@@ -151,10 +151,11 @@ module field_mod
     type( function_space_type ), pointer         :: ospace => null( )
     !> Allocatable array of type real which holds the values of the field
     real(kind=r_def), public, pointer         :: data( : ) => null()
-    !> pointer to the ESMF array
-    type(ESMF_Array), pointer :: esmf_array => null()
     !> pointer to array that holds halo dirtiness
     integer(kind=i_def), pointer :: halo_dirty(:) => null()
+    !> Unique identifier used to identify a halo exchange, so the start of an
+    !> asynchronous halo exchange can be matched with the end
+    type(xt_request) :: halo_request
 
   contains
 
@@ -191,7 +192,7 @@ module field_mod
     !> Wait (i.e. block) until all current non-blocking reductions
     !> (sum, max, min) are complete.
     !>
-    !> ESMF have only implemented blocking reductions, so this
+    !> We presently have only blocking reductions, so this
     !> subroutine currently returns without waiting.
     procedure reduction_finish
 
@@ -252,7 +253,6 @@ contains
     get_proxy % vspace                 => self % vspace
     get_proxy % data                   => self % data
     get_proxy % halo_dirty             => self % halo_dirty
-    get_proxy % esmf_array             => self % esmf_array
 
   end function get_proxy
 
@@ -298,11 +298,7 @@ contains
     class(field_type), intent(inout)    :: self
     integer(i_def) :: rc
 
-    if ( allocated(self%data) ) then
-      call ESMF_ArrayDestroy(self%esmf_array, noGarbage=.TRUE., rc=rc)
-      if (rc /= ESMF_SUCCESS ) &
-           call log_event( "ESMF failed to destroy a field.", &
-                           LOG_LEVEL_ERROR )
+    if(allocated(self%data)) then
       deallocate(self%data)
     end if
 
@@ -369,7 +365,6 @@ contains
     class(field_type), target, intent(in)  :: self
     class(field_type), target, intent(out) :: dest
 
-    integer(i_halo_index), allocatable :: global_dof_id(:)
     integer(i_def) :: rc
     integer(i_def) :: halo_start, halo_finish
 
@@ -382,42 +377,10 @@ contains
     dest%checkpoint_method => self%checkpoint_method
     dest%restart_method => self%restart_method
 
-
-
-    allocate(global_dof_id(self%vspace%get_last_dof_halo()))
-    call self%vspace%get_global_dof_id(global_dof_id)
-
-    halo_start  = self%vspace%get_last_dof_owned()+1
-    halo_finish = self%vspace%get_last_dof_halo()
-    !If this is a serial run (no halos), halo_start is out of bounds - so fix it
-    if(halo_start > self%vspace%get_last_dof_halo())then
-      halo_start  = self%vspace%get_last_dof_halo()
-      halo_finish = self%vspace%get_last_dof_halo() - 1
-    end if
-
     allocate( dest%data(self%vspace%get_last_dof_halo()) )
-    data_ptr => dest%data
-
-    if( self%vspace%is_comms_fs() ) then
-      ! Create an ESMF array - this allows us to perform halo exchanges
-      ! This call allocates the memory for the field data - we can extract a
-      ! pointer to that allocated memory next
-      dest%esmf_array = &
-        ESMF_ArrayCreate( distgrid=self%vspace%get_distgrid(), &
-                          farrayPtr=data_ptr, &
-                          haloSeqIndexList= &
-                                      global_dof_id( halo_start:halo_finish ), &
-                          rc=rc )
-
-      if (rc /= ESMF_SUCCESS) &
-        call log_event( 'ESMF failed to allocate space for field data.', &
-                        LOG_LEVEL_ERROR )
-    end if
 
     ! Set the data_extant to be .true. now that the data array has been allocated.
     dest%data_extant = .true.
-
-    deallocate(global_dof_id)
 
     ! Create a flag for holding whether a halo depth is dirty or not
     mesh=>dest%vspace%get_mesh()
@@ -764,8 +727,7 @@ contains
 
     class( field_proxy_type ), target, intent(inout) :: self
     integer(i_def), intent(in) :: depth
-    type(ESMF_RouteHandle) :: haloHandle
-    integer(i_def) :: rc
+    type(xt_redist) :: redist
     type(mesh_type), pointer   :: mesh => null()
 
     if( self%vspace%is_comms_fs() ) then
@@ -774,16 +736,9 @@ contains
         call log_event( 'Error in field: '// &
                         'attempt to exchange halos with depth out of range.', &
                         LOG_LEVEL_ERROR )
-
-      haloHandle=self%vspace%get_haloHandle(depth)
-      call ESMF_ArrayHalo( self%esmf_array, &
-                           routehandle=haloHandle, &
-                           routesyncflag=ESMF_ROUTESYNC_BLOCKING, &
-                           rc=rc )
-
-      if (rc /= ESMF_SUCCESS) call log_event( &
-         'ESMF failed to perform the halo exchange.', &
-         LOG_LEVEL_ERROR )
+        ! Start a blocking (synchronous) halo exchange
+        redist=self%vspace%get_redist(depth)
+        call xt_redist_s_exchange(redist, self%data, self%data)
 
       ! Halo exchange is complete so set the halo dirty flag to say it
       ! is clean (or more accurately - not dirty)
@@ -806,8 +761,7 @@ contains
 
     class( field_proxy_type ), target, intent(inout) :: self
     integer(i_def), intent(in) :: depth
-    type(ESMF_RouteHandle) :: haloHandle
-    integer(i_def) :: rc
+    type(xt_redist) :: redist
     type(mesh_type), pointer   :: mesh => null()
 
     if( self%vspace%is_comms_fs() ) then
@@ -817,16 +771,9 @@ contains
         call log_event( 'Error in field: '// &
                         'attempt to exchange halos with depth out of range.', &
                         LOG_LEVEL_ERROR )
-
-      haloHandle=self%vspace%get_haloHandle(depth)
-      call ESMF_ArrayHalo( self%esmf_array, &
-                           routehandle=haloHandle, &
-                           routesyncflag=ESMF_ROUTESYNC_NBSTART, &
-                           rc=rc )
-
-      if (rc /= ESMF_SUCCESS) call log_event( &
-         'ESMF failed to start the halo exchange.', &
-         LOG_LEVEL_ERROR )
+      ! Start an asynchronous halo exchange
+      redist=self%vspace%get_redist(depth)
+      call xt_redist_a_exchange(redist, self%data, self%data, self%halo_request)
 
       nullify( mesh )
     end if
@@ -844,8 +791,7 @@ contains
 
     class( field_proxy_type ), target, intent(inout) :: self
     integer(i_def), intent(in) :: depth
-    type(ESMF_RouteHandle) :: haloHandle
-    integer(i_def) :: rc
+    type(xt_redist) :: redist
     type(mesh_type), pointer   :: mesh => null()
 
     if( self%vspace%is_comms_fs() ) then
@@ -855,16 +801,8 @@ contains
         call log_event( 'Error in field: '// &
                         'attempt to exchange halos with depth out of range.', &
                         LOG_LEVEL_ERROR )
-
-      haloHandle=self%vspace%get_haloHandle(depth)
-      call ESMF_ArrayHalo( self%esmf_array, &
-                           routehandle=haloHandle, &
-                           routesyncflag=ESMF_ROUTESYNC_NBWAITFINISH, &
-                           rc=rc )
-
-      if (rc /= ESMF_SUCCESS) call log_event( &
-         'ESMF failed to finish the halo exchange.', &
-         LOG_LEVEL_ERROR )
+      ! Wait for the asynchronous halo exchange to complete
+      call xt_request_wait(self%halo_request)
 
       ! Halo exchange is complete so set the halo dirty flag to say it
       ! is clean (or more accurately - not dirty)
@@ -881,27 +819,21 @@ contains
   !!
   function get_sum(self) result (answer)
 
+    use mpi_mod, only: global_sum
     implicit none
 
     class(field_proxy_type), intent(in) :: self
 
     real(r_def) :: answer
 
-    type(ESMF_VM) :: vm
     integer(i_def) :: rc
 
     if( self%vspace%is_comms_fs() ) then
 
-      call ESMF_VMGetCurrent(vm=vm, rc=rc)
-! Currently ESMF has only implemented blocking reductions. Using anything
-! other than ESMF_SYNC_BLOCKING for syncflag results in an error
-      call ESMF_VMAllFullReduce(vm, &
-                                self%data, &
-                                answer, &
-                                self%vspace%get_last_dof_owned(), &
-                                ESMF_REDUCE_SUM, &
-                                syncflag = ESMF_SYNC_BLOCKING, &
-                                rc=rc)
+      call global_sum( self%data, &
+                       answer, &
+                       self%vspace%get_last_dof_owned(), &
+                       rc )
     end if
   end function get_sum
 
@@ -909,27 +841,21 @@ contains
   !!
   function get_min(self) result (answer)
 
+    use mpi_mod, only: global_min
     implicit none
 
     class(field_proxy_type), intent(in) :: self
 
     real(r_def) :: answer
 
-    type(ESMF_VM) :: vm
     integer(i_def) :: rc
 
     if( self%vspace%is_comms_fs() ) then
 
-      call ESMF_VMGetCurrent(vm=vm, rc=rc)
-! Currently ESMF has only implemented blocking reductions. Using anything
-! other than ESMF_SYNC_BLOCKING for syncflag results in an error
-      call ESMF_VMAllFullReduce(vm, &
-                                self%data, &
-                                answer, &
-                                self%vspace%get_last_dof_owned(), &
-                                ESMF_REDUCE_MIN, &
-                                syncflag = ESMF_SYNC_BLOCKING, &
-                                rc=rc)
+      call global_min( self%data, &
+                       answer, &
+                       self%vspace%get_last_dof_owned(), &
+                       rc )
     end if
 
   end function get_min
@@ -938,34 +864,28 @@ contains
   !!
   function get_max(self) result (answer)
 
+    use mpi_mod, only: global_max
     implicit none
 
     class(field_proxy_type), intent(in) :: self
 
     real(r_def) :: answer
 
-    type(ESMF_VM) :: vm
     integer(i_def) :: rc
 
     if( self%vspace%is_comms_fs() ) then
 
-      call ESMF_VMGetCurrent(vm=vm, rc=rc)
-! Currently ESMF has only implemented blocking reductions. Using anything
-! other than ESMF_SYNC_BLOCKING for syncflag results in an error
-      call ESMF_VMAllFullReduce(vm, &
-                                self%data, &
-                                answer, &
-                                self%vspace%get_last_dof_owned(), &
-                                ESMF_REDUCE_MAX, &
-                                syncflag = ESMF_SYNC_BLOCKING, &
-                                rc=rc)
+      call global_max( self%data, &
+                       answer, &
+                       self%vspace%get_last_dof_owned(), &
+                       rc )
     end if
 
   end function get_max
 
   !! Wait for any current (non-blocking) reductions (sum, max, min) to complete
   !!
-  !! Currently, ESMF has only implemented blocking reductions, so there is
+  !! We presently have only blocking reductions, so there is
   !! no need to ever call this subroutine. It is left in here to complete the
   !! API so when non-blocking reductions are implemented, we can support them
   subroutine reduction_finish(self)
@@ -974,7 +894,6 @@ contains
 
     class(field_proxy_type), intent(in) :: self
 
-    type(ESMF_VM) :: vm
     integer(i_def) :: rc
     logical(l_def) :: is_dirty_tmp
 
@@ -986,8 +905,6 @@ contains
                                     ! so the compilers complain -  have to use
                                     ! it for something harmless.
 
-      call ESMF_VMGetCurrent(vm=vm, rc=rc)
-      call ESMF_VMCommWaitAll(vm=vm, rc=rc)
 
     end if
 

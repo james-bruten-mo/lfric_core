@@ -20,6 +20,8 @@ module calc_detj_at_w2_kernel_mod_test
     use quadrature_xyoz_mod,               only: quadrature_xyoz_type, &
                                                  quadrature_xyoz_proxy_type
     use quadrature_rule_gaussian_mod,      only: quadrature_rule_gaussian_type
+    use yaxt,                          only : xt_initialize, xt_finalize
+    use mpi_mod,                       only : store_comm
 
   implicit none
 
@@ -27,7 +29,7 @@ module calc_detj_at_w2_kernel_mod_test
   public :: test_all
 
   @TestCase
-  type, extends(TestCase), public :: calc_detj_at_w2_test_type
+  type, extends(MPITestCase), public :: calc_detj_at_w2_test_type
     private
     type( quadrature_xyoz_type )       :: qr
     type(quadrature_xyoz_proxy_type)   :: qr_proxy
@@ -66,6 +68,11 @@ contains
     integer :: nqp_h, nqp_v
 
     integer :: i
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     ! Create top level mesh collection
     mesh_collection = mesh_collection_type()
@@ -116,10 +123,13 @@ contains
     call mesh_collection%clear()
     call function_space_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use calc_detj_at_w2_kernel_mod, only : calc_detj_at_w2_code

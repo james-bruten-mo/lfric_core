@@ -16,6 +16,8 @@ module dcmip200_orography_spherical_mod_test
   use mesh_collection_mod,        only : mesh_collection_type, &
                                          mesh_collection
   use analytic_orography_mod,     only : orography_profile
+  use yaxt,                       only : xt_initialize, xt_finalize
+  use mpi_mod,                    only : store_comm
 
   use pFUnit_Mod
 
@@ -25,7 +27,7 @@ module dcmip200_orography_spherical_mod_test
   public :: setUp, tearDown, test_dcmip200_orography_spherical
 
   @testCase
-  type, public, extends(TestCase) :: dcmip200_orography_spherical_test_type
+  type, public, extends(MPITestCase) :: dcmip200_orography_spherical_test_type
     real(r_def) :: mountain_height
     real(r_def) :: radius_dec
     real(r_def) :: osc_half_width_dec
@@ -76,6 +78,11 @@ contains
     implicit none
 
     class(dcmip200_orography_spherical_test_type), intent(inout) :: this
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     ! Create top level collections
     global_mesh_collection = global_mesh_collection_type()
@@ -133,10 +140,13 @@ contains
     call global_mesh_collection%clear()
     call mesh_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_dcmip200_orography_spherical(this)
 
     use extrusion_mod,        only : uniform_extrusion_type

@@ -20,6 +20,8 @@ module cosmic_departure_wind_kernel_mod_test
   use fs_continuity_mod,             only : W2
   use function_space_mod,            only : function_space_type
   use flux_direction_mod,            only : x_direction, y_direction
+  use yaxt,                          only : xt_initialize, xt_finalize
+  use mpi_mod,                       only : store_comm
   use pFUnit_Mod
 
   implicit none
@@ -28,7 +30,7 @@ module cosmic_departure_wind_kernel_mod_test
   public :: test_all
 
   @TestCase
-  type, extends(TestCase), public :: cosmic_departure_wind_test_type
+  type, extends(MPITestCase), public :: cosmic_departure_wind_test_type
     private
     type(field_type)         :: piola_field
     type(field_type)         :: departure_field
@@ -64,6 +66,11 @@ contains
     integer(i_def) :: dim_u
     integer(i_def) :: mesh_id
 
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
+
     ! Create top level mesh collection
     mesh_collection = mesh_collection_type()
     ! Create top level function space collection
@@ -95,10 +102,13 @@ contains
     call function_space_collection%clear()
     call mesh_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use cosmic_departure_wind_kernel_mod, only: cosmic_departure_wind_code

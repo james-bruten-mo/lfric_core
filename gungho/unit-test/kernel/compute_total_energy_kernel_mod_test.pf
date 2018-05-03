@@ -21,6 +21,8 @@ module compute_total_energy_kernel_mod_test
   use quadrature_xyoz_mod,               only: quadrature_xyoz_type, &
                                                quadrature_xyoz_proxy_type
   use quadrature_rule_gaussian_mod,      only: quadrature_rule_gaussian_type
+  use yaxt,                          only : xt_initialize, xt_finalize
+  use mpi_mod,                       only : store_comm
 
   implicit none
 
@@ -28,7 +30,7 @@ module compute_total_energy_kernel_mod_test
   public :: compute_total_energy_kernel_test_type, test_all
 
   @TestCase
-  type, extends(TestCase) :: compute_total_energy_kernel_test_type
+  type, extends(MPITestCase) :: compute_total_energy_kernel_test_type
     private
     type( quadrature_xyoz_type )          :: qr
     type(quadrature_xyoz_proxy_type) :: qr_proxy
@@ -77,6 +79,11 @@ contains
     integer(i_def) :: undf_w0, undf_w2, undf_w3
     integer(i_def) :: dim_w0, diff_dim_w0, dim_w2, dim_w3
     integer(i_def) :: mesh_id
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     call feign_planet_config( gravity=gravity, radius=radius, omega=omega, &
                               rd=rd, cp=cp, p_zero=p_zero,                 &
@@ -141,10 +148,13 @@ contains
     call mesh_collection%clear()
     call function_space_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this)
 
     use calc_exner_pointwise_mod,        only : calc_exner_pointwise

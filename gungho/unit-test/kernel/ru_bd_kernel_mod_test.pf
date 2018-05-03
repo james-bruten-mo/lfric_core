@@ -24,6 +24,8 @@ module ru_bd_kernel_mod_test
                                                quadrature_xyoz_proxy_type
   use quadrature_rule_gaussian_mod,      only: quadrature_rule_gaussian_type
   use stencil_dofmap_mod,            only : stencil_dofmap_type, STENCIL_CROSS
+  use yaxt,                          only : xt_initialize, xt_finalize
+  use mpi_mod,                       only : store_comm
 
   implicit none
 
@@ -31,7 +33,7 @@ module ru_bd_kernel_mod_test
   public :: test_all
 
   @TestCase
-  type, extends(TestCase), public :: ru_bd_test_type
+  type, extends(MPITestCase), public :: ru_bd_test_type
     private
     type( quadrature_xyoz_type )          :: qr
     type(quadrature_xyoz_proxy_type) :: qr_proxy
@@ -98,6 +100,11 @@ contains
     integer(i_def) :: ndf_w3, undf_w3, dim_w3
     integer(i_def) :: mesh_id
     integer(i_def) :: nfaces_h
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     this%qr = quadrature_xyoz_type(3, quadrature_rule)
 
@@ -173,10 +180,13 @@ contains
 
     call function_space_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use ru_bd_kernel_mod,      only : ru_bd_code

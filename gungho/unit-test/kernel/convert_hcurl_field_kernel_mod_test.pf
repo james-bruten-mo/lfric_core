@@ -14,6 +14,8 @@ module convert_hcurl_field_kernel_mod_test
   use field_mod,                     only : field_type, field_proxy_type
   use fs_continuity_mod,             only : W0, W1
   use function_space_mod,            only : function_space_type
+  use yaxt,                          only : xt_initialize, xt_finalize
+  use mpi_mod,                       only : store_comm
   use pFUnit_Mod
 
   implicit none
@@ -22,7 +24,7 @@ module convert_hcurl_field_kernel_mod_test
   public :: test_all
 
   @TestCase
-  type, extends(TestCase), public :: convert_hcurl_field_test_type
+  type, extends(MPITestCase), public :: convert_hcurl_field_test_type
     private
     type(function_space_type), pointer :: w0_fs => null()
     type(function_space_type), pointer :: w1_fs => null()
@@ -57,6 +59,11 @@ contains
     integer(i_def) :: mesh_id
 
     integer(i_def) :: i
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     ! Create top level mesh collection
     mesh_collection = mesh_collection_type()
@@ -98,10 +105,13 @@ contains
     call function_space_collection%clear()
     call mesh_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use convert_hcurl_field_kernel_mod, only: convert_hcurl_field_code

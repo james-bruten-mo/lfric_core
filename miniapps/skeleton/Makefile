@@ -9,8 +9,9 @@ export PROJECT_DIR_NAME = skeleton
 
 PROFILE ?= fast-debug
 
-export IGNORE_DEPENDENCIES = netcdf MPI ESMF pfunit_mod planet_constants_mod xios mod_wait
-export EXTERNAL_DYNAMIC_LIBRARIES = esmf netcdff netcdf hdf5
+export IGNORE_DEPENDENCIES = netcdf MPI ESMF yaxt pfunit_mod xios mod_wait
+export EXTERNAL_DYNAMIC_LIBRARIES = esmf yaxt yaxt_c netcdff netcdf hdf5 \
+                                    $(CXX_RUNTIME_LIBRARY)
 export EXTERNAL_STATIC_LIBRARIES = xios
 
 LFRIC_TARGET_PLATFORM ?= generic-x86

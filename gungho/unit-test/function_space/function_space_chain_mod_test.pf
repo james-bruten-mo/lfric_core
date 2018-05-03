@@ -23,6 +23,8 @@ use function_space_collection_mod, only: function_space_collection, &
                                          function_space_collection_type
 use global_mesh_collection_mod,    only: global_mesh_collection_type, &
                                          global_mesh_collection
+use yaxt,                          only: xt_initialize, xt_finalize
+use mpi_mod,                       only: store_comm
 use pFUnit_Mod
 
 implicit none
@@ -34,7 +36,7 @@ public :: function_space_chain_test_type, &
           test_local_mesh_map_contents
 
 @testCase
-type, extends( TestCase ) :: function_space_chain_test_type
+type, extends( MPITestCase ) :: function_space_chain_test_type
   private
   type(function_space_type), pointer :: function_space1 => null()
   type(function_space_type), pointer :: function_space2 => null()
@@ -113,6 +115,11 @@ integer(i_def) :: npanels = 6
 
 procedure (partitioner_interface), pointer :: partitioner_ptr => null()
 
+! Initialise YAXT
+call xt_initialize(this%getMpiCommunicator())
+!Store the MPI communicator for later use
+call store_comm(this%getMpiCommunicator())
+
 call feign_base_mesh_config( filename='foo', prime_mesh_name=mesh_name,     &
                              geometry=base_mesh_geometry_spherical,         &
                              partitioner=base_mesh_partitioner_cubedsphere, &
@@ -175,11 +182,14 @@ call global_mesh_collection%clear()
 call mesh_collection%clear()
 call function_space_collection%clear()
 
+! Finalise YAXT
+call xt_finalize()
+
 end subroutine tearDown
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-@test
+@Test( npes=[1] )
 subroutine test_function_space_chain_api( this )
 
 implicit none
@@ -237,7 +247,7 @@ end subroutine test_function_space_chain_api
 
 
 !==============================================================================
-@test
+@Test( npes=[1] )
 subroutine test_local_mesh_map_creation ( this )
 
 implicit none
@@ -317,7 +327,7 @@ end subroutine test_local_mesh_map_creation
 
 
 !==============================================================================
-@test
+@Test( npes=[1] )
 subroutine test_local_mesh_map_contents ( this )
 
 implicit none

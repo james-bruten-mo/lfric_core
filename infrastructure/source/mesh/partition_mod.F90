@@ -24,9 +24,10 @@ module partition_mod
   use global_mesh_mod, only : global_mesh_type
   use log_mod,         only : log_event,         &
                               LOG_LEVEL_ERROR
-  use constants_mod,   only: i_def, r_def, l_def
+  use constants_mod,   only: i_def, i_halo_index, r_def, l_def
 
-  use ESMF
+  use yaxt,            only: xt_redist, xt_redist_s_exchange
+  use mpi_mod,         only: generate_redistribution_map, get_mpi_datatype
 
   implicit none
 
@@ -204,16 +205,13 @@ contains
 
   type(partition_type), target :: self
 
-  type(ESMF_DistGrid) :: distgrid
-  integer(i_def) :: rc
-  type(ESMF_Array) :: tmp_esmf_array
-  type(ESMF_RouteHandle) :: haloHandle
   integer(i_def) :: cell
   integer(i_def) :: i
   integer(i_def) :: total_inners
   integer(i_def) :: last
-  integer(i_def), pointer :: cell_owner_ptr(:) => null()
   integer(i_def) :: halo_start, halo_finish
+
+  type(xt_redist) :: redist
 
   self%local_rank = local_rank
   self%total_ranks = total_ranks
@@ -256,9 +254,8 @@ contains
   ! by filling the locally owned cells with the local rank and performing
   ! a halo-swap to fill in the owners of all the halo cells.
   !
-  ! Set up the ESMF structures required to perform a halo swap
+  ! Set up the YAXT structures required to perform a halo swap
   !
-  rc = ESMF_SUCCESS
 
   total_inners=0
   do i=1,self%inner_depth
@@ -267,16 +264,7 @@ contains
 
   allocate(self%cell_owner(self%get_num_cells_in_layer()+ &
                             self%get_num_cells_ghost()))
-  cell_owner_ptr=>self%cell_owner
 
-
-  ! Create an ESMF DistGrid, which describes which partition owns which cells
-  distgrid = ESMF_DistGridCreate( arbSeqIndexList= &
-                              self%global_cell_id(1:total_inners+self%num_edge), &
-                                  rc=rc )
-
-  ! Can only halo-swap an ESMF array so set one up that's big enough to hold all
-  ! the owned cells and all the halos
   halo_start  = total_inners+self%num_edge+1
   halo_finish = self%get_num_cells_in_layer()+self%get_num_cells_ghost()
   !If this is a serial run (no halos), halo_start is out of bounds - so fix it
@@ -285,41 +273,19 @@ contains
     halo_finish = self%get_num_cells_in_layer() - 1
   end if
 
-  if (rc == ESMF_SUCCESS) &
-    tmp_esmf_array = &
-      ESMF_ArrayCreate( distgrid=distgrid, &
-                        farrayPtr=cell_owner_ptr, &
-                        haloSeqIndexList= &
-                        self%global_cell_id( halo_start:halo_finish ), &
-                        rc=rc )
+  !Get the redistribution map object for halo exchanging cell owners
+  redist = generate_redistribution_map( &
+     int(self%global_cell_id(1:total_inners+self%num_edge),kind=i_halo_index), &
+     int(self%global_cell_id( halo_start:halo_finish ),kind=i_halo_index), &
+     get_mpi_datatype(i_def) )
 
-  ! Calculate the routing table required to perform the halo-swap, so the
-  ! code knows where to find the values it needs to fill in the halos
-  if (rc == ESMF_SUCCESS) then
-    call ESMF_ArrayHaloStore( array=tmp_esmf_array, &
-                              routehandle=haloHandle, &
-                              rc=rc )
+  ! Set ownership of all inner and edge cells to the local rank id
+  ! - halo cells are unset
+  do cell = 1,total_inners+self%num_edge
+    self%cell_owner(cell)=local_rank
+  end do
 
-    ! Set ownership of all inner and edge cells to the local rank id
-    ! - halo cells are unset
-    do cell = 1,total_inners+self%num_edge
-      self%cell_owner(cell)=local_rank
-    end do
-  end if
-
-  ! Do the halo swap to fill in the halo cell ownership
-  if (rc == ESMF_SUCCESS) &
-    call ESMF_ArrayHalo( tmp_esmf_array, &
-                        routehandle=haloHandle, &
-                        rc=rc )
-
-  if (rc == ESMF_SUCCESS) &
-    call ESMF_ArrayDestroy(tmp_esmf_array, rc=rc)
-
-  ! Return code indicates something went wrong in the above, so log an error
-  if (rc /= ESMF_SUCCESS) call log_event( &
-    'Failed to ascertain the ownership of halos in the partitioner.', &
-    LOG_LEVEL_ERROR )
+  call xt_redist_s_exchange(redist, self%cell_owner, self%cell_owner)
 
   end function partition_constructor
 

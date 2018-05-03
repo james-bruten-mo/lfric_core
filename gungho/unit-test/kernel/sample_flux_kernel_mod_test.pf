@@ -17,6 +17,8 @@ module sample_flux_kernel_mod_test
   use fs_continuity_mod,             only : W2, W3
   use function_space_mod,            only : function_space_type
   use pFUnit_Mod
+  use yaxt,                          only : xt_initialize, xt_finalize
+  use mpi_mod,                       only : store_comm
 
   implicit none
 
@@ -24,7 +26,7 @@ module sample_flux_kernel_mod_test
   public :: test_all
 
   @TestCase
-  type, extends(TestCase), public :: sample_flux_test_type
+  type, extends(MPITestCase), public :: sample_flux_test_type
     private
     type(function_space_type), pointer :: w2_fs => null()
     type(function_space_type), pointer :: w3_fs => null()
@@ -54,6 +56,11 @@ contains
 
     integer(i_def) :: ndf_rho, dim_rho, ndf_u
     integer(i_def) :: mesh_id
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     ! Create top level mesh collection
     mesh_collection = mesh_collection_type()
@@ -91,10 +98,13 @@ contains
     call mesh_collection%clear()
     call function_space_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use sample_flux_kernel_mod,     only : sample_flux_code

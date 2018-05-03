@@ -15,6 +15,8 @@ module compute_dof_level_kernel_mod_test
   use fs_continuity_mod,             only : W2
   use mesh_mod,                      only : PLANE_BI_PERIODIC
   use pFUnit_Mod
+  use yaxt,                          only : xt_initialize, xt_finalize
+  use mpi_mod,                       only : store_comm
 
   implicit none
 
@@ -22,7 +24,7 @@ module compute_dof_level_kernel_mod_test
   public :: test_all
 
   @TestCase
-  type, extends(TestCase), public :: compute_dof_level_test_type
+  type, extends(MPITestCase), public :: compute_dof_level_test_type
     private
   contains
     procedure setUp
@@ -41,6 +43,11 @@ contains
 
     class(compute_dof_level_test_type), intent(inout) :: this
 
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
+
     ! Create top level mesh collection
     mesh_collection = mesh_collection_type()
     ! Create top level function space collection
@@ -58,10 +65,13 @@ contains
     call mesh_collection%clear()
     call function_space_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_all( this )
 
     use compute_dof_level_kernel_mod, only: compute_dof_level_code

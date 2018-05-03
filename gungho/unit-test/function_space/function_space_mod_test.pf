@@ -19,6 +19,8 @@ module function_space_mod_test
                                    quadrature_xyoz_proxy_type
   use quadrature_rule_gaussian_mod, only: quadrature_rule_gaussian_type
   use reference_element_mod, only : N, E, S, W
+  use yaxt,                  only : xt_initialize, xt_finalize
+  use mpi_mod,               only : store_comm
 
   implicit none
 
@@ -30,7 +32,7 @@ module function_space_mod_test
             test_is_comms_fs
 
   @testParameter
-  type, public, extends(AbstractTestParameter) :: function_space_parameter_type
+  type, public, extends(MPITestParameter) :: function_space_parameter_type
     integer(i_native) :: function_space
     integer(i_def)    :: element_order
     integer(i_def)    :: ndof_cell
@@ -41,8 +43,8 @@ module function_space_mod_test
     procedure :: toString
   end type function_space_parameter_type
 
-  @TestCase(testParameters={getParameters()}, constructor=test_function_space_constructor)
-  type, extends(ParameterizedTestCase), public :: test_function_space_type
+  @TestCase(npes=[1], testParameters={getParameters()}, constructor=test_function_space_constructor)
+  type, extends(MPITestCase), public :: test_function_space_type
     private
     integer(i_native) :: function_space
     integer(i_def)    :: element_order
@@ -116,14 +118,18 @@ contains
 
     type(function_space_parameter_type) :: parameters(8)
 
-    parameters = (/function_space_parameter_type(W0,     0,  8, 36, 1, 3), &
-                   function_space_parameter_type(W1,     0, 12, 99, 3, 3), &
-                   function_space_parameter_type(W2,     0,  6, 90, 3, 1), &
-                   function_space_parameter_type(W3,     0,  1, 27, 1, 3), &
-                   function_space_parameter_type(Wtheta, 0,  2, 36, 1, 3), &
-                   function_space_parameter_type(W2V,    0,  2, 36, 3, 1), &
-                   function_space_parameter_type(W2H,    0,  4, 54, 3, 1), &
-                   function_space_parameter_type(Wchi,   0,  1, 27, 1, 3)/)
+    ! function_space_parameter_type extends MPITestParameter
+    ! The following calls to the constructor require numProcessesRequested from
+    ! MPITestParameter to be set (here set to 1 for all cases) followed by the
+    ! parameters defined in function_space_parameter_type
+    parameters = (/function_space_parameter_type(1, W0,     0,  8, 36, 1, 3), &
+                   function_space_parameter_type(1, W1,     0, 12, 99, 3, 3), &
+                   function_space_parameter_type(1, W2,     0,  6, 90, 3, 1), &
+                   function_space_parameter_type(1, W3,     0,  1, 27, 1, 3), &
+                   function_space_parameter_type(1, Wtheta, 0,  2, 36, 1, 3), &
+                   function_space_parameter_type(1, W2V,    0,  2, 36, 3, 1), &
+                   function_space_parameter_type(1, W2H,    0,  4, 54, 3, 1), &
+                   function_space_parameter_type(1, Wchi,   0,  1, 27, 1, 3)/)
 
   end function getParameters
 
@@ -136,6 +142,11 @@ contains
     implicit none
 
     class(test_function_space_type), intent(inout) :: this
+
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
+    !Store the MPI communicator for later use
+    call store_comm(this%getMpiCommunicator())
 
     ! Create top level mesh collection
     mesh_collection = mesh_collection_type()
@@ -163,10 +174,13 @@ contains
 
     call mesh_collection%clear()
 
+    ! Finalise YAXT
+    call xt_finalize()
+
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_space( this )
 
     implicit none
@@ -294,7 +308,7 @@ contains
   end subroutine test_space
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_get_whole_dofmap( this )
 
     implicit none
@@ -339,7 +353,7 @@ contains
   end subroutine test_get_whole_dofmap
 
  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- @test
+ @Test( npes=[1] )
   subroutine test_stencil_point( this )
 
     use stencil_dofmap_mod,    only: stencil_dofmap_type, STENCIL_POINT
@@ -369,7 +383,7 @@ contains
   end subroutine test_stencil_point
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_stencil_1dx( this )
 
     use stencil_dofmap_mod,    only: stencil_dofmap_type, STENCIL_1DX
@@ -407,7 +421,7 @@ contains
   end subroutine test_stencil_1dx
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_stencil_1dy( this )
 
     use stencil_dofmap_mod,    only: stencil_dofmap_type, STENCIL_1DY
@@ -451,7 +465,7 @@ contains
   end subroutine test_stencil_1dy
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_stencil_cross( this )
 
     use stencil_dofmap_mod,    only: stencil_dofmap_type, STENCIL_CROSS
@@ -491,7 +505,7 @@ contains
   end subroutine test_stencil_cross
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_mesh( this )
 
     implicit none
@@ -529,7 +543,7 @@ contains
   end subroutine test_mesh
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_get_last_dof( this )
 
     implicit none
@@ -569,7 +583,7 @@ contains
   end subroutine test_get_last_dof
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test
+  @Test( npes=[1] )
   subroutine test_is_comms_fs( this )
 
     implicit none
