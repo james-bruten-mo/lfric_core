@@ -92,9 +92,9 @@
 {%-         endif %}
 {%-         if plotstr and crun < 2 %}
 {%-           do plot_config.update( {appLabel : plotstr} ) %}
-            run_{{appName_res_label}}_{{label}}:finish  => plot_{{appName_res_label}}_{{label}}
+            run_{{appName_res_label}}_{{label}} => plot_{{appName_res_label}}_{{label}}
 {%-           if publish %}
-            plot_{{appName_res_label}}_{{label}}:finish => publish_{{appName_res_label}}_{{label}}_plots
+            plot_{{appName_res_label}}_{{label}} => publish_{{appName_res_label}}_{{label}}_plots
 {%-           endif %}
 {%-         endif %}
                  """
