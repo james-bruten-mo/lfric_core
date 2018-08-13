@@ -744,7 +744,7 @@ end subroutine xios_diagnostic_domain_init
 
 subroutine xios_restart_domain_init(mesh_id, chi)
 
-  use fs_continuity_mod, only : fs_enumerator, fs_name
+  use fs_continuity_mod, only : fs_enumerator, name_from_functionspace
 
 
   implicit none
@@ -764,7 +764,7 @@ subroutine xios_restart_domain_init(mesh_id, chi)
   integer(i_native) :: fs_index
 
   ! Restart domain
-  character(len=str_short)   :: domain_name
+  character(len=str_short)   :: domain_name, domain_fs_name
   integer(i_def)             :: ibegin_restart
   real(dp_xios),allocatable  :: restart_lon(:)
   real(dp_xios),allocatable  :: restart_lat(:)
@@ -815,9 +815,10 @@ subroutine xios_restart_domain_init(mesh_id, chi)
     all_undfs_restart_domain = 0
 
     ! Calculate the nodal coords for a field on the function space
-    output_field_fs => function_space_collection%get_fs( mesh_id,       &
-                                                         element_order, &
-                                                     fs_enumerator(fs_index) )
+    output_field_fs => function_space_collection%get_fs( &
+                                      mesh_id,           &
+                                      element_order,     &
+                                      domain_function_spaces(fs_index) )
 
     ! Set up fields to hold the output coordinates
     do i = 1,3
@@ -881,7 +882,8 @@ subroutine xios_restart_domain_init(mesh_id, chi)
 
     ! Set the domain name
 
-    domain_name = "restart_" // fs_name(fs_index)
+    domain_fs_name = name_from_functionspace(domain_function_spaces(fs_index))
+    domain_name = "restart_" // domain_fs_name
 
     call xios_set_domain_attr(domain_name, ni_glo=global_undf_restart, &
                               ibegin=ibegin_restart, ni=local_undf(1), &
