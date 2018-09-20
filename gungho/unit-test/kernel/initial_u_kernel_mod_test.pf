@@ -93,8 +93,8 @@ contains
                                  fplane=.false., f_lat_deg=0.0_r_def )
 
     call feign_initial_wind_config( initial_wind_profile_none,                &
-                                    nl_constant, wind_time_period,            &
-                                    sbr_angle_lat, sbr_angle_lon, u0, v0, .false. )
+                                    u0, v0, sbr_angle_lat, sbr_angle_lon,     &
+                                    nl_constant, wind_time_period, .false. )
 
     ! Create top level mesh collection
     mesh_collection = mesh_collection_type()

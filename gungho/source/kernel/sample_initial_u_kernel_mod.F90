@@ -13,10 +13,7 @@ module sample_initial_u_kernel_mod
 
   use argument_mod,            only : arg_type, func_type,       &
                                       GH_FIELD, GH_INC, GH_READ, &
-                                      ANY_SPACE_9,               &
-                                      GH_BASIS, GH_DIFF_BASIS,   &
-                                      CELLS, GH_QUADRATURE_XYoZ, &
-                                      GH_REAL
+                                      ANY_SPACE_9, CELLS
   use constants_mod,           only : r_def, i_def
   use fs_continuity_mod,       only : W2
   use initial_wind_config_mod, only : u0, v0
@@ -34,7 +31,7 @@ module sample_initial_u_kernel_mod
     private
     type(arg_type) :: meta_args(2) = (/            &
         arg_type(GH_FIELD,   GH_INC,  W2),         &
-        ARG_TYPE(GH_FIELD*3, GH_READ, ANY_SPACE_9) &
+        arg_type(GH_FIELD*3, GH_READ, ANY_SPACE_9) &
         /)
     integer :: iterates_over = CELLS
   contains
@@ -116,7 +113,7 @@ subroutine sample_initial_u_code(nlayers,                   &
     dy = 0.5_r_def*(chi_2(map_chi(3)+k) - chi_2(map_chi(1)+k) + chi_2(map_chi(4)+k) - chi_2(map_chi(2)+k))
     dzdx = 0.5_r_def*( chi_3(map_chi(2)+k) - chi_3(map_chi(1)+k) +  chi_3(map_chi(4)+k) - chi_3(map_chi(3)+k) )/dx
     dzdy = 0.5_r_def*( chi_3(map_chi(3)+k) - chi_3(map_chi(1)+k) +  chi_3(map_chi(4)+k) - chi_3(map_chi(2)+k) )/dy
-    if ( k > 0)wind(map(5)+k) = -(U0*dzdx+V0*dzdy)*dx*dy
+    if ( k > 0) wind(map(5)+k) = -(U0*dzdx+V0*dzdy)*dx*dy
     dx = 0.5_r_def*(chi_1(map_chi(6)+k) - chi_1(map_chi(5)+k) + chi_1(map_chi(8)+k) - chi_1(map_chi(7)+k))
     dy = 0.5_r_def*(chi_2(map_chi(7)+k) - chi_2(map_chi(5)+k) + chi_2(map_chi(8)+k) - chi_2(map_chi(6)+k))
     dzdx = 0.5_r_def*( chi_3(map_chi(6)+k) - chi_3(map_chi(5)+k) +  chi_3(map_chi(8)+k) - chi_3(map_chi(7)+k) )/dx
