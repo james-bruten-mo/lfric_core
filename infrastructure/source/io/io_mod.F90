@@ -9,9 +9,10 @@
 !!  @details Module for IO subroutines
 !-------------------------------------------------------------------------------
 module io_mod
-  use constants_mod,                 only: i_def, i_native, r_def, dp_xios, &
-                                           str_short, str_max_filename,     &
-                                           PI, radians_to_degrees
+  use constants_mod,                 only: i_def, i_native, i_halo_index, &
+                                           r_def, dp_xios,                &
+                                           str_def, str_max_filename,     &
+                                           l_def, PI, radians_to_degrees
   use field_mod,                     only: field_type, field_proxy_type
   use finite_element_config_mod,     only: element_order
   use base_mesh_config_mod,          only: geometry, &
@@ -259,6 +260,9 @@ end subroutine output_xios_nodal
 !-------------------------------------------------------------------------------
 
 subroutine xios_domain_init(xios_ctx, mpi_comm, dtime, restart, mesh_id, chi)
+
+  use fs_continuity_mod, only : name_from_functionspace
+
   implicit none
 
   ! Arguments
@@ -278,6 +282,12 @@ subroutine xios_domain_init(xios_ctx, mpi_comm, dtime, restart, mesh_id, chi)
   type(xios_fieldgroup)                :: cpfieldgroup_hdl
   character(len=str_max_filename)      :: checkpoint_fname
   character(len=str_max_filename)      :: restart_fname
+  character(len=str_def)               :: domain_name, domain_fs_name
+  integer(i_native), parameter         :: domain_function_spaces(5) &
+                                                  = (/W0, W1, W2, W3, Wtheta/)
+
+  integer(i_native) :: fs_index
+
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Setup context !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -291,7 +301,26 @@ subroutine xios_domain_init(xios_ctx, mpi_comm, dtime, restart, mesh_id, chi)
 
   !!!!!!!!!!!!!!!!!!!!!! Setup checkpoint / restart domains !!!!!!!!!!!!!!!!!!!!!
 
-  call xios_restart_domain_init(mesh_id, chi)
+  ! Create all the regular restart domains based on current function spaces
+  ! Loop over function spaces we need to create domains for
+
+  do fs_index = lbound(domain_function_spaces, 1), &
+                ubound(domain_function_spaces, 1)
+
+    domain_fs_name = name_from_functionspace(domain_function_spaces(fs_index))
+    domain_name = "restart_" // trim(domain_fs_name)
+    
+    call xios_restart_domain_init(domain_function_spaces(fs_index), trim(domain_name), &
+                                     mesh_id, chi, .false.)
+
+  end do
+
+  !!!!!! Setup finite difference restart domains for initial conditions !!!!!!!!
+
+  domain_name = "fd_restart_W3"
+  call xios_restart_domain_init(W3, trim(domain_name), mesh_id, chi, .true.)
+  domain_name = "fd_restart_Wtheta"
+  call xios_restart_domain_init(Wtheta, trim(domain_name), mesh_id, chi, .true.)
 
   !!!!!!!!!!!!! Setup diagnostic output context information !!!!!!!!!!!!!!!!!!
 
@@ -738,38 +767,40 @@ end subroutine xios_diagnostic_domain_init
 !!  @details  Performs restart domain init and returns
 !!            Assumes an unstructured 1D domain type
 !!
+!!  @param[in]      fs_id         Function space id
+!!  @param[in]      domain_name   XIOS domain name
 !!  @param[in]      mesh_id       Mesh id
 !!  @param[in]      chi           Coordinate field
+!!  @param[in]      use_index     Flag to specify use of domain index
+!!                                to preserve order over decomposition
+
 !-------------------------------------------------------------------------------
 
-subroutine xios_restart_domain_init(mesh_id, chi)
-
-  use fs_continuity_mod, only : fs_enumerator, name_from_functionspace
+subroutine xios_restart_domain_init(fs_id, domain_name, mesh_id, chi, use_index)
 
 
   implicit none
 
   ! Arguments
 
-  integer(i_def),   intent(in)  :: mesh_id
-  type(field_type), intent(in)  :: chi(3)
+  integer(i_def),   intent(in)         :: fs_id
+  character(len=*), intent(in)         :: domain_name
+  integer(i_def),   intent(in)         :: mesh_id
+  type(field_type), intent(in)         :: chi(3)
+  logical(l_def),   intent(in)         :: use_index
 
-
-  integer(i_native), parameter :: domain_function_spaces(5) &
-                                                  = (/W0, W1, W2, W3, Wtheta/)
 
   ! Local variables
 
   integer(i_def)    :: i
-  integer(i_native) :: fs_index
 
   ! Restart domain
-  character(len=str_short)   :: domain_name, domain_fs_name
-  integer(i_def)             :: ibegin_restart
-  real(dp_xios),allocatable  :: restart_lon(:)
-  real(dp_xios),allocatable  :: restart_lat(:)
-  real(dp_xios),allocatable  :: bnd_restart_lon(:,:)
-  real(dp_xios),allocatable  :: bnd_restart_lat(:,:)
+  integer(i_def)                      :: ibegin_restart
+  real(dp_xios),allocatable           :: restart_lon(:)
+  real(dp_xios),allocatable           :: restart_lat(:)
+  real(dp_xios),allocatable           :: bnd_restart_lon(:,:)
+  real(dp_xios),allocatable           :: bnd_restart_lat(:,:)
+  integer(i_halo_index),allocatable   :: domain_index(:)
 
 
   ! Variables needed to compute output domain coordinates in lat-long
@@ -797,112 +828,116 @@ subroutine xios_restart_domain_init(mesh_id, chi)
   if ( geometry == base_mesh_geometry_spherical ) then
    r2d = radians_to_degrees
   else
-   r2d = 1.0
+   r2d = 1.0_r_def
   endif
 
 
-  !!!! Loop over function spaces we need to create domains for !!!!!!!!!
-
-  do fs_index = lbound(domain_function_spaces, 1), &
-                ubound(domain_function_spaces, 1)
-
-    ! Set up arrays to hold number of dofs for local and global domains
+  ! Set up arrays to hold number of dofs for local and global domains
 
 
-    allocate(local_undf(1))
-    allocate(all_undfs_restart_domain(get_comm_size()))
+  allocate(local_undf(1))
+  allocate(all_undfs_restart_domain(get_comm_size()))
 
-    all_undfs_restart_domain = 0
+  all_undfs_restart_domain = 0
 
-    ! Calculate the nodal coords for a field on the function space
-    output_field_fs => function_space_collection%get_fs( &
-                                      mesh_id,           &
-                                      element_order,     &
-                                      domain_function_spaces(fs_index) )
+  ! Create appropriate function space in order to be able to get the
+  ! physical coordinates
 
-    ! Set up fields to hold the output coordinates
-    do i = 1,3
-      coord_output(i) = field_type( vector_space = output_field_fs )
-    end do
+  output_field_fs => function_space_collection%get_fs( mesh_id,       &
+                                                       element_order, &
+                                                       fs_id)
 
+  ! Calculate the nodal coords for a field on the function space
 
-    ! Convert field to physical nodal output & sample chi on nodal points
-    call invoke_nodal_coordinates_kernel(coord_output, chi)
-
-    ! If spherical geometry convert the coordinate field to (longitude, latitude, radius)
-    if ( geometry == base_mesh_geometry_spherical ) then
-      call invoke_pointwise_convert_xyz2llr(coord_output) 
-    end if
-
-
-    ! Get proxies for coordinates so we can access them
-    do i = 1,3
-      proxy_coord_output(i) = coord_output(i)%get_proxy()
-    end do
-
-    ! Get the local value for undf
-
-    local_undf(1)  = proxy_coord_output(1)%vspace%get_last_dof_owned()
-
-
-    !!!!!!!!!!!!  Global domain calculation !!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    call all_gather ( local_undf, all_undfs_restart_domain, 1 )
-
-    ! Now get the global sum of undf across all ranks to set the global domain sizes
-    ! for restart domain
-
-    global_undf_restart = sum(all_undfs_restart_domain)
-
-    ! Calculate ibegin for each rank as we have the array of undfs in order
-    ! we can just sum to get it.
-
-    if (get_comm_rank() == 0) then
-      ibegin_restart = 0
-    else
-      ibegin_restart = sum(all_undfs_restart_domain(1:get_comm_rank()))
-    end if
-
-    ! Allocate coordinate arrays to be the size required for restart domain.
-    ! Essentially up to last owned dof of the current partition.
-
-    allocate( restart_lon( size( proxy_coord_output(1)%data(1: local_undf(1)))) )
-    allocate( restart_lat( size( proxy_coord_output(2)%data(1: local_undf(1)))) )
-
-    ! Populate the arrays with data
-    restart_lon =  proxy_coord_output(1)%data(1: local_undf(1)) * r2d
-    restart_lat =  proxy_coord_output(2)%data(1: local_undf(1)) * r2d
-
-    allocate(bnd_restart_lon(1,size(restart_lon)))
-    allocate(bnd_restart_lat(1,size(restart_lat)))
-
-    ! Construct bounds arrays
-    bnd_restart_lon=(reshape(restart_lon, (/1, size(restart_lon)/) ) )
-    bnd_restart_lat=(reshape(restart_lat, (/1, size(restart_lat)/) ) )
-
-    ! Set the domain name
-
-    domain_fs_name = name_from_functionspace(domain_function_spaces(fs_index))
-    domain_name = "restart_" // domain_fs_name
-
-    call xios_set_domain_attr(domain_name, ni_glo=global_undf_restart, &
-                              ibegin=ibegin_restart, ni=local_undf(1), &
-                              type='unstructured')
-    call xios_set_domain_attr(domain_name, lonvalue_1d=restart_lon, &
-                              latvalue_1d=restart_lat)
-    call xios_set_domain_attr(domain_name, bounds_lon_1d=bnd_restart_lon, &
-                              bounds_lat_1d=bnd_restart_lat)
-
-    ! Clean up things for next domain
-    deallocate(local_undf, all_undfs_restart_domain)
-    deallocate(restart_lat, restart_lon, bnd_restart_lat, bnd_restart_lon)
-
-    output_field_fs => null()
-
+  ! Set up fields to hold the output coordinates
+  do i = 1,3
+    coord_output(i) = field_type( vector_space = output_field_fs )
   end do
+
+
+  ! Convert field to physical nodal output & sample chi on nodal points
+  call invoke_nodal_coordinates_kernel(coord_output, chi)
+
+  ! If spherical geometry convert the coordinate field to (longitude, latitude, radius)
+  if ( geometry == base_mesh_geometry_spherical ) then
+    call invoke_pointwise_convert_xyz2llr(coord_output) 
+  end if
+
+
+  ! Get proxies for coordinates so we can access them
+  do i = 1,3
+    proxy_coord_output(i) = coord_output(i)%get_proxy()
+  end do
+
+  ! Get the local value for undf
+
+  local_undf(1)  = proxy_coord_output(1)%vspace%get_last_dof_owned()
+
+
+  !!!!!!!!!!!!  Global domain calculation !!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  call all_gather ( local_undf, all_undfs_restart_domain, 1 )
+
+  ! Now get the global sum of undf across all ranks to set the global domain sizes
+  ! for restart domain
+
+  global_undf_restart = sum(all_undfs_restart_domain)
+
+
+  ! Calculate ibegin for each rank as we have the array of undfs in order
+  ! we can just sum to get it.
+
+  if (get_comm_rank() == 0) then
+    ibegin_restart = 0
+  else
+    ibegin_restart = sum(all_undfs_restart_domain(1:get_comm_rank()))
+  end if
+
+  ! Allocate coordinate arrays to be the size required for restart domain.
+  ! Essentially up to last owned dof of the current partition.
+
+  allocate( restart_lon( size( proxy_coord_output(1)%data(1: local_undf(1)))) )
+  allocate( restart_lat( size( proxy_coord_output(2)%data(1: local_undf(1)))) )
+
+  ! Populate the arrays with data
+  restart_lon =  proxy_coord_output(1)%data(1: local_undf(1)) * r2d
+  restart_lat =  proxy_coord_output(2)%data(1: local_undf(1)) * r2d
+
+  allocate(bnd_restart_lon(1,size(restart_lon)))
+  allocate(bnd_restart_lat(1,size(restart_lat)))
+
+  ! Construct bounds arrays
+  bnd_restart_lon=(reshape(restart_lon, (/1, size(restart_lon)/) ) )
+  bnd_restart_lat=(reshape(restart_lat, (/1, size(restart_lat)/) ) )
+
+
+  call xios_set_domain_attr(trim(domain_name), ni_glo=global_undf_restart, &
+                            ibegin=ibegin_restart, ni=local_undf(1), &
+                            type='unstructured')
+  call xios_set_domain_attr(trim(domain_name), lonvalue_1d=restart_lon, &
+                            latvalue_1d=restart_lat)
+  call xios_set_domain_attr(trim(domain_name), bounds_lon_1d=bnd_restart_lon, &
+                            bounds_lat_1d=bnd_restart_lat)
+
+  ! If we have requested to use domain index then get it and use it
+
+  if (use_index) then
+
+    ! Allocate domain_index - it is of size ndof_glob
+    allocate(domain_index(output_field_fs%get_ndof_glob()))
+
+    ! Populate domain_index for this rank 
+    call output_field_fs%get_global_dof_id(domain_index)
+
+    ! Pass local portion of domain_index (up to undf)
+    call xios_set_domain_attr(domain_name, i_index=int(domain_index(1:local_undf(1))))
+
+  end if 
+
 
   if ( allocated(restart_lon) )     deallocate(restart_lon)
   if ( allocated(restart_lat) )     deallocate(restart_lat)
+  if ( allocated(domain_index) )    deallocate(domain_index)
   if ( allocated(bnd_restart_lon) ) deallocate(bnd_restart_lon)
   if ( allocated(bnd_restart_lat) ) deallocate(bnd_restart_lat)
   if ( allocated(local_undf) )      deallocate(local_undf)
@@ -911,6 +946,7 @@ subroutine xios_restart_domain_init(mesh_id, chi)
 
   return
 end subroutine xios_restart_domain_init
+
 
 
 !> @brief   Compute the node domain coords for this partition

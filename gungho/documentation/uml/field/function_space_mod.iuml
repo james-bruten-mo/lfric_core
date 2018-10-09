@@ -60,6 +60,7 @@ class function_space_mod::function_space_type {
     +get_ncell() : integer
     +get_ncolours(): integer
     +get_ndf() : integer
+    +get_ndof_glob() : integer
     +get_nodes() : real[::] <<pointer>>
     +get_nlayers() : integer
     +get_levels() : double precision[:] <<pointer>>

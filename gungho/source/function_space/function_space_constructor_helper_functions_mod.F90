@@ -1411,10 +1411,11 @@ contains
   !>                                  cells.
   !> @param[out] global_dof_id        Global id of of dofs.
   !>
-  subroutine dofmap_setup( mesh, gungho_fs, ncells_2d_with_ghost,                &
-                           ndof_vert, ndof_edge, ndof_face,                      &
-                           ndof_vol,  ndof_cell, last_dof_owned,                 &
-                           last_dof_annexed, last_dof_halo, dofmap,              &
+  subroutine dofmap_setup( mesh, gungho_fs, element_order, &
+                           ncells_2d_with_ghost, &
+                           ndof_vert, ndof_edge, ndof_face, &
+                           ndof_vol,  ndof_cell, last_dof_owned, &
+                           last_dof_annexed, last_dof_halo, dofmap, &
                            global_dof_id )
 
     implicit none
@@ -1422,6 +1423,7 @@ contains
 
     type(mesh_type), intent(in), pointer :: mesh
     integer(i_def),  intent(in) :: gungho_fs
+    integer(i_def),  intent(in) :: element_order
     integer(i_def),  intent(in) :: ncells_2d_with_ghost
     integer(i_def),  intent(in) :: ndof_vert
     integer(i_def),  intent(in) :: ndof_edge
@@ -1499,6 +1501,8 @@ contains
                                         select_entity_w2h,   &
                                         select_entity_w2v
     type(select_entity_type), pointer :: select_entity => null()
+
+    integer(i_halo_index) :: num_layers, num_dofs
 
     !=========================================================
 
@@ -1944,7 +1948,12 @@ contains
     if (allocated( dof_cell_owner_d2 )) deallocate( dof_cell_owner_d2 )
     if (allocated( dof_cell_owner_d3 )) deallocate( dof_cell_owner_d3 )
 
-
+    ! Special cases for lowest order w3 and wtheta. These allow global_dof_id
+    ! to have an index space with no gaps in it for these specific funct spaces
+    num_layers=int(nlayers,i_halo_index)+1_i_halo_index
+    if(element_order==0.and.gungho_fs==W3)num_layers=int(nlayers,i_halo_index)
+    num_dofs=int(ndof_cell,i_halo_index)
+    if(element_order==0.and.gungho_fs==WTHETA)num_dofs=1_i_halo_index
 
     ! Calculate a globally unique id for each dof, such that each partition
     ! that needs access to that dof will calculate the same id
@@ -1956,12 +1965,11 @@ contains
           do k=1, dof_column_height(idof, icell)
   ! The following line is very confused by the casting that is required,
   !  but it is actually calculating the global id as being:
-  ! (global_cell_id-1)*ndof_cell*(nlayers+1) + (idof-1)*(nlayers+1) + k
+  ! (global_cell_id-1)*num_dofs*num_layers + (idof-1)*num_layers + k - 1
             global_dof_id( dofmap(idof,icell)+k-1 ) = &
-                (int(global_cell_id,i_halo_index)-1_i_halo_index)* &
-        int(ndof_cell,i_halo_index)*(int(nlayers,i_halo_index)+1_i_halo_index) + &
-                (int(idof,i_halo_index)-1_i_halo_index)* &
-                (int(nlayers,i_halo_index)+1_i_halo_index) + int(k,i_halo_index)
+      (int(global_cell_id,i_halo_index)-1_i_halo_index)* num_dofs*num_layers + &
+                (int(idof,i_halo_index)-1_i_halo_index)* num_layers + &
+                int(k,i_halo_index) - 1_i_halo_index
           end do
         end if
       end do

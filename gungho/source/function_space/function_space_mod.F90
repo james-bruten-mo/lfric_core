@@ -165,6 +165,12 @@ contains
   !> @return Integer Total number of unique degrees of freedom
   procedure, public :: get_undf
 
+  !> @brief Gets the total number of unique degrees of freedom located on
+  !>        the 3D mesh associated with this function space.
+  !> @return Integer Total number of unique degrees of freedom
+
+  procedure, public :: get_ndof_glob
+
   !> @brief Returns the number of cells in a horizontal 2D layer
   !>        in the function space
   !> @return Integer, Number of cells in 2D layer
@@ -481,11 +487,12 @@ subroutine init_function_space( self )
 
   allocate( self%last_dof_halo ( self%mesh % get_halo_depth()) )
 
-  call dofmap_setup ( self%mesh, self%fs, ncells_2d_with_ghost                 &
-                    , self%ndof_vert, self%ndof_edge, self%ndof_face           &
-                    , self%ndof_vol,  self%ndof_cell, self%last_dof_owned      &
-                    , self%last_dof_annexed, self%last_dof_halo, dofmap        &
-                    , self%global_dof_id )
+  call dofmap_setup ( self%mesh, self%fs, self%element_order,              &
+                      ncells_2d_with_ghost,                                &
+                      self%ndof_vert, self%ndof_edge, self%ndof_face,      &
+                      self%ndof_vol,  self%ndof_cell, self%last_dof_owned, &
+                      self%last_dof_annexed, self%last_dof_halo, dofmap,   &
+                      self%global_dof_id )
 
 
   self%master_dofmap = master_dofmap_type( dofmap )
@@ -545,6 +552,20 @@ integer function get_undf(self)
 
   return
 end function get_undf
+
+!-----------------------------------------------------------------------------
+! Gets the total number of unique degrees of freedom located on
+! the 3D mesh associated with this function space.
+!-----------------------------------------------------------------------------
+integer function get_ndof_glob(self)
+  implicit none
+
+  class(function_space_type), intent(in) :: self
+
+  get_ndof_glob = self%ndof_glob
+
+  return
+end function get_ndof_glob
 
 !-----------------------------------------------------------------------------
 ! Gets the number of cells for this function space
