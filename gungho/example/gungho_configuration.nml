@@ -223,6 +223,15 @@
   phi_centre_dec    = 0.0
 /
 
+&orography_bell_cartesian
+mountain_height = 400.0
+half_width_x    = 1000.0
+half_width_y    = 1000.0
+x_centre        = 0.0
+y_centre        = 0.0
+direction       = 'xy'
+/
+
 &orography_dcmip200_spherical
 mountain_height     = 2000.0
 radius_dec          = 0.75

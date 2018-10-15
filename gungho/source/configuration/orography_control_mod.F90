@@ -14,10 +14,12 @@ module orography_control_mod
 
   use constants_mod,          only : i_def, str_short, str_max_filename
   use base_mesh_config_mod,   only : geometry, &
+                                     base_mesh_geometry_planar, &
                                      base_mesh_geometry_spherical
   use orography_config_mod,   only : profile,                  &
                                      orography_profile_schar,  & 
                                      orography_profile_agnesi, &
+                                     orography_profile_bell,   &
                                      orography_profile_dcmip200
   use log_mod,                only : log_event,         &
                                      log_scratch_space, &
@@ -37,11 +39,11 @@ contains
   !>
   !> @details Reads namelists with the parameters required for setting up  
   !>          analytic orography profiles and initialises corresponding types.
-  !>          There are currently two profiles to choose from:
+  !>          There are currently four profiles to choose from:
   !>          1) Schar mountain, 
-  !>          2) Witch-of-Agnesi mountain.
-  !>          Each profile is available for both Cartesian and spherical 
-  !>          coordinates. 
+  !>          2) Witch-of-Agnesi mountain,
+  !>          3) DCMIP2.0.0.-type mountain,
+  !>          4) Bell-shaped mountain.
   !>          The default option in no orography (flat planet surface).
   !=============================================================================
   subroutine set_orography_option()
@@ -81,6 +83,13 @@ contains
           ! Read parameters for dcmip200 mountain in spherical
           ! coordinates and initialise the corresponding type
           call set_orography_dcmip200_spherical()
+        end if
+      ! Bell-shaped orography
+      case( orography_profile_bell )
+        if ( geometry == base_mesh_geometry_planar ) then
+          ! Read parameters for bell-shaped mountain in Cartesian
+          ! coordinates and initialise the corresponding type
+          call set_orography_bell_cartesian()
         end if
       ! No orography (default) 
       case default   
@@ -140,12 +149,6 @@ contains
 
     implicit none
 
-    ! Internal variables
-    integer(kind=i_def) :: direction_cart 
-
-    ! Convert i_native configuration namelist parameter to i_def
-    direction_cart = int(direction, i_def)
-
     ! ----------- Initialise Witch-of-Agnesi Cartesian orography type ---------!
     allocate( orography_profile,                               &
               source = agnesi_cartesian_type( mountain_height, &
@@ -153,7 +156,7 @@ contains
                                               half_width_y,    &
                                               x_centre,        &
                                               y_centre,        &
-                                              direction_cart ) )
+                                              direction ) )
 
     write(log_scratch_space,'(A,A)') "set_orography_agnesi_cartesian: "// &  
           "Set analytic orography type to Cartesian Witch-of-Agnesi mountain."
@@ -209,12 +212,6 @@ contains
 
     implicit none
 
-    ! Internal variables
-    integer(kind=i_def) :: direction_cart 
-
-    ! Convert i_native configuration namelist parameter to i_def
-    direction_cart = int(direction, i_def)
-
     ! ----------- Initialise Schar Cartesian orography type -------------------!
     allocate( orography_profile,                              &
               source = schar_cartesian_type( mountain_height, &
@@ -223,7 +220,7 @@ contains
                                              wavelength,      &
                                              x_centre,        &
                                              y_centre,        &
-                                             direction_cart ) )
+                                             direction ) )
 
     write(log_scratch_space,'(A,A)') "set_orography_schar_cartesian: "// &  
           "Set analytic orography type to Cartesian Schar mountain."
@@ -240,10 +237,10 @@ contains
 
     use dcmip200_orography_spherical_mod,        only : dcmip200_spherical_type
     use orography_dcmip200_spherical_config_mod, only : mountain_height, &
-                                                     radius,             &
-                                                     osc_half_width,     &
-                                                     lambda_centre,      &
-                                                     phi_centre
+                                                        radius,          &
+                                                        osc_half_width,  &
+                                                        lambda_centre,   &
+                                                        phi_centre
 
     implicit none
 
@@ -261,6 +258,40 @@ contains
 
     return
   end subroutine set_orography_dcmip200_spherical
+
+
+  !=============================================================================
+  !> @brief Initialises analytic orography type for bell-shaped mountain in
+  !>        Cartesian coordinates using corresponding namelist parameters.
+  !=============================================================================
+  subroutine set_orography_bell_cartesian()
+
+    use bell_orography_cartesian_mod,        only : bell_cartesian_type
+    use orography_bell_cartesian_config_mod, only : mountain_height, &
+                                                      half_width_x,    &
+                                                      half_width_y,    &
+                                                      x_centre,        &
+                                                      y_centre,        &
+                                                      direction
+
+    implicit none
+
+    ! ----------- Initialise bell-shaped Cartesian orography type ---------!
+    allocate( orography_profile,                               &
+              source = bell_cartesian_type( mountain_height, &
+                                            half_width_x,    &
+                                            half_width_y,    &
+                                            x_centre,        &
+                                            y_centre,        &
+                                            direction ) )
+
+    write(log_scratch_space,'(A,A)') "set_orography_bell_cartesian: "// &
+          "Set analytic orography type to Cartesian bell-shaped mountain."
+    call log_event(log_scratch_space, LOG_LEVEL_INFO)
+
+    return
+  end subroutine set_orography_bell_cartesian
+
 
 end module orography_control_mod
 

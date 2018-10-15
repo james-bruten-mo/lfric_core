@@ -169,13 +169,6 @@ contains
     real(kind=r_def),            intent(out) :: chisurf_arg(2)   
     ! Internal variables
     real(kind=r_def)               :: chi_1_per, chi_2_per
-    ! Convert i_native configuration namelist parameters to i_def
-    integer(kind=i_def), parameter :: direction_x = &
-                         int(orography_schar_cartesian_direction_x, i_def)
-    integer(kind=i_def), parameter :: direction_y = &
-                         int(orography_schar_cartesian_direction_y, i_def)
-    integer(kind=i_def), parameter :: direction_xy = &
-                         int(orography_schar_cartesian_direction_xy, i_def)
 
     ! Initialise transformed/scaled function arguments
     chisurf_arg = 0.0_r_def
@@ -192,24 +185,24 @@ contains
     ! chisurf_arg(1) is Exponential function argument,
     ! chisurf_arg(2) is Cosine function argument
     select case(self%direction)
-      case (direction_x)
+      case (orography_schar_cartesian_direction_x)
         ! Exponential function argument
         chisurf_arg(1) = chi_1_per/self%half_width_x
         ! Cosine function argument    
         chisurf_arg(2) = PI*chi_1_per/self%wavelength
-      case (direction_y)
+      case (orography_schar_cartesian_direction_y)
         ! Exponential function argument
         chisurf_arg(1) = chi_2_per/self%half_width_y
         ! Cosine function argument    
         chisurf_arg(2) = PI*chi_2_per/self%wavelength
-      case (direction_xy)
+      case (orography_schar_cartesian_direction_xy)
         ! Exponential function argument
         chisurf_arg(1) = sqrt((chi_1_per/self%half_width_x)**2 + (chi_2_per/self%half_width_y)**2)
         ! Cosine function argument
         chisurf_arg(2) = PI*sqrt((chi_1_per**2+chi_2_per**2))/self%wavelength
       case default
         write(log_scratch_space,'(A)') "schar_coordinate_cartesian: "// &
-              "No valid orography directions (x or y) selected. "
+              "No valid orography directions (x, y, or xy) selected. "
         call log_event(log_scratch_space, LOG_LEVEL_ERROR)
     end select
        

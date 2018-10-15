@@ -35,6 +35,12 @@ import sys
 
 from read_data import read_nodal_data
 
+# Use viridis colormap
+from python_maps import viridis_data
+from matplotlib.colors import ListedColormap
+viridis = ListedColormap(viridis_data, name='viridis')
+plt.register_cmap(name='viridis', cmap=viridis)
+
 levels = None
 data = None
 
@@ -68,6 +74,8 @@ def make_figure(plotpath, nx, ny, field, component, timestep):
         p_data = data.loc[data['level'] == levels[p]]
         zi[:, :, p] = (p_data[val_col].values).reshape((ny, nx))
 
+    c_map = viridis
+
     # create meshgrid to get x_i and y_i for plotting
     x2d = np.linspace(xmin, xmax, nx)
     z2d = np.linspace(zmin, zmax, nz)
@@ -87,16 +95,27 @@ def make_figure(plotpath, nx, ny, field, component, timestep):
         dz[i, :] = zi[0, i, :] - back
 
     matplotlib.rcParams['contour.negative_linestyle'] = 'solid'
-    c_map = cm.summer
-    cf = plt.contourf(x_i * r2d, y_i * r2d, np.round(dz, 10), cc, cmap=c_map)
+    cf = plt.contourf(x_i * r2d, y_i * r2d, np.round(dz, 10),
+                      cc, cmap=c_map, extend='min')
     cl = plt.contour(x_i * r2d, y_i * r2d, np.round(dz, 10), cc,
-                     linewidths=1.0, colors='k', linestyle="",
+                     linewidths=2.0, colors='k', linestyle="",
                      extend='min')
+
+    # -1K contour (x,z) coordinates
+    minusonek_cont = cl.collections[15].get_paths()[0]
+    # Front position, i.e. first intersection (negative x!) with x=0
+    fp = minusonek_cont.vertices[0, 0]
+    plt.axes().set_aspect(.8)
     plt.axis([0, 16, 0, 5])
-    plt.xlabel("x (km)")
-    plt.ylabel("z (km)")
-    plt.title('max: %2.4e, min: %2.4e' % (np.max(dz), np.min(dz)))
-    plt.colorbar(cf, cmap=c_map)
+    plt.xlabel("x (km)", fontsize=28)
+    plt.ylabel("z (km)", fontsize=28)
+    cb = plt.colorbar(cf,  cmap=c_map, fraction=0.011, pad=0.04)
+    cb.ax.tick_params(labelsize=24)
+    plt.xticks(np.arange(0, 18, 2))
+    plt.tick_params(axis='both', labelsize=28)
+
+    # Front position is symmetrized
+    print(nx, np.min(dz), np.max(dz), -fp)
 
     out_file_name = plotpath + "/" + 'straka_x_' + field + "_" + timestep \
         + ".png"
@@ -154,6 +173,6 @@ if __name__ == "__main__":
                     if (not data.empty):
                         # Sort the data
                         # (needed to be able to reshape and not regrid)
-                        data = data.sort(['y', 'x', 'z'])
+                        data = data.sort_values(['y', 'x', 'z'])
                         levels = np.sort(data.level.unique())
                         make_figure(plotpath, nx, ny, field, comp_u, ts)
