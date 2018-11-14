@@ -161,11 +161,12 @@ contains
 
     dtime = int(dt)
 
-    call xios_domain_init( xios_ctx,   &
-                           comm,       &
-                           dtime,      &
-                           restart,    &
-                           mesh_id,    &
+    call xios_domain_init( xios_ctx,     &
+                           comm,         &
+                           dtime,        &
+                           restart,      &
+                           mesh_id,      &
+                           twod_mesh_id, &
                            chi)
 
     ! Make sure XIOS calendar is set to timestep 1 as it starts there

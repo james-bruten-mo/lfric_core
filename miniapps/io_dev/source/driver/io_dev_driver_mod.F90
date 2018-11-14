@@ -131,8 +131,13 @@ contains
   ! Set up XIOS domain and context
   dtime = int(dt)
 
-  call xios_domain_init( xios_ctx, comm, dtime, &
-                         restart, mesh_id, chi )
+  call xios_domain_init( xios_ctx,     &
+                         comm,         &
+                         dtime,        &
+                         restart,      &
+                         mesh_id,      &
+                         twod_mesh_id, &
+                         chi )
 
   !-----------------------------------------------------------------------------
   ! Model init

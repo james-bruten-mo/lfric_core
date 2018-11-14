@@ -256,10 +256,12 @@ end subroutine output_xios_nodal
 !!  @param[in]      mpi_comm      The MPI comm object
 !!  @param[in]      dtime         XIOS timestep interval
 !!  @param[in]      mesh_id       Mesh id
+!!  @param[in]      twod_mesh_id  2D Mesh id
 !!  @param[in]      chi           Coordinate field
 !-------------------------------------------------------------------------------
 
-subroutine xios_domain_init(xios_ctx, mpi_comm, dtime, restart, mesh_id, chi)
+subroutine xios_domain_init(xios_ctx, mpi_comm, dtime, restart, &
+                            mesh_id, twod_mesh_id,  chi)
 
   use fs_continuity_mod, only : name_from_functionspace
 
@@ -271,6 +273,7 @@ subroutine xios_domain_init(xios_ctx, mpi_comm, dtime, restart, mesh_id, chi)
   integer(i_def),     intent(in)       :: dtime
   type(restart_type), intent(in)       :: restart
   integer(i_def),     intent(in)       :: mesh_id
+  integer(i_def),     intent(in)       :: twod_mesh_id
   type(field_type),   intent(in)       :: chi(:)
 
 
@@ -321,6 +324,12 @@ subroutine xios_domain_init(xios_ctx, mpi_comm, dtime, restart, mesh_id, chi)
   call xios_restart_domain_init(W3, trim(domain_name), mesh_id, chi, .true.)
   domain_name = "fd_restart_Wtheta"
   call xios_restart_domain_init(Wtheta, trim(domain_name), mesh_id, chi, .true.)
+
+  ! Set up 2D restart domain - only W3 at the moment
+
+  domain_name = "restart_W3_2D"
+
+  call xios_restart_domain_init(W3, domain_name,  twod_mesh_id, chi, .true.)
 
   !!!!!!!!!!!!! Setup diagnostic output context information !!!!!!!!!!!!!!!!!!
 

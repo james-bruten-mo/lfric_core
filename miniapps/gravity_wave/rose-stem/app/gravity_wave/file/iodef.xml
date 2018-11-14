@@ -22,6 +22,7 @@
       <domain id="restart_Wtheta" name="restart_Wtheta" nvertex="1"/>
       <domain id="fd_restart_W3" name="fd_restart_W3" nvertex="1"/>
       <domain id="fd_restart_Wtheta" name="fd_restart_Wtheta" nvertex="1"/>
+      <domain id="restart_W3_2D" name="restart_W3_2D" nvertex="1"/>
    </domain_definition>
 
    <grid_definition>

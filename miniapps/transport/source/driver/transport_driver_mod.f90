@@ -142,11 +142,12 @@ contains
 
     if ( (write_xios_output) ) then
       dtime = int(dt)
-      call xios_domain_init( xios_ctx,   &
-                             comm,       &
-                             dtime,      &
-                             restart,    &
-                             mesh_id,    &
+      call xios_domain_init( xios_ctx,     &
+                             comm,         &
+                             dtime,        &
+                             restart,      &
+                             mesh_id,      &
+                             twod_mesh_id, &
                              chi)
     end if
 
