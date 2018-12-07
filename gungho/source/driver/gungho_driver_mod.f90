@@ -55,6 +55,8 @@ module gungho_driver_mod
   use mr_indices_mod,             only : nummr, mr_names
   use physics_config_mod,         only : cloud_scheme, &
                                          physics_cloud_scheme_none
+  use moist_dyn_mod,              only : num_moist_factors, gas_law, &
+                                         total_mass, water
   use output_config_mod,          only : diagnostic_frequency, &
                                          subroutine_timers, &
                                          nodal_output_on_w3, &
@@ -108,6 +110,9 @@ module gungho_driver_mod
 
   ! A pointer used for retrieving fields for use in diagnostics
   type( field_type ), pointer :: diag_ptr  => null()
+
+  ! Auxilliary fields for moist dynamics
+  type( field_type ) :: moist_dyn(num_moist_factors)
 
   ! Field collections
   type( field_collection_type ) :: derived_fields
@@ -227,9 +232,10 @@ contains
     end if
 
 
-    ! Create and initialise prognostic fields
+    ! Create and initialise prognostic and auxilliary (diagnostic) fields
     timestep = 0
-    call init_gungho( mesh_id, chi, u, rho, theta, exner, mr, xi, restart )
+    call init_gungho( mesh_id, chi, u, rho, theta, exner, mr, moist_dyn, &
+                      xi, restart )
 
     ! Create and initialise physics fields
     if (use_physics) then
@@ -286,9 +292,8 @@ contains
       end if
 
       ! Other derived diagnostics with special pre-processing
-
       call write_divergence_diagnostic(u, ts_init, mesh_id)
-      call write_hydbal_diagnostic(theta, exner, mesh_id)
+      call write_hydbal_diagnostic(theta, moist_dyn, exner, mesh_id)
 
     end if
 
@@ -343,7 +348,7 @@ contains
                                  twod_fields)
               call conservation_algorithm(timestep, rho, u, theta, exner, xi)
             end if
-            call iter_alg_step(u, rho, theta, exner, mr, xi, &
+            call iter_alg_step(u, rho, theta, exner, mr, moist_dyn, xi,      &
                                derived_fields, cloud_fields, twod_fields,    &
                                physics_incs, timestep)
 
@@ -354,7 +359,7 @@ contains
               call rk_alg_init(mesh_id, u, rho, theta, exner)
               call conservation_algorithm(timestep, rho, u, theta, exner, xi)
             end if
-            call rk_alg_step(u, rho, theta, exner, xi)
+            call rk_alg_step(u, rho, theta, moist_dyn, exner, xi)
           case default
             call log_event("Dynamo: Incorrect time stepping option chosen, "// &
                             "stopping program! ",LOG_LEVEL_ERROR)
@@ -503,6 +508,9 @@ contains
     call xi%field_final()
     do i=1, nummr
       call mr(i)%field_final()
+    end do
+    do i = 1, num_moist_factors
+      call moist_dyn(i)%field_final()
     end do
 
     if (use_moisture .and. use_physics) then

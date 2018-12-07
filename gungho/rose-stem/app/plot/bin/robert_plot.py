@@ -79,6 +79,9 @@ def make_figure(plotpath, nx, ny, field, component, timestep):
         cc = np.linspace(-0.1, 0.6, 15)
     elif field == 'w3projection_xi2':
         cc = np.linspace(-0.22, 0.22, 12)
+    elif field == 'm_v':
+        background = 0.0
+        cc = np.linspace(0.013, 0.0271, 12)
     else:
         cc = np.linspace(np.amin(zi), np.amax(zi), 11)
 

@@ -35,6 +35,7 @@ module hydrostatic_exner_kernel_mod_test
       real(r_def), allocatable :: chi1(:), chi2(:), chi3(:)
       real(r_def), allocatable :: exner_data(:)
       real(r_def), allocatable :: theta_data(:)
+      real(r_def), allocatable :: moist_dyn_data(:,:)
       real(r_def), allocatable :: height_wt_data(:)
       real(r_def), allocatable :: height_w3_data(:)
   contains
@@ -46,13 +47,14 @@ module hydrostatic_exner_kernel_mod_test
 
   real(r_def), parameter :: bvf_square = 0.0001_r_def
   real(r_def), parameter :: theta_surf = 300.0_r_def
-  real(r_def), parameter :: gravity = 10.0_r_def
-  real(r_def), parameter :: radius  = 6000000_r_def
-  real(r_def), parameter :: omega   = 8.0E-5_r_def
-  real(r_def), parameter :: p_zero  = 100000.0_r_def
-  real(r_def), parameter :: rd      = 300.0_r_def
-  real(r_def), parameter :: cp      = 1000.0_r_def
-  real(r_def), parameter :: scaling = 1.0_r_def
+  real(r_def), parameter :: gravity  = 10.0_r_def
+  real(r_def), parameter :: radius   = 6000000_r_def
+  real(r_def), parameter :: omega    = 8.0E-5_r_def
+  real(r_def), parameter :: p_zero   = 100000.0_r_def
+  real(r_def), parameter :: rd       = 300.0_r_def
+  real(r_def), parameter :: cp       = 1000.0_r_def
+  real(r_def), parameter :: scaling  = 1.0_r_def
+  real(r_def), parameter :: epsilon  = 0.6_r_def
 
 contains
 
@@ -99,7 +101,7 @@ contains
 
     call feign_planet_config( gravity=gravity, radius=radius, omega=omega,  &
                               rd=rd, cp=cp, p_zero=p_zero,                  &
-                              scaling_factor=scaling )
+                              scaling_factor=scaling, epsilon=epsilon )
     call feign_initial_density_config( tracer_background=0.0_r_def,         &
                                        tracer_max=1.0_r_def,                &
                                        r1=0.0_r_def, x1=0.0_r_def,          &
@@ -148,12 +150,14 @@ contains
     ! Create the data
     allocate(this%exner_data(this%undf_w3))
     allocate(this%theta_data(this%undf_wt))
+    allocate(this%moist_dyn_data(this%undf_wt, 3))
     allocate(this%height_wt_data(this%undf_wt))
     allocate(this%height_w3_data(this%undf_w3))
     this%exner_data(:) = 0.0_r_def
     this%theta_data(:) = 300.0_r_def
-    this%height_wt_data(:) = 0.0_r_def
-    this%height_w3_data(:) = 1000.0_r_def
+    this%moist_dyn_data(:,:) = 1.0_r_def
+    this%height_wt_data(:)   = 0.0_r_def
+    this%height_w3_data(:)   = 1000.0_r_def
 
   end subroutine setUp
 
@@ -175,6 +179,7 @@ contains
     deallocate(this%chi3)
     deallocate(this%exner_data)
     deallocate(this%theta_data)
+    deallocate(this%moist_dyn_data)
     deallocate(this%height_wt_data)
     deallocate(this%height_w3_data)
 
@@ -209,6 +214,7 @@ contains
                                   use_wavedynamics=.true.,                  &
                                   dry_static_adjust=.false.,                &
                                   dlayer_on=.false.,                        &
+                                  exner_from_eos=.true.,                    &
                                   set_hydrostatic_init = .true.,            &
                                   init_exner_bt        = .true.,            &
                                   hard_wired_j         = .false.,           &
@@ -218,6 +224,9 @@ contains
     call hydrostatic_exner_code( nlayers,                             &
                                  this%exner_data,                     &
                                  this%theta_data,                     &
+                                 this%moist_dyn_data(:,1),            &
+                                 this%moist_dyn_data(:,2),            &
+                                 this%moist_dyn_data(:,3),            &
                                  this%height_wt_data,                 &
                                  this%height_w3_data,                 &
                                  this%chi1,                           &
@@ -259,6 +268,7 @@ contains
                                   use_wavedynamics=.true.,                   &
                                   dry_static_adjust=.false.,                 &
                                   dlayer_on=.false.,                         &
+                                  exner_from_eos=.true.,                     &
                                   set_hydrostatic_init = .true.,             &
                                   init_exner_bt        = .false.,            &
                                   hard_wired_j         = .false.,            &
@@ -268,6 +278,9 @@ contains
     call hydrostatic_exner_code( nlayers,                             &
                                  this%exner_data,                     &
                                  this%theta_data,                     &
+                                 this%moist_dyn_data(:,1),            &
+                                 this%moist_dyn_data(:,2),            &
+                                 this%moist_dyn_data(:,3),            &
                                  this%height_wt_data,                 &
                                  this%height_w3_data,                 &
                                  this%chi1,                           &

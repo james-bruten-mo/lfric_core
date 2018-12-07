@@ -14,7 +14,6 @@ module diagnostics_mod
   use constants_mod,                 only: i_def, r_def, str_max_filename
   use diagnostic_alg_mod,            only: divergence_diagnostic_alg,   &
                                            density_diagnostic_alg,      &
-                                           pressure_diagnostic_alg,     &
                                            hydbal_diagnostic_alg,       &
                                            split_wind_diagnostic_alg,   &
                                            scalar_nodal_diagnostic_alg, &
@@ -33,6 +32,7 @@ module diagnostics_mod
   use mesh_collection_mod,           only: mesh_collection 
   use field_mod,                     only: field_type, write_diag_interface
   use fs_continuity_mod,             only: W3
+  use moist_dyn_mod,                 only: num_moist_factors
   use log_mod,                       only: log_event,         &
                                            log_set_level,     &
                                            log_scratch_space, &
@@ -44,7 +44,6 @@ module diagnostics_mod
   implicit none
   private
   public :: write_divergence_diagnostic, &
-            write_pressure_diagnostic,   &
             write_density_diagnostic,    &
             write_hydbal_diagnostic
             
@@ -93,43 +92,6 @@ subroutine write_divergence_diagnostic(u_field, ts, mesh_id)
 end subroutine write_divergence_diagnostic
 
 !-------------------------------------------------------------------------------
-!>  @brief    Handles pressure diagnostic processing
-!!
-!!  @details  Handles pressure diagnostic processing
-!!
-!!> @param[in] rho_field   The rho field
-!!> @param[in] theta_field The theta field
-!!> @param[in] ts          Timestep
-!!> @param[in] mesh_id     Mesh_id
-!-------------------------------------------------------------------------------
-
-subroutine write_pressure_diagnostic(rho_field, theta_field, ts, mesh_id)
-  implicit none
-
-  type(field_type), intent(in)    :: rho_field
-  type(field_type), intent(in)    :: theta_field
-  integer(i_def),   intent(in)    :: ts
-  integer(i_def),   intent(in)    :: mesh_id
-
-  type(field_type)                :: exner_field
-
-  procedure(write_diag_interface), pointer  :: tmp_diag_write_ptr
-
-  ! Create the pressure diagnostic
-  call pressure_diagnostic_alg(exner_field, rho_field, theta_field)
-
-  if (write_xios_output) then
-      !If using XIOS, we need to set a field I/O method appropriately
-      tmp_diag_write_ptr => xios_write_field_face
-      call exner_field%set_write_diag_behaviour(tmp_diag_write_ptr)
-  end if 
-
-  call write_scalar_diagnostic('exner', exner_field, ts, mesh_id, .false.)
-
-
-end subroutine write_pressure_diagnostic
-
-!-------------------------------------------------------------------------------
 !>  @brief    Handles density diagnostic processing
 !!
 !!  @details  Handles density diagnostic processing
@@ -167,16 +129,20 @@ end subroutine write_density_diagnostic
 !!> @param[in] mesh_id       Mesh_id
 !-------------------------------------------------------------------------------
 
-subroutine write_hydbal_diagnostic(theta_field, exner_field, mesh_id)
+subroutine write_hydbal_diagnostic(theta_field, moist_dyn_field, exner_field,  &
+                                   mesh_id)
+
   implicit none
 
   type(field_type), intent(in)    :: theta_field
+  type(field_type), intent(in)    :: moist_dyn_field(num_moist_factors)
   type(field_type), intent(in)    :: exner_field
   integer(i_def),   intent(in)    :: mesh_id
 
   real(r_def)                     :: l2_norm
 
-  call hydbal_diagnostic_alg(l2_norm, theta_field, exner_field, mesh_id)
+  call hydbal_diagnostic_alg(l2_norm, theta_field, moist_dyn_field,            &
+                             exner_field, mesh_id)
 
   write( log_scratch_space, '(A,E16.8)' )  &
        'L2 of hydrostatic imbalance =',sqrt(l2_norm)

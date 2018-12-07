@@ -91,13 +91,14 @@ contains
     call feign_extrusion_config( domain_top=13.5_r_def,           &
                                  method=extrusion_method_uniform, &
                                  number_of_layers=7_i_def )
-    call feign_planet_config( gravity=9.98_r_def,    &
-                              radius=637100.0_r_def, &
-                              omega=7.27E-5_r_def,   &
-                              rd=300.0_r_def,        &
-                              cp=1000.0_r_def,       &
-                              p_zero=100000.0_r_def, &
-                              scaling_factor=0.5_r_def )
+    call feign_planet_config( gravity=9.98_r_def,       &
+                              radius=637100.0_r_def,    &
+                              omega=7.27E-5_r_def,      &
+                              rd=300.0_r_def,           &
+                              cp=1000.0_r_def,          &
+                              p_zero=100000.0_r_def,    &
+                              scaling_factor=0.5_r_def, &
+                              epsilon=0.6_r_def )
 
     allocate( unit_under_test, source=create_extrusion() )
 
@@ -135,13 +136,14 @@ contains
     call feign_extrusion_config( method=extrusion_method_geometric, &
                                  domain_top=600000.0_r_def,         &
                                  number_of_layers=7_i_def )
-    call feign_planet_config( gravity=9.98_r_def,    &
-                              radius=637100.0_r_def, &
-                              omega=7.27E-5_r_def,   &
-                              rd=300.0_r_def,        &
-                              cp=1000.0_r_def,       &
-                              p_zero=100000.0_r_def, &
-                              scaling_factor=2.0_r_def )
+    call feign_planet_config( gravity=9.98_r_def,       &
+                              radius=637100.0_r_def,    &
+                              omega=7.27E-5_r_def,      &
+                              rd=300.0_r_def,           &
+                              cp=1000.0_r_def,          &
+                              p_zero=100000.0_r_def,    &
+                              scaling_factor=2.0_r_def, &
+                              epsilon=0.6_r_def )
 
     allocate( unit_under_test, source=create_extrusion() )
 

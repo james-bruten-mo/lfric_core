@@ -24,6 +24,7 @@
 
 &formulation
     dry_static_adjust    = .false.,
+    exner_from_eos       = .true.,
     hard_wired_detj      = .false.,
     hard_wired_j         = .true.,
     init_exner_bt        = .true.,
@@ -83,6 +84,7 @@
     radius=6371229.0,
     rd=287.05,
     scaling_factor=1.0,
+    epsilon=0.62918
 /
 
 &restart

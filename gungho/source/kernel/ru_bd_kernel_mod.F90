@@ -39,10 +39,11 @@ module ru_bd_kernel_mod
   !> The type declaration for the kernel. Contains the metadata needed by the Psy layer
   type, public, extends(kernel_type) :: ru_bd_kernel_type
     private
-    type(arg_type) :: meta_args(3) = (/                               &
+    type(arg_type) :: meta_args(4) = (/                               &
       arg_type(GH_FIELD,   GH_INC,  W2),                              &
       arg_type(GH_FIELD,   GH_READ, W3),                              &
-      arg_type(GH_FIELD,   GH_READ, Wtheta)                           &
+      arg_type(GH_FIELD,   GH_READ, Wtheta),                          &
+      arg_type(GH_FIELD*3, GH_READ, Wtheta)                           &
       /)
     type(func_type) :: meta_funcs(3) = (/                             &
       func_type(W2, GH_BASIS, GH_DIFF_BASIS),                         &
@@ -92,7 +93,10 @@ contains
   !! @param[in] wtheta_map Dofmap for the theta space
   !! @param[inout] r_u_bd Right hand side of the momentum equation
   !! @param[in] exner Exner pressure
-  !! @param[in] theta Potential temperature
+  !! @param[in] theta Potential temperature    
+  !! @param[in] moist_dyn_gas Gas factor (1 + m_v / epsilon)
+  !! @param[in] moist_dyn_tot Total mass factor (1 + sum m_x)
+  !! @param[in] moist_dyn_fac Water factor
   !! @param[in] nqp Number of quadrature points on each face
   !! @param[in] wqp quadrature weights
   !! @param[in] w2_basis_face Basis functions evaluated at gaussian quadrature points on horizontal faces
@@ -111,7 +115,8 @@ contains
                          ndf_wtheta, undf_wtheta,      &
                          wtheta_map,                   &
                          r_u_bd,                       &
-                         exner, theta,                 &
+                         exner, theta, moist_dyn_gas,  &
+                         moist_dyn_tot, moist_dyn_fac, &
                          nqp, wqp,                     &
                          w2_basis_face, w3_basis_face, &
                          wtheta_basis_face,            &
@@ -141,6 +146,9 @@ contains
     real(kind=r_def), dimension(undf_w2), intent(inout)     :: r_u_bd
     real(kind=r_def), dimension(undf_w3), intent(in)        :: exner
     real(kind=r_def), dimension(undf_wtheta), intent(in)    :: theta
+    real(kind=r_def), dimension(undf_wtheta), intent(in)    :: moist_dyn_gas,       &
+                                                               moist_dyn_tot,       &
+                                                               moist_dyn_fac
 
     real(kind=r_def), dimension(nqp,4), intent(in)      ::  wqp
 
@@ -149,12 +157,12 @@ contains
     integer(kind=i_def)              :: qp
 
     real(kind=r_def), dimension(ndf_w3)     :: exner_e, exner_next_e
-    real(kind=r_def), dimension(ndf_wtheta) :: theta_e
+    real(kind=r_def), dimension(ndf_wtheta) :: theta_v_e
     real(kind=r_def), dimension(ndf_w2)     :: ru_bd_e
 
     real(kind=r_def) :: v(3)
     real(kind=r_def) :: exner_av
-    real(kind=r_def) :: theta_at_fquad, bdary_term
+    real(kind=r_def) :: theta_v_at_fquad, bdary_term
 
     do k = 0, nlayers-1
 
@@ -174,7 +182,8 @@ contains
 
         ! Computing theta in local cell
         do df = 1, ndf_wtheta
-          theta_e(df) = theta( wtheta_map(df) + k )
+          theta_v_e(df) = theta( wtheta_map(df) + k ) * moist_dyn_gas( wtheta_map(df) + k ) / &
+                                                        moist_dyn_tot( wtheta_map(df) + k )
         end do
 
         ! Compute the boundary RHS integrated over one horizontal face
@@ -185,15 +194,15 @@ contains
                                            + exner_next_e(df)*w3_basis_face(1,df,qp,face_next))
           end do
 
-          theta_at_fquad = 0.0_r_def
+          theta_v_at_fquad = 0.0_r_def
           do df = 1, ndf_wtheta
-            theta_at_fquad = theta_at_fquad + theta_e(df)*wtheta_basis_face(1,df,qp,face)
+            theta_v_at_fquad = theta_v_at_fquad + theta_v_e(df)*wtheta_basis_face(1,df,qp,face)
           end do
 
           do df = 1, ndf_w2
             v  = w2_basis_face(:,df,qp,face)
 
-            bdary_term = - cp * dot_product(v, out_face_normal(:, face)) *  theta_at_fquad * exner_av
+            bdary_term = - cp * dot_product(v, out_face_normal(:, face)) *  theta_v_at_fquad * exner_av
             ru_bd_e(df) = ru_bd_e(df) + wqp(qp,face) * bdary_term
           end do
 

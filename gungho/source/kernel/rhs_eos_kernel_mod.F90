@@ -8,7 +8,7 @@
 !>
 !> The kernel computes the lhs of the equation of state for the nonlinear
 !> equations,
-!> That is: \f[ rhs_{\Pi} = 1 - p0/Rd * exner ^ (1-kappa)/kappa /(rho*theta) \f]
+!> That is: \f[ rhs_{\Pi} = 1 - p0/Rd * exner ^ (1-kappa)/kappa /(rho*theta_vd) \f]
 !>
 module rhs_eos_kernel_mod
 
@@ -31,10 +31,11 @@ module rhs_eos_kernel_mod
   !>
   type, public, extends(kernel_type) :: rhs_eos_kernel_type
     private
-    type(arg_type) :: meta_args(5) = (/              &
+    type(arg_type) :: meta_args(6) = (/              &
         arg_type(GH_FIELD,   GH_WRITE, W3),          &
         arg_type(GH_FIELD,   GH_READ,  W3),          &
         arg_type(GH_FIELD,   GH_READ,  W3),          &
+        arg_type(GH_FIELD,   GH_READ,  Wtheta),      &
         arg_type(GH_FIELD,   GH_READ,  Wtheta),      &
         arg_type(GH_FIELD*3, GH_READ,  ANY_SPACE_9)  &
         /)
@@ -75,6 +76,7 @@ end function rhs_eos_kernel_constructor
 !! @param[in] exner pressure 
 !! @param[in] rho Density
 !! @param[in] theta Potential temperature
+!! @param[in] moist_dyn_gas Moist dynamics factor in gas law
 !! @param[in] chi1 First coordinate array
 !! @param[in] chi2 Second coordinate array
 !! @param[in] chi3 Third coordinate array
@@ -95,7 +97,7 @@ end function rhs_eos_kernel_constructor
 !! @param[in] wqp_h Horizontal quadrature weights
 !! @param[in] wqp_v Vertical quadrature weights
 subroutine rhs_eos_code(nlayers,                                         &
-                        rhs_eos, exner, rho, theta,                      &
+                        rhs_eos, exner, rho, theta, moist_dyn_gas,       &
                         chi1, chi2, chi3,                                &
                         ndf_w3, undf_w3, map_w3, w3_basis,               &
                         ndf_wt, undf_wt, map_wt, wt_basis,               &
@@ -120,6 +122,7 @@ subroutine rhs_eos_code(nlayers,                                         &
 
   real(kind=r_def), dimension(undf_w3), intent(inout) :: rhs_eos
   real(kind=r_def), dimension(undf_wt), intent(in)    :: theta
+  real(kind=r_def), dimension(undf_wt), intent(in)    :: moist_dyn_gas
   real(kind=r_def), dimension(undf_w3), intent(in)    :: rho, exner
   real(kind=r_def), dimension(undf_chi), intent(in)   :: chi1, chi2, chi3
 
@@ -130,10 +133,10 @@ subroutine rhs_eos_code(nlayers,                                         &
   integer(kind=i_def) :: df, k 
   integer(kind=i_def) :: qp1, qp2
   
-  real(kind=r_def), dimension(ndf_wt)  :: theta_e
+  real(kind=r_def), dimension(ndf_wt)  :: theta_vd_e
   real(kind=r_def), dimension(ndf_chi) :: chi1_e, chi2_e, chi3_e
   real(kind=r_def), dimension(ndf_w3)  :: rho_e, exner_e
-  real(kind=r_def)                     :: rho_quad, theta_quad, exner_quad
+  real(kind=r_def)                     :: rho_quad, theta_vd_quad, exner_quad
   real(kind=r_def)                             :: eos, p0_over_rd, onemk_over_k
   real(kind=r_def), dimension(nqp_h,nqp_v)     :: dj
   real(kind=r_def), dimension(3,3,nqp_h,nqp_v) :: jac
@@ -151,7 +154,7 @@ subroutine rhs_eos_code(nlayers,                                         &
     call coordinate_jacobian(ndf_chi, nqp_h, nqp_v, chi1_e, chi2_e, chi3_e,  &
                              chi_diff_basis, jac, dj)
     do df = 1, ndf_wt
-      theta_e(df) = theta(map_wt(df) + k)
+      theta_vd_e(df) = theta(map_wt(df) + k) * moist_dyn_gas(map_wt(df) + k)
     end do
     do df = 1, ndf_w3
       exner_e(df)  = exner(map_w3(df) + k)
@@ -160,9 +163,9 @@ subroutine rhs_eos_code(nlayers,                                         &
     end do
     do qp2 = 1, nqp_v
       do qp1 = 1, nqp_h
-        theta_quad = 0.0_r_def
+        theta_vd_quad = 0.0_r_def
         do df = 1, ndf_wt
-          theta_quad = theta_quad + theta_e(df)*wt_basis(1,df,qp1,qp2)
+          theta_vd_quad = theta_vd_quad + theta_vd_e(df)*wt_basis(1,df,qp1,qp2)
         end do
         exner_quad = 0.0_r_def
         rho_quad = 0.0_r_def
@@ -171,7 +174,7 @@ subroutine rhs_eos_code(nlayers,                                         &
           rho_quad   = rho_quad   + rho_e(df)  *w3_basis(1,df,qp1,qp2)
         end do
         eos = 1.0_r_def - p0_over_rd * exner_quad**onemk_over_k &
-            /(rho_quad*theta_quad)
+            /(rho_quad*theta_vd_quad)
         eos = wqp_h(qp1)*wqp_v(qp2)*dj(qp1,qp2)*eos
 
         do df = 1, ndf_w3          

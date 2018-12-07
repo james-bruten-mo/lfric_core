@@ -47,10 +47,11 @@ module hydrostatic_kernel_mod
   !>
   type, public, extends(kernel_type) :: hydrostatic_kernel_type
     private
-    type(arg_type) :: meta_args(4) = (/             &
+    type(arg_type) :: meta_args(5) = (/             &
         arg_type(GH_FIELD,   GH_INC,  W2),          &
         arg_type(GH_FIELD,   GH_READ, W3),          &
         arg_type(GH_FIELD,   GH_READ, Wtheta),      &
+        arg_type(GH_FIELD*3, GH_READ, Wtheta),     &
         arg_type(GH_FIELD,   GH_READ, W0)           &
         /)
     type(func_type) :: meta_funcs(4) = (/                &
@@ -91,6 +92,9 @@ end function hydrostatic_kernel_constructor
 !! @param[inout] r_u Momentum equation right hand side
 !! @param[in] exner Exner pressure field
 !! @param[in] theta Potential temperature field
+!! @param[in] moist_dyn_gas Moist dynamics factor in gas law
+!! @param[in] moist_dyn_tot Moist dynamics total mass factor
+!! @param[in] moist_dyn_fac Moist dynamics water factor
 !! @param[in] phi Geopotential field
 !! @param[in] ndf_w2 Number of degrees of freedom per cell for w2
 !! @param[in] undf_w2 Number unique of degrees of freedom  for w2
@@ -115,7 +119,8 @@ end function hydrostatic_kernel_constructor
 !! @param[in] wqp_h Horizontal quadrature weights
 !! @param[in] wqp_v Vertical quadrature weights
 subroutine hydrostatic_code(nlayers,                                          &
-                            r_u, exner, theta, phi,                           &
+                            r_u, exner, theta, moist_dyn_gas, moist_dyn_tot,  &
+                            moist_dyn_fac, phi,                               &
                             ndf_w2, undf_w2, map_w2, w2_basis, w2_diff_basis, &
                             ndf_w3, undf_w3, map_w3, w3_basis,                &
                             ndf_wt, undf_wt, map_wt, wt_basis, wt_diff_basis, &
@@ -143,6 +148,9 @@ subroutine hydrostatic_code(nlayers,                                          &
   real(kind=r_def), dimension(undf_w2), intent(inout) :: r_u
   real(kind=r_def), dimension(undf_w3), intent(in)    :: exner
   real(kind=r_def), dimension(undf_wt), intent(in)    :: theta
+  real(kind=r_def), dimension(undf_wt), intent(in)    :: moist_dyn_gas, &
+                                                         moist_dyn_tot, &
+                                                         moist_dyn_fac
   real(kind=r_def), dimension(undf_w0), intent(in)    :: phi
 
   real(kind=r_def), dimension(nqp_h), intent(in)      ::  wqp_h
@@ -154,11 +162,11 @@ subroutine hydrostatic_code(nlayers,                                          &
   
   real(kind=r_def), dimension(ndf_w3)          :: exner_e
   real(kind=r_def), dimension(ndf_w2)          :: ru_e
-  real(kind=r_def), dimension(ndf_wt)          :: theta_e
+  real(kind=r_def), dimension(ndf_wt)          :: theta_v_e
   real(kind=r_def), dimension(ndf_w0)          :: phi_e
 
-  real(kind=r_def) :: grad_theta_at_quad(3), v(3)
-  real(kind=r_def) :: exner_at_quad, theta_at_quad, &
+  real(kind=r_def) :: grad_theta_v_at_quad(3), v(3)
+  real(kind=r_def) :: exner_at_quad, theta_v_at_quad, &
                       grad_term, dv
   real(kind=r_def) :: grad_phi_at_quad(3)
   real(kind=r_def) :: geo_term
@@ -168,7 +176,8 @@ subroutine hydrostatic_code(nlayers,                                          &
       exner_e(df) = exner( map_w3(df) + k )
     end do    
     do df = 1, ndf_wt
-      theta_e(df) = theta( map_wt(df) + k )
+      theta_v_e(df) = theta( map_wt(df) + k ) * moist_dyn_gas( map_wt(df) + k ) / &
+                                                moist_dyn_tot( map_wt(df) + k )
     end do   
     do df = 1, ndf_w2
       ru_e(df) = 0.0_r_def
@@ -192,13 +201,13 @@ subroutine hydrostatic_code(nlayers,                                          &
         do df = 1, ndf_w3
           exner_at_quad  = exner_at_quad + exner_e(df)*w3_basis(1,df,qp1,qp2) 
         end do
-        theta_at_quad = 0.0_r_def
-        grad_theta_at_quad(:) = 0.0_r_def
+        theta_v_at_quad = 0.0_r_def
+        grad_theta_v_at_quad(:) = 0.0_r_def
         do df = 1, ndf_wt
-          theta_at_quad   = theta_at_quad                                      &
-                          + theta_e(df)*wt_basis(1,df,qp1,qp2)
-          grad_theta_at_quad(:) = grad_theta_at_quad(:) &
-                                + theta_e(df)*wt_diff_basis(:,df,qp1,qp2) 
+          theta_v_at_quad   = theta_v_at_quad                                      &
+                            + theta_v_e(df)*wt_basis(1,df,qp1,qp2)
+          grad_theta_v_at_quad(:) = grad_theta_v_at_quad(:) &
+                                  + theta_v_e(df)*wt_diff_basis(:,df,qp1,qp2) 
 
         end do
 
@@ -208,8 +217,8 @@ subroutine hydrostatic_code(nlayers,                                          &
 
           ! Pressure gradient term
           grad_term = cp*exner_at_quad * (                           & 
-                      theta_at_quad * dv                             &
-                    + dot_product( grad_theta_at_quad(:),v)          &
+                      theta_v_at_quad * dv                             &
+                    + dot_product( grad_theta_v_at_quad(:),v)          &
                                          )
           ! Geopotential term                                         
           geo_term = dot_product( grad_phi_at_quad(:), v)

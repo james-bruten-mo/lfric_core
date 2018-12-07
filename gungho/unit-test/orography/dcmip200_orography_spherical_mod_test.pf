@@ -50,13 +50,14 @@ module dcmip200_orography_spherical_mod_test
   integer(i_def),     parameter   :: xproc         = 1_i_def
   integer(i_def),     parameter   :: yproc         = 1_i_def
 
-  real(r_def), parameter :: gravity = 10.0_r_def
-  real(r_def), parameter :: radius  = 6371229.0_r_def
-  real(r_def), parameter :: omega   = 8.0E-5_r_def
-  real(r_def), parameter :: p_zero  = 100000.0_r_def
-  real(r_def), parameter :: rd      = 300.0_r_def
-  real(r_def), parameter :: cp      = 1000.0_r_def
-  real(r_def), parameter :: scaling = 125.0_r_def
+  real(r_def), parameter :: gravity  = 10.0_r_def
+  real(r_def), parameter :: radius   = 6371229.0_r_def
+  real(r_def), parameter :: omega    = 8.0E-5_r_def
+  real(r_def), parameter :: p_zero   = 100000.0_r_def
+  real(r_def), parameter :: rd       = 300.0_r_def
+  real(r_def), parameter :: cp       = 1000.0_r_def
+  real(r_def), parameter :: scaling  = 125.0_r_def
+  real(r_def), parameter :: epsilon  = 0.6_r_def
 
 contains
 
@@ -104,7 +105,8 @@ contains
                               rd             = rd,      &
                               cp             = cp,      &  
                               p_zero         = p_zero,  &
-                              scaling_factor = scaling )
+                              scaling_factor = scaling, &
+                              epsilon        = epsilon )
 
     ! Set DCMIP2.0.0 spherical configuration
     this%mountain_height     = 2000.0_r_def

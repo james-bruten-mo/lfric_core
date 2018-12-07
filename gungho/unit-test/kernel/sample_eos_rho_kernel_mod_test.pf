@@ -37,7 +37,7 @@ module sample_eos_rho_kernel_mod_test
     type( quadrature_rule_gaussian_type ) :: quadrature_rule
     type(function_space_type), pointer :: wt_fs => null()
     type(function_space_type), pointer :: w3_fs => null()
-    type(field_type)                   :: exner, theta, rho
+    type(field_type)                   :: exner, theta, moist_dyn_gas, rho
     real(r_def), allocatable           :: basis_w3(:,:,:,:)
     real(r_def), allocatable           :: basis_wt(:,:,:,:)
   contains
@@ -51,13 +51,14 @@ module sample_eos_rho_kernel_mod_test
   real(r_def), parameter :: bvf_square = 0.0001_r_def
   real(r_def), parameter :: theta_surf = 300.0_r_def
 
-  real(r_def), parameter :: gravity = 10.0_r_def
-  real(r_def), parameter :: radius  = 6000000_r_def
-  real(r_def), parameter :: omega   = 8.0E-5_r_def
-  real(r_def), parameter :: p_zero  = 100000.0_r_def
-  real(r_def), parameter :: rd      = 300.0_r_def
-  real(r_def), parameter :: cp      = 1000.0_r_def
-  real(r_def), parameter :: scaling = 1.0_r_def
+  real(r_def), parameter :: gravity  = 10.0_r_def
+  real(r_def), parameter :: radius   = 6000000_r_def
+  real(r_def), parameter :: omega    = 8.0E-5_r_def
+  real(r_def), parameter :: p_zero   = 100000.0_r_def
+  real(r_def), parameter :: rd       = 300.0_r_def
+  real(r_def), parameter :: cp       = 1000.0_r_def
+  real(r_def), parameter :: scaling  = 1.0_r_def
+  real(r_def), parameter :: epsilon  = 0.6_r_def
 
 contains
 
@@ -101,7 +102,7 @@ contains
 
     call feign_planet_config( gravity=gravity, radius=radius, omega=omega, &
                               rd=rd, cp=cp, p_zero=p_zero,                 &
-                              scaling_factor=scaling )
+                              scaling_factor=scaling, epsilon=epsilon )
 
     ! Create top level mesh collection
     mesh_collection = mesh_collection_type()
@@ -139,6 +140,8 @@ contains
     dim_wt  = theta_proxy%vspace%get_dim_space( )
     allocate(this%basis_wt(dim_wt,ndf_wt,nqp_h,nqp_v))
 
+    this%moist_dyn_gas = field_type( vector_space = this%wt_fs )
+
   end subroutine setUp
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -173,7 +176,8 @@ contains
 
     class(sample_eos_rho_test_type), intent(inout) :: this
 
-    type(field_proxy_type)    :: exner_proxy, theta_proxy, rho_proxy
+    type(field_proxy_type)    :: exner_proxy, theta_proxy, moist_dyn_gas_proxy, &
+                                 rho_proxy
 
     real(r_def), parameter :: dx = 6000.0_r_def, &
                               dy = 1000.0_r_def, &
@@ -197,6 +201,7 @@ contains
     ! Test kernel
     exner_proxy  = this%exner%get_proxy()
     theta_proxy = this%theta%get_proxy()
+    moist_dyn_gas_proxy = this%moist_dyn_gas%get_proxy()
     rho_proxy = this%theta%get_proxy()
 
     nlayers = exner_proxy%vspace%get_nlayers()
@@ -226,11 +231,13 @@ contains
     exner_proxy%data(:) = 1.0_r_def
     rho_proxy%data(:)   = 0.0_r_def
     theta_proxy%data(:) = 300.0_r_def
+    moist_dyn_gas_proxy%data(:) = 1.0_r_def
 
     call sample_eos_rho_code( nlayers,                 &
                               rho_proxy%data,          &
                               exner_proxy%data,        &
                               theta_proxy%data,        &
+                              moist_dyn_gas_proxy%data,&
                               ndf_w3, undf_w3,         &
                               map_w3, this%basis_w3,   &
                               ndf_wt, undf_wt, map_wt, &

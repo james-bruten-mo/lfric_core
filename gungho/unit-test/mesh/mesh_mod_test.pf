@@ -63,13 +63,14 @@ module mesh_mod_test
   integer(i_def),     parameter :: nlayers    = 5_i_def
   real(r_def),        parameter :: domain_top = 10000.0_r_def
 
-  real(r_def), parameter :: gravity = 10.0_r_def
-  real(r_def), parameter :: radius  = 6371229.0_r_def
-  real(r_def), parameter :: omega   = 8.0E-5_r_def
-  real(r_def), parameter :: p_zero  = 100000.0_r_def
-  real(r_def), parameter :: rd      = 300.0_r_def
-  real(r_def), parameter :: cp      = 1000.0_r_def
-  real(r_def), parameter :: scaling = 125.0_r_def
+  real(r_def), parameter :: gravity  = 10.0_r_def
+  real(r_def), parameter :: radius   = 6371229.0_r_def
+  real(r_def), parameter :: omega    = 8.0E-5_r_def
+  real(r_def), parameter :: p_zero   = 100000.0_r_def
+  real(r_def), parameter :: rd       = 300.0_r_def
+  real(r_def), parameter :: cp       = 1000.0_r_def
+  real(r_def), parameter :: scaling  = 125.0_r_def
+  real(r_def), parameter :: epsilon  = 0.6_r_def
 
   character(str_max_filename), parameter :: &
       MultiGridFiles(2) =                   &
@@ -190,7 +191,7 @@ contains
 
     call feign_planet_config( gravity=gravity, radius=radius, omega=omega, &
                               rd=rd, cp=cp, p_zero=p_zero,                 &
-                              scaling_factor=scaling )
+                              scaling_factor=scaling, epsilon=epsilon )
 
     global_mesh_collection = global_mesh_collection_type()
     global_mesh_id = global_mesh_collection%add_unit_test_global_mesh()

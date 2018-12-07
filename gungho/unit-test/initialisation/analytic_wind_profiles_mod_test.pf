@@ -34,6 +34,7 @@ module analytic_wind_profiles_mod_test
   real(r_def), parameter :: rd      = 300.0_r_def
   real(r_def), parameter :: cp      = 1000.0_r_def
   real(r_def), parameter :: scaling = 1.0_r_def
+  real(r_def), parameter :: epsilon = 0.6_r_def
   real(r_def), parameter :: domain_top  = 40.0_r_def
   real(r_def), parameter :: planar_domain_min_x = -20.0_r_def
   real(r_def), parameter :: planar_domain_max_x = 20.0_r_def
@@ -66,7 +67,7 @@ contains
 
     call feign_planet_config( gravity=gravity, radius=radius, omega=omega, &
                               rd=rd, cp=cp, p_zero=p_zero,                 &
-                              scaling_factor=scaling )
+                              scaling_factor=scaling, epsilon=epsilon )
 
     call feign_formulation_config( transport_only       = .false.,         &
                                    rotating             = .true.,          &
@@ -75,6 +76,7 @@ contains
                                    shallow              = .false.,         &
                                    use_wavedynamics     = .true.,          &
                                    dry_static_adjust    = .false.,         &
+                                   exner_from_eos       = .false.,         &
                                    set_hydrostatic_init = .false.,         &
                                    init_exner_bt        = .true.,          &
                                    dlayer_on            = .false.,         &

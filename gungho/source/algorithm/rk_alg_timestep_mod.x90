@@ -69,9 +69,11 @@ module rk_alg_timestep_mod
 
   ! Field indices
   use field_indices_mod,                 only: igh_u, igh_t, igh_d, igh_p
+  use moist_dyn_mod,                     only: num_moist_factors, gas_law
 
   use output_config_mod,                 only: subroutine_timers 
   use timer_mod,                         only: timer
+
   implicit none
 
   private
@@ -92,7 +94,7 @@ contains
   !> @param[in]    u 3D wind field
   !> @param[in]    rho Density
   !> @param[in]    theta Potential temperature
-  !> @param[in]    exenr Exner pressure
+  !> @param[in]    exner Exner pressure
   subroutine rk_alg_init(mesh_id, u, rho, theta, exner)
     implicit none
 
@@ -153,12 +155,14 @@ contains
   !> @param[inout] u 3D wind field
   !> @param[inout] rho Density
   !> @param[inout] theta Potential temperature
+  !> @param[inout] moist_dyn Moist dynamics factors
   !> @param[inout] xi Vorticity field  
-  subroutine rk_alg_step(u, rho, theta, exner, xi)
+  subroutine rk_alg_step(u, rho, theta, moist_dyn, exner, xi)
      
     implicit none
     ! Prognostic fields    
-    type( field_type ), intent( inout ) :: u, rho, theta, exner, xi
+    type( field_type ), intent( inout ) :: u, rho, theta, moist_dyn(num_moist_factors), &
+                                           exner, xi
 
     ! The quadrature object
     type( quadrature_xyoz_type ) :: qr
@@ -179,7 +183,6 @@ contains
     type(quadrature_rule_gaussian_type) :: gaussian_quadrature
 
     integer(i_def) :: st, stage
-
     if ( subroutine_timers ) call timer('rk_alg')
     qr = get_qr()
     mesh => theta%get_mesh()
@@ -210,10 +213,12 @@ contains
         call invoke( matrix_vector_kernel_type( rhs_prediction(igh_u,stage),   &
                                                 state(igh_u), coriolis ) )
       end if
-      call invoke_ru_bd_kernel ( rhs_prediction(igh_u, stage), state(igh_p), state(igh_t), qrf ) 
+      call invoke_ru_bd_kernel ( rhs_prediction(igh_u, stage), state(igh_p), state(igh_t), &
+                                 moist_dyn, qrf ) 
       call invoke( name = "Compute new rhs",                            &
                    hydrostatic_kernel_type       &
-           ( rhs_prediction(igh_u,stage), state(igh_p), state(igh_t), geopotential, qr ), &
+           ( rhs_prediction(igh_u,stage), state(igh_p), state(igh_t),   &
+             moist_dyn, geopotential, qr ),                             &
                    kinetic_energy_gradient_kernel_type &
            ( rhs_prediction(igh_u,stage), state(igh_u), chi, qr ),          &
                    enforce_bc_kernel_type( rhs_prediction(1,stage) ) ) 
@@ -241,7 +246,7 @@ contains
       ! Recompute exner from eos
       m3_inv => get_mass_matrix(w3inv_id)
       call invoke( project_pressure_kernel_type( state(igh_p), state(igh_d), state(igh_t), &
-                                                 chi, m3_inv, qr ) )
+                                                 moist_dyn(gas_law), chi, m3_inv, qr ) )
       ! Diagnostics
       diagnostic_field = inc(igh_t)
       call diagnostic_field%log_minmax(LOG_LEVEL_TRACE, 'theta_inc')

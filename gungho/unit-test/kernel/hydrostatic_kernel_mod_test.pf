@@ -39,6 +39,7 @@ module hydrostatic_kernel_mod_test
     type(function_space_type), pointer :: w2_fs => null()
     type(function_space_type), pointer :: w3_fs => null()
     type(field_type)                   :: r_u, rho, theta, phi
+    type(field_type)                   :: moist_dyn(3)
     real(r_def), allocatable           :: basis_w3(:,:,:,:), &
                                           basis_w2(:,:,:,:), &
                                           basis_w0(:,:,:,:), &
@@ -55,13 +56,14 @@ module hydrostatic_kernel_mod_test
   real(r_def), parameter :: bvf_square = 0.0001_r_def
   real(r_def), parameter :: theta_surf = 300.0_r_def
 
-  real(r_def), parameter :: gravity = 10.0_r_def
-  real(r_def), parameter :: radius  = 6000000_r_def
-  real(r_def), parameter :: omega   = 8.0E-5_r_def
-  real(r_def), parameter :: p_zero  = 100000.0_r_def
-  real(r_def), parameter :: rd      = 300.0_r_def
-  real(r_def), parameter :: cp      = 1000.0_r_def
-  real(r_def), parameter :: scaling = 1.0_r_def
+  real(r_def), parameter :: gravity  = 10.0_r_def
+  real(r_def), parameter :: radius   = 6000000_r_def
+  real(r_def), parameter :: omega    = 8.0E-5_r_def
+  real(r_def), parameter :: p_zero   = 100000.0_r_def
+  real(r_def), parameter :: rd       = 300.0_r_def
+  real(r_def), parameter :: cp       = 1000.0_r_def
+  real(r_def), parameter :: scaling  = 1.0_r_def
+  real(r_def), parameter :: epsilon  = 0.6_r_def
 
 contains
 
@@ -89,6 +91,7 @@ contains
     integer(i_def) :: dim_w0, diff_dim_w0, dim_w2, diff_dim_w2, dim_w3
 
     integer(i_def) :: mesh_id
+    integer(i_def) :: i
 
     ! Initialise YAXT
     call xt_initialize(this%getMpiCommunicator())
@@ -106,7 +109,7 @@ contains
 
     call feign_planet_config( gravity=gravity, radius=radius, omega=omega, &
                               rd=rd, cp=cp, p_zero=p_zero,                 &
-                              scaling_factor=scaling )
+                              scaling_factor=scaling, epsilon=epsilon )
 
     ! Create top level mesh collection
     mesh_collection = mesh_collection_type()
@@ -153,6 +156,10 @@ contains
     undf_w0     = theta_proxy%vspace%get_undf()
     allocate(this%basis_w0(dim_w0,ndf_w0,nqp_h,nqp_v))
     allocate(this%diff_basis_w0(diff_dim_w0,ndf_w0,nqp_h,nqp_v))
+
+    do i = 1, 3
+      this%moist_dyn(i) = field_type( vector_space = this%w0_fs )
+    end do
 
     this%phi  = field_type( vector_space = this%w0_fs )
 
@@ -210,6 +217,7 @@ contains
     integer, pointer        :: map_w3(:), map_w2(:), map_w0(:) => null()
 
     type(field_proxy_type) :: r_u_proxy, rho_proxy, theta_proxy, phi_proxy
+    type(field_proxy_type) :: moist_dyn_proxy(3)
 
 
     real(kind=r_def), pointer :: xp(:,:) => null()
@@ -241,6 +249,9 @@ contains
     r_u_proxy  = this%r_u%get_proxy()
     rho_proxy  = this%rho%get_proxy()
     theta_proxy = this%theta%get_proxy()
+    do i = 1, 3
+      moist_dyn_proxy(i) = this%moist_dyn(i)%get_proxy()
+    end do
     phi_proxy = this%phi%get_proxy()
 
     nlayers = rho_proxy%vspace%get_nlayers()
@@ -285,12 +296,18 @@ contains
     r_u_proxy%data(:) = 0.0_r_def
     rho_proxy%data(:) = 1.5_r_def
     theta_proxy%data(:) = 300.0_r_def
+    do i = 1, 3
+      moist_dyn_proxy(i)%data(:) = 1.0_r_def
+    end do
     phi_proxy%data(:) = gravity*chi_p(3)%data(:)
 
     call hydrostatic_code( nlayers,                                   &
                            r_u_proxy%data,                            &
                            rho_proxy%data,                            &
                            theta_proxy%data,                          &
+                           moist_dyn_proxy(1)%data,                   &
+                           moist_dyn_proxy(2)%data,                   &
+                           moist_dyn_proxy(3)%data,                   &
                            phi_proxy%data,                            &
                            ndf_w2, undf_w2,                           &
                            map_w2, this%basis_w2, this%diff_basis_w2, &

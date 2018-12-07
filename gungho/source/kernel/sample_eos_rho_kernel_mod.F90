@@ -28,9 +28,10 @@ implicit none
 !> The type declaration for the kernel. Contains the metadata needed by the Psy layer
 type, public, extends(kernel_type) :: sample_eos_rho_kernel_type
   private
-  type(arg_type) :: meta_args(3) = (/                                 &
+  type(arg_type) :: meta_args(4) = (/                                 &
        arg_type(GH_FIELD,   GH_WRITE, W3),                            &
        arg_type(GH_FIELD,   GH_READ,  W3),                            &
+       arg_type(GH_FIELD,   GH_READ,  ANY_SPACE_1),                   &
        arg_type(GH_FIELD,   GH_READ,  ANY_SPACE_1)                    &
        /)
   type(func_type) :: meta_funcs(2) = (/                     &
@@ -68,6 +69,7 @@ end function sample_eos_rho_kernel_constructor
 !! @param[out] rho Density field
 !! @param[in] exner Exner pressure field
 !! @param[in] theta Potential temperature field
+!! @param[in] moist_dyn_gas Moist dynamics factor
 !! @param[in] height_wt Height coordinate in wtheta
 !! @param[in] height_w3 Height coordinate in w3
 !! @param[in] ndf_w3 Number of degrees of freedom per cell for w3
@@ -76,9 +78,9 @@ end function sample_eos_rho_kernel_constructor
 !! @param[in] ndf_wt Number of degrees of freedom per cell for wtheta
 !! @param[in] undf_wt Number unique of degrees of freedom  for wtheta
 !! @param[in] map_wt Dofmap for the cell at the base of the column for wt
-subroutine sample_eos_rho_code(nlayers, rho, exner, theta, &
-                                    ndf_w3, undf_w3, map_w3, basis_3, ndf_wt, &
-                                    undf_wt, map_wt, basis_t)
+subroutine sample_eos_rho_code(nlayers, rho, exner, theta, moist_dyn_gas, &
+                               ndf_w3, undf_w3, map_w3, basis_3, ndf_wt,  &
+                               undf_wt, map_wt, basis_t)
   
   use analytic_temperature_profiles_mod, only : analytic_temperature
 
@@ -91,7 +93,8 @@ subroutine sample_eos_rho_code(nlayers, rho, exner, theta, &
 
   real(kind=r_def), dimension(undf_w3),  intent(inout)       :: rho
   real(kind=r_def), dimension(undf_w3),  intent(in)          :: exner
-  real(kind=r_def), dimension(undf_wt),  intent(in)          :: theta 
+  real(kind=r_def), dimension(undf_wt),  intent(in)          :: theta
+  real(kind=r_def), dimension(undf_wt),  intent(in)          :: moist_dyn_gas
   real(kind=r_def), dimension(1,ndf_w3,ndf_w3),  intent(in)  :: basis_3
   real(kind=r_def), dimension(1,ndf_wt,ndf_w3),  intent(in)  :: basis_t
 
@@ -99,8 +102,8 @@ subroutine sample_eos_rho_code(nlayers, rho, exner, theta, &
   !Internal variables
   integer(kind=i_def)                  :: k, df, dft, df3
   real(kind=r_def), dimension(ndf_w3)  :: exner_e
-  real(kind=r_def), dimension(ndf_wt)  :: theta_e
-  real(kind=r_def)                     :: exner_cell, theta_cell
+  real(kind=r_def), dimension(ndf_wt)  :: theta_vd_e
+  real(kind=r_def)                     :: exner_cell, theta_vd_cell
 
   !Compute density from eqn of state
   do k = 0, nlayers-1
@@ -110,7 +113,7 @@ subroutine sample_eos_rho_code(nlayers, rho, exner, theta, &
     end do
 
     do dft = 1, ndf_wt
-      theta_e(dft) = theta( map_wt(dft) + k)
+      theta_vd_e(dft) = theta( map_wt(dft) + k) * moist_dyn_gas( map_wt(dft) + k)
     end do
     
     do df = 1, ndf_w3
@@ -120,12 +123,12 @@ subroutine sample_eos_rho_code(nlayers, rho, exner, theta, &
         exner_cell = exner_cell + exner_e(df3)*basis_3(1,df3,df)
       end do
  
-      theta_cell = 0.0_r_def
+      theta_vd_cell = 0.0_r_def
       do dft = 1, ndf_wt
-        theta_cell = theta_cell + theta_e(dft)*basis_t(1,dft,df)
+        theta_vd_cell = theta_vd_cell + theta_vd_e(dft)*basis_t(1,dft,df)
       end do
       
-      rho(map_w3(df)+k) = (p_zero*exner_cell**(1.0/(rd/cp)-1.0))/(rd*theta_cell)
+      rho(map_w3(df)+k) = (p_zero*exner_cell**(1.0/(rd/cp)-1.0))/(rd*theta_vd_cell)
     end do
 
   end do

@@ -11,8 +11,8 @@ module init_prognostic_fields_alg_mod
                                              log_scratch_space, &
                                              LOG_LEVEL_INFO,    &
                                              LOG_LEVEL_TRACE
-  use constants_mod,                   only: r_def, i_def, str_short
-
+  use constants_mod,                   only: r_def, i_def,      &
+                                             str_short
   use mass_matrix_solver_alg_mod,      only: mass_matrix_solver_alg
   use runtime_constants_mod,           only: get_coordinates, &
                                              get_mass_matrix, &
@@ -27,9 +27,8 @@ module init_prognostic_fields_alg_mod
   use restart_control_mod,             only: restart_type
 
   ! PsyKAl-lite kernels
-  use psykal_lite_mod,                 only: invoke_initial_mr_kernel, &
-                                             invoke_initial_rho_sample_kernel, &
-                                             invoke_initial_exner_sample_kernel, &
+  use psykal_lite_mod,                 only: invoke_initial_rho_sample_kernel,  &
+                                             invoke_initial_exner_sample_kernel,&
                                              invoke_hydrostatic_exner_kernel
   use field_bundle_mod,                only: set_bundle_scalar
 
@@ -41,6 +40,9 @@ module init_prognostic_fields_alg_mod
   use initial_theta_kernel_mod,        only: initial_theta_kernel_type
   use project_pressure_kernel_mod,     only: project_pressure_kernel_type
   use sample_eos_rho_kernel_mod,       only: sample_eos_rho_kernel_type
+  use hydrostatic_exner_kernel_mod,    only: hydrostatic_exner_kernel_type
+  use moist_dyn_factors_kernel_mod,    only: moist_dyn_factors_kernel_type
+  use initial_mr_kernel_mod,           only: initial_mr_kernel_type
 
   ! Derived Types
   use field_mod,                       only: field_type
@@ -52,6 +54,7 @@ module init_prognostic_fields_alg_mod
   ! Handles
   use fs_continuity_mod,               only: W3, Wtheta
   use mr_indices_mod,                  only: nummr, mr_names
+  use moist_dyn_mod,                   only: num_moist_factors, gas_law
   implicit none
 
   private
@@ -61,19 +64,22 @@ contains
 
   !> @details An algorithm for initialising prognostic fields for 
   !>          all solvers.
-  !> @param[inout] u 3D Wind field
-  !> @param[inout] rho Density
-  !> @param[inout] theta Potential temperature
-  !> @param[inout] exner Exner pressure
-  !> @param[inout] mr Field bundle containing the moisture mixring ratios
-  !> @param[inout] xi The vorticity field 
+  !> @param[in,out] u 3D Wind field
+  !> @param[in,out] rho Density
+  !> @param[in,out] theta Potential temperature
+  !> @param[in,out] exner Exner pressure
+  !> @param[in,out] mr Field bundle containing the moisture mixring ratios
+  !> @param[in,out] moist_dyn Auxilliary fields for moist dynamics
+  !> @param[in,out] xi The vorticity field 
   !> @param[in] restart Checkpoint/restart type with timestepping information
-  subroutine init_prognostic_fields_alg(u, rho, theta, exner, mr, xi, restart)
+  subroutine init_prognostic_fields_alg(u, rho, theta, exner,  mr, moist_dyn, &
+                                        xi, restart)
 
     implicit none
 
     ! Prognostic fields
-    type( field_type ), intent( inout ) :: u, rho, theta, exner, xi, mr(nummr)
+    type( field_type ), intent( inout ) :: u, rho, theta, exner, xi, mr(nummr), &
+                                           moist_dyn(num_moist_factors)
     ! Control
     type( restart_type ), intent(in)      :: restart
 
@@ -84,6 +90,7 @@ contains
     type( field_type ), pointer           :: chi(:) => null(), &
                                              height_wth => null(), &
                                              height_w3 => null()
+
     ! Operators
     type(operator_type), pointer        :: m3_inv => null()
 
@@ -94,6 +101,11 @@ contains
 
     qr = quadrature_xyoz_type(element_order+3, quadrature_rule)
     chi => get_coordinates()
+
+    ! Default is dry dynamics - set moist dynamics factors to one
+    do i = 1, num_moist_factors
+      call invoke( setval_c( moist_dyn(i), 1.0_r_def) )
+    end do
 
     !=== Initialise global prognostic fields ==================================!
 
@@ -127,10 +139,12 @@ contains
         height_w3 => get_height(W3)
         height_wth => get_height(Wtheta)
 
-        ! Initialize from theta distro using hydrostatic balance, then compute rho with equation of state
-        call invoke_hydrostatic_exner_kernel( exner, theta, height_wth, &
-                                                    height_w3, chi )
-        call invoke( sample_eos_rho_kernel_type( rho, exner, theta ) )
+        ! Initialize exner assuming hydrostatic balance
+        call invoke_hydrostatic_exner_kernel( exner, theta, moist_dyn, height_wth, &
+                                              height_w3, chi )
+        ! Diagnose density from equation of state
+        call invoke( sample_eos_rho_kernel_type( rho, exner, theta,                &
+                                                 moist_dyn(gas_law) ) )
       else
         if(sample_init_rho) then
           call invoke_initial_rho_sample_kernel  ( rho,   chi, initial_time )
@@ -143,14 +157,23 @@ contains
           qr = quadrature_xyoz_type(1, quadrature_rule)
 
           ! Pressure has already been initialized
-          call invoke( project_pressure_kernel_type( exner, rho, theta, &
+          call invoke( project_pressure_kernel_type( exner, rho, theta, moist_dyn(gas_law), &
                                                      chi, m3_inv, qr ) )
 
         end if
       end if
 
       if (use_moisture) then
-        call invoke_initial_mr_kernel( theta, rho, mr(:), chi )
+        ! Initialise moisture and update factors for moist dynamics
+        call invoke( initial_mr_kernel_type( theta, exner, rho, mr, chi ),         &
+                     moist_dyn_factors_kernel_type( moist_dyn, mr ) )
+        ! Recalculate hydrostatic pressure and dry density
+        height_w3 => get_height(W3)
+        height_wth => get_height(Wtheta)
+        call invoke_hydrostatic_exner_kernel( exner, theta, moist_dyn, height_wth, &
+                                              height_w3, chi )
+        call invoke( sample_eos_rho_kernel_type( rho, exner, theta,                &
+                                                 moist_dyn(gas_law) ) )
       else
         call set_bundle_scalar(0.0_r_def, mr, nummr)
       end if
@@ -176,11 +199,15 @@ contains
 
       if (use_moisture)then
         do i=1,nummr
-          write(name, '(A,A)') 'restart_',trim(mr_names(i))
+          write(name, '(A)') 'restart_'//trim(mr_names(i))
           write(log_scratch_space,'(A,A)') "Reading checkpoint file to restart ", trim(name)
           call log_event(log_scratch_space,LOG_LEVEL_INFO)
           call mr(i)%read_restart(trim(name),trim(restart%startfname(mr_names(i))))
         end do
+        ! Update factors for moist dynamics
+        write(log_scratch_space,'(A)') 'Restart step 1: update moist_dyn'
+        call log_event(log_scratch_space,LOG_LEVEL_INFO)
+        call invoke(moist_dyn_factors_kernel_type( moist_dyn, mr ))
       end if
 
       call log_event( "Gungho: Read prognostic fields from files", LOG_LEVEL_INFO )

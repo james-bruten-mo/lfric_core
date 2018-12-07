@@ -28,9 +28,10 @@ module project_pressure_kernel_mod
   !>
   type, public, extends(kernel_type) :: project_pressure_kernel_type
     private
-    type(arg_type) :: meta_args(5) = (/               &
+    type(arg_type) :: meta_args(6) = (/               &
         arg_type(GH_FIELD,   GH_WRITE,  W3),          &
         arg_type(GH_FIELD,   GH_READ,   W3),          &
+        arg_type(GH_FIELD,   GH_READ,   Wtheta),      &
         arg_type(GH_FIELD,   GH_READ,   Wtheta),      &
         arg_type(GH_FIELD*3, GH_READ,   ANY_SPACE_2), &
         arg_type(GH_OPERATOR, GH_READ,  W3, W3)       &
@@ -72,6 +73,7 @@ end function project_pressure_kernel_constructor
 !! @param[inout] exner Pressure field
 !! @param[in] rho Density
 !! @param[in] theta Potential temperature
+!! @param[in] moist_dyn_gas Moist dynamics factor in gas law (1+mv/epsilon)
 !! @param[in] chi1 coordinate field
 !! @param[in] chi2 coordinate field
 !! @param[in] chi3 coordinate field
@@ -94,7 +96,8 @@ end function project_pressure_kernel_constructor
 !! @param[in] wqp_h horizontal quadrature weights
 !! @param[in] wqp_v vertical quadrature weights
 subroutine project_pressure_code(cell, nlayers,                                &
-                                 exner, rho, theta, chi1, chi2, chi3,          &
+                                 exner, rho, theta, moist_dyn_gas,             &
+                                 chi1, chi2, chi3,                             &
                                  ncell_3d, m3_inv,                             &
                                  ndf_w3, undf_w3, map_w3, w3_basis,            &
                                  ndf_wt, undf_wt, map_wt, wt_basis,            &
@@ -123,6 +126,7 @@ subroutine project_pressure_code(cell, nlayers,                                &
   real(kind=r_def), dimension(undf_w3),  intent(out) :: exner
   real(kind=r_def), dimension(undf_w3),  intent(in)  :: rho
   real(kind=r_def), dimension(undf_wt),  intent(in)  :: theta
+  real(kind=r_def), dimension(undf_wt),  intent(in)  :: moist_dyn_gas
   real(kind=r_def), dimension(undf_chi), intent(in)  :: chi1, chi2, chi3
 
   real(kind=r_def), dimension(ndf_w3,ndf_w3,ncell_3d), intent(in) :: m3_inv
@@ -136,12 +140,12 @@ subroutine project_pressure_code(cell, nlayers,                                &
   
   real(kind=r_def), dimension(ndf_w3)          :: rho_e
   real(kind=r_def), dimension(ndf_w3)          :: r_exner, exner_e
-  real(kind=r_def), dimension(ndf_wt)          :: theta_e
+  real(kind=r_def), dimension(ndf_wt)          :: theta_vd_e
   real(kind=r_def), dimension(ndf_chi)         :: chi1_e, chi2_e, chi3_e
   real(kind=r_def), dimension(nqp_h,nqp_v)     :: dj
   real(kind=r_def), dimension(3,3,nqp_h,nqp_v) :: jac
 
-  real(kind=r_def) :: exner_at_quad, rho_at_quad, theta_at_quad
+  real(kind=r_def) :: exner_at_quad, rho_at_quad, theta_vd_at_quad
 
   do k = 0, nlayers-1
     do df = 1, ndf_chi
@@ -157,7 +161,7 @@ subroutine project_pressure_code(cell, nlayers,                                &
       r_exner(df) = 0.0_r_def
     end do    
     do df = 1, ndf_wt
-      theta_e(df) = theta( map_wt(df) + k )
+      theta_vd_e(df) = theta( map_wt(df) + k ) * moist_dyn_gas( map_wt(df) + k )
     end do   
 
     do qp2 = 1, nqp_v
@@ -166,12 +170,12 @@ subroutine project_pressure_code(cell, nlayers,                                &
         do df = 1, ndf_w3
           rho_at_quad  = rho_at_quad + rho_e(df)*w3_basis(1,df,qp1,qp2) 
         end do
-        theta_at_quad = 0.0_r_def
+        theta_vd_at_quad = 0.0_r_def
         do df = 1, ndf_wt
-          theta_at_quad = theta_at_quad + theta_e(df)*wt_basis(1,df,qp1,qp2)
+          theta_vd_at_quad = theta_vd_at_quad + theta_vd_e(df)*wt_basis(1,df,qp1,qp2)
         end do
         exner_at_quad = wqp_h(qp1)*wqp_v(qp2)*dj(qp1,qp2) &
-                      *calc_exner_pointwise(rho_at_quad, theta_at_quad)
+                      *calc_exner_pointwise(rho_at_quad, theta_vd_at_quad)
 
         do df = 1, ndf_w3
           r_exner(df) = r_exner(df) + w3_basis(1,df,qp1,qp2)*exner_at_quad

@@ -27,13 +27,14 @@ module deep_baroclinic_wave_mod_test
     procedure test_all
   end type deep_baroclinic_wave_test_type
 
-  real(r_def), parameter :: gravity = 10.0_r_def
-  real(r_def), parameter :: radius  = 6000000.0_r_def
-  real(r_def), parameter :: omega   = 8.0E-5_r_def
-  real(r_def), parameter :: p_zero  = 100000.0_r_def
-  real(r_def), parameter :: rd      = 300.0_r_def
-  real(r_def), parameter :: cp      = 1000.0_r_def
-  real(r_def), parameter :: scaling = 1.0_r_def
+  real(r_def), parameter :: gravity  = 10.0_r_def
+  real(r_def), parameter :: radius   = 6000000.0_r_def
+  real(r_def), parameter :: omega    = 8.0E-5_r_def
+  real(r_def), parameter :: p_zero   = 100000.0_r_def
+  real(r_def), parameter :: rd       = 300.0_r_def
+  real(r_def), parameter :: cp       = 1000.0_r_def
+  real(r_def), parameter :: scaling  = 1.0_r_def
+  real(r_def), parameter :: epsilon  = 0.6_r_def
 contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -59,7 +60,7 @@ contains
 
     call feign_planet_config( gravity=gravity, radius=radius, omega=omega, &
                               rd=rd, cp=cp, p_zero=p_zero,                 &
-                              scaling_factor=scaling )
+                              scaling_factor=scaling, epsilon=epsilon )
 
     call feign_base_mesh_config                               &
              ( filename='foo', prime_mesh_name='unit_test',   &
@@ -81,6 +82,7 @@ contains
                                   shallow=.false., use_physics=.false.,    &
                                   use_wavedynamics=.true.,                 &
                                   dry_static_adjust=.false.,               &
+                                  exner_from_eos=.false.,                  &
                                   dlayer_on = .false.,                     &
                                   set_hydrostatic_init = .false.,          &
                                   init_exner_bt        = .true.,           &

@@ -20,7 +20,7 @@ module iter_timestep_alg_mod
   use formulation_config_mod,    only: use_moisture, use_physics, dlayer_on, &
                                        use_wavedynamics,          &
                                        dry_static_adjust,         &
-                                       set_hydrostatic_init
+                                       exner_from_eos
   use output_config_mod,         only: diagnostic_frequency, subroutine_timers, &
                                        write_xios_output
   use mixed_solver_config_mod,   only: guess_np1,                                &
@@ -54,6 +54,7 @@ module iter_timestep_alg_mod
   use matrix_vector_kernel_mod,           only: matrix_vector_kernel_type
   use smagorinsky_shear_kernel_mod,       only: smagorinsky_shear_kernel_type
   use tracer_smagorinsky_diff_kernel_mod, only: tracer_smagorinsky_diff_kernel_type
+  use moist_dyn_factors_kernel_mod,       only: moist_dyn_factors_kernel_type
 
   ! Derived Types
   use field_mod,                 only: field_type
@@ -90,6 +91,7 @@ module iter_timestep_alg_mod
 
   ! Moisture species
   use mr_indices_mod,             only: nummr
+  use moist_dyn_mod,              only: num_moist_factors, gas_law
 
   ! Field indices
   use field_indices_mod,          only: igh_u, igh_t, igh_d, igh_p
@@ -278,13 +280,14 @@ contains
   !> @param[in,out] theta          Potential temperature
   !> @param[in,out] exner          Exner pressure
   !> @param[in,out] mr             Mixing ratios
+  !> @param[in,out] moist_dyn      Factors for moist dynamics
   !> @param[in,out] xi             Vorticity field
   !> @param[in,out] derived_fields Group of derived fields
   !> @param[in,out] cloud_fields   Group of cloud fields
   !> @param[in,out] twod_fields    2D fields for UM physics
   !> @param[in,out] physics_incs   Group of physics increments
   !> @param[in]     timestep       Model timestep number
-  subroutine iter_alg_step(u, rho, theta, exner, mr, xi, &
+  subroutine iter_alg_step(u, rho, theta, exner, mr, moist_dyn, xi,      &
                            derived_fields, cloud_fields, twod_fields,    &
                            physics_incs, timestep)
 
@@ -293,6 +296,7 @@ contains
     ! Prognostic fields
     type( field_type ), intent( inout ) :: u, rho, theta, exner, xi
     type( field_type ), intent( inout ) :: mr(nummr)
+    type( field_type ), intent( inout ) :: moist_dyn(num_moist_factors)
     ! field groups
     type( field_collection_type ), intent( inout ) :: derived_fields
     type( field_collection_type ), intent( inout ) :: cloud_fields
@@ -327,7 +331,7 @@ contains
     type( field_type ), pointer :: u3_in_w3_star  => null()
     type( field_type ), pointer :: exner_theta  => null()
 
-    integer(kind=i_def):: outer, inner, iter, imr
+    integer(kind=i_def):: outer, inner, iter
     real(kind=r_def)   :: varalpha, varbeta ! alpha, beta weight to use
                                             ! these may differ from input values
                                             ! during the spinup period
@@ -419,9 +423,12 @@ contains
     ! Update state_after_slow and mr_after_slow with 
     ! start of timestep + slow physics values
     call copy_bundle(state, state_after_slow, bundle_size)
-    if (use_moisture)call copy_bundle(mr, mr_after_slow, nummr)
+    if (use_moisture) then
+      call copy_bundle(mr, mr_after_slow, nummr)
+      call invoke(moist_dyn_factors_kernel_type(moist_dyn, mr))
+    end if
 
-    call rhs_alg(rhs_n, varbeta*dt, state_after_slow, .false., .false.)
+    call rhs_alg(rhs_n, varbeta*dt, state_after_slow, moist_dyn, .false., .false.)
 
     !==========================================================================
     ! Start the Outer (advection) loop
@@ -454,7 +461,7 @@ contains
           call mass_matrix_solver_alg(theta_star, inc(igh_t))
 
           ! Compute u_star = u_np1 + M^-1(-rhs_np1 + rhs_n + rhs_a)
-          call rhs_alg(rhs_np1, -varalpha*dt, state, .false., dlayer_on)      
+          call rhs_alg(rhs_np1, -varalpha*dt, state, moist_dyn, .false., dlayer_on)      
           call invoke( inc_aX_plus_Y(-1.0_r_def, rhs_np1(igh_u), rhs_n(igh_u)),&
                        inc_X_plus_Y(rhs_np1(igh_u), rhs_adv(igh_u)) )
           call mass_matrix_solver_alg(inc(igh_u), rhs_np1(igh_u) )
@@ -504,6 +511,9 @@ contains
 
       if (use_wavedynamics) then
 
+        ! Update factors for moist dynamics
+        if (use_moisture) call invoke(moist_dyn_factors_kernel_type(moist_dyn, mr))
+
         !============================================================================
         ! Start the Inner (nonlinear, coriolis) loop
         !============================================================================
@@ -517,7 +527,7 @@ contains
             m3_inv => get_mass_matrix(w3inv_id)
 
             call invoke( project_pressure_kernel_type( state(igh_p), state(igh_d), state(igh_t), &
-                                                       chi, m3_inv, qr ) )
+                                                       moist_dyn(gas_law), chi, m3_inv, qr ) )
           end if
           ! Reset reference state using latest guess
           iter = inner + (outer-1)*inner_iterations
@@ -527,7 +537,7 @@ contains
             call compute_si_operators(reference_state)
           end if
 
-          call rhs_alg(rhs_np1, -varalpha*dt, state, .true., dlayer_on)
+          call rhs_alg(rhs_np1, -varalpha*dt, state, moist_dyn, .true., dlayer_on)
 
           !--------------------------------------------------------------------
           ! Solve for the increments
@@ -582,11 +592,13 @@ contains
           call vector_state%export_field(state(igh_d), igh_d)
           call vector_state%export_field(state(igh_p), igh_p)
 
-          if(.not. set_hydrostatic_init) then
-            ! Recompute exner from eos
+          ! Recompute exner from eos
+          if (exner_from_eos) then
             m3_inv => get_mass_matrix(w3inv_id)
-            call invoke( project_pressure_kernel_type( state(igh_p), state(igh_d), state(igh_t), &
-                                                     chi, m3_inv, qr ) )
+            call invoke( project_pressure_kernel_type( state(igh_p), state(igh_d), &
+                                                       state(igh_t),               &
+                                                       moist_dyn(gas_law), chi,    &
+                                                       m3_inv, qr ) )
           end if
 
         end do inner_dynamics_loop

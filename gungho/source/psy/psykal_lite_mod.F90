@@ -125,102 +125,6 @@ contains
     call rho_proxy%set_dirty()
   end subroutine invoke_initial_rho_sample_kernel
 
-
-  !------------------------------------------------------------------------------
-  !> invoke_initial_mr_kernel: invoke the moisture initialization
-  subroutine invoke_initial_mr_kernel( theta, rho, mr, chi )
-
-    use initial_mr_kernel_mod, only : initial_mr_code
-    use mr_indices_mod,        only : imr_v, imr_cl, imr_r, imr_ci, imr_s,  &
-                                      imr_g, nummr
-    use mesh_mod,              only : mesh_type
-    implicit none
-
-    type( field_type ), intent( inout ) :: mr(nummr)
-    type( field_type ), intent( in ) :: theta, rho
-    type( field_type ), intent( in ) :: chi(3)
-
-    integer          :: cell
-    integer          :: ndf_wtheta, undf_wtheta, &
-                        ndf_w3, undf_w3, &
-                        ndf_chi, undf_chi
-    integer, pointer :: map_wtheta(:) => null()
-    integer, pointer :: map_w3(:)    => null()
-    integer, pointer :: map_chi(:)    => null()
-
-    type( field_proxy_type ) :: mr_proxy(nummr)
-    type( field_proxy_type ) :: theta_proxy, rho_proxy
-    type( field_proxy_type ) :: chi_proxy(3)
-
-    type(mesh_type), pointer :: mesh => null()
-
-    integer :: imr
-
-    do imr = 1,nummr
-      mr_proxy(imr)  = mr(imr)%get_proxy()
-    end do
-
-    chi_proxy(1) = chi(1)%get_proxy()
-    chi_proxy(2) = chi(2)%get_proxy()
-    chi_proxy(3) = chi(3)%get_proxy()
-
-    theta_proxy = theta%get_proxy()
-    rho_proxy = rho%get_proxy()
-
-    ndf_w3  = rho_proxy%vspace%get_ndf( )
-    undf_w3 = rho_proxy%vspace%get_undf( )
-
-    ndf_wtheta  = theta_proxy%vspace%get_ndf( )
-    undf_wtheta = theta_proxy%vspace%get_undf( )
-
-    ndf_chi  = chi_proxy(1)%vspace%get_ndf( )
-    undf_chi = chi_proxy(1)%vspace%get_undf( )
-
-    if (chi_proxy(1)%is_dirty(depth=1)) call chi_proxy(1)%halo_exchange(depth=1)
-    if (chi_proxy(2)%is_dirty(depth=1)) call chi_proxy(2)%halo_exchange(depth=1)
-    if (chi_proxy(3)%is_dirty(depth=1)) call chi_proxy(3)%halo_exchange(depth=1)
-    do imr = 1,nummr
-      if (mr_proxy(imr)%is_dirty(depth=1))  call mr_proxy(imr)%halo_exchange(depth=1)
-    end do
-
-    mesh => theta%get_mesh()
-    do cell = 1, mesh%get_last_halo_cell(1)
-
-      map_wtheta => theta_proxy%vspace%get_cell_dofmap( cell )
-      map_w3     => rho_proxy%vspace%get_cell_dofmap( cell )
-      map_chi    => chi_proxy(1)%vspace%get_cell_dofmap( cell )
-
-      !!todo: nummr must be 5 for this to work, since we currently cant
-      ! pass variable sized vectors into a kernel
-      call initial_mr_code(       &
-        theta_proxy%vspace%get_nlayers(),   &
-        ndf_wtheta,                         &
-        undf_wtheta,                        &
-        map_wtheta,                         &
-        theta_proxy%data,                   &
-        rho_proxy%data,                     &
-        ndf_w3,                             &
-        undf_w3,                            &
-        map_w3,                             &
-        mr_proxy(imr_v)%data,               &
-        mr_proxy(imr_cl)%data,              &
-        mr_proxy(imr_r)%data,               &
-        mr_proxy(imr_ci)%data,              &
-        mr_proxy(imr_s)%data,               &
-        mr_proxy(imr_g)%data,               &
-        ndf_chi,                            &
-        undf_chi,                           &
-        map_chi,                            &
-        chi_proxy(1)%data,                  &
-        chi_proxy(2)%data,                  &
-        chi_proxy(3)%data                   &
-        )
-    end do
-    do imr = 1,nummr
-       call mr_proxy(imr)%set_dirty()
-    end do
-  end subroutine invoke_initial_mr_kernel
-
   !-------------------------------------------------------------------------------
   !> Computation of 2d quadrature on faces not currently supported PSyClone,
   !> will be introduced in #793  by modifying quadrature tools developed in ticket #761.
@@ -346,16 +250,17 @@ contains
   !> Kernel requires mesh information (adjacent_face) that will be implemented
   !> in lfric:#986 + psylcone:#18
   !> Invoke_ru_bd_kernel: Invoke the boundary part of the RHS of the momentum equation
-  subroutine invoke_ru_bd_kernel( r_u_bd, exner, theta, qr )
+  subroutine invoke_ru_bd_kernel( r_u_bd, exner, theta, moist_dyn, qr )
 
     use reference_element_mod,  only : reference_element_type
     use ru_bd_kernel_mod,       only : ru_bd_code
     use mesh_mod,               only : mesh_type ! Work around for intel_v15 failues on the Cray
     use stencil_dofmap_mod,     only : stencil_dofmap_type, STENCIL_CROSS
+    use moist_dyn_mod,          only : num_moist_factors, gas_law, total_mass, water
 
     implicit none
 
-    type( field_type ), intent( in )     :: exner, theta
+    type( field_type ), intent( in )     :: exner, theta, moist_dyn(num_moist_factors)
     type( field_type ), intent( inout )  :: r_u_bd
     type( quadrature_face_type ), intent( in ) :: qr
 
@@ -376,7 +281,10 @@ contains
     integer, pointer        :: cross_stencil_w3_map(:,:,:) => null()
     integer                 :: cross_stencil_w3_size
 
-    type( field_proxy_type )        :: r_u_bd_proxy, exner_proxy, theta_proxy
+    integer                 :: ifac
+
+    type( field_proxy_type ) :: r_u_bd_proxy, exner_proxy, theta_proxy
+    type( field_proxy_type ) :: moist_dyn_proxy(num_moist_factors)
 
     real(kind=r_def), allocatable  :: basis_w2_face(:,:,:,:), &
                                       basis_w3_face(:,:,:,:), &
@@ -394,6 +302,10 @@ contains
     r_u_bd_proxy = r_u_bd%get_proxy()
     exner_proxy  = exner%get_proxy()
     theta_proxy  = theta%get_proxy()
+
+    do ifac = 1, num_moist_factors
+      moist_dyn_proxy(ifac)= moist_dyn(ifac)%get_proxy()
+    end do
 
     cross_stencil_w3 => exner_proxy%vspace%get_stencil_dofmap(STENCIL_CROSS, 1)
     cross_stencil_w3_map => cross_stencil_w3%get_whole_dofmap()
@@ -427,6 +339,12 @@ contains
     if(exner_proxy%is_dirty(depth=2) ) call exner_proxy%halo_exchange(depth=2)
     if(r_u_bd_proxy%is_dirty(depth=2) ) call r_u_bd_proxy%halo_exchange(depth=2)
 
+    do ifac = 1, num_moist_factors
+      if (moist_dyn_proxy(ifac)%is_dirty(depth=2)) then
+        call moist_dyn_proxy(ifac)%halo_exchange(depth=2)
+      end if
+    end do
+
     adjacent_face => mesh%get_adjacent_face()
     call reference_element%get_normals_to_out_faces( out_face_normal )
 
@@ -446,6 +364,9 @@ contains
                        r_u_bd_proxy%data,                 &
                        exner_proxy%data,                  &
                        theta_proxy%data,                  &
+                       moist_dyn_proxy(gas_law)%data,     &
+                       moist_dyn_proxy(total_mass)%data,  &
+                       moist_dyn_proxy(water)%data,       &
                        nqp, wqp,                          &
                        basis_w2_face,                     &
                        basis_w3_face, basis_wtheta_face,  &
@@ -3818,13 +3739,14 @@ end subroutine invoke_sample_poly_adv
   !> strategy, see LFRic ticket #1540, PSyClone issue 196, and related LFRic ticket
   !> #1583 on fixing the get_height function.
 
-  subroutine invoke_hydrostatic_exner_kernel(exner, theta, height_wt, height_w3, chi)
+  subroutine invoke_hydrostatic_exner_kernel(exner, theta, moist_dyn, height_wt, height_w3, chi)
     use hydrostatic_exner_kernel_mod, only: hydrostatic_exner_code
+    use moist_dyn_mod,                only: num_moist_factors, gas_law, total_mass, water
     use function_space_mod,           only: BASIS, DIFF_BASIS
     use mesh_mod,                     only: mesh_type
 
     type(field_type), intent(inout) :: exner
-    type(field_type), intent(in) :: theta, height_wt, height_w3, chi(3)
+    type(field_type), intent(in)    :: theta, moist_dyn(num_moist_factors), height_wt, height_w3, chi(3)
 
     integer         :: cell, df_nodal, df_chi, nlayers, dim_chi
     integer         :: ndf_wt, undf_wt, ndf_w3, undf_w3, ndf_chi, undf_chi
@@ -3832,13 +3754,19 @@ end subroutine invoke_sample_poly_adv
     real(KIND=r_def), allocatable :: basis_chi_on_wt(:,:,:)
     real(KIND=r_def), pointer     :: nodes_wt(:,:) => null()
     type(field_proxy_type)        :: theta_proxy, exner_proxy, height_wt_proxy, height_w3_proxy, chi_proxy(3)
+    type(field_proxy_type)        :: moist_dyn_proxy(num_moist_factors)
     integer, pointer              :: map_w3(:,:) => null(), map_wt(:,:) => null(), map_chi(:,:) => null()
     type(mesh_type), pointer      :: mesh => null()
+    integer(KIND=i_def)           :: moist_factor
     !
     ! Initialise field and/or operator proxies
     !
     theta_proxy = theta%get_proxy()
     exner_proxy = exner%get_proxy()
+
+    do moist_factor = 1, num_moist_factors
+      moist_dyn_proxy(moist_factor)= moist_dyn(moist_factor)%get_proxy()
+    end do
 
     height_wt_proxy = height_wt%get_proxy()
     height_w3_proxy = height_w3%get_proxy()
@@ -3915,6 +3843,9 @@ end subroutine invoke_sample_poly_adv
       call hydrostatic_exner_code(nlayers, &
                                   exner_proxy%data, &
                                   theta_proxy%data, &
+                                  moist_dyn_proxy(gas_law)%data, &
+                                  moist_dyn_proxy(total_mass)%data, &
+                                  moist_dyn_proxy(water)%data, &
                                   height_wt_proxy%data, &
                                   height_w3_proxy%data, &
                                   chi_proxy(1)%data, &

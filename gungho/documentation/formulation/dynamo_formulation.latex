@@ -91,6 +91,8 @@ prototype dynamical core.
 
 \section{\label{sec:Governing-Equations}Governing Equations}
 
+\subsection{\label{sec:Dry-Formulation}Dry Formulation}
+
 Consider the full nonlinear 3D equations in a rotating frame
 \begin{eqnarray}
 \frac{D\mathbf{u}}{Dt}+2\bm{\Omega}\times\mathbf{u}+c_{pd}\theta\nabla\Pi+\nabla\Phi & = & 0,\label{eq:nonlinear_mom}\\
@@ -124,7 +126,34 @@ Rewriting these equations in the vector invariant form yields
 \end{eqnarray}
 where $\bm{\xi}\equiv\nabla\times\mathbf{u}$ is the relative vorticity,
 $K\equiv\frac{1}{2}\mathbf{u}.\mathbf{u}$ is the kinetic energy per
-unit mass and $\mathbf{F}=\rho\mathbf{u}$ is the mass flux. 
+unit mass and $\mathbf{F}=\rho\mathbf{u}$ is the mass flux.
+
+\subsection{\label{sec:Moist-Formulation}Moist Formulation}
+
+Moisture is represented using mixing ratios, defined for each category of moisture $X$,
+\begin{equation}
+m_\mathrm{X} = \frac{\rho_\mathrm{X}}{\rho_\mathrm{d}},
+\label{eq:mixing_ratio}
+\end{equation}
+where $\rho_\mathrm{d}$ is dry air density and $\rho_\mathrm{X}$ is density of vapour ($\mathrm{X}=\mathrm{v}$),
+liquid cloud ($\mathrm{X}=\mathrm{cl}$), rain ($\mathrm{X}=\mathrm{r}$), ice cloud ($\mathrm{X}=\mathrm{ci}$),
+snow ($\mathrm{X}=\mathrm{s}$) and graupel ($\mathrm{X}=\mathrm{g}$).
+
+In the absence of source terms, the vector invariant equations become
+\begin{eqnarray}
+\frac{\partial\mathbf{u}}{\partial t}+\frac{\bm{\xi}}{\rho_\mathrm{d}}\times\mathbf{F}
++2\bm{\Omega}\times\mathbf{u}+\nabla\left(K+\Phi\right)
++c_{pd}\left(\frac{1+m_\mathrm{v}/\varepsilon}{1+\sum_{\mathrm{X}=\mathrm{v},\mathrm{cl},\cdots}m_\mathrm{X}}\right)
+\theta\nabla\Pi & = & 0,\label{eq:moist_mom}\\
+\frac{\partial\rho_\mathrm{d}}{\partial t}+\nabla\cdot\mathbf{F} & = & 0,\label{eq:moist_continuity}\\
+\frac{\partial\theta}{\partial t}+\mathbf{u}.\nabla\theta & = & 0,\label{eq:moist_thermo}\\
+\frac{\partial m_\mathrm{X}}{\partial t}+\mathbf{u}.\nabla m_\mathrm{X} & = & 0,
+\quad\mathrm{X}=\mathrm{v}, \mathrm{cl}, \cdots,\label{eq:moist_moist}\\
+\Pi^{\left(\frac{1-\kappa_{d}}{\kappa_{d}}\right)} & = & \frac{R_{d}}{p_{0}}\rho\theta\left(1+m_\mathrm{v}/\varepsilon\right),
+\label{eq:moist_eos}
+\end{eqnarray}
+where $\varepsilon$ is the ratio of the molecular weights of water vapour and dry air 
+and $\mathbf{F}=\rho_\mathrm{d}\mathbf{u}$ is the dry air mass flux.
 
 \section{\label{sec:FEM-Discretisation}Finite Element Discretisation}
 

@@ -31,9 +31,10 @@ implicit none
 !> The type declaration for the kernel. Contains the metadata needed by the Psy layer
 type, public, extends(kernel_type) :: hydrostatic_exner_kernel_type
   private
-  type(arg_type) :: meta_args(5) = (/                                  &
+  type(arg_type) :: meta_args(6) = (/                                  &
        arg_type(GH_FIELD,  GH_WRITE,  W3),                             &
        arg_type(GH_FIELD,  GH_READ,   WTHETA),                         &
+       arg_type(GH_FIELD*3,GH_READ,   WTHETA),                         &
        arg_type(GH_FIELD,  GH_READ,   WTHETA),                         &
        arg_type(GH_FIELD,  GH_READ,   W3),                             &
        arg_type(GH_FIELD*3,GH_READ, ANY_SPACE_9)                       &
@@ -71,6 +72,9 @@ end function hydrostatic_exner_kernel_constructor
 !! @param[in] nlayers Number of layers
 !! @param[inout] exner Exner pressure field
 !! @param[in] theta Potential temperature field
+!! @param[in] moist_dyn_gas Moist dynamics factor in gas law
+!! @param[in] moist_dyn_tot Moist dynamics total mass factor
+!! @param[in] moist_dyn_fac Moist dynamics water factor
 !! @param[in] height_wt Height coordinate in wtheta
 !! @param[in] height_w3 Height coordinate in w3
 !! @param[in] chi_1 X component of the chi coordinate field
@@ -86,8 +90,9 @@ end function hydrostatic_exner_kernel_constructor
 !! @param[in] undf_chi Number unique of degrees of freedom  for wchi
 !! @param[in] map_chi Dofmap for the cell at the base of the column for wchi
 !! @param[in] basis_chi Dofmap for the cell at the base of the column for wchi
-subroutine hydrostatic_exner_code(nlayers, exner, theta, height_wt, height_w3,    &
-                                  chi_1, chi_2, chi_3, ndf_w3, undf_w3, map_w3,   &
+subroutine hydrostatic_exner_code(nlayers, exner, theta, moist_dyn_gas, moist_dyn_tot, &
+                                  moist_dyn_fac, height_wt, height_w3,                 &
+                                  chi_1, chi_2, chi_3, ndf_w3, undf_w3, map_w3,        &
                                   ndf_wt, undf_wt, map_wt, ndf_chi, undf_chi, map_chi, basis_chi)
 
   use analytic_pressure_profiles_mod, only : analytic_pressure  
@@ -100,7 +105,11 @@ subroutine hydrostatic_exner_code(nlayers, exner, theta, height_wt, height_w3,  
   integer(kind=i_def), dimension(ndf_wt), intent(in) :: map_wt
   integer(kind=i_def), dimension(ndf_chi), intent(in) :: map_chi
   real(kind=r_def), dimension(undf_w3), intent(inout) :: exner
-  real(kind=r_def), dimension(undf_wt), intent(in) :: theta, height_wt
+  real(kind=r_def), dimension(undf_wt), intent(in) :: theta
+  real(kind=r_def), dimension(undf_wt), intent(in) :: moist_dyn_gas, &
+                                                      moist_dyn_tot, &
+                                                      moist_dyn_fac
+  real(kind=r_def), dimension(undf_wt), intent(in) :: height_wt
   real(kind=r_def), dimension(undf_w3), intent(in) :: height_w3
   real(kind=r_def), dimension(undf_chi),intent(in) :: chi_1, chi_2, chi_3
 
@@ -109,6 +118,7 @@ subroutine hydrostatic_exner_code(nlayers, exner, theta, height_wt, height_w3,  
   !Internal variables
   integer(kind=i_def)                    :: k, dfc, layers_offset, wt_dof
   real(kind=r_def)                       :: dz  
+  real(kind=r_def)                       :: theta_moist
   real(kind=r_def),   dimension(ndf_chi) :: chi_1_e, chi_2_e, chi_3_e
   real(kind=r_def)                       :: x(3)
 
@@ -144,12 +154,16 @@ subroutine hydrostatic_exner_code(nlayers, exner, theta, height_wt, height_w3,  
     ! Bottom-up initialization
     ! Exner at the bottom level
     dz = height_w3(map_w3(1))-height_wt(map_wt(1))
-    exner(map_w3(1)) = exner_start - gravity * dz /(cp*theta(map_wt(1)))
+    theta_moist = moist_dyn_gas(map_wt(1)) * theta(map_wt(1)) /   &
+                  moist_dyn_tot(map_wt(1))
+    exner(map_w3(1)) = exner_start - gravity * dz / (cp * theta_moist)
 
     ! Exner on other levels
     do k = 1, nlayers-1
       dz = height_w3(map_w3(1)+k)-height_w3(map_w3(1)+k-1)
-      exner(map_w3(1)+k) = exner(map_w3(1)+k-1) - gravity * dz/(cp*theta(map_wt(1)+k))
+      theta_moist = moist_dyn_gas(map_wt(1)+k) * theta(map_wt(1)+k) /   &
+                    moist_dyn_tot(map_wt(1)+k)
+      exner(map_w3(1)+k) = exner(map_w3(1)+k-1) - gravity * dz / (cp * theta_moist)
     end do
 
   else
@@ -157,12 +171,17 @@ subroutine hydrostatic_exner_code(nlayers, exner, theta, height_wt, height_w3,  
     ! Top-down initialization
     ! Exner at the top level
     dz = height_wt(map_wt(1)+nlayers) - height_w3(map_w3(1)+nlayers-1)
-    exner(map_w3(1)+nlayers-1) = exner_start + gravity * dz /(cp*theta(map_wt(1)+nlayers))
+    theta_moist = moist_dyn_gas(map_wt(1)+nlayers) * theta(map_wt(1)+nlayers) / &
+                  moist_dyn_tot(map_wt(1)+nlayers)
+   
+    exner(map_w3(1)+nlayers-1) = exner_start + gravity * dz / (cp * theta_moist)
 
     ! Exner on other levels
     do k = nlayers-1, 1, -1
       dz = height_w3(map_w3(1)+k)-height_w3(map_w3(1)+k-1)
-      exner(map_w3(1)+k-1) = exner(map_w3(1)+k) + gravity * dz/(cp*theta(map_wt(1)+k))
+      theta_moist = moist_dyn_gas(map_wt(1)+k) * theta(map_wt(1)+k) /   &
+                    moist_dyn_tot(map_wt(1)+k)
+      exner(map_w3(1)+k-1) = exner(map_w3(1)+k) + gravity * dz / (cp * theta_moist)
     end do
 
   end if

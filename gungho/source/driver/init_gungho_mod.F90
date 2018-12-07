@@ -24,6 +24,7 @@ module init_gungho_mod
                                              LOG_LEVEL_INFO
   use restart_control_mod,            only : restart_type
   use mr_indices_mod,                 only : nummr
+  use moist_dyn_mod,                  only : num_moist_factors
   use runtime_constants_mod,          only : create_runtime_constants
   use output_config_mod,              only : write_xios_output
   use io_mod,                         only : xios_write_field_node, &
@@ -46,9 +47,11 @@ contains
   !> @param[in,out] theta Potential temperature field
   !> @param[in,out] exner Exner pressure field
   !> @param[in,out] mr Moisture mixing ratios
+  !> @param[in,out] moist_dyn Auxilliary fields for moist dynamics
   !> @param[in,out] xi Vorticity
   !> @param[in] restart Restart dump to read prognostic fields from
-  subroutine init_gungho( mesh_id, chi, u, rho, theta, exner, mr, xi, restart )
+  subroutine init_gungho( mesh_id, chi, u, rho, theta, exner, mr, &
+                          moist_dyn, xi, restart )
 
     implicit none
 
@@ -58,6 +61,7 @@ contains
     type( field_type ), intent(inout)        :: mr(nummr)
     ! Diagnostic fields
     type( field_type ), intent(inout)        :: xi
+    type( field_type ), intent(inout)        :: moist_dyn(num_moist_factors)
     ! Coordinate fields
     type( field_type ), intent(in)           :: chi(:)
 
@@ -90,6 +94,12 @@ contains
 
     do imr = 1,nummr
       mr(imr) = field_type( vector_space = &
+      function_space_collection%get_fs(mesh_id, element_order, theta%which_function_space()) )
+    end do
+
+    ! Auxilliary fields holding moisture-dependent factors for dynamics
+    do imr = 1, num_moist_factors
+      moist_dyn(imr) = field_type( vector_space = &
       function_space_collection%get_fs(mesh_id, element_order, theta%which_function_space()) )
     end do
 
@@ -127,7 +137,7 @@ contains
 
        end if
 
-       ! Moisture diagnostics use the same type of field write as Theta
+       ! Moisture uses the same type of field write as Theta
 
        call theta%get_write_diag_behaviour(tmp_write_diag_ptr)
 
@@ -184,7 +194,8 @@ contains
     call create_runtime_constants(mesh_id, chi)
 
     ! Initialise prognostic fields
-    call init_prognostic_fields_alg( u, rho, theta, exner, mr, xi, restart )
+    call init_prognostic_fields_alg( u, rho, theta, exner, mr, moist_dyn, &
+                                     xi, restart )
 
     nullify( tmp_write_diag_ptr, tmp_checkpoint_ptr, tmp_restart_ptr )
 
