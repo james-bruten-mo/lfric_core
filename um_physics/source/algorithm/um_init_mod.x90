@@ -60,12 +60,13 @@ contains
     use jules_surface_types_mod, only: nnpft, npft, nnvg, ntype, urban,    &
          lake, soil, ice
     use level_heights_mod, only: r_theta_levels, r_rho_levels, eta_theta_levels
+    use lsm_switch_mod, only: init_lsm_um
     use model_domain_mod, only: model_type
     use mphys_bypass_mod, only: mphys_mod_top
     use mphys_inputs_mod, only: ai, ar, bi, c_r_correl, ci_input, cic_input, &
         di_input, dic_input, i_mcr_iter, l_diff_icevt,                       &
-        l_mcr_qrain, l_psd, l_psd_global, l_rain, l_rainfall_as,             &
-        l_warm_new, timestep_mp_in, tnuc, x1r, x2r, l_mcr_qcf2
+        l_mcr_qrain, l_psd, l_rain, l_warm_new, timestep_mp_in, x1r, x2r,    &
+        l_mcr_qcf2
     use nlsizes_namelist_mod, only: model_levels, bl_levels, row_length,   &
          rows, land_field, ntiles, sm_levels, tr_vars
     use rad_input_mod, only: two_d_fsd_factor
@@ -125,6 +126,7 @@ contains
     lake  = 7
     soil  = 8
     ice   = 9
+    call init_lsm_um()
     call allocate_jules_arrays(land_field,ntiles,sm_levels,nice_use,nice_use)
     dzsoil => dzsoil_io(1:sm_levels)
 
@@ -219,12 +221,9 @@ contains
     l_diff_icevt   = .true.
     l_mcr_qrain    = .true.
     l_psd          = .true.
-    l_psd_global   = .true.
     l_rain         = .true.
-    l_rainfall_as  = .true.
     l_warm_new     = .true.
     timestep_mp_in = 120
-    tnuc           = -10.00_r_um
     x1r            = 2.2000e-1_r_um
     x2r            = 2.2000_r_um
 

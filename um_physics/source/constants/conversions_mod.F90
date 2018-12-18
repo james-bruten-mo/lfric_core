@@ -27,7 +27,7 @@ module conversions_mod
 
   private
   public :: isec_per_day, isec_per_hour, pi, rhour_per_sec, rsec_per_day,  &
-            rsec_per_hour, zerodegc, zerodegc_32b, pi_over_180
+            rsec_per_hour, zerodegc, zerodegc_32, pi_over_180
 
   ! The following variables have been hidden as they are not currently
   ! required to build the extracted UM code. They have been left in
@@ -62,7 +62,7 @@ module conversions_mod
 
   ! zerodegc is a conversion between degrees centigrade and kelvin
   real(r_um),    parameter :: zerodegc     = real(zero_degrees_celcius, r_um)
-  real(real32),  parameter :: zerodegc_32b = real(zero_degrees_celcius, real32)
+  real(real32),  parameter :: zerodegc_32  = real(zero_degrees_celcius, real32)
 
   ! Knots to m/s conversion
   real(r_um),    parameter :: kt2ms = real(knots_to_metre_per_second, r_um)

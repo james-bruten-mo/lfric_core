@@ -209,6 +209,7 @@ contains
          pdims
     use atmos_physics2_alloc_mod !everything
     use bdy_expl3_mod, only: bdy_expl3
+    use bl_option_mod, only: flux_bc_opt
     use conv_diag_6a_mod, only: conv_diag_6a
     use gen_phys_inputs_mod, only: l_mr_physics
     use jules_sea_seaice_mod, only: nice_use
@@ -273,7 +274,7 @@ contains
     integer(i_um), parameter :: nscmdpkgs=15
     logical,       parameter :: l_scmdiags(nscmdpkgs)=.false.
     logical :: l_scrn, l_aero_classic, l_spec_z0, l_plsp, &
-               l_mixing_ratio, l_extra_call, l_calc_at_p
+               l_extra_call, l_calc_at_p, l_jules_call
 
     ! profile fields from level 1 upwards
     real(r_um), dimension(row_length,rows,nlayers) ::               &
@@ -323,7 +324,8 @@ contains
          surf_ht_flux_land, zlcl_mixed, theta_star_surf, qv_star_surf,       &
          snowmelt, tstar_sice, u_0_p, v_0_p, w_max, deep_flag, past_precip,  &
          past_conv_ht, zlcl_uv, ql_ad, cin_undilute, cape_undilute,          &
-         entrain_coef, qsat_lcl, delthvu, dtstar_sice
+         entrain_coef, qsat_lcl, delthvu, dtstar_sice, ustar_in, g_ccp,      &
+         h_ccp, fb_surf, charnock_w, uwind_wav, vwind_wav, sstfrz
     ! single level fields on u/v points
     real(r_um), dimension(row_length,rows) :: u_0, v_0, rhokm_u_land,    &
          rhokm_u_ssi, rhokm_v_land, rhokm_v_ssi, flandfac_u, flandfac_v, &
@@ -358,16 +360,13 @@ contains
     ! stashwork arrays
     real(r_um) :: stashwork3(1), stashwork9(1)
 
-    ! These would be set up by STASH in the UM.
-    ! Size is apparently unimportant.
-    real(r_um) :: cd10m_n_local(1, 1),    &
-                  cd10m_n_u_local(1, 1),  &
-                  cd10m_n_v_local(1, 1),  &
-                  cdr10m_n_local(1, 1),   &
-                  cdr10m_u_local(1,1),    &
-                  cdr10m_v_local(1, 1),   &
-                  cdr10m_n_u_local(1, 1), &
-                  cdr10m_n_v_local(1, 1)
+    ! variables allocated in atmos_physics2 under stashflags
+    allocate(cd10m_n(1, 1))
+    allocate(cd10m_n_u(1, 1))
+    allocate(cd10m_n_v(1, 1))
+    allocate(cdr10m_n(1, 1))
+    allocate(cdr10m_n_u(1, 1))
+    allocate(cdr10m_n_v(1, 1))
 
     !-----------------------------------------------------------------------
     ! Initialisation of variables and arrays
@@ -394,10 +393,11 @@ contains
     l_plsp=.false.
     ! other logicals
     l_aero_classic=.false.
-    l_mixing_ratio=l_mr_physics
     l_extra_call=.false.
+    l_jules_call=.false.
     ! surface forcing
     if ( l_flux_bc ) then
+      flux_bc_opt=1
       flux_e(:,:)=fixed_flux_e
       flux_h(:,:)=fixed_flux_h
     end if
@@ -560,7 +560,6 @@ contains
           , rho_wet, rho_wet_tq, z_theta, z_rho                         &
 
     !     IN Model switches
-          , l_mixing_ratio                                              &
           , l_extra_call                                                &
           , no_cumulus                                                  &
 
@@ -577,11 +576,14 @@ contains
               tdims%j_start:tdims%j_end, 1:tdims%k_end)                 &
           , u_p, v_p, u_0_p, v_0_p                                      &
           , tstar_land, tstar_sea, tstar_sice, z0msea                   &
-          , L_flux_bc, flux_e, flux_h, L_spec_z0, z0m_scm, z0h_scm      &
+          , flux_e, flux_h, ustar_in, L_spec_z0, z0m_scm, z0h_scm       &
           , tstar, land_sea_mask, flandg, ice_fract                     &
           , w_copy, w_max, deep_flag, past_precip, past_conv_ht         &
           , conv_prog_precip                                            &
+          , g_ccp, h_ccp                                                &
     !
+    !     IN surface fluxes
+          , fb_surf, ustarGBM                                           &
     !     SCM Diagnostics (dummy values in full UM)
           , nSCMDpkgs,L_SCMDiags                                        &
 
@@ -597,7 +599,7 @@ contains
 
     CALL NI_bl_ctl (                                                    &
     !     IN parameters for SISL scheme
-         CycleNo,                                                       &
+         CycleNo, l_jules_call,                                         &
     !     IN time stepping information
          val_year, val_day_number, val_hour, val_minute, val_second,    &
     !     IN model dimensions.
@@ -622,53 +624,53 @@ contains
          co2(1:co2_dim_len,1:co2_dim_row,1),                            &
          asteps_since_triffid,                                          &
          cs,frac,canht_ft,lai_ft,fland,flandg,albsoil,cos_zenith_angle, &
+    !     IN: input from the wave model
+         charnock_w,                                                    &
     !     IN everything not covered so far
              t_soil,ti_gb,                                              &
              ti,tstar,zh_prev,ddmfx,bulk_cloud_fraction,zhpar,zlcl,     &
     !     IN SCM namelist data
-         L_spec_z0, z0m_scm, z0h_scm, flux_e, flux_h, L_flux_bc,        &
+         L_spec_z0, z0m_scm, z0h_scm, flux_e, flux_h, ustar_in,         &
     !     SCM diagnostics and STASH
          nSCMDpkgs, L_SCMDiags, BL_diag, sf_diag,                       &
     !     INOUT data
-         gs,z0msea,w_copy,etadot_copy,tstar_sea,tstar_sice_cat,zh,dzh,cumulus,&
-         ntml,ntpar,l_shallow,error_code,                               &
+         gs,z0msea,w_copy,etadot_copy,tstar_sea,tstar_sice_cat,zh,dzh,  &
+         cumulus, ntml,ntpar,l_shallow,error_code,                      &
     !     INOUT additional variables for JULES
          g_leaf_acc,npp_ft_acc,resp_w_ft_acc,resp_s_acc,                &
     !     INOUT variables for TKE based turbulence schemes
          e_trb, tsq_trb, qsq_trb, cov_trb, zhpar_shcu,                  &
-    !     OUT variables for message passing
-         flandfac, fseafac,rhokm_land, rhokm_ssi,                       &
-         cdr10m, cdr10m_n_local, cd10m_n_local, tau_fd_x, tau_fd_y,     &
-         rhogamu, rhogamv, f_ngstress,                                  &
-    !     OUT variables required in IMP_SOLVER
-         alpha1_sea, alpha1_sice, ashtf_sea, ashtf, bq_gb, bt_gb,       &
-         dtrdz_charney_grid, rdz_charney_grid,                          &
-         dtrdz_u, dtrdz_v, rdz_u, rdz_v,                                &
-         k_blend_tq, k_blend_uv,uStarGBM,                               &
-    !     OUT diagnostics (done after implicit solver)
-         fqw, ftl, rib_gb, vshr, zht, zhnl, shallowc, cu_over_orog,     &
-         bl_type_1,bl_type_2,bl_type_3,bl_type_4,bl_type_5,bl_type_6,   &
-         bl_type_7, z0m_eff_gb, z0h_eff_gb, bl_w_var,                   &
-    !     OUT diagnostics required for soil moisture nudging scheme :
-         wt_ext,                                                        &
-    !     OUT data required for tracer mixing :
-         rho_aresist,aresist,resist_b,                                  &
-    !     OUT variables required for mineral dust scheme
-         r_b_dust,dust_flux,dust_emiss_frac,                            &
-         u_s_t_tile,u_s_t_dry_tile,u_s_std_tile, kent, we_lim, t_frac, zrzi,&
-         kent_dsc, we_lim_dsc, t_frac_dsc, zrzi_dsc, zhsc,              &
-    !     OUT additional variables for JULES
-         ftl_tile,radnet_sea,radnet_sice,rib_tile,rho_aresist_tile,     &
-         aresist_tile,resist_b_tile,alpha1,ashtf_tile,fqw_tile,epot_tile,&
-         fqw_ice,ftl_ice,fraca,resfs,resft,rhokh_tile,rhokh_sice,rhokh_sea,&
-         z0hssi,z0h_tile,z0m_gb,z0mssi,z0m_tile,chr1p5m,chr1p5m_sice,smc,&
-         gpp,npp,resp_p,g_leaf,gpp_ft,npp_ft,resp_p_ft,resp_s,resp_s_tot,&
-         resp_w_ft,gc,canhc_tile,wt_ext_tile,flake,tile_index,tile_pts, &
-         tile_frac,fsmc,rib_ssi, vshr_land,vshr_ssi,tstar_land,tstar_ssi,&
-         dtstar_tile,dtstar_sea,dtstar_sice,hcons,emis_tile,emis_soil,  &
-    !     OUT fields
-         t1_sd,q1_sd,nbdsc,ntdsc,wstar,wthvs,uw0,vw0,taux_p,tauy_p,     &
-         rhokm,rhokh,rhcpt                                              &
+      ! INOUT variables from bdy_expl1 needed elsewhere
+        bq_gb, bt_gb, dtrdz_charney_grid,rdz_charney_grid,              &
+        dtrdz_u, dtrdz_v, rdz_u, rdz_v, k_blend_tq, k_blend_uv,         &
+      ! INOUT variables from Jules needed elsewhere
+        flandfac,fseafac,rhokm_land,rhokm_ssi,cdr10m,cdr10m_n,cd10m_n,  &
+        fqw, ftl, rib_gb, vshr, z0m_eff_gb, z0h_eff_gb, r_b_dust,       &
+        rho_aresist,aresist,resist_b, rhokm,rhokh,                      &
+      ! INOUT diagnostics required for soil moisture nudging scheme :
+        wt_ext,                                                         &
+      ! INOUT variables required in IMP_SOLVER
+        alpha1_sea, alpha1_sice, ashtf_sea, ashtf, uStarGBM,            &
+      ! INOUT additional variables for JULES
+        ftl_tile,radnet_sea,radnet_sice,rib_tile,rho_aresist_tile,      &
+        aresist_tile,resist_b_tile,alpha1,ashtf_tile,fqw_tile,epot_tile,&
+        fqw_ice,ftl_ice,fraca,resfs,resft,rhokh_tile,rhokh_sice,rhokh_sea,&
+        z0hssi,z0h_tile,z0m_gb,z0mssi,z0m_tile,chr1p5m,chr1p5m_sice,smc,&
+        gpp,npp,resp_p,g_leaf,gpp_ft,npp_ft,resp_p_ft,resp_s,resp_s_tot,&
+        resp_w_ft,gc,canhc_tile,wt_ext_tile,flake,tile_index,tile_pts,  &
+        tile_frac,fsmc,vshr_land,vshr_ssi,tstar_land,tstar_ssi,dtstar_tile,&
+        dtstar_sea,dtstar_sice,hcons,emis_tile,emis_soil,t1_sd,q1_sd,fb_surf,&
+      ! OUT variables for message passing
+        tau_fd_x, tau_fd_y, rhogamu, rhogamv, f_ngstress,               &
+      ! OUT diagnostics (done after implicit solver)
+        zht, zhnl, shallowc,cu_over_orog,bl_type_1,bl_type_2,bl_type_3, &
+        bl_type_4,bl_type_5,bl_type_6, bl_type_7, bl_w_var,             &
+      ! OUT variables required for mineral dust scheme
+        dust_flux,dust_emiss_frac, u_s_t_tile,u_s_t_dry_tile,           &
+        u_s_std_tile, kent, we_lim, t_frac, zrzi,                       &
+        kent_dsc, we_lim_dsc, t_frac_dsc, zrzi_dsc, zhsc,               &
+      ! OUT fields
+        nbdsc,ntdsc,wstar,wthvs,uw0,vw0,taux_p,tauy_p,rhcpt, rib_ssi    &
      )
 
     !-----------------------------------------------------------------------
@@ -748,17 +750,14 @@ contains
     ! IN variables required from BDY_LAYR
           , alpha1_sea, alpha1_sice, ashtf_sea, ashtf, bq_gb, bt_gb     &
           , dtrdz_charney_grid, rdz_charney_grid, dtrdz_u, dtrdz_v      &
-          , rdz_u, rdz_v, cdr10m_u_local, cdr10m_v_local                &
-          , cdr10m_n_u_local, cdr10m_n_v_local, cd10m_n_u_local         &
-          , cd10m_n_v_local, z_theta                                    &
-          , k_blend_tq, k_blend_uv, uStarGBM, rhokm_u, rhokm_v          &
+          , rdz_u, rdz_v, cdr10m_u, cdr10m_v, cdr10m_n_u, cdr10m_n_v    &
+          , cd10m_n_u, cd10m_n_v, z_theta                               &
+          , k_blend_tq, k_blend_uv, uStarGBM, rhokm, rhokm_u, rhokm_v   &
     ! IN diagnostics (started or from) BDY_LAYR
           , rib_gb,zlcl,zht,zhnl,dzh,qcl_inv_top,zh                     &
           , bl_type_1,bl_type_2,bl_type_3,bl_type_4,bl_type_5,bl_type_6 &
           , bl_type_7, z0m_gb, z0m_eff_gb, z0h_eff_gb                   &
           , ntml, cumulus, l_pc2_diag_sh_pts                            &
-    ! IN logical for scm surface forcing
-          , L_flux_bc                                                   &
     ! IN data required for tracer mixing :
           , rho_aresist,aresist,r_b_dust                                &
           , kent, we_lim, t_frac, zrzi                                  &
@@ -773,7 +772,7 @@ contains
           , resft,rhokh_sice,rhokh_sea,z0h_tile,z0m_tile                &
           , chr1p5m_sice                                                &
           , fland, flandg, flandg_u,flandg_v,vshr_land,vshr_ssi         &
-          , emis_tile, t_soil, snow_tile, rib_ssi                       &
+          , emis_tile, t_soil, snow_tile, rib_ssi, sstfrz               &
     ! IN JULES variables for STASH
           , gs,gpp,npp,resp_p,gpp_ft,npp_ft,resp_p_ft,resp_s            &
           , resp_s_tot,cs                                               &
@@ -811,12 +810,22 @@ contains
     ! OUT additional variables for JULES
           , tstar, ti_gb, ext, snowmelt,tstar_land,tstar_sice, ei_tile  &
           , ecan_tile,melt_tile, surf_htf_tile                          &
+    ! OUT fields for coupling to the wave model
+          , uwind_wav, vwind_wav                                        &
             )
 
-
+    ! deallocate diagnostics deallocated in atmos_physics2
     deallocate(bl_diag%q_incr)
     deallocate(bl_diag%qcl_incr)
     deallocate(bl_diag%qcf_incr)
+    deallocate(cd10m_n)
+    deallocate(cd10m_n_u)
+    deallocate(cd10m_n_v)
+    deallocate(cdr10m_n)
+    deallocate(cdr10m_n_u)
+    deallocate(cdr10m_n_v)
+    deallocate(sf_diag%t1p5m_surft)
+    deallocate(sf_diag%q1p5m_surft)
 
     !-----------------------------------------------------------------------
     ! update main model prognostics
