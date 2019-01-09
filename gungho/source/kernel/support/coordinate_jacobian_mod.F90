@@ -30,8 +30,8 @@ contains
   !! reference space \f$ \hat{\chi} \f$ to physical space chi
   !> @details Compute the Jacobian of the coordinate transform from
   !> reference space \f[ \hat{\chi} \f] to physical space \f[ \chi \f]
-  !> \f[ J^{i,j} = \frac{\partial \chi_i} / {\partial \hat{\chi_j}} \f] 
-  !> and the derterminant det(J)
+  !> \f[ J^{i,j} = \frac{\partial \chi_i} / {\partial \hat{\chi_j}} \f]
+  !> and the determinant det(J)
   !! @param[in] ndf        Size of the chi arrays
   !! @param[in] ngp_h      Number of quadrature points in horizontal direction
   !! @param[in] ngp_v      Number of quadrature points in vertical direction
@@ -43,8 +43,8 @@ contains
   !! @param[out] dj        Determinant of the Jacobian on quadrature points
   subroutine coordinate_jacobian(ndf, ngp_h, ngp_v, chi_1, chi_2, chi_3, diff_basis, jac, dj)
   !-------------------------------------------------------------------------------
-  ! Compute the Jacobian J^{i,j} = d chi_i / d \hat{chi_j} and the 
-  ! derterminant det(J)
+  ! Compute the Jacobian J^{i,j} = d chi_i / d \hat{chi_j} and the
+  ! determinant det(J)
   !-------------------------------------------------------------------------------
     implicit none
 
@@ -54,9 +54,9 @@ contains
     real(kind=r_def), intent(in)  :: diff_basis(3,ndf,ngp_h,ngp_v)
     real(kind=r_def), intent(out) :: jac(3,3,ngp_h,ngp_v)
     real(kind=r_def), intent(out) :: dj(ngp_h,ngp_v)
-    
+
     real(kind=r_def) :: dx, dy, dz
-    
+
     integer(kind=i_def) :: i, j, df, dir
 
     if(hard_wired_j) then
@@ -64,7 +64,7 @@ contains
       dx = chi_1(2)-chi_1(1)
       dy = chi_2(3)-chi_2(1)
       dz = chi_3(5)-chi_3(1)
-    end if 
+    end if
 
     jac(:,:,:,:) = 0.0_r_def
     do j = 1,ngp_v
@@ -98,9 +98,9 @@ contains
 
   !> @brief Subroutine Computes the inverse of the Jacobian of the coordinate transform from
   !! reference space \f$\hat{\chi}\f$ to physical space \f$ \chi \f$
-  !> @details Compute the inverse of the Jacobian 
-  !> \f[ J^{i,j} = \frac{\partial \chi_i} / {\partial \hat{\chi_j}} \f] 
-  !> and the derterminant det(J)
+  !> @details Compute the inverse of the Jacobian
+  !> \f[ J^{i,j} = \frac{\partial \chi_i} / {\partial \hat{\chi_j}} \f]
+  !> and the determinant det(J)
   !! @param[in] ngp_h      Number of quadrature points in horizontal direction
   !! @param[in] ngp_v      Number of quadrature points in vertical direction
   !! @param[in] jac        Jacobian on quadrature points
@@ -138,7 +138,7 @@ contains
   !! reference space \f$ \hat{\chi} \f$ to physical space chi for a single point
   !> @details Compute the Jacobian of the coordinate transform from
   !> reference space \f[ \hat{\chi} \f] to physical space \f[ \chi \f]
-  !> \f[ J^{i,j} = \frac{\partial \chi_i} / {\partial \hat{\chi_j}} \f] 
+  !> \f[ J^{i,j} = \frac{\partial \chi_i} / {\partial \hat{\chi_j}} \f]
   !> and the determinant det(J) for a single point
   !! @param[in] ndf        Size of the chi arrays
   !! @param[in] chi_1      Coordinate field
@@ -148,7 +148,7 @@ contains
   !! @param[out] jac       Jacobian on quadrature points
   !! @param[out] dj        Determinant of the Jacobian on quadrature points
   subroutine pointwise_coordinate_jacobian(ndf, chi_1, chi_2, chi_3, diff_basis, jac, dj)
- 
+
     implicit none
 
     integer(kind=i_def), intent(in)  :: ndf
@@ -167,7 +167,7 @@ contains
       dx = chi_1(2)-chi_1(1)
       dy = chi_2(3)-chi_2(1)
       dz = chi_3(5)-chi_3(1)
-    end if 
+    end if
 
     jac(:,:) = 0.0_r_def
     do df = 1,ndf
@@ -197,8 +197,8 @@ contains
   !> @brief Subroutine Computes the inverse of the Jacobian of the coordinate transform from
   !! reference space \f$\hat{\chi}\f$ to physical space \f$ \chi \f$ for a
   !! single point
-  !> @details Compute the inverse of the Jacobian 
-  !> \f[ J^{i,j} = \frac{\partial \chi_i} / {\partial \hat{\chi_j}} \f] 
+  !> @details Compute the inverse of the Jacobian
+  !> \f[ J^{i,j} = \frac{\partial \chi_i} / {\partial \hat{\chi_j}} \f]
   !> and the determinant det(J)
   !! @param[in] jac        Jacobian on quadrature points
   !! @param[in] dj         Determinant of the Jacobian

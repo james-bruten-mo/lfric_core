@@ -6,17 +6,16 @@
 
 module compute_dof_level_kernel_mod_test
 
-  use constants_mod,                 only : i_def, r_def
-  use function_space_collection_mod, only : function_space_collection_type, &
-                                            function_space_collection
-  use mesh_collection_mod,           only : mesh_collection_type, &
-                                            mesh_collection
-  use field_mod,                     only : field_type, field_proxy_type
-  use fs_continuity_mod,             only : W2
-  use mesh_mod,                      only : PLANE_BI_PERIODIC
+  use constants_mod, only : i_def, r_def
+  use get_unit_test_m3x3_dofmap_mod, &
+    only : get_w2_m3x3_dofmap
+  use get_unit_test_m3x3_q3x3x3_sizes_mod, &
+    only : get_w2_m3x3_q3x3x3_size
+  use get_unit_test_nodal_coords_mod, &
+    only : get_w2_nodal_coords
+  use mpi_mod,       only : store_comm, clear_comm
   use pFUnit_Mod
-  use yaxt,                          only : xt_initialize, xt_finalize
-  use mpi_mod,                       only : store_comm, clear_comm
+  use yaxt,          only : xt_initialize, xt_finalize
 
   implicit none
 
@@ -48,11 +47,6 @@ contains
     !Store the MPI communicator for later use
     call store_comm(this%getMpiCommunicator())
 
-    ! Create top level mesh collection
-    mesh_collection = mesh_collection_type()
-    ! Create top level function space collection
-    function_space_collection = function_space_collection_type()
-
   end subroutine setUp
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -61,9 +55,6 @@ contains
     implicit none
 
     class(compute_dof_level_test_type), intent(inout) :: this
-
-    call mesh_collection%clear()
-    call function_space_collection%clear()
 
     ! Finalise YAXT
     call xt_finalize()
@@ -82,62 +73,55 @@ contains
 
     class(compute_dof_level_test_type), intent(inout) :: this
 
-    real(r_def), parameter :: tol = 1.0e-6_r_def
+    real(r_def),    parameter :: tol = 1.0e-6_r_def
+    integer(i_def), parameter :: nlayers = 3
+
+    integer(i_def) :: cell, k
+
+    integer(i_def) :: ndf_w2, undf_w2
+    integer(i_def) :: ncells
+    integer(i_def) :: unused
+
+    integer(i_def), allocatable :: map_w2(:,:)
+
+    real(r_def), allocatable :: w2_nodal_coords(:,:)
+    real(r_def), allocatable :: level(:)
 
     real(r_def) :: answer
 
-    integer(i_def) :: k
-    integer(i_def) :: element_order
-
-    ! Variables for testing kernel
-    type(field_type) :: level
-    type(field_proxy_type) :: l_p
-    integer(i_def) :: cell, ncell, ndf, undf
-    real(kind=r_def), pointer :: nodes(:,:) => null()
-    integer(i_def), pointer :: map(:) => null()
-    integer(i_def) :: mesh_id
-
-    mesh_id = mesh_collection%add_unit_test_mesh( PLANE_BI_PERIODIC )
-
-    ! Set element order
-    element_order = 0
+    call get_w2_m3x3_q3x3x3_size( ndf_w2, undf_w2, ncells, &
+                                  unused, unused, &
+                                  unused, unused, nlayers=nlayers)
+    call get_w2_m3x3_dofmap( map_w2 )
+    call get_w2_nodal_coords( w2_nodal_coords )
 
     ! Test flux computation
-    level = field_type( vector_space =                                      &
-                function_space_collection%get_fs( mesh_id, element_order, W2 ) )
-
-    ! Insert Psykal_lite unpacking code here
-    l_p = level%get_proxy()
-    undf = l_p%vspace%get_undf()
-    ndf  = l_p%vspace%get_ndf()
-    nodes => l_p%vspace%get_nodes( )
- 
-    ncell = l_p%vspace%get_ncell()
-    ! Create the data
-    l_p%data(:) = 0.0_r_def
-
+    allocate( level(undf_w2) )
+    level(:) = 0.0_r_def
 
     ! Call the kernel
-    do cell = 1,ncell
-      map => l_p%vspace%get_cell_dofmap(cell)
-      call compute_dof_level_code(l_p%vspace%get_nlayers(),                 &
-                                  l_p%data,                                 &
-                                  ndf,                                      &
-                                  undf,                                     &
-                                  map,                                      &
-                                  nodes                                     &
-                                 )
+    do cell = 1, ncells
+      call compute_dof_level_code( nlayers,         &
+                                   level,           &
+                                   ndf_w2,          &
+                                   undf_w2,         &
+                                   map_w2(:, cell), &
+                                   w2_nodal_coords )
     end do
 
     !Test the answer
-    do k = 0,l_p%vspace%get_nlayers()-1
-      answer = 0.5_r_def + real(k,r_def) 
-      @assertEqual(answer, l_p%data(map(1) + k ), tol)
+    do k = 0, nlayers - 1
+      answer = 0.5_r_def + real(k,r_def)
+      @assertEqual(answer, level(map_w2(1, ncells) + k ), tol)
       answer = real(k,r_def)
-      @assertEqual(answer, l_p%data(map(5) + k ), tol)
+      @assertEqual(answer, level(map_w2(5, ncells) + k ), tol)
       answer = 1.0_r_def + real(k,r_def)
-      @assertEqual(answer, l_p%data(map(6) + k ), tol)
+      @assertEqual(answer, level(map_w2(6, ncells) + k ), tol)
     end do
+
+    deallocate( level )
+    deallocate( w2_nodal_coords )
+    deallocate( map_w2 )
 
   end subroutine test_all
 

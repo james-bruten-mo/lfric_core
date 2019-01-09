@@ -41,9 +41,9 @@ contains
 
     real(kind=r_def), dimension(12,8) :: answer
     real(kind=r_def), parameter :: tol = 1.0e-6_r_def
-    real(kind=r_def), parameter :: dx = 6000.0_r_def, &
-                                   dy = 1000.0_r_def, &
-                                   dz = 2000.0_r_def
+    real(kind=r_def), parameter :: dx = 6000.0_r_def
+    real(r_def),      parameter :: dy = 1000.0_r_def
+    real(r_def),      parameter :: dz = 2000.0_r_def
 
     integer(i_def) :: nlayers, ncells, ncell_3d, cell, icell
     integer(i_def) :: ndf_w0, undf_w0, ndf_w1, undf_w1, ndf_wchi, undf_wchi
@@ -146,7 +146,7 @@ contains
 
   end subroutine test_all
 
-  subroutine grad_operator( grad ) 
+  subroutine grad_operator( grad )
     use constants_mod, only: r_def
     implicit none
 
@@ -301,7 +301,7 @@ contains
   0.3703703703703668E+02_r_def  &
     ], shape(m1) )
 
- d10 = real(reshape( [ & 
+ d10 = real(reshape( [ &
  -1, -1,  0,  0, -1,  0,  0,  0,  0,  0,  0,  0, &
   0,  1, -1,  0,  0, -1,  0,  0,  0,  0,  0,  0, &
   0,  0,  1,  1,  0,  0, -1,  0,  0,  0,  0,  0, &
@@ -310,7 +310,7 @@ contains
   0,  0,  0,  0,  0,  1,  0,  0,  0,  1, -1,  0, &
   0,  0,  0,  0,  0,  0,  1,  0,  0,  0,  1,  1, &
   0,  0,  0,  0,  0,  0,  0,  1,  1,  0,  0, -1  &
- ], shape(d10) ),r_def) 
+ ], shape(d10) ),r_def)
 
   grad = matmul(m1,d10)
 

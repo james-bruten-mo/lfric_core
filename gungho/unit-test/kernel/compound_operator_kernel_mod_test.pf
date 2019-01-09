@@ -8,17 +8,15 @@
 !>
 module compound_operator_kernel_mod_test
 
-    use constants_mod,                 only : i_def, r_def
-    use function_space_collection_mod, only : function_space_collection_type, &
-                                              function_space_collection
-    use mesh_collection_mod,           only : mesh_collection_type, &
-                                              mesh_collection
-    use fs_continuity_mod,             only : W2, W3
-    use function_space_mod,            only : function_space_type
-    use operator_mod,                  only : operator_type, operator_proxy_type
-    use yaxt,                          only : xt_initialize, xt_finalize
-    use mpi_mod,                       only : store_comm, clear_comm
+    use constants_mod, only : i_def, r_def
+    use get_unit_test_m3x3_dofmap_mod, &
+      only : get_w2_m3x3_dofmap
+    use get_unit_test_m3x3_q3x3x3_sizes_mod, &
+      only : get_w2_m3x3_q3x3x3_size, &
+             get_w3_m3x3_q3x3x3_size
+    use mpi_mod,       only : store_comm, clear_comm
     use pFUnit_Mod
+    use yaxt,          only : xt_initialize, xt_finalize
 
   implicit none
 
@@ -28,17 +26,11 @@ module compound_operator_kernel_mod_test
   @TestCase
   type, extends(MPITestCase), public :: compound_operator_test_type
     private
-    type(function_space_type), pointer :: w2_fs => null()
-    type(function_space_type), pointer :: w3_fs => null()
-    type(operator_type)                :: div, m_w3_1, m_w3_2, dstar
-    integer(i_def)                     :: mesh_id
   contains
     procedure setUp
     procedure tearDown
     procedure test_all
   end type compound_operator_test_type
-
-  integer(i_def), parameter :: element_order = 0
 
 contains
 
@@ -53,54 +45,24 @@ contains
 
     class(compound_operator_test_type), intent(inout) :: this
 
-    integer :: i
-
     ! Initialise YAXT
     call xt_initialize(this%getMpiCommunicator())
     !Store the MPI communicator for later use
     call store_comm(this%getMpiCommunicator())
 
-    call feign_finite_element_config(                          &
-             cellshape=finite_element_cellshape_quadrilateral, &
-             coordinate_order=0,                               &
-             element_order=1,                                  &
-             rehabilitate=.true.,                              &
-             supg=.false.,                                     &
-             vorticity_in_w1=.false. )
-
-    ! Create top level collections
-    mesh_collection = mesh_collection_type()
-    function_space_collection = function_space_collection_type()
-
-    ! Dummy mesh mod has 9 cells, 3 layers and is uniform in vertical
-    this%mesh_id = mesh_collection%add_unit_test_mesh( PLANE_BI_PERIODIC )
-
-    this%w2_fs => function_space_collection%get_fs( this%mesh_id, &
-                                                    element_order, &
-                                                    W2 )
-    this%w3_fs => function_space_collection%get_fs( this%mesh_id, &
-                                                    element_order, &
-                                                    W3 )
-
-    this%dstar  = operator_type(this%w3_fs,this%w2_fs)
-    this%div    = operator_type(this%w3_fs,this%w2_fs)
-    this%m_w3_1 = operator_type(this%w3_fs,this%w3_fs)
-    this%m_w3_2 = operator_type(this%w3_fs,this%w3_fs)
+    call feign_finite_element_config(                   &
+      cellshape=finite_element_cellshape_quadrilateral, &
+      coordinate_order=0, element_order=1,              &
+      rehabilitate=.true., supg=.false., vorticity_in_w1=.false. )
 
   end subroutine setUp
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   subroutine tearDown( this )
 
-    use gungho_configuration_mod, only: final_configuration
-
     implicit none
 
     class(compound_operator_test_type), intent(inout) :: this
-
-    call function_space_collection%clear()
-    call mesh_collection%clear()
-    call final_configuration()
 
     ! Finalise YAXT
     call xt_finalize()
@@ -119,77 +81,82 @@ contains
 
     class(compound_operator_test_type), intent(inout) :: this
 
-    type(operator_proxy_type) :: div_p, m_w3_1_p, m_w3_2_p, dstar_p
+    real(r_def), parameter :: tol = 1.0e-12_r_def
+    real(r_def), parameter :: tau = 0.5_r_def
+    integer(i_def), parameter :: nlayers = 3
 
-    real(kind=r_def), parameter :: tol = 1.0e-12_r_def
-    real(kind=r_def), parameter :: tau = 0.5_r_def
-    integer :: cell, i, j
-    integer(i_def) :: err
+    integer :: cell
+    integer(i_def) :: unused
 
-    integer :: nlayers
-    integer :: ndf_w2, ndf_w3, undf_w2
-    integer, dimension(6) :: map_w2
+    integer(i_def) :: ndf_w2, ndf_w3, undf_w2
+    integer(i_def) :: ncells, ncell_3d
+    integer(i_def), allocatable :: map_w2(:,:)
 
-    real(kind=r_def), dimension(1,6) :: answer
-    real(kind=r_def), dimension(1,6) :: d
-    real(kind=r_def), dimension(1,1) :: m3_1, m3_2
+    real(r_def), allocatable :: dstar(:,:,:)
+    real(r_def), allocatable :: m_w3_1(:,:,:)
+    real(r_def), allocatable :: m_w3_2(:,:,:)
+    real(r_def), allocatable :: div(:,:,:)
+    real(r_def), allocatable :: rho(:)
 
-    real(kind=r_def), allocatable, dimension(:) :: rho
+    real(r_def) :: answer(1, 6)
+
+    call get_w2_m3x3_q3x3x3_size( ndf_w2, undf_w2, ncells, &
+                                  unused, unused, &
+                                  unused, unused, nlayers=nlayers )
+    call get_w2_m3x3_dofmap( map_w2, nlayers=nlayers )
+    call get_w3_m3x3_q3x3x3_size( ndf_w3, unused, unused, &
+                                  unused, unused, &
+                                  unused, unused, nlayers=nlayers )
 
     ! Test the operator kernel
-    dstar_p = this%dstar%get_proxy()
-    div_p = this%div%get_proxy()
-    m_w3_1_p = this%m_w3_1%get_proxy()
-    m_w3_2_p = this%m_w3_2%get_proxy()
+    ncell_3d = ncells * nlayers
+    allocate( m_w3_1(ndf_w3, ndf_w3, ncell_3d) )
+    m_w3_1 = 2.0_r_def
 
-    nlayers = div_p%fs_from%get_nlayers()
-    ndf_w2  = div_p%fs_from%get_ndf()
-    ndf_w3  = div_p%fs_to%get_ndf()
-   
-    div_p%local_stencil(:,:,:)    = 0.0_r_def
-    m_w3_1_p%local_stencil(:,:,:) = 0.0_r_def
-    m_w3_2_p%local_stencil(:,:,:) = 0.0_r_def
+    allocate( m_w3_2(ndf_w3, ndf_w3, ncell_3d) )
+    m_w3_2 = 6.0_r_def
 
-    map_w2(:) = 1_i_def
-    undf_w2 = nlayers
+    allocate( div(ndf_w3, ndf_w2, ncell_3d) )
+    do cell = 1, ncell_3d
+      div(:,:,cell) = reshape( [1.0_r_def, 2.0_r_def, 3.0_r_def, &
+                                4.0_r_def, 5.0_r_def, 6.0_r_def], [1,6] )
+    end do
+
     allocate( rho(undf_w2) )
     rho(:) = 2.0_r_def
 
-    do i = 1,ndf_w2
-      do j = 1,ndf_w3
-        d(j,i) = real(i*j,r_def)
-      end do
-    end do
-    do i = 1,ndf_w3
-      do j = 1,ndf_w3
-        m3_1(i,j) = real(i + j,r_def)
-        m3_2(i,j) = real(7 - i*j,r_def)
-      end do
-    end do
-    do cell = 1, div_p%ncell_3d
-      div_p%local_stencil(:,:,cell) = d
-      m_w3_1_p%local_stencil(:,:,cell) = m3_1
-      m_w3_2_p%local_stencil(:,:,cell) = m3_2
-    end do
     cell = 1
-    
-    call compound_operator_kernel_code( cell,                              &
-                                        nlayers,                           &
-                                        dstar_p%ncell_3d,                  & 
-                                        dstar_p%local_stencil,             &
-                                        m_w3_1_p%ncell_3d,                 &
-                                        m_w3_1_p%local_stencil,            &
-                                        m_w3_2_p%ncell_3d,                 &
-                                        m_w3_2_p%local_stencil,            &
-                                        div_p%ncell_3d,                    &
-                                        div_p%local_stencil,               &
-                                        rho,                               &
-                                        tau,                               &
-                                        ndf_w3,                            &
-                                        ndf_w2, undf_w2, map_w2)
+    allocate( dstar(ndf_w3, ndf_w2, ncell_3d) )
+    call compound_operator_kernel_code( cell,     &
+                                        nlayers,  &
+                                        ncell_3d, &
+                                        dstar,    &
+                                        ncell_3d, &
+                                        m_w3_1,   &
+                                        ncell_3d, &
+                                        m_w3_2,   &
+                                        ncell_3d, &
+                                        div,      &
+                                        rho,      &
+                                        tau,      &
+                                        ndf_w3,   &
+                                        ndf_w2,   &
+                                        undf_w2,  &
+                                        map_w2(:,cell) )
 
-    answer = matmul(m3_1,matmul(m3_2,d))
-    @assertEqual(answer, dstar_p%local_stencil(:, :, 1 ), tol)
+    ! Given the inputs prepared above the result should be as follows.
+    ! (Generated by a supposed successful run of this test)
+    answer = reshape( [12.00_r_def, 24.00_r_def, 36.00_r_def,  &
+                       48.00_r_def, 60.00_r_def, 72.00_r_def], &
+                      [1, 6] )
+
+    @assertEqual( answer, dstar(:, :, 1 ), tol )
+
+    deallocate( dstar )
+    deallocate( rho )
+    deallocate( div )
+    deallocate( m_w3_2, m_w3_1 )
+    deallocate( map_w2 )
 
   end subroutine test_all
 
