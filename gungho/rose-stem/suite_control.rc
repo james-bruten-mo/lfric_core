@@ -2,6 +2,8 @@
 {%- set projectDir  = 'gungho' %}
 {%- set miniappFlag = False %}
 {%- set appDiagStemName = 'diagGungho' %}
+{%- set rdef_precision = "64" %}
+{%- set mesh_rdef_precision = "64" %}
 
 {%- set application_configurations = { 'gungho'           : [ 'runge-kutta', 'semi-implicit',
                                                               'transport-rk',

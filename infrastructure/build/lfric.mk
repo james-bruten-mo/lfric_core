@@ -90,6 +90,7 @@ endif
 
 # Set the default precision for reals
 RDEF_PRECISION ?= 64
+export PRE_PROCESS_MACROS += RDEF_PRECISION=$(RDEF_PRECISION)
 
 include $(LFRIC_BUILD)/fortran/$(FORTRAN_COMPILER).mk
 export F_MOD_DESTINATION_ARG OPENMP_ARG
@@ -258,7 +259,8 @@ launch-test-suite:
 .PHONY: run-unit-tests
 run-unit-tests: generate-unit-tests
 	$(Q)$(MAKE) $(QUIET_ARG) -C $(WORKING_DIR) -f $(LFRIC_BUILD)/analyse.mk
-	$(Q)$(MAKE) $(QUIET_ARG) -C $(WORKING_DIR) -f $(LFRIC_BUILD)/compile.mk
+	$(Q)$(MAKE) $(QUIET_ARG) -C $(WORKING_DIR) -f $(LFRIC_BUILD)/compile.mk \
+                    PRE_PROCESS_MACROS=$(PRE_PROCESS_MACROS)
 	$(call MESSAGE,Running,$(PROGRAMS))
 	$(Q)cd $(WORKING_DIR); mpiexec -n 1 $(BIN_DIR)/$(PROGRAMS) $(DOUBLE_VERBOSE_ARG)
 
@@ -270,8 +272,9 @@ run-unit-tests: generate-unit-tests
 integration-test-run/%: export PYTHONPATH := $(PYTHONPATH):$(LFRIC_BUILD)
 integration-test-run/%: generate-integration-tests
 	$(Q)$(MAKE) $(QUIET_ARG) -C $(WORKING_DIR) -f $(LFRIC_BUILD)/analyse.mk PROGRAMS=$(notdir $*)
-	$(Q)$(MAKE) $(QUIET_ARG) -C $(WORKING_DIR) -f $(LFRIC_BUILD)/compile.mk \
-	        PROGRAMS=$(notdir $*) FFLAGS="$(FFLAGS) $(FFLAGS_DEBUG) $(FFLAGS_RUNTIME)"
+	$(Q)$(MAKE) $(QUIET_ARG) -C $(WORKING_DIR) -f $(LFRIC_BUILD)/compile.mk    \
+                    PROGRAMS=$(notdir $*) PRE_PROCESS_MACROS=$(PRE_PROCESS_MACROS) \
+                    FFLAGS="$(FFLAGS) $(FFLAGS_DEBUG) $(FFLAGS_RUNTIME)"
 	$(call MESSAGE,Running,$*)
 	$(Q)cd $(dir $*); \
 	    ./$(notdir $(addsuffix .py,$*)) $(addprefix $(BIN_DIR)/,$(notdir $*))

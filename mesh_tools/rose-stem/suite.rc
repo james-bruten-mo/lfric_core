@@ -217,6 +217,7 @@
       PROFILE               = {{build}}
       TARGET                = build
       MAKE_THREADS          = 4
+      RDEF_PRECISION        = {{mesh_rdef_precision}}
 
     [[[directives]]]
 {%-       for DIRECTIVE in TARGET_BUILD_BATCHER_DIRECTIVES %}
@@ -268,7 +269,7 @@
       TARGET               = unit-tests
       PROFILE              = {{build}}
       MAKE_THREADS         = 6
-
+      RDEF_PRECISION       = {{mesh_rdef_precision}}
 
     [[[directives]]]
 {%-       for DIRECTIVE in TARGET_BUILD_BATCHER_DIRECTIVES %}

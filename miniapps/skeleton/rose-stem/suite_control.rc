@@ -3,6 +3,8 @@
 {%- set projectDir  = 'skeleton' %}
 {%- set miniappFlag = True %}
 {%- set appDiagStemName = 'diagSkeleton' %}
+{%- set rdef_precision = "64" %}
+{%- set mesh_rdef_precision = "64" %}
 
 {%- set application_configurations = { 'skeleton' : ['default'] } %}
 

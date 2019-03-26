@@ -1,7 +1,5 @@
 #!jinja2
 
-{%- set projectName = 'lfric_atm' %}
-
 {# Include suite macros #}
 %include inc/suite_macros.rc
 
@@ -420,6 +418,8 @@
             PROFILE               = {{build}}
             LFRIC_TARGET_PLATFORM = {{TARGET_OPT}}
             MAKE_THREADS          = 4
+            RDEF_PRECISION        = {{rdef_precision}}
+
         [[[directives]]]
 {%-       for DIRECTIVE in TARGET_BUILD_BATCHER_DIRECTIVES %}
             {{DIRECTIVE}}
@@ -448,6 +448,8 @@
             PROFILE               = {{build}}
             LFRIC_TARGET_PLATFORM = {{TARGET_OPT}}
             MAKE_THREADS          = 4
+            RDEF_PRECISION        = {{mesh_rdef_precision}}
+
         [[[directives]]]
 {%-       for DIRECTIVE in TARGET_BUILD_BATCHER_DIRECTIVES %}
             {{DIRECTIVE}}
@@ -508,6 +510,8 @@
             PROFILE               = {{build}}
             LFRIC_TARGET_PLATFORM = {{TARGET_OPT}}
             MAKE_THREADS          = 4
+            RDEF_PRECISION        = {{rdef_precision}}
+
         [[[directives]]]
 {%-       for DIRECTIVE in TARGET_BUILD_BATCHER_DIRECTIVES %}
             {{DIRECTIVE}}
@@ -543,6 +547,8 @@
         [[[environment]]]
             SOURCE_DIRECTORY = $SOURCE_ROOT/{{appPathFragment}}{{projectName}}
             WORKING_DIR      = {{TARGET_BUILD_ROOT}}/integration_{{label}}
+            RDEF_PRECISION   = {{rdef_precision}}
+
         [[[directives]]]
 {%-       for DIRECTIVE in TARGET_BUILD_BATCHER_DIRECTIVES %}
             {{DIRECTIVE}}
@@ -795,6 +801,14 @@
 {%-               if 'check_' + configuration_label_res in scheduledTasks %}
     [[check_{{configuration_label_res}}]]
         inherit = {{appLabel|upper}}_{{label|upper}}, TARGET
+
+        pre-script = """
+                     export KGO_PREC_DIR={{rdef_precision}}-bit/
+                     if [ ! -d $KGO_DIR/$APP_NAME/$TARGET_OPT/${KGO_PREC_DIR} ] ; then
+                       export KGO_PREC_DIR=''
+                     fi
+                     """
+
         script = rose task-run --app-key=check_application_kgo
         [[[environment]]]
             APP_NAME   = {{appName}}

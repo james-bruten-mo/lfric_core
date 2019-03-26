@@ -3,6 +3,8 @@
 {%- set projectDir  = 'solver_miniapp' %}
 {%- set miniappFlag = True %}
 {%- set appDiagStemName = 'diagSolverApi' %}
+{%- set rdef_precision = "64" %}
+{%- set mesh_rdef_precision = "64" %}
 
 {%- set application_configurations = { 'solver_miniapp' : ['cg','bicgstab','gmres','default'] } %}
 

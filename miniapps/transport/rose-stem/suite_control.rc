@@ -3,6 +3,8 @@
 {%- set projectDir  = 'transport' %}
 {%- set miniappFlag = True %}
 {%- set appDiagStemName = 'diagTransport' %}
+{%- set rdef_precision = "64" %}
+{%- set mesh_rdef_precision = "64" %}
 
 {%- set application_configurations = { 'transport' : ['cosine_hill_45deg',
                                                       'transport-biperiodic',
@@ -67,3 +69,10 @@
 
 %include inc/cosmic.rc
 {%- do groups.update(cosmic_groups) %}
+
+{%- if RUN_NAMES is defined %}
+{%-   if 'nightly_precision_tests' in RUN_NAMES %}
+{%-     set rdef_precision = "32" %}
+{%-   endif %}
+{%- endif %}
+

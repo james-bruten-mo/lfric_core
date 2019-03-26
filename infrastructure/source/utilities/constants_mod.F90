@@ -30,12 +30,13 @@ module constants_mod
   real               :: r_val              !< A native real used to compute kind of native real.
   double precision   :: dp_val             !< A native double-precision used to compute kind of native dp.
 
-#if RDEF_PRECISION == 32
-  integer, parameter :: r_def     = real32  !< Default real kind for application.
-#elif RDEF_PRECISION == 128
-  integer, parameter :: r_def     = real128 !< Default real kind for application.
-#else ! Currently we default to 64 bits 
-  integer, parameter :: r_def     = real64  !< Default real kind for application.
+  !< Default real kind for application.
+#if (RDEF_PRECISION == 32)
+  integer, parameter :: r_def = real32
+#elif (RDEF_PRECISION == 128)
+  integer, parameter :: r_def = real128
+#else
+  integer, parameter :: r_def = real64
 #endif
 
   integer, parameter :: real_type    = 1 !< A parameter used to indicate a real data typa

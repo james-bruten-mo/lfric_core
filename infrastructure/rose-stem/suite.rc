@@ -333,6 +333,8 @@
       PROFILE          = {{build}}
       MAKE_THREADS     = 4
       WORKING_DIR      = {{TARGET_BUILD_ROOT}}/{{label}}/unit-test
+      RDEF_PRECISION   = {{rdef_precision}}
+
     [[[directives]]]
 {%-       for DIRECTIVE in TARGET_BUILD_BATCHER_DIRECTIVES %}
       {{DIRECTIVE}}
@@ -368,6 +370,7 @@
       TARGET           = integration-tests
       PROFILE          = {{build}}
       MAKE_THREADS     = 1
+      RDEF_PRECISION   = {{rdef_precision}}
 
     [[[directives]]]
 {%-       for DIRECTIVE in TARGET_BUILD_BATCHER_DIRECTIVES %}

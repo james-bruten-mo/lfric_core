@@ -3,6 +3,8 @@
 {%- set projectDir  = 'io_dev' %}
 {%- set miniappFlag = True %}
 {%- set appDiagStemName = 'diagIoDev' %}
+{%- set rdef_precision = "64" %}
+{%- set mesh_rdef_precision = "64" %}
 
 {%- set application_configurations = { 'io_dev' : ['default'] } %}
 

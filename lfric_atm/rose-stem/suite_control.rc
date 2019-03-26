@@ -2,6 +2,8 @@
 {%- set projectDir  = 'lfric_atm' %}
 {%- set miniappFlag = False %}
 {%- set appDiagStemName = 'diagLfricAtm' %}
+{%- set rdef_precision = "64" %}
+{%- set mesh_rdef_precision = "64" %}
 
 {%- set application_configurations = { 'lfric_atm' : ['dry_conv_bl_scm',
                                                       'wet_conv_bl_scm',
