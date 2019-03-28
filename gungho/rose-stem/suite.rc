@@ -348,16 +348,21 @@
 
     # Run locally as they need workstation tools like Inkscape.
     #
+    # The sleep is to help mitigate problems with
+    # overloaded Lustre filesystems.
+    #
 {%- if 'design_documentation' in scheduledTasks %}
     [[design_documentation]]
         inherit = DOCUMENTATION, LOCAL, TECHNICAL
         pre-script = """
                      {{'\n                     '|
                        command_list( LOCAL_BASE_SETUP,
-                                    LOCAL_TECHNICAL_SETUP,
-                                    LOCAL_REVEAL_SETUP )}}
+                                     LOCAL_TECHNICAL_SETUP,
+                                     LOCAL_REVEAL_SETUP,
+                                     'sleep 30' )}}
                      """
         script = make -C $SOURCE_DIRECTORY document-latex {{verboseMake()}}
+
         [[[job]]]
             execution retry delays = 2*PT5S, 5*PT10S, 9*PT1M, 5*PT10M, 3*PT1H
 {%- endif %}
@@ -369,11 +374,16 @@
                      {{ensureDestination()}}
                      sleep 5
                      """
+
         script = rose task-run --app-key=publish --command-key=directory
+
         [[[environment]]]
             DIRECTORY = $DESTINATION_DIRECTORY/documents/
             DESTINATION = {{publish_destination}}/documentation/design/
             FILTERS = --exclude='*' --include='*.pdf'
+
+        [[[job]]]
+            execution retry delays = 3*PT5S
 {%- endif %}
 
 ##############################################################################
