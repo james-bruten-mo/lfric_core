@@ -8,7 +8,6 @@ module vertical_trapezoidal_kernel_mod_test
 
   use pFUnit_Mod
   use constants_mod,      only : i_def, r_def
-  use mesh_mod,           only : mesh_type
   use yaxt,               only : xt_initialize, xt_finalize
   use mpi_mod,            only : store_comm, clear_comm
 
@@ -20,7 +19,6 @@ module vertical_trapezoidal_kernel_mod_test
   @TestCase
   type, extends(MPITestCase) :: vertical_trapezoidal_test_type
     private
-    type(mesh_type)          :: mesh
   contains
     procedure setUp
     procedure test_all
@@ -160,13 +158,13 @@ contains
     u_field(25) = 0.8_r_def
     u_field(26) = 0.0_r_def
 
-    call vertical_trapezoidal_code(  nlayers,              &
-                                     dep_pts,              &
-                                     u_field,              &
-                                     u_field,              &
-                                     undf_w2,              &
-                                     ndf_w2,               &
-                                     map_w2 )
+    call vertical_trapezoidal_code( nlayers,              &
+                                    dep_pts,              &
+                                    u_field,              &
+                                    u_field,              &
+                                    undf_w2,              &
+                                    ndf_w2,               &
+                                    map_w2 )
 
     @assertEqual( 0.0_r_def, dep_pts(21), tol)
     @assertEqual( 0.5568_r_def, dep_pts(22), tol)
@@ -175,8 +173,8 @@ contains
     @assertEqual( 1.2_r_def, dep_pts(25), tol)
     @assertEqual( 0.0_r_def, dep_pts(26), tol)
 
-  deallocate(u_field)
-  deallocate(dep_pts)
+    deallocate(u_field)
+    deallocate(dep_pts)
 
   end subroutine test_all
 
