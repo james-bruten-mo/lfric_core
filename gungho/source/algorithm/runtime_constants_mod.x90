@@ -20,8 +20,7 @@ module runtime_constants_mod
   use base_mesh_config_mod,              only: geometry,           &
                                                geometry_spherical, &
                                                f_lat
-  use finite_element_config_mod,         only: element_order, &
-                                               nqp_exact
+  use finite_element_config_mod,         only: element_order
   use formulation_config_mod,            only: dlayer_on, &
                                                rotating
   use transport_config_mod,              only: scheme,               &
@@ -300,7 +299,7 @@ contains
     w3_k0_2d_fs => function_space_collection%get_fs( twod_mesh_id,      0, W3 )
 
     !================= Create quadrature object =====================!
-    qr = quadrature_xyoz_type(nqp_exact, quadrature_rule)
+    qr = quadrature_xyoz_type(element_order+3, quadrature_rule)
     !=================== Create geopotential field ============================!
 
     geopotential = field_type( vector_space = w0_fs )

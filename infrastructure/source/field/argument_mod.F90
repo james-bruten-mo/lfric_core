@@ -82,7 +82,6 @@ module argument_mod
   integer, public, parameter :: GH_QUADRATURE_XYoZ  = 849
   integer, public, parameter :: GH_QUADRATURE_XoYoZ = 701
   integer, public, parameter :: GH_QUADRATURE_face  = 539
-  integer, public, parameter :: GH_QUADRATURE_edge  = 419
 
 ! Evaluator metadata
   integer, public, parameter :: GH_EVALUATOR        = 959
@@ -97,7 +96,6 @@ module argument_mod
   integer, public, parameter :: X1D    = 2
   integer, public, parameter :: Y1D    = 3
   integer, public, parameter :: CROSS  = 4
-  integer, public, parameter :: REGION = 5
   !> @}
 
   !> Allows metadata types to be syntactically correct.
@@ -109,7 +107,7 @@ module argument_mod
   !>       would remove the need for 1-based monotonically increasing
   !>       enumerator values but GFortran doesn't like that.
   !>
-  integer, public, parameter :: STENCIL(5) = -1
+  integer, public, parameter :: STENCIL(4) = -1
 
   !> @defgroup mesh_data_items Enumeration of mesh data items.
   !> @{

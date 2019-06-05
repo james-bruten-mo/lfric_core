@@ -176,10 +176,9 @@
   scheme = 'method_of_lines'
   operators = 'fv'
   fv_flux_order = 2
-  fv_advective_order = 2
+  fv_advective_order = 3
   consistent_metric  = .false.
   enforce_monotonicity = .false.
-  oned_reconstruction = .false.
 /
 
 &partitioning
