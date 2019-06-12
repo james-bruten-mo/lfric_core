@@ -21,9 +21,6 @@ module gw_init_fields_alg_mod
   ! Configuration options
   use finite_element_config_mod,         only: element_order
   use io_mod,                            only: ts_fname
-  use io_config_mod,                     only: checkpoint_read
-  use files_config_mod,                  only: checkpoint_stem_name
-  use time_config_mod,                   only: timestep_start
 
   ! PsyKAl PSYClone kernels
   use initial_u_kernel_mod,              only: initial_u_kernel_type
@@ -34,6 +31,7 @@ module gw_init_fields_alg_mod
   use function_space_collection_mod,     only: function_space_collection
   use function_space_mod,                only: function_space_type
   use field_mod,                         only: field_type
+  use field_collection_mod,              only: field_collection_type
   use quadrature_xyoz_mod,               only: quadrature_xyoz_type
   use quadrature_rule_gaussian_mod,      only: quadrature_rule_gaussian_type
 
@@ -49,16 +47,19 @@ module gw_init_fields_alg_mod
 contains
   !> @details An algorithm for initialising prognostic fields for
   !>          all solvers.
-  !> @param[inout] wind  The 3D wind field
-  !> @param[inout] pressure The pressure
-  !> @param[inout] buoyancy The buoyancy
-  subroutine gw_init_fields_alg( wind, pressure, buoyancy)
+  !> @param[inout] prognostics  The prognostic variables
+  !>                            (wind buoyancy and pressure)
+  subroutine gw_init_fields_alg( prognostics )
 
     implicit none
 
     ! Prognostic fields
-    type( field_type ),   intent(inout)   :: wind, pressure, buoyancy
+    type( field_collection_type ), intent(inout) :: prognostics
 
+
+    type( field_type ), pointer           :: wind => null()
+    type( field_type ), pointer           :: pressure => null()
+    type( field_type ), pointer           :: buoyancy => null()
     type( quadrature_xyoz_type )          :: qr
     type( quadrature_rule_gaussian_type ) :: quadrature_rule
     type( field_type )                    :: r_u
@@ -68,46 +69,32 @@ contains
 
     real(kind=r_def), parameter        :: initial_time = 0.0_r_def
 
+    ! Get references out of the prognostic collection for the prognostic
+    ! variables
+    wind => prognostics%get_field("wind")
+    buoyancy => prognostics%get_field("buoyancy")
+    pressure => prognostics%get_field("pressure")
+
     chi => get_coordinates()
 
     qr = quadrature_xyoz_type(element_order+3, quadrature_rule)
 
     !=== Initialise global prognostic fields ==================================!
 
-    if (.not.checkpoint_read) then           ! No check point to start from
+    call log_event( 'gravity_wave: Initialising prognostic fields', LOG_LEVEL_INFO )
 
-      call log_event( 'gravity_wave: Initialising prognostic fields', LOG_LEVEL_INFO )
+    call invoke( initial_buoyancy_kernel_type(buoyancy, chi) )
 
-      call invoke( initial_buoyancy_kernel_type(buoyancy, chi) )
+    ! Initialise U and p according to formulation
+    r_u = field_type( vector_space = wind%get_function_space() )
+    call invoke( name = 'Initialise U and p',     &
+                 setval_c( wind,     0.0_r_def ), &
+                 setval_c( r_u,      0.0_r_def ), &
+                 setval_c( pressure, 0.0_r_def ), &
+                 initial_u_kernel_type( r_u, chi, initial_time, qr ) )
+    call mass_matrix_solver_alg(wind, r_u)
 
-      ! Initialise U and p according to formulation
-      r_u = field_type( vector_space = wind%get_function_space() )
-      call invoke( name = 'Initialise U and p',     &
-                   setval_c( wind,     0.0_r_def ), &
-                   setval_c( r_u,      0.0_r_def ), &
-                   setval_c( pressure, 0.0_r_def ), &
-                   initial_u_kernel_type( r_u, chi, initial_time, qr ) )
-      call mass_matrix_solver_alg(wind, r_u)
-
-      call log_event( 'gravity_wave: Initialised prognostic fields', LOG_LEVEL_INFO )
-
-    else                                   ! Recorded check point to start from
-
-      call log_event('Reading checkpoint file to restart pressure',LOG_LEVEL_INFO)
-      call pressure%read_checkpoint("restart_pressure", trim(ts_fname(checkpoint_stem_name,"", &
-                            "pressure", (timestep_start - 1),"")))
-
-      call log_event('Reading checkpoint file to restart wind',LOG_LEVEL_INFO)
-      call wind%read_checkpoint("restart_wind", trim(ts_fname(checkpoint_stem_name,"", &
-                            "wind", (timestep_start - 1),"")))
-
-      call log_event('Reading checkpoint file to restart buoyancy',LOG_LEVEL_INFO)
-      call buoyancy%read_checkpoint("restart_buoyancy", trim(ts_fname(checkpoint_stem_name,"", &
-                            "buoyancy", (timestep_start - 1),"")))
-
-      call log_event( 'Gravity wave: Read prognostic fields from checkpoint files', LOG_LEVEL_INFO )
-
-    end if
+    call log_event( 'gravity_wave: Initialised prognostic fields', LOG_LEVEL_INFO )
 
     !==========================================================================!
 

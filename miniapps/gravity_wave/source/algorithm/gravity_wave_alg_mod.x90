@@ -90,11 +90,11 @@ module gravity_wave_alg_mod
 contains
 !=============================================================================!
   !> @details Initialisation procedure for the timestepping algorithm
-  !>          Initialises various internal fields
+  !>          Initialises various internal fields from the prognostic fields
   !> @param[in]    mesh_id ID of mesh object on which the model runs
-  !> @param[inout] wind  The 3D wind field
-  !> @param[inout] pressure The pressure field
-  !> @param[inout] buoyancy The buoyancy field
+  !> @param[in] wind  The 3D wind field
+  !> @param[in] pressure The pressure field
+  !> @param[in] buoyancy The buoyancy field
   subroutine gravity_wave_alg_init( mesh_id, wind, pressure, buoyancy)
     use quadrature_xyoz_mod,           only: quadrature_xyoz_type
     use quadrature_rule_gaussian_mod,  only: quadrature_rule_gaussian_type
@@ -136,7 +136,7 @@ contains
     integer(i_def), intent(in) :: mesh_id 
 
     ! Prognostic fields    
-    type( field_type ), intent( inout ) :: wind, pressure, buoyancy
+    type( field_type ), intent( in ) :: wind, pressure, buoyancy
 
     type(function_space_type), pointer  :: u_fs => null()
     type(function_space_type), pointer  :: p_fs => null()

@@ -3,33 +3,28 @@
 ! The file LICENCE, distributed with this code, contains details of the terms
 ! under which the code may be used.
 !-----------------------------------------------------------------------------
+!
 !> Drives the execution of the gravity_wave miniapp.
-!>
-!> This is a temporary solution until we have a proper driver layer.
 !>
 module gravity_wave_driver_mod
 
-  use checksum_alg_mod,               only: checksum_alg
   use constants_mod,                  only: i_def
-  use derived_config_mod,             only: set_derived_config
-  use yaxt,                           only: xt_initialize, xt_finalize
+  use infrastructure_mod,             only: initialise_infrastructure, &
+                                            finalise_infrastructure
+  use grid_mod,                       only: initialise_grid
+  use output_mod,                     only: initialise_output, &
+                                            finalise_output
+  use create_gravity_wave_prognostics_mod, &
+                                      only: create_gravity_wave_prognostics
+  use runtime_constants_mod,          only: create_runtime_constants
+  use gravity_wave_diagnostics_mod,   only: gravity_wave_diagnostics
   use field_mod,                      only: field_type
-  use finite_element_config_mod,      only: element_order
+  use field_collection_mod,           only: field_collection_type
   use function_space_chain_mod,       only: function_space_chain_type
-  use global_mesh_collection_mod,     only: global_mesh_collection, &
-                                            global_mesh_collection_type
-  use configuration_mod,              only: final_configuration
-  use gravity_wave_mod,               only: load_configuration
-  use gravity_wave_alg_mod,           only: gravity_wave_alg_init, &
-                                            gravity_wave_alg_step, &
-                                            gravity_wave_alg_final
-  use diagnostics_io_mod,             only: write_scalar_diagnostic, &
-                                            write_vector_diagnostic
-  use init_fem_mod,                   only: init_fem
+  use gw_init_fields_alg_mod,         only: gw_init_fields_alg
   use init_gravity_wave_mod,          only: init_gravity_wave
-  use init_mesh_mod,                  only: init_mesh
-  use io_mod,                         only: xios_domain_init,   &
-                                            ts_fname
+  use step_gravity_wave_mod,          only: step_gravity_wave
+  use final_gravity_wave_mod,         only: final_gravity_wave
   use log_mod,                        only: log_event,          &
                                             log_set_level,      &
                                             log_scratch_space,  &
@@ -40,22 +35,20 @@ module gravity_wave_driver_mod
                                             LOG_LEVEL_DEBUG,    &
                                             LOG_LEVEL_TRACE,    &
                                             log_scratch_space
-  use mod_wait
-  use operator_mod,                   only: operator_type
+  use io_mod,                         only: read_checkpoint,    &
+                                            write_checkpoint
   use io_config_mod,                  only: write_diag,           &
+                                            checkpoint_read,      &
+                                            checkpoint_write,     &
                                             diagnostic_frequency, &
                                             use_xios_io,          &
                                             nodal_output_on_w3,   &
-                                            checkpoint_write,     &
                                             subroutine_timers
   use files_config_mod,               only: checkpoint_stem_name
   use time_config_mod,                only: timestep_start, &
                                             timestep_end
   use timer_mod,                      only: timer, output_timer
-  use timestepping_config_mod,        only: dt
-  use mpi_mod,                        only: initialise_comm, store_comm, &
-                                            finalise_comm,               &
-                                            get_comm_size, get_comm_rank
+  use mpi_mod,                        only: initialise_comm, finalise_comm
   use xios
 
   implicit none
@@ -68,11 +61,11 @@ module gravity_wave_driver_mod
   character(*), public, parameter   :: xios_ctx = 'gravity_wave'
   character(*), public, parameter   :: xios_id  = 'lfric_client'
 
+  ! Depository of shared fields
+  type( field_collection_type ), target :: depository
 
-  ! Prognostic fields
-  type( field_type ) :: wind
-  type( field_type ) :: buoyancy
-  type( field_type ) :: pressure
+  ! Gravity wave model state
+  type( field_collection_type ) :: prognostic_fields
 
   ! Coordinate field
   type(field_type), target, dimension(3) :: chi
@@ -94,92 +87,51 @@ contains
 
   character(*), intent(in) :: filename
 
-  integer(i_def) :: total_ranks, local_rank
   integer(i_def) :: comm = -999
 
   integer(i_def) :: ts_init
-  integer(i_def) :: dtime
 
   ! Initialse mpi and create the default communicator: mpi_comm_world
   call initialise_comm(comm)
 
-  ! Initialise XIOS and get back the split mpi communicator
-  call init_wait()
-  call xios_initialize(xios_id, return_comm = comm)
+  ! Initialise aspects of the infrastructure
+  call initialise_infrastructure(comm, filename, program_name, xios_id)
 
-  !Store the MPI communicator for later use
-  call store_comm(comm)
-
-  ! Initialise YAXT
-  call xt_initialize(comm)
-
-  ! Get the rank information
-  total_ranks = get_comm_size()
-  local_rank  = get_comm_rank()
-
-  call initialise_logging(local_rank, total_ranks, program_name)
-
-  call log_event( program_name//': Running miniapp ...', LOG_LEVEL_INFO )
-
-  call load_configuration( filename )
-  call set_derived_config( .false. )
-
-  !----------------------------------------------------------------------------
-  ! Mesh init
-  !----------------------------------------------------------------------------
   if ( subroutine_timers ) call timer(program_name)
 
-  allocate( global_mesh_collection, &
-       source = global_mesh_collection_type() )
-
-  ! Create the mesh
-  call init_mesh(local_rank, total_ranks, mesh_id, twod_mesh_id )
-
-  !----------------------------------------------------------------------------
-  ! FEM init
-  !----------------------------------------------------------------------------
-  ! Create FEM specifics (function spaces and chi field)
-  call init_fem(mesh_id, chi)
-
-  !----------------------------------------------------------------------------
-  ! IO init
-  !----------------------------------------------------------------------------
-
-  ! If using XIOS for diagnostic output or checkpointing, then set up XIOS
-  ! domain and context
-  if ( use_xios_io ) then
-
-    dtime = int(dt)
-
-    call xios_domain_init( xios_ctx,     &
-                           comm,         &
-                           dtime,        &
-                           mesh_id,      &
-                           twod_mesh_id, &
-                           chi)
-
-    ! Make sure XIOS calendar is set to timestep 1 as it starts there
-    ! not timestep 0.
-    call xios_update_calendar(1)
-
-  end if
-
-  !----------------------------------------------------------------------------
-  ! Model init
-  !----------------------------------------------------------------------------
   multigrid_function_space_chain = function_space_chain_type()
 
-  ! Create function space collection and initialise prognostic fields
-  call init_gravity_wave( mesh_id, twod_mesh_id, chi,     &
-                          multigrid_function_space_chain, &
-                          wind, pressure, buoyancy )
+  ! Initialise aspects of the grid
+  call initialise_grid(mesh_id, twod_mesh_id, chi, &
+                       multigrid_function_space_chain)
 
-  ! Full global meshes no longer required, so reclaim
-  ! the memory from global_mesh_collection
-  write(log_scratch_space,'(A)') &
-      "Purging global mesh collection."
-  call log_event( log_scratch_space, LOG_LEVEL_INFO )
-  deallocate(global_mesh_collection)
+  !Initialise aspects of output
+  call initialise_output(comm, mesh_id, twod_mesh_id, chi, xios_ctx)
+
+  ! Create runtime_constants object. This in turn creates various things
+  ! needed by the timestepping algorithms such as mass matrix operators, mass
+  ! matrix diagonal fields and the geopotential field
+  call create_runtime_constants(mesh_id, twod_mesh_id, chi)
+
+  ! Create the depository and prognostics field collections.
+  ! Actually, here they will have the same contents (prognostics points to all
+  ! the fields in the depository), but both are maintained to be consistent
+  ! with more complex models
+  depository=field_collection_type(name='depository')
+  prognostic_fields=field_collection_type(name='prognostics')
+
+  ! Create the prognostic fields
+  call create_gravity_wave_prognostics(mesh_id, depository, prognostic_fields)
+
+  ! Initialise prognostic fields
+  if (checkpoint_read) then                 ! Recorded check point to start from
+    call read_checkpoint(prognostic_fields, timestep_start-1)
+  else                                      ! No check point to start from
+    call gw_init_fields_alg(prognostic_fields)
+  end if
+
+  ! Initialise the gravity-wave model
+  call init_gravity_wave( mesh_id, prognostic_fields )
 
   ! Output initial conditions
   ! We only want these once at the beginning of a run
@@ -195,10 +147,10 @@ contains
     end if
 
     if ( write_diag ) then
-      ! Calculation and output of diagnostics
-      call write_vector_diagnostic('wind', wind, ts_init, mesh_id, nodal_output_on_w3)
-      call write_scalar_diagnostic('pressure', pressure, ts_init, mesh_id, nodal_output_on_w3)
-      call write_scalar_diagnostic('buoyancy', buoyancy, ts_init, mesh_id, nodal_output_on_w3)
+      call gravity_wave_diagnostics(mesh_id,           &
+                                    prognostic_fields, &
+                                    ts_init,           &
+                                    nodal_output_on_w3)
     end if
 
   end if
@@ -230,11 +182,9 @@ contains
     LOG_LEVEL_TRACE )
     write( log_scratch_space, '(A,I0)' ) 'Start of timestep ', timestep
     call log_event( log_scratch_space, LOG_LEVEL_INFO )
-    if (timestep == timestep_start) then
-      call gravity_wave_alg_init(mesh_id, wind, pressure, buoyancy)
-    end if
 
-    call gravity_wave_alg_step(wind, pressure, buoyancy)
+    call step_gravity_wave(prognostic_fields)
+
     write( log_scratch_space, '(A,I0)' ) 'End of timestep ', timestep
     call log_event( log_scratch_space, LOG_LEVEL_INFO )
     call log_event( &
@@ -244,34 +194,13 @@ contains
 
       call log_event("Gravity Wave: writing diagnostic output", LOG_LEVEL_INFO)
 
-      call write_vector_diagnostic('wind', wind, timestep, mesh_id, nodal_output_on_w3)
-      call write_scalar_diagnostic('pressure', pressure, timestep, mesh_id, nodal_output_on_w3)
-      call write_scalar_diagnostic('buoyancy', buoyancy, timestep, mesh_id, nodal_output_on_w3)
-
+      call gravity_wave_diagnostics(mesh_id,           &
+                                    prognostic_fields, &
+                                    timestep,          &
+                                    nodal_output_on_w3)
     end if
 
   end do
-
-  ! Write checkpoint/restart files if required
-  if( checkpoint_write ) then
-    write(log_scratch_space,'(A,I6)') &
-        "Checkpointing pressure at timestep ", timestep_end
-    call log_event(log_scratch_space,LOG_LEVEL_INFO)
-    call pressure%write_checkpoint("checkpoint_pressure", trim(ts_fname(checkpoint_stem_name,&
-                                  "", "pressure", timestep_end,"")))
-
-    write(log_scratch_space,'(A,I6)') &
-         "Checkpointing wind at timestep ", timestep_end
-    call log_event(log_scratch_space,LOG_LEVEL_INFO)
-    call wind%write_checkpoint("checkpoint_wind", trim(ts_fname(checkpoint_stem_name,&
-                                  "", "wind", timestep_end,"")))
-
-    write(log_scratch_space,'(A,I6)') &
-         "Checkpointing buoyancy at timestep ", timestep_end
-    call log_event(log_scratch_space,LOG_LEVEL_INFO)
-    call buoyancy%write_checkpoint("checkpoint_buoyancy", trim(ts_fname(checkpoint_stem_name,&
-                                  "", "buoyancy", timestep_end,"")))
-  end if
 
   end subroutine run
 
@@ -287,8 +216,12 @@ contains
   ! Model finalise
   !----------------------------------------------------------------------------
 
-  ! Write checksums to file
-  call checksum_alg( program_name, wind, 'wind', buoyancy, 'buoyancy', pressure, 'pressure')
+  call final_gravity_wave(prognostic_fields, program_name)
+
+  ! Write checkpoint/restart files if required
+  if( checkpoint_write ) then
+    call write_checkpoint(prognostic_fields,timestep_end)
+  end if
 
   call log_event( program_name//': Miniapp run complete', LOG_LEVEL_INFO )
   if ( subroutine_timers ) then
@@ -296,31 +229,17 @@ contains
     call output_timer()
   end if
 
-  call gravity_wave_alg_final()
-
   !----------------------------------------------------------------------------
   ! Driver layer finalise
   !----------------------------------------------------------------------------
 
-  ! Finalise XIOS context if we used it for diagnostic output or checkpointing
-  if ( use_xios_io ) then
-    call xios_context_finalize()
-  end if
+  call finalise_output()
 
-  ! Finalise XIOS
-  call xios_finalize()
-
-  ! Finalise namelist configurations
-  call final_configuration()
-
-  ! Finalise YAXT
-  call xt_finalize()
+  call finalise_infrastructure()
 
   ! Finalise mpi and release the communicator
   call finalise_comm()
 
-  ! Finalise the logging system
-  call finalise_logging()
 
 end subroutine finalise
 
