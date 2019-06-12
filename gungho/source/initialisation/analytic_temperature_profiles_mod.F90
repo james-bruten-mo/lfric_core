@@ -26,6 +26,7 @@ use idealised_config_mod,         only : test_cold_bubble_x,           &
                                          test_solid_body_rotation_alt, &
                                          test_deep_baroclinic_wave,    &
                                          test_dry_cbl,                 &
+                                         test_shallow_conv,            &
                                          test_cos_phi,                 &
                                          test_cosine_bubble
 use initial_density_config_mod,    only : r1, x1, y1, r2, x2, y2,     &
@@ -233,6 +234,21 @@ function analytic_temperature(chi, choice) result(temperature)
       temperature = 293.0
     else if (z> 1000.0)then
       temperature = 300.0 + 15.0*(z-1000.0)/(6000.0-1000.0)
+    end if
+
+  case( test_shallow_conv )
+    ! BOMEX profile - Siebesma et al 2003
+    if (z<= 520.0_r_def) then
+      temperature = 298.7_r_def
+    else if (z<= 1480.0_r_def) then
+      temperature = 298.7_r_def + ( 302.4_r_def - 298.7_r_def )*( z - 520.0_r_def ) &
+                                   /( 1480.0_r_def - 520.0_r_def )
+    else if (z<= 2000.0_r_def) then
+      temperature = 302.4_r_def + ( 308.2_r_def - 302.4_r_def )*( z - 1480.0_r_def ) &
+                                   /( 2000.0_r_def - 1480.0_r_def )
+    else
+      temperature = 308.2_r_def + ( 311.85_r_def - 308.2_r_def )*( z - 2000.0_r_def ) &
+                                   /( 3000.0_r_def - 2000.0_r_def )
     end if
 
   case( test_cos_phi )

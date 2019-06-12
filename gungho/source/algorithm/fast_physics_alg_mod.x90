@@ -23,6 +23,9 @@ module fast_physics_alg_mod
                                   convection_placement,        &
                                   convection_placement_fast,   &
                                   blayer_placement_fast
+
+  use convection_config_mod,only: cv_scheme,                   &
+                                  cv_scheme_lambert_lewis
   ! Derived Types
   use field_mod,            only: field_type
   use field_collection_mod, only: field_collection_type
@@ -114,9 +117,11 @@ contains
     end if
 
 #ifdef UM_PHYSICS
-    if (convection == convection_um .and. &
-        convection_placement == convection_placement_fast) then
+    if (convection == convection_um .and.                       &
+        convection_placement == convection_placement_fast .and. &
+        cv_scheme == cv_scheme_lambert_lewis ) then
       ! Algorithm that calls the UM convection scheme
+      ! Only suitable for Lambert Lewis convection scheme call
       call log_event( 'fast_physics: Running the convection scheme', LOG_LEVEL_INFO )
       call conv_alg_step(physics_incs, derived_fields, twod_fields, exner, mr)
       ! Flag that convection has been done in this timestep and increments

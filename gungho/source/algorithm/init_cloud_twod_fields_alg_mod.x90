@@ -48,15 +48,16 @@ contains
     type( field_type ), pointer :: zh_twod  => null()
     type( field_type ), pointer :: z0msea_twod  => null()
     type( field_type ), pointer :: conv_rain_twod  => null()
+    type( field_type ), pointer :: conv_snow_twod  => null()
     type( field_type ), pointer :: ls_rain_twod  => null()
     type( field_type ), pointer :: ls_snow_twod  => null()
-
     !=== Initialise twod fields ==================================!
 
     tstar_twod => twod_fields%get_field('tstar')
     zh_twod => twod_fields%get_field('zh')
     z0msea_twod => twod_fields%get_field('z0msea')
     conv_rain_twod => twod_fields%get_field('conv_rain')
+    conv_snow_twod => twod_fields%get_field('conv_snow')
     ls_rain_twod => twod_fields%get_field('ls_rain')
     ls_snow_twod => twod_fields%get_field('ls_snow')
 
@@ -68,10 +69,11 @@ contains
 
     call log_event( "Gungho: Initialising twod fields", LOG_LEVEL_INFO )
 
-    call invoke( setval_c(tstar_twod, 300.0_r_def))
-    call invoke( setval_c(zh_twod, 1000.0_r_def))
-    call invoke( setval_c(z0msea_twod, 1.5e-4_r_def))
-    call invoke( setval_c(conv_rain_twod, 0.0_r_def))
+    call invoke( setval_c(tstar_twod, 300.0_r_def),  &
+                 setval_c(zh_twod, 1000.0_r_def),    &
+                 setval_c(z0msea_twod, 1.5e-4_r_def),&
+                 setval_c(conv_rain_twod, 0.0_r_def),&
+                 setval_c(conv_snow_twod, 0.0_r_def) )
     call invoke( setval_c(ls_rain_twod, 0.0_r_def))
     call invoke( setval_c(ls_snow_twod, 0.0_r_def))
 

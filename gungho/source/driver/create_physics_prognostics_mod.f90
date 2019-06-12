@@ -122,6 +122,7 @@ contains
     call add_physics_field(twod_fields, 'zh',      vector_space, checkpoint_restart_flag, twod=.true.)
     call add_physics_field(twod_fields, 'z0msea',  vector_space, checkpoint_restart_flag, twod=.true.)
     call add_physics_field(twod_fields, 'conv_rain',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, 'conv_snow',  vector_space, checkpoint_restart_flag, twod=.true.)
 
     checkpoint_restart_flag = .false.
     call add_physics_field(twod_fields, 'ntml',    vector_space, checkpoint_restart_flag, twod=.true.)
@@ -145,6 +146,9 @@ contains
     call add_physics_field(cloud_fields, 'liquid_fraction', vector_space, checkpoint_restart_flag)
     call add_physics_field(cloud_fields, 'bulk_fraction',   vector_space, checkpoint_restart_flag)
     call add_physics_field(cloud_fields, 'rh_crit_wth',     vector_space, checkpoint_restart_flag)
+    ! convective cloud field prognostics
+    call add_physics_field(cloud_fields, 'cca', vector_space, checkpoint_restart_flag)
+    call add_physics_field(cloud_fields, 'ccw', vector_space, checkpoint_restart_flag)
 
     !========================================================================
     ! Increment values from individual physics parametrizations
@@ -158,16 +162,28 @@ contains
     call add_physics_field(physics_incs, 'dmv_bl', vector_space, checkpoint_restart_flag)
     call add_physics_field(physics_incs, 'dt_conv', vector_space, checkpoint_restart_flag)
     call add_physics_field(physics_incs, 'dmv_conv', vector_space, checkpoint_restart_flag)
+    call add_physics_field(physics_incs, 'dmcl_conv', vector_space, checkpoint_restart_flag)
+    call add_physics_field(physics_incs, 'dmcf_conv', vector_space, checkpoint_restart_flag)
     call add_physics_field(physics_incs, 'dtl_mphys', vector_space, checkpoint_restart_flag)
     call add_physics_field(physics_incs, 'dmt_mphys', vector_space, checkpoint_restart_flag)
     call add_physics_field(physics_incs, 'sw_heating_rate', vector_space, checkpoint_restart_flag)
     call add_physics_field(physics_incs, 'lw_heating_rate', vector_space, checkpoint_restart_flag)
 
+    ! Increments on pgrid (not U and V grids) but rho levels
+    vector_space => function_space_collection%get_fs(mesh_id, 0, W3)
+    call add_physics_field(physics_incs, 'du_conv', vector_space, checkpoint_restart_flag)
+    call add_physics_field(physics_incs, 'dv_conv', vector_space, checkpoint_restart_flag)
+
+
     ! Put references to fields requiring checkpointing into the prognostic fields collection
     call prognostic_fields%add_reference_to_field( twod_fields%get_field('tstar') )
     call prognostic_fields%add_reference_to_field( twod_fields%get_field('zh') )
     call prognostic_fields%add_reference_to_field( twod_fields%get_field('z0msea') )
+    call prognostic_fields%add_reference_to_field( twod_fields%get_field('conv_rain') )
+    call prognostic_fields%add_reference_to_field( twod_fields%get_field('conv_snow') )
 
+    call prognostic_fields%add_reference_to_field( cloud_fields%get_field('cca') )
+    call prognostic_fields%add_reference_to_field( cloud_fields%get_field('ccw') )
     if (cloud /= cloud_none)then
       call prognostic_fields%add_reference_to_field( cloud_fields%get_field('area_fraction') )
       call prognostic_fields%add_reference_to_field( cloud_fields%get_field('ice_fraction') )
@@ -206,7 +222,6 @@ contains
     type(function_space_type), intent(in)      :: vector_space
     logical(l_def), intent(in)                 :: checkpoint_restart_flag
     logical, optional, intent(in)              :: twod
-
     !Local variables
     type(field_type)                           :: new_field
 
@@ -228,7 +243,7 @@ contains
     if (use_xios_io .and. write_diag) then
       ! All physics fields currently require output on faces...
       write_diag_behaviour => xios_write_field_face
-      if (present(twod)) then
+      if (present(twod))then
         if (twod) write_diag_behaviour => xios_write_field_single_face
       end if
       call new_field%set_write_behaviour(write_diag_behaviour)

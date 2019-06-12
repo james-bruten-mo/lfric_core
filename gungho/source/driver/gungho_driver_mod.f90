@@ -44,6 +44,7 @@ module gungho_driver_mod
                                   only : init_gungho_prognostics_alg
   use moist_dyn_factors_alg_mod,  only : moist_dyn_factors_alg
   use initial_cloud_alg_mod,      only : initial_cloud_alg
+  use init_physics_incs_alg_mod,  only : init_physics_incs_alg
   use init_physics_prognostics_alg_mod, &
                                   only : init_physics_prognostics_alg
   use init_mesh_mod,              only : init_mesh
@@ -332,6 +333,8 @@ contains
           if ( cloud == cloud_none ) then  
             call initial_cloud_alg(cloud_fields)
           end if
+          ! Set the increments to 0 initially
+          call init_physics_incs_alg(physics_incs)
         end if
 
       case ( init_option_fd_start_dump )

@@ -10,4 +10,6 @@ export socrates_rev=um11.3
 export socrates_sources=
 export steplist="extract preprocess-atmos"
 export um_rev=vn11.3
-export um_sources=
+export um_sources="fcm:um.xm-br/dev/rachelstratton/vn11.3_conv_lfric@67324" 
+
+#  branch vn11.3_conv_lfric on UM trunk for UM11.4 ticket4602

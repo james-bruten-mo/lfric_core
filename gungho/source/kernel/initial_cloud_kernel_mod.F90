@@ -30,12 +30,14 @@ module initial_cloud_kernel_mod
     !> Kernel metadata for Psyclone 
     type, public, extends(kernel_type) :: initial_cloud_kernel_type
         private
-        type(arg_type) :: meta_args(5) = (/              &
+        type(arg_type) :: meta_args(7) = (/              &
             arg_type(GH_FIELD,   GH_READWRITE,  WTHETA), &
             arg_type(GH_FIELD,   GH_READWRITE,  WTHETA), &
             arg_type(GH_FIELD,   GH_READWRITE,  WTHETA), &
             arg_type(GH_FIELD,   GH_READWRITE,  WTHETA), &
-            arg_type(GH_FIELD,   GH_READWRITE,  WTHETA)  &
+            arg_type(GH_FIELD,   GH_READWRITE,  WTHETA), &
+            arg_type(GH_FIELD,   GH_READWRITE,  WTHETA), &  ! CCA
+            arg_type(GH_FIELD,   GH_READWRITE,  WTHETA)  &  ! CCW
             /)
         integer :: iterates_over = CELLS
 
@@ -63,6 +65,8 @@ contains
     !! @param[in,out] cf_liq        Liquid cloud fraction
     !! @param[in,out] cf_bulk       Combined cloud fraction
     !! @param[in,out] rh_crit_wth   Critical relative humidity
+    !! @param[in,out] cca           Convective cloud amount
+    !! @param[in,out] ccw           Convective cloud water
     !! @param[in] ndf_wth Number of degrees of freedom per cell for wtheta
     !! @param[in] undf_wth Number of total degrees of freedom for wtheta
     !! @param[in] map_wth Dofmap for the cell at the base of the column
@@ -72,6 +76,8 @@ contains
                                   cf_liq,        &
                                   cf_bulk,       &
                                   rh_crit_wth,   &
+                                  cca,           &
+                                  ccw,           &
                                   ndf_wth,       &
                                   undf_wth,      &
                                   map_wth)
@@ -85,7 +91,8 @@ contains
         integer(kind=i_def), intent(in),    dimension(ndf_wth)  :: map_wth
         real(kind=r_def),    intent(inout), dimension(undf_wth) :: cf_area, cf_ice, &
                                                                    cf_liq, cf_bulk, &
-                                                                   rh_crit_wth
+                                                                   rh_crit_wth,     &
+                                                                   cca, ccw
 
         !Internal variables
         integer(kind=i_def)                 :: k, df
@@ -99,6 +106,9 @@ contains
           cf_liq(map_wth(1) + k)  = 0.0_r_def
           cf_bulk(map_wth(1) + k) = 0.0_r_def
           rh_crit_wth(map_wth(1) + k) = 0.0_r_def
+
+          cca(map_wth(1) + k) = 0.0_r_def
+          ccw(map_wth(1) + k) = 0.0_r_def
         end do
         if ( cloud == cloud_um .and. &
              scheme == scheme_smith ) then

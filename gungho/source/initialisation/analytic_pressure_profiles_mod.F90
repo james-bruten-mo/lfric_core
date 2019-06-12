@@ -35,9 +35,10 @@ use idealised_config_mod,       only : test_cold_bubble_x,           &
                                        test_isot_cold_atm,           &
                                        test_const_lapse_rate,        &
                                        test_dry_cbl,                 &
+                                       test_shallow_conv,            &
                                        test_cos_phi,                 &
                                        test_cosine_bubble
-use initial_density_config_mod, only : r1, x1, y1, z1, r2, x2, y2, z2,    &
+use initial_density_config_mod, only : r1, x1, y1, z1, r2, x2, y2, z2, &
                                        tracer_max, tracer_background
 use base_mesh_config_mod,       only : geometry, &
                                        geometry_spherical
@@ -248,7 +249,7 @@ contains
       call deep_baroclinic_wave(long, lat, radius-scaled_radius, &
                                 pressure, temperature, density, &
                                 u, v, w) 
-    case(test_dry_cbl)
+    case(test_dry_cbl, test_shallow_conv)
       call reference_profile(pressure, density, temperature, chi, choice)
 
     case( test_cos_phi )

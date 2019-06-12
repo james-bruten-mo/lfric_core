@@ -21,6 +21,11 @@ module um_init_mod
   use log_mod,               only : log_event,         &
                                     log_scratch_space, &
                                     LOG_LEVEL_ERROR
+  use convection_config_mod, only : cv_scheme,                         &
+                                    cv_scheme_gregory_rowntree,        &
+                                    cv_scheme_lambert_lewis,           &
+                                    number_of_convection_substeps
+
   use mixing_config_mod,     only : smagorinsky,                   &
                                     mixing_method => method,       &
                                     method_3d_smag,         &
@@ -61,7 +66,24 @@ contains
     use cv_run_mod, only: icvdiag, cvdiag_inv, cvdiag_sh_wtest,            &
          limit_pert_opt, tv1_sd_opt, iconv_congestus, iconv_deep,          &
          ent_fac_dp, cldbase_opt_dp, cldbase_opt_sh, w_cape_limit,         &
-         l_param_conv
+         l_param_conv, i_convection_vn, l_ccrad, l_mom, adapt, amdet_fac,  &
+         bl_cnv_mix, anvil_factor, ccw_for_precip_opt, cldbase_opt_md,     &
+         cnv_wat_load_opt,dd_opt, deep_cmt_opt, eff_dcff, eff_dcfl,        &
+         ent_dp_power, ent_fac_md, ent_opt_dp, ent_opt_md, fac_qsat,       &
+         ent_fac_md, iconv_deep, iconv_mid, iconv_shallow,l_3d_cca,        &
+         l_anvil, l_cmt_heating, l_cv_conserve_check, l_safe_conv,         &
+         mdet_opt_dp, mid_cnv_pmin, mparwtr, qlmin, n_conv_calls,          &
+         qstice, r_det, sh_pert_opt,t_melt_snow, termconv, tice,           &
+         tower_factor,ud_factor, fdet_opt, anv_opt, cape_timescale,        &
+         cca2d_dp_opt,cca2d_md_opt,cca2d_sh_opt,                           &
+         cca_dp_knob,cca_md_knob,cca_sh_knob,                              &
+         ccw_dp_knob,ccw_md_knob,ccw_sh_knob,                              &
+         cnv_cold_pools,dil_plume_water_load,l_cloud_deep, mid_cmt_opt,    &
+         plume_water_load, rad_cloud_decay_opt, cape_bottom, cape_top,     &
+         cape_min, i_convection_vn_6a, i_cv_llcs
+    use cv_stash_flg_mod, only: set_convection_output_flags
+    use cv_set_dependent_switches_mod, only: cv_set_dependent_switches
+
     use cderived_mod, only: delta_lambda, delta_phi
     use dyn_coriolis_mod, only: f3_at_u
     use dynamics_input_mod, only: numcycles
@@ -186,11 +208,11 @@ contains
     puns             = 0.5_r_um
     pstb             = 2.0_r_um
     nl_bl_levels     = bl_levels
-    if (convection == convection_um) non_local_bl = 0
     flux_bc_opt      = flux_bc_opt_in
 
     ! Convection namelist options - should be moved to namelist in future
     if (convection == convection_um) l_param_conv = .true.
+    ! need by conv_diag even if Gregory-Rowntree scheme not called
     icvdiag         = 1
     cvdiag_inv      = 0
     cvdiag_sh_wtest = 0.02_r_um
@@ -199,9 +221,96 @@ contains
     iconv_congestus = 0
     iconv_deep      = 1
     ent_fac_dp      = 1.13_r_um
-    cldbase_opt_dp  = 3
     cldbase_opt_sh  = 0
-    w_cape_limit    = 0.3_r_um
+    cldbase_opt_dp  = 8
+    w_cape_limit    = 0.4_r_um
+    cape_bottom = 5
+    cape_top    = 50
+
+    if ( l_param_conv ) then
+
+      ! Convection scheme
+      select case (cv_scheme)
+        case(cv_scheme_gregory_rowntree) 
+          i_convection_vn = i_convection_vn_6a
+          ! set for testing GA7 like 6A convection
+          adapt   = 7
+          amdet_fac = 3.0_r_um
+          anv_opt = 0
+          anvil_factor = 1.0000_r_um
+          bl_cnv_mix = 1
+          cape_min   = 0.5_r_um
+          cape_timescale = 3600
+          cca2d_dp_opt = 1
+          cca2d_md_opt = 1
+          cca2d_sh_opt = 2
+          cca_dp_knob = 0.10_r_um 
+          cca_md_knob = 0.10_r_um
+          cca_sh_knob = 0.20_r_um
+          ccw_dp_knob = 1.00_r_um
+          ccw_for_precip_opt = 4
+          ccw_md_knob = 1.00_r_um
+          ccw_sh_knob = 1.00_r_um
+          cldbase_opt_md   = 7
+          cnv_cold_pools   = 0
+          cnv_wat_load_opt = 0
+          dd_opt = 1
+          deep_cmt_opt = 5
+          dil_plume_water_load = 0
+          eff_dcff = 1.0_r_um
+          eff_dcfl = 1.0_r_um
+          ent_dp_power = 1.00_r_um
+          ent_fac_md   = 0.90_r_um
+          ent_opt_dp = 3
+          ent_opt_md = 0
+          fac_qsat = 0.500_r_um
+          fdet_opt      = 0
+          iconv_mid     = 1
+          iconv_shallow = 1
+
+          l_cloud_deep  = .true.
+          l_3d_cca = .true.
+          l_anvil  = .true.
+          l_ccrad  = .true.
+
+          l_cmt_heating       = .true.
+          l_cv_conserve_check = .true.
+          l_mom               = .true.
+          l_safe_conv         = .true.
+
+          mdet_opt_dp = 1
+          mid_cmt_opt = 0
+          mid_cnv_pmin = 10000.00_r_um
+          mparwtr      = 1.5000e-3_r_um
+          n_conv_calls = int( number_of_convection_substeps,i_um)
+          plume_water_load = 0
+          qlmin  = 3.0000e-4_r_um
+          qstice = 3.5000e-3_r_um
+          r_det  = 0.8000_r_um
+          rad_cloud_decay_opt = 0
+          sh_pert_opt = 1
+          t_melt_snow  = 274.15_r_um
+          termconv    = 1
+          tice         = 263.1500_r_um
+          tower_factor = 1.0000_r_um
+          ud_factor    = 1.0000_r_um
+
+          ! Need to set switches based on above UM convection namelist info
+          call cv_set_dependent_switches( )
+          ! Flags set to calculate all diagnostics i.e. as a SCM
+          call set_convection_output_flags( )
+        case(cv_scheme_lambert_lewis) 
+          i_convection_vn = i_cv_llcs
+          non_local_bl    = 0            ! Only valid for this option
+        case default
+          write( log_scratch_space, '(A,I5)' )  &
+          'Invalid convection scheme option, stopping', cv_scheme 
+          call log_event( log_scratch_space, LOG_LEVEL_ERROR )
+      end select
+    else
+      ! No call to convection but using 6A convective diagnosis scheme
+      i_convection_vn = i_convection_vn_6a
+    end if 
 
     ! Cloud namelist options - should be moved to namelist in future
     if ( cloud == cloud_um ) then
@@ -338,7 +447,6 @@ contains
     sice_pts_ncat(:)=0
     sice_index_ncat(:,:)=0
     sice_frac_ncat(:,:)=0.0_r_um
-
     !-----------------------------------------------------------------------
     ! Code to prepare for Smagorinsky turbulence scheme
     !-----------------------------------------------------------------------

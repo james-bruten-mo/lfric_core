@@ -35,6 +35,7 @@ use idealised_config_mod,       only : test_cold_bubble_x,           &
                                        test_isot_atm,                &
                                        test_isot_cold_atm,           &
                                        test_const_lapse_rate,        &
+                                       test_shallow_conv,            &
                                        test_cos_phi,                 &
                                        test_cosine_bubble
 use initial_density_config_mod, only : r1, x1, y1, z1, r2, x2, y2, z2,         &
@@ -187,7 +188,8 @@ function analytic_density(chi, choice, time) result(density)
 
   case ( test_dry_cbl, test_gravity_wave, &
          test_isentropic, test_isot_atm,  &
-         test_isot_cold_atm, test_const_lapse_rate )
+         test_isot_cold_atm, test_const_lapse_rate, &
+         test_shallow_conv )
     call reference_profile(pressure, density, temperature, chi, choice)
 
   case ( test_cold_bubble_x, test_cold_bubble_y ) 

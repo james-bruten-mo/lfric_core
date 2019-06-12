@@ -25,7 +25,8 @@ use idealised_config_mod,           only : test_cold_bubble_x,    &
                                            test_isot_cold_atm,    &
                                            test_warm_bubble,      &
                                            test_warm_bubble_3d,   &
-                                           test_yz_cosine_hill
+                                           test_yz_cosine_hill,   &
+                                           test_shallow_conv
 use initial_temperature_config_mod, only : bvf_square, theta_surf
 use planet_config_mod,              only : scaled_radius, gravity, Cp, Rd, &
                                            kappa, p_zero
@@ -106,6 +107,18 @@ else                     ! BIPERIODIC PLANE DOMAIN
         theta_s = theta_surf * exp ( nsq_over_g * z )
         exner_s = exner_surf - gravity**2/(Cp * theta_surf * bvf_square)   &
                      * (1.0_r_def - exp ( - nsq_over_g * z ))
+      end if
+    case( test_shallow_conv )   ! shallow convection
+      if (z<=500.0_r_def) then
+        ! Isentropic
+        theta_s = theta_surf
+        exner_s = exner_surf - gravity/(Cp*theta_surf)*z
+      else if (z>500.0_r_def) then
+        ! Isothermal
+        nsq_over_g = bvf_square/gravity
+        theta_s = theta_surf * exp ( nsq_over_g * z )
+        exner_s = exner_surf - gravity**2 / (Cp * theta_surf * bvf_square) &
+                  * (1.0_r_def - exp ( - nsq_over_g * z ))
       end if
     !> @todo No values for the following idealised tests were provided and
     !>       this risked unexpected divide by zero errors. These errors are

@@ -38,7 +38,7 @@
 /
 
 &idealised
-    test = 'dry_cbl',
+    test = 'shallow_conv',
 /
 
 &initial_density
@@ -66,7 +66,6 @@
     v0            = 0.0,
 /
 
-
 &initialization
  init_option = 'analytic'
  ancil_option = 'none'
@@ -78,6 +77,7 @@
   start_dump_filename       = ''
   start_dump_directory      = ''
 /
+
 &io
   use_xios_io               = .true.
   write_diag                = .true.
@@ -262,13 +262,18 @@
 
 &blayer
     flux_bc_opt=1,
-    fixed_flux_e=0.0,
-    fixed_flux_h=300.0,
+    fixed_flux_e=130.052,
+    fixed_flux_h=8.04,
 /
 
 &cloud
     scheme='smith',
     rh_crit=98*0.99,
+/
+
+&convection
+    cv_scheme='gregory_rowntree',
+    number_of_convection_substeps=2,
 /
 
 &orography
@@ -323,7 +328,7 @@
 &section_choice
     radiation='none',
     boundary_layer='um',
-    convection='none',
+    convection='um',
     microphysics='um',
     cloud='um'
     spectral_gwd='um'

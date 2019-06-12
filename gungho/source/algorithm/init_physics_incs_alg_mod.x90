@@ -34,6 +34,12 @@ contains
     ! local fields to unpack
     type( field_type ), pointer :: dt_conv => null()
     type( field_type ), pointer :: dmv_conv => null()
+    ! Convective cloud increments
+    type( field_type ), pointer :: dmcl_conv => null()
+    type( field_type ), pointer :: dmcf_conv => null()
+    ! convective CMT increments
+    type( field_type ), pointer :: du_conv => null()
+    type( field_type ), pointer :: dv_conv => null()
     type( field_type ), pointer :: dtl_mphys => null()
     type( field_type ), pointer :: dmt_mphys => null()
     type( field_type ), pointer :: sw_heating_rate => null()
@@ -42,21 +48,25 @@ contains
     ! unpack the local fields
     dt_conv => physics_incs%get_field('dt_conv')
     dmv_conv => physics_incs%get_field('dmv_conv')
+    dmcl_conv => physics_incs%get_field('dmcl_conv')
+    dmcf_conv => physics_incs%get_field('dmcf_conv')
+    du_conv => physics_incs%get_field('du_conv')
+    dv_conv => physics_incs%get_field('dv_conv')
     dtl_mphys => physics_incs%get_field('dtl_mphys')
     dmt_mphys => physics_incs%get_field('dmt_mphys')
     sw_heating_rate => physics_incs%get_field('sw_heating_rate')
     lw_heating_rate => physics_incs%get_field('lw_heating_rate')
 
-    ! initialise convection increments to 0
-    call invoke( setval_c(dt_conv, 0.0_r_def), &
-                 setval_c(dmv_conv, 0.0_r_def) )
-
-    ! initialise microphysics increments to 0
-    call invoke( setval_c(dtl_mphys, 0.0_r_def), &
-                 setval_c(dmt_mphys, 0.0_r_def) )
-
-    ! initialise radiative heating rates to 0
-    call invoke( setval_c(sw_heating_rate, 0.0_r_def), &
+    ! initialise increments to 0
+    call invoke( setval_c(dt_conv, 0.0_r_def),         &
+                 setval_c(dmv_conv, 0.0_r_def),        &
+                 setval_c(dmcl_conv, 0.0_r_def),       &
+                 setval_c(dmcf_conv, 0.0_r_def),       &
+                 setval_c(du_conv, 0.0_r_def),         &
+                 setval_c(dv_conv, 0.0_r_def),         &
+                 setval_c(dtl_mphys, 0.0_r_def),       &
+                 setval_c(dmt_mphys, 0.0_r_def),       &
+                 setval_c(sw_heating_rate, 0.0_r_def), &
                  setval_c(lw_heating_rate, 0.0_r_def) )
 
   end subroutine init_physics_incs_alg

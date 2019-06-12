@@ -41,6 +41,9 @@ contains
     type( field_type ), pointer :: cf_bulk  => null()
     type( field_type ), pointer :: rh_crit_wth  => null()
 
+    type( field_type ), pointer :: cca  => null()
+    type( field_type ), pointer :: ccw  => null()
+
     !=== Initialise cloud fields ==================================!
 
     cf_area => cloud_fields%get_field('area_fraction')
@@ -49,8 +52,11 @@ contains
     cf_bulk => cloud_fields%get_field('bulk_fraction')
     rh_crit_wth => cloud_fields%get_field('rh_crit_wth')
 
+    cca => cloud_fields%get_field('cca')
+    ccw => cloud_fields%get_field('ccw')
+
     call invoke(initial_cloud_kernel_type( cf_area, cf_ice, cf_liq, &
-                                         cf_bulk, rh_crit_wth))
+                                         cf_bulk, rh_crit_wth, cca, ccw))
 
 
   end subroutine initial_cloud_alg
