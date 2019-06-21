@@ -583,9 +583,9 @@
         pre-script = """
                      {{'\n                     '|
                        command_list( TARGET_BASE_SETUP,
-                                    compiler_setup[compiler],
-                                    TARGET_RUN_SETUP,
-                                    TARGET_REVEAL_SETUP )}}
+                                     compiler_setup[compiler],
+                                     TARGET_RUN_SETUP,
+                                     TARGET_REVEAL_SETUP )}}
                        ulimit -s unlimited
                      """
         script = rose task-run --app-key=canned_test --command-key={{TARGET_RUN_METHOD}}
@@ -786,6 +786,7 @@
 
 {%-                 endif %} {# configuration_label #}
 
+            BIG_DATA_DIR    = {{TARGET_BIG_DATA_DIR}}
             BIN_DIR         = $DESTINATION_DIRECTORY/bin
             APP_NAME        = {{appName}}
             DT              = {{dt_values[i]}}
