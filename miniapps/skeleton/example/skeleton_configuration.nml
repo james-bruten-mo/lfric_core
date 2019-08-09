@@ -38,6 +38,10 @@ vorticity_in_w1=.false.,
 use_physics=.false.
 /
 
+&mixing
+smagorinsky=.false.
+/
+
 &multigrid
 l_multigrid=.false.,
 /

@@ -19,6 +19,8 @@
     'canned_test("gravity_wave")',
     'check_compilers("gravity_wave", "default", "fast-debug",
                      resolution=("C24",100.0), publish=True)',
+    'check_compilers("gravity_wave", "default", "full-debug",
+                     resolution=("C24",100.0), publish=True)',
     'godliness(publish=True)',
     'cleanliness'],
 'nightly': [

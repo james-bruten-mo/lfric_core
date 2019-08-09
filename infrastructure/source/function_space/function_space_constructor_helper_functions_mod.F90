@@ -618,7 +618,7 @@ contains
     ! Allocate arrays to allow on the fly evaluation of basis functions
     select case (gungho_fs)
     case (W1, W2, W2H, W2V, W2broken, W2trace)
-      allocate( unit_vec(ndof_cell,3) )
+      allocate( unit_vec(3, ndof_cell) )
     end select
 
 
@@ -728,7 +728,7 @@ contains
 
       do idx=1, ndof_cell
         do i=1, 3
-          unit_vec(idx,i) = 0.0_r_def
+          unit_vec(i, idx) = 0.0_r_def
         end do
       end do
 
@@ -743,7 +743,7 @@ contains
             lx(idx) = jx
             ly(idx) = jy
             lz(idx) = jz
-            call reference_element%get_tangent_to_edge( S, unit_vec(idx,:) )
+            call reference_element%get_tangent_to_edge( S, unit_vec(:,idx) )
             ! Label volume degrees of freedom
             entity_dofs(idx) = V
             idx = idx + 1
@@ -758,7 +758,7 @@ contains
             lx(idx) = jx
             ly(idx) = jy
             lz(idx) = jz
-            call reference_element%get_tangent_to_edge( W, unit_vec(idx,:) )
+            call reference_element%get_tangent_to_edge( W, unit_vec(:,idx) )
             ! Label volume degrees of freedom
             entity_dofs(idx) = V
             idx = idx + 1
@@ -773,7 +773,7 @@ contains
             lx(idx) = jx
             ly(idx) = jy
             lz(idx) = jz
-            call reference_element%get_tangent_to_edge( B, unit_vec(idx,:) )
+            call reference_element%get_tangent_to_edge( B, unit_vec(:,idx) )
             ! Label volume degrees of freedom
             entity_dofs(idx) = V
             idx = idx + 1
@@ -793,7 +793,7 @@ contains
             lz(idx) = j(j2l_face(i,3))
             call reference_element%get_edge_on_face( i, edges_on_face )
             call reference_element%get_tangent_to_edge( edges_on_face(1), &
-                                                        unit_vec(idx,:) )
+                                                        unit_vec(:,idx) )
             if (i == number_faces - 1) dof_on_vert_boundary(idx,1) = 0
             if (i == number_faces)     dof_on_vert_boundary(idx,2) = 0
             ! Label face degrees of freedom
@@ -811,7 +811,7 @@ contains
             lz(idx) = j(j2l_face(i,3))
             call reference_element%get_edge_on_face( i, edges_on_face )
             call reference_element%get_tangent_to_edge( edges_on_face(2), &
-                                                        unit_vec(idx,:) )
+                                                        unit_vec(:,idx) )
             if (i == number_faces - 1) dof_on_vert_boundary(idx,1) = 0
             if (i == number_faces)     dof_on_vert_boundary(idx,2) = 0
             ! Label face degrees of freedom
@@ -830,7 +830,7 @@ contains
           lx(idx) = j(j2l_edge(i,1))
           ly(idx) = j(j2l_edge(i,2))
           lz(idx) = j(j2l_edge(i,3))
-          call reference_element%get_tangent_to_edge( i, unit_vec(idx,:) )
+          call reference_element%get_tangent_to_edge( i, unit_vec(:,idx) )
           if (i <= number_horizontal_edges) dof_on_vert_boundary(idx,1) = 0
           if (i > number_edges - number_horizontal_edges) &
                                             dof_on_vert_boundary(idx,2) = 0
@@ -843,29 +843,29 @@ contains
 
       do i=1, ndof_cell
 
-        nodal_coords(1,i) = abs(unit_vec(i,1))*x2(lx(i))                         &
-                          + (1.0_r_def - abs(unit_vec(i,1)))*x1(lx(i))
+        nodal_coords(1,i) = abs(unit_vec(1,i))*x2(lx(i))                         &
+                          + (1.0_r_def - abs(unit_vec(1,i)))*x1(lx(i))
 
-        nodal_coords(2,i) = abs(unit_vec(i,2))*x2(ly(i))                         &
-                          + (1.0_r_def - abs(unit_vec(i,2)))*x1(ly(i))
+        nodal_coords(2,i) = abs(unit_vec(2,i))*x2(ly(i))                         &
+                          + (1.0_r_def - abs(unit_vec(2,i)))*x1(ly(i))
 
-        nodal_coords(3,i) = abs(unit_vec(i,3))*x2(lz(i))                         &
-                          + (1.0_r_def - abs(unit_vec(i,3)))*x1(lz(i))
+        nodal_coords(3,i) = abs(unit_vec(3,i))*x2(lz(i))                         &
+                          + (1.0_r_def - abs(unit_vec(3,i)))*x1(lz(i))
 
-        basis_order(1,i)  = poly_order - int(abs(unit_vec(i,1)))
-        basis_order(2,i)  = poly_order - int(abs(unit_vec(i,2)))
-        basis_order(3,i)  = poly_order - int(abs(unit_vec(i,3)))
+        basis_order(1,i)  = poly_order - int(abs(unit_vec(1,i)))
+        basis_order(2,i)  = poly_order - int(abs(unit_vec(2,i)))
+        basis_order(3,i)  = poly_order - int(abs(unit_vec(3,i)))
 
-        basis_x(:,1,i)    = abs(unit_vec(i,1))*x2(:)                             &
-                          + (1.0_r_def - abs(unit_vec(i,1)))*x1(:)
+        basis_x(:,1,i)    = abs(unit_vec(1,i))*x2(:)                             &
+                          + (1.0_r_def - abs(unit_vec(1,i)))*x1(:)
 
-        basis_x(:,2,i)    = abs(unit_vec(i,2))*x2(:)                             &
-                          + (1.0_r_def - abs(unit_vec(i,2)))*x1(:)
+        basis_x(:,2,i)    = abs(unit_vec(2,i))*x2(:)                             &
+                          + (1.0_r_def - abs(unit_vec(2,i)))*x1(:)
 
-        basis_x(:,3,i)    = abs(unit_vec(i,3))*x2(:)                             &
-                          + (1.0_r_def - abs(unit_vec(i,3)))*x1(:)
+        basis_x(:,3,i)    = abs(unit_vec(3,i))*x2(:)                             &
+                          + (1.0_r_def - abs(unit_vec(3,i)))*x1(:)
 
-        basis_vector(:,i) = unit_vec(i,:)
+        basis_vector(:,i) = unit_vec(:,i)
 
       end do
 
@@ -884,7 +884,7 @@ contains
 
       do idx=1, ndof_cell
         do i=1, 3
-          unit_vec(idx,i) = 0.0_r_def
+          unit_vec(i,idx) = 0.0_r_def
         end do
       end do
 
@@ -897,7 +897,7 @@ contains
             lx(idx) = jx
             ly(idx) = jy
             lz(idx) = jz
-            call reference_element%get_normal_to_face( W, unit_vec(idx,:) )
+            call reference_element%get_normal_to_face( W, unit_vec(:,idx) )
             ! Label volume degrees of freedom
             entity_dofs(idx) = V
             idx = idx + 1
@@ -911,7 +911,7 @@ contains
             lx(idx) = jx
             ly(idx) = jy
             lz(idx) = jz
-            call reference_element%get_normal_to_face( S, unit_vec(idx,:) )
+            call reference_element%get_normal_to_face( S, unit_vec(:,idx) )
             ! Label volume degrees of freedom
             entity_dofs(idx) = V
             idx = idx + 1
@@ -925,7 +925,7 @@ contains
             lx(idx) = jx
             ly(idx) = jy
             lz(idx) = jz
-            call reference_element%get_normal_to_face( B, unit_vec(idx,:) )
+            call reference_element%get_normal_to_face( B, unit_vec(:,idx) )
             ! Label volume degrees of freedom
             entity_dofs(idx) = V
             idx = idx + 1
@@ -943,7 +943,7 @@ contains
             lx(idx) = j(j2l_face(i,1))
             ly(idx) = j(j2l_face(i,2))
             lz(idx) = j(j2l_face(i,3))
-            call reference_element%get_normal_to_face( i, unit_vec(idx,:) )
+            call reference_element%get_normal_to_face( i, unit_vec(:,idx) )
             if (i == number_faces - 1) dof_on_vert_boundary(idx,1) = 0
             if (i == number_faces )    dof_on_vert_boundary(idx,2) = 0
             ! Label face degrees of freedom
@@ -955,29 +955,29 @@ contains
 
       do i=1, ndof_cell
 
-        nodal_coords(1,i) = abs(unit_vec(i,1))*x1(lx(i))                         &
-                          + (1.0_r_def - abs(unit_vec(i,1)))*x2(lx(i))
+        nodal_coords(1,i) = abs(unit_vec(1,i))*x1(lx(i))                         &
+                          + (1.0_r_def - abs(unit_vec(1,i)))*x2(lx(i))
 
-        nodal_coords(2,i) = abs(unit_vec(i,2))*x1(ly(i))                         &
-                          + (1.0_r_def - abs(unit_vec(i,2)))*x2(ly(i))
+        nodal_coords(2,i) = abs(unit_vec(2,i))*x1(ly(i))                         &
+                          + (1.0_r_def - abs(unit_vec(2,i)))*x2(ly(i))
 
-        nodal_coords(3,i) = abs(unit_vec(i,3))*x1(lz(i))                         &
-                          + (1.0_r_def - abs(unit_vec(i,3)))*x2(lz(i))
+        nodal_coords(3,i) = abs(unit_vec(3,i))*x1(lz(i))                         &
+                          + (1.0_r_def - abs(unit_vec(3,i)))*x2(lz(i))
 
-        basis_order(1,i)  = poly_order - int(1.0_r_def - abs(unit_vec(i,1)), i_def)
-        basis_order(2,i)  = poly_order - int(1.0_r_def - abs(unit_vec(i,2)), i_def)
-        basis_order(3,i)  = poly_order - int(1.0_r_def - abs(unit_vec(i,3)), i_def)
+        basis_order(1,i)  = poly_order - int(1.0_r_def - abs(unit_vec(1,i)), i_def)
+        basis_order(2,i)  = poly_order - int(1.0_r_def - abs(unit_vec(2,i)), i_def)
+        basis_order(3,i)  = poly_order - int(1.0_r_def - abs(unit_vec(3,i)), i_def)
 
-        basis_x(:,1,i)    = abs(unit_vec(i,1))*x1(:)                             &
-                          + (1.0_r_def - abs(unit_vec(i,1)))*x2(:)
+        basis_x(:,1,i)    = abs(unit_vec(1,i))*x1(:)                             &
+                          + (1.0_r_def - abs(unit_vec(1,i)))*x2(:)
 
-        basis_x(:,2,i)    = abs(unit_vec(i,2))*x1(:)                             &
-                          + (1.0_r_def - abs(unit_vec(i,2)))*x2(:)
+        basis_x(:,2,i)    = abs(unit_vec(2,i))*x1(:)                             &
+                          + (1.0_r_def - abs(unit_vec(2,i)))*x2(:)
 
-        basis_x(:,3,i)    = abs(unit_vec(i,3))*x1(:)                             &
-                          + (1.0_r_def - abs(unit_vec(i,3)))*x2(:)
+        basis_x(:,3,i)    = abs(unit_vec(3,i))*x1(:)                             &
+                          + (1.0_r_def - abs(unit_vec(3,i)))*x2(:)
 
-        basis_vector(:,i) = unit_vec(i,:)
+        basis_vector(:,i) = unit_vec(:,i)
 
       end do
 
@@ -1010,7 +1010,7 @@ contains
             lz(idx) = j(j2l_face(i, 3))
 
             ! Gather normals corresponding to each face
-            call reference_element%get_normal_to_out_face( i, unit_vec(idx, :) )
+            call reference_element%get_normal_to_out_face( i, unit_vec(:,idx) )
             ! Label face degrees of freedom
             entity_dofs(idx) = reference_element%get_face_entity(i)
             idx = idx + 1
@@ -1019,26 +1019,26 @@ contains
       end do
 
       do i = 1, ndof_cell
-        nodal_coords(1, i) = abs(unit_vec(i, 1))*x1(lx(i))              &
-                           + (1.0_r_def - abs(unit_vec(i, 1)))*x2(lx(i))
-        nodal_coords(2, i) = abs(unit_vec(i, 2))*x1(ly(i))              &
-                           + (1.0_r_def - abs(unit_vec(i, 2)))*x2(ly(i))
-        nodal_coords(3, i) = abs(unit_vec(i, 3))*x1(lz(i))              &
-                           + (1.0_r_def - abs(unit_vec(i, 3)))*x2(lz(i))
+        nodal_coords(1, i) = abs(unit_vec(1, i))*x1(lx(i))              &
+                           + (1.0_r_def - abs(unit_vec(1, i)))*x2(lx(i))
+        nodal_coords(2, i) = abs(unit_vec(2, i))*x1(ly(i))              &
+                           + (1.0_r_def - abs(unit_vec(2, i)))*x2(ly(i))
+        nodal_coords(3, i) = abs(unit_vec(3, i))*x1(lz(i))              &
+                           + (1.0_r_def - abs(unit_vec(3, i)))*x2(lz(i))
 
-        basis_order(1, i) = poly_order*int(1.0_r_def - abs(unit_vec(i, 1)), i_def) &
-                          + int(abs(unit_vec(i, 1)), i_def)
-        basis_order(2, i) = poly_order*int(1.0_r_def - abs(unit_vec(i, 2)), i_def) &
-                          + int(abs(unit_vec(i, 2)), i_def)
-        basis_order(3, i) = poly_order*int(1.0_r_def - abs(unit_vec(i, 3)), i_def) &
-                          + int(abs(unit_vec(i, 3)), i_def)
+        basis_order(1, i) = poly_order*int(1.0_r_def - abs(unit_vec(1, i)), i_def) &
+                          + int(abs(unit_vec(1, i)), i_def)
+        basis_order(2, i) = poly_order*int(1.0_r_def - abs(unit_vec(2, i)), i_def) &
+                          + int(abs(unit_vec(2, i)), i_def)
+        basis_order(3, i) = poly_order*int(1.0_r_def - abs(unit_vec(3, i)), i_def) &
+                          + int(abs(unit_vec(3, i)), i_def)
 
-        basis_x(:, 1, i) = abs(unit_vec(i, 1))*x1(:)              &
-                         + (1.0_r_def - abs(unit_vec(i, 1)))*x2(:)
-        basis_x(:, 2, i) = abs(unit_vec(i, 2))*x1(:)              &
-                         + (1.0_r_def - abs(unit_vec(i, 2)))*x2(:)
-        basis_x(:, 3, i) = abs(unit_vec(i, 3))*x1(:)              &
-                         + (1.0_r_def - abs(unit_vec(i, 3)))*x2(:)
+        basis_x(:, 1, i) = abs(unit_vec(1, i))*x1(:)              &
+                         + (1.0_r_def - abs(unit_vec(1, i)))*x2(:)
+        basis_x(:, 2, i) = abs(unit_vec(2, i))*x1(:)              &
+                         + (1.0_r_def - abs(unit_vec(2, i)))*x2(:)
+        basis_x(:, 3, i) = abs(unit_vec(3, i))*x1(:)              &
+                         + (1.0_r_def - abs(unit_vec(3, i)))*x2(:)
       end do
 
       basis_index(1, :)  = lx(1:ndof_cell)
@@ -1159,7 +1159,7 @@ contains
 
       do idx=1, ndof_cell
         do i=1, 3
-          unit_vec(idx,i) = 0.0_r_def
+          unit_vec(i, idx) = 0.0_r_def
         end do
       end do
 
@@ -1172,7 +1172,7 @@ contains
             lx(idx) =  jx
             ly(idx) =  jy
             lz(idx) =  jz
-            call reference_element%get_normal_to_face( B, unit_vec(idx,:) )
+            call reference_element%get_normal_to_face( B, unit_vec(:,idx) )
             ! Label volume degrees of freedom
             entity_dofs(idx) = V
             idx = idx + 1
@@ -1191,7 +1191,7 @@ contains
             lx(idx) = j(j2l_face(i,1))
             ly(idx) = j(j2l_face(i,2))
             lz(idx) = j(j2l_face(i,3))
-            call reference_element%get_normal_to_face( i, unit_vec(idx,:) )
+            call reference_element%get_normal_to_face( i, unit_vec(:,idx) )
             if (i == number_faces - 1) dof_on_vert_boundary(idx,1) = 0
             if (i == number_faces)     dof_on_vert_boundary(idx,2) = 0
             ! Label top and bottom face degrees of freedom
@@ -1203,29 +1203,29 @@ contains
 
       do i=1, ndof_cell
 
-        nodal_coords(1,i) = abs(unit_vec(i,1))*x1(lx(i))                         &
-                          + (1.0_r_def - abs(unit_vec(i,1)))*x2(lx(i))
+        nodal_coords(1,i) = abs(unit_vec(1,i))*x1(lx(i))                         &
+                          + (1.0_r_def - abs(unit_vec(1,i)))*x2(lx(i))
 
-        nodal_coords(2,i) = abs(unit_vec(i,2))*x1(ly(i))                         &
-                          + (1.0_r_def - abs(unit_vec(i,2)))*x2(ly(i))
+        nodal_coords(2,i) = abs(unit_vec(2,i))*x1(ly(i))                         &
+                          + (1.0_r_def - abs(unit_vec(2,i)))*x2(ly(i))
 
-        nodal_coords(3,i) = abs(unit_vec(i,3))*x1(lz(i))                         &
-                          + (1.0_r_def - abs(unit_vec(i,3)))*x2(lz(i))
+        nodal_coords(3,i) = abs(unit_vec(3,i))*x1(lz(i))                         &
+                          + (1.0_r_def - abs(unit_vec(3,i)))*x2(lz(i))
 
-        basis_order(1,i)  = poly_order - int(1.0_r_def - abs(unit_vec(i,1)), i_def)
-        basis_order(2,i)  = poly_order - int(1.0_r_def - abs(unit_vec(i,2)), i_def)
-        basis_order(3,i)  = poly_order - int(1.0_r_def - abs(unit_vec(i,3)), i_def)
+        basis_order(1,i)  = poly_order - int(1.0_r_def - abs(unit_vec(1,i)), i_def)
+        basis_order(2,i)  = poly_order - int(1.0_r_def - abs(unit_vec(2,i)), i_def)
+        basis_order(3,i)  = poly_order - int(1.0_r_def - abs(unit_vec(3,i)), i_def)
 
-        basis_x(:,1,i)    = abs(unit_vec(i,1))*x1(:)                             &
-                          + (1.0_r_def - abs(unit_vec(i,1)))*x2(:)
+        basis_x(:,1,i)    = abs(unit_vec(1,i))*x1(:)                             &
+                          + (1.0_r_def - abs(unit_vec(1,i)))*x2(:)
 
-        basis_x(:,2,i)    = abs(unit_vec(i,2))*x1(:)                             &
-                          + (1.0_r_def - abs(unit_vec(i,2)))*x2(:)
+        basis_x(:,2,i)    = abs(unit_vec(2,i))*x1(:)                             &
+                          + (1.0_r_def - abs(unit_vec(2,i)))*x2(:)
 
-        basis_x(:,3,i)    = abs(unit_vec(i,3))*x1(:)                             &
-                          + (1.0_r_def - abs(unit_vec(i,3)))*x2(:)
+        basis_x(:,3,i)    = abs(unit_vec(3,i))*x1(:)                             &
+                          + (1.0_r_def - abs(unit_vec(3,i)))*x2(:)
 
-        basis_vector(:,i) = unit_vec(i,:)
+        basis_vector(:,i) = unit_vec(:,i)
 
       end do
 
@@ -1243,7 +1243,7 @@ contains
 
       do idx=1, ndof_cell
         do i=1, 3
-          unit_vec(idx,i) = 0.0_r_def
+          unit_vec(i,idx) = 0.0_r_def
         end do
       end do
 
@@ -1259,7 +1259,7 @@ contains
             lx(idx) =  jx
             ly(idx) =  jy
             lz(idx) =  jz
-            call reference_element%get_normal_to_face( W, unit_vec(idx,:) )
+            call reference_element%get_normal_to_face( W, unit_vec(:,idx) )
             ! Label volume degrees of freedom
             entity_dofs(idx) = V
             idx = idx + 1
@@ -1273,7 +1273,7 @@ contains
             lx(idx) =  jx
             ly(idx) =  jy
             lz(idx) =  jz
-            call reference_element%get_normal_to_face( S, unit_vec(idx,:) )
+            call reference_element%get_normal_to_face( S, unit_vec(:,idx) )
             ! Label volume degrees of freedom
             entity_dofs(idx) = V
             idx = idx + 1
@@ -1293,7 +1293,7 @@ contains
             lx(idx) = j(j2l_face(i,1))
             ly(idx) = j(j2l_face(i,2))
             lz(idx) = j(j2l_face(i,3))
-            call reference_element%get_normal_to_face( i, unit_vec(idx,:) )
+            call reference_element%get_normal_to_face( i, unit_vec(:,idx) )
             ! Label horizontal face degrees of freedom
             entity_dofs(idx) = reference_element%get_face_entity(i)
             idx = idx + 1
@@ -1303,28 +1303,28 @@ contains
 
 
       do i=1, ndof_cell
-        nodal_coords(1,i) = abs(unit_vec(i,1))*x1(lx(i))                         &
-                          + (1.0_r_def - abs(unit_vec(i,1)))*x2(lx(i))
+        nodal_coords(1,i) = abs(unit_vec(1,i))*x1(lx(i))                         &
+                          + (1.0_r_def - abs(unit_vec(1,i)))*x2(lx(i))
 
-        nodal_coords(2,i) = abs(unit_vec(i,2))*x1(ly(i))                         &
-                          + (1.0_r_def - abs(unit_vec(i,2)))*x2(ly(i))
+        nodal_coords(2,i) = abs(unit_vec(2,i))*x1(ly(i))                         &
+                          + (1.0_r_def - abs(unit_vec(2,i)))*x2(ly(i))
 
-        nodal_coords(3,i) = abs(unit_vec(i,3))*x1(lz(i))                         &
-                          + (1.0_r_def - abs(unit_vec(i,3)))*x2(lz(i))
+        nodal_coords(3,i) = abs(unit_vec(3,i))*x1(lz(i))                         &
+                          + (1.0_r_def - abs(unit_vec(3,i)))*x2(lz(i))
 
-        basis_order(1,i)  = poly_order - int(1.0_r_def - abs(unit_vec(i,1)), i_def)
-        basis_order(2,i)  = poly_order - int(1.0_r_def - abs(unit_vec(i,2)), i_def)
-        basis_order(3,i)  = poly_order - int(1.0_r_def - abs(unit_vec(i,3)), i_def)
+        basis_order(1,i)  = poly_order - int(1.0_r_def - abs(unit_vec(1,i)), i_def)
+        basis_order(2,i)  = poly_order - int(1.0_r_def - abs(unit_vec(2,i)), i_def)
+        basis_order(3,i)  = poly_order - int(1.0_r_def - abs(unit_vec(3,i)), i_def)
 
-        basis_x(:,1,i)    = abs(unit_vec(i,1))*x1(:)                             &
-                          + (1.0_r_def - abs(unit_vec(i,1)))*x2(:)
+        basis_x(:,1,i)    = abs(unit_vec(1,i))*x1(:)                             &
+                          + (1.0_r_def - abs(unit_vec(1,i)))*x2(:)
 
-        basis_x(:,2,i)    = abs(unit_vec(i,2))*x1(:)                             &
-                          + (1.0_r_def - abs(unit_vec(i,2)))*x2(:)
-        basis_x(:,3,i)    = abs(unit_vec(i,3))*x1(:)                             &
-                          + (1.0_r_def - abs(unit_vec(i,3)))*x2(:)
+        basis_x(:,2,i)    = abs(unit_vec(2,i))*x1(:)                             &
+                          + (1.0_r_def - abs(unit_vec(2,i)))*x2(:)
+        basis_x(:,3,i)    = abs(unit_vec(3,i))*x1(:)                             &
+                          + (1.0_r_def - abs(unit_vec(3,i)))*x2(:)
 
-        basis_vector(:,i) = unit_vec(i,:)
+        basis_vector(:,i) = unit_vec(:,i)
       end do
 
       basis_index(1,:) = lx(1:ndof_cell)

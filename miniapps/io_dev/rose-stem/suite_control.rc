@@ -12,14 +12,16 @@
 
 {%- set groups = {
 'developer': [
-    'run_application("io_dev", "default", resolutions=[("C12",)],
+    'run_application("io_dev", "default", resolutions=[("C12",1800)],
                      env={"directives":{"default":{"mpi_parts":6,
                                                    "threads":1,
                                                    "xios_nodes":1,
                                                    "wallclock":"00:05:00"}}},
                      checkkgo=False, publish=True)',
     'check_compilers("io_dev", "default", "fast-debug",
-                     resolution=("C12",))',
+                     resolution=("C12",1800))',
+    'check_compilers("io_dev", "default", "full-debug",
+                     resolution=("C12",1800))',
     'godliness',
     'cleanliness'],
 'nightly': [
