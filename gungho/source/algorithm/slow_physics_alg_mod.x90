@@ -12,7 +12,9 @@ module slow_physics_alg_mod
                                        radiation,          &
                                        radiation_socrates, &
                                        spectral_gwd,       &
-                                       spectral_gwd_um
+                                       spectral_gwd_um,    &
+                                       boundary_layer,     &
+                                       boundary_layer_um
 
   use constants_mod,    only: i_def,r_def
   use log_mod,          only: log_event,                         &
@@ -61,6 +63,7 @@ module slow_physics_alg_mod
   use radiation_alg_mod,         only: radiation_alg_step
   use radiation_config_mod,      only: l_planet_grey_surface
   use spectral_gwd_alg_mod,      only: spectral_gwd_alg_step
+  use bl_exp_alg_mod,            only: bl_exp_alg_step
 #endif
 
   implicit none
@@ -76,7 +79,7 @@ contains
   !> @param[in]     exner             Exner pressure on w3 space
   !> @param[in]     mr_n              Mixing ratios at start of timestep
   !> @param[in,out] mr                Mixing ratios to be updated
-  !> @param[in]     derived_fields    Group of derived fields
+  !> @param[in,out] derived_fields    Group of derived fields
   !> @param[in,out] cloud_fields      Group of cloud fields
   !> @param[in,out] twod_fields       Group of 2D fields
   !> @param[in,out] radstep_fields    Group of radiation timestep fields
@@ -87,12 +90,19 @@ contains
   !> @param[in]     height_wth        Height in wth
   !> @param[in]     chi               Coordinate array
   !> @param[in]     timestep          Model timestep number
+  !> @param[in]     shear             3D wind shear on wtheta points
+  !> @param[in]     delta             Edge length on wtheta points
+  !> @param[in]     max_diff_smag     Maximum diffusion coefficient allowed
+  !> @param[in,out] visc_m_blend      Blended BL-Smag diffusion coefficient for momentum
+  !> @param[in,out] visc_h_blend      Blended BL-Smag diffusion coefficient for heat
   !> @param[in]     twod_mesh_id      Identifier given to the current 2d mesh
   subroutine slow_physics(du, dtheta, theta, rho, exner, mr_n, mr,       &
                           derived_fields, cloud_fields, twod_fields,     &
                           radstep_fields, physics_incs,                  &
                           jules_ancils, jules_prognostics,               &
                           height_w3, height_wth, chi, timestep,          &
+                          shear, delta, max_diff_smag,                   &
+                          visc_m_blend, visc_h_blend,                    &
                           twod_mesh_id)
 
     implicit none
@@ -101,6 +111,8 @@ contains
     type( field_type ), intent( inout ) :: du, dtheta
     type( field_type ), intent( inout ) :: mr(nummr) ! To be modified by physics
     type( field_type ), intent( in )    :: theta, rho, exner
+    type( field_type ), intent( inout ) :: visc_m_blend, visc_h_blend
+    type( field_type ), intent( in )    :: shear, delta, max_diff_smag
 
     ! Field bundles
     type( field_type ), intent( in )    :: mr_n(nummr) ! Start of timestep
@@ -267,6 +279,16 @@ contains
       call spectral_gwd_alg_step(du_tot_spectral_gwd, dtheta_spectral_gwd, derived_fields, twod_fields,      &
                              theta, height_w3, height_wth)
       spectral_gwd_done=.true.
+    end if
+
+    if (boundary_layer == boundary_layer_um ) then
+      ! Algorithm that calls the UM explicit Boundary Layer scheme
+      call log_event( 'slow_physics: Running explicit Boundary layer', LOG_LEVEL_INFO )
+      call bl_exp_alg_step(theta, rho, mr_n, exner, shear, delta,             &
+                           max_diff_smag, height_w3, height_wth,              &
+                           derived_fields, cloud_fields, twod_fields,         &
+                           physics_incs, visc_m_blend, visc_h_blend,          &
+                           jules_ancils, jules_prognostics)
     end if
 #endif
 

@@ -1,0 +1,212 @@
+!-----------------------------------------------------------------------------
+! (c) Crown copyright 2019 Met Office. All rights reserved.
+! The file LICENCE, distributed with this code, contains details of the terms
+! under which the code may be used.
+!-----------------------------------------------------------------------------
+
+!> @brief Interpolates BL momentum variables from w3 to w2 dofs
+!> @detail Takes all the variables required for BL momentum mixing and
+!>         interpolates them from their lowest order w3 dof to w2 dofs
+!>         so that wind increments can be calculated in their native space
+
+module interp_bl_kernel_mod
+  
+  use kernel_mod,               only: kernel_type
+  use argument_mod,             only: arg_type, func_type,                 &
+                                      GH_FIELD, GH_INC, GH_READ, CELLS,    &
+                                      ANY_SPACE_1
+  use constants_mod,            only: r_def, i_def
+  use fs_continuity_mod,        only: W2, W3, WTHETA
+  use kernel_mod,               only: kernel_type
+
+  implicit none
+
+  !----------------------------------------------------------------------------
+  ! Public types
+  !----------------------------------------------------------------------------
+  !> Kernel metadata type.
+  type, public, extends(kernel_type) :: interp_bl_kernel_type
+    private
+    type(arg_type) :: meta_args(13) = (/            &
+         arg_type(GH_FIELD, GH_READ,  WTHETA),      &! rhokm_bl
+         arg_type(GH_FIELD, GH_READ,  ANY_SPACE_1), &! rhokm_surf
+         arg_type(GH_FIELD, GH_READ,  WTHETA),      &! ngstress_bl
+         arg_type(GH_FIELD, GH_READ,  W3),          &! dtrdz_uv_bl
+         arg_type(GH_FIELD, GH_READ,  WTHETA),      &! rdz_uv_bl
+         arg_type(GH_FIELD, GH_READ,  W3),          &! du_conv
+         arg_type(GH_FIELD, GH_READ,  W3),          &! dv_conv
+         arg_type(GH_FIELD, GH_INC,   W2),          &! rhokm_w2
+         arg_type(GH_FIELD, GH_INC,   W2),          &! rhokm_surf_w2
+         arg_type(GH_FIELD, GH_INC,   W2),          &! ngstress_w2
+         arg_type(GH_FIELD, GH_INC,   W2),          &! dtrdz_w2
+         arg_type(GH_FIELD, GH_INC,   W2),          &! rdz_w2
+         arg_type(GH_FIELD, GH_INC,   W2)           &! du_conv_w2
+         /)
+    integer :: iterates_over = CELLS
+  contains
+    procedure, nopass :: interp_bl_code
+  end type interp_bl_kernel_type
+
+  !----------------------------------------------------------------------------
+  ! Contained functions/subroutines
+  !----------------------------------------------------------------------------
+  public interp_bl_code
+
+contains
+
+  !> @brief Subroutine to do the re-mapping
+  !> @param[in]     nlayers       Number of layers
+  !> @param[in]     rhokm_bl      Momentum eddy diffusivity on BL levels
+  !> @param[in]     rhokm_surf    Momentum eddy diffusivity for coastal tiling
+  !> @param[in]     ngstress_bl   Non-gradient stress function on BL levels
+  !> @param[in]     dtrdz_uv_bl   dt/(rho*r*r*dz) in w3 space
+  !> @param[in]     rdz_uv_bl     1/dz in wth space
+  !> @param[in]     du_conv       'zonal' wind increment from convection
+  !> @param[in]     dv_conv       'meridional' wind increment from convection
+  !> @param[in,out] rhokm_w2      Momentum eddy diffusivity mapped to cell faces
+  !> @param[in,out] rhokm_surf_w2 Surface eddy diffusivity mapped to cell faces
+  !> @param[in,out] ngstress_w2   NG stress function mapped to cell faces
+  !> @param[in,out] dtrdz_w2      dt/(rho*r*r*dz) mapped to cell faces
+  !> @param[in,out] rdz_w2        1/dz mapped to cell faces
+  !> @param[in,out] du_conv_w2    Convection wind increment mapped to cell faces
+  !> @param[in]     ndf_wth       Number of DOFs per cell for potential temperature space
+  !> @param[in]     undf_wth      Number of unique DOFs for potential temperature space
+  !> @param[in]     map_wth       dofmap for the cell at the base of the column for potential temperature space
+  !> @param[in]     ndf_surf       Number of DOFs per cell for surface variables
+  !> @param[in]     undf_surf      Number of unique DOFs for surface variables
+  !> @param[in]     map_surf       dofmap for the cell at the base of the column for surface variables
+  !> @param[in]     ndf_w3        Number of DOFs per cell for density space
+  !> @param[in]     undf_w3       Number of unique DOFs for density space
+  !> @param[in]     map_w3        dofmap for the cell at the base of the column for density space
+  !> @param[in]     ndf_w2        Number of DOFs per cell for w2 space
+  !> @param[in]     undf_w2       Number of unique DOFs for w2 space
+  !> @param[in]     map_w2        dofmap for the cell at the base of the column for w2 space
+  subroutine interp_bl_code(nlayers,       &
+                            rhokm_bl,      &
+                            rhokm_surf,    &
+                            ngstress_bl,   &
+                            dtrdz_uv_bl,   &
+                            rdz_uv_bl,     &
+                            du_conv,       &
+                            dv_conv,       &
+                            rhokm_w2,      &
+                            rhokm_surf_w2, &
+                            ngstress_w2,   &
+                            dtrdz_w2,      &
+                            rdz_w2,        &
+                            du_conv_w2,    &
+                            ndf_wth,       &
+                            undf_wth,      &
+                            map_wth,       &
+                            ndf_surf,      &
+                            undf_surf,     &
+                            map_surf,      &
+                            ndf_w3,        &
+                            undf_w3,       &
+                            map_w3,        &
+                            ndf_w2,        &
+                            undf_w2,       &
+                            map_w2)
+ 
+    !---------------------------------------
+    ! UM modules containing switches or global constants
+    !--------------------------------------- 
+    use nlsizes_namelist_mod, only: bl_levels
+
+    implicit none
+
+    ! Arguments
+    integer, intent(in) :: nlayers
+
+    integer(kind=i_def), intent(in) :: ndf_wth, ndf_w3, ndf_w2
+    integer(kind=i_def), intent(in) :: undf_wth, undf_w3, undf_w2
+    integer(kind=i_def), intent(in) :: map_wth(ndf_wth)
+    integer(kind=i_def), intent(in) :: map_w3(ndf_w3)
+    integer(kind=i_def), intent(in) :: map_w2(ndf_w2)
+
+    integer(kind=i_def), intent(in) :: ndf_surf, undf_surf
+    integer(kind=i_def), intent(in) :: map_surf(ndf_surf)
+
+    real(kind=r_def), dimension(undf_wth), intent(in) ::rhokm_bl,           &
+                                                        ngstress_bl,        &
+                                                        rdz_uv_bl
+
+    real(kind=r_def), dimension(undf_w3),  intent(in) :: dtrdz_uv_bl,       &
+                                                         du_conv, dv_conv
+
+    real(kind=r_def), dimension(undf_surf), intent(in)  :: rhokm_surf
+
+    real(kind=r_def), dimension(undf_w2), intent(out) ::rhokm_w2,           &
+                                                        ngstress_w2,        &
+                                                        rdz_w2,             &
+                                                        dtrdz_w2,           &
+                                                        rhokm_surf_w2,      &
+                                                        du_conv_w2
+
+    ! Internal variables
+    integer :: k, df
+
+    ! Map the BL variables from w3 to w2 space
+
+    ! Temporarily use the vertical co-ordinate here until multi-dimensional
+    ! w2 fields are available
+    do df = 1,3,2
+      ! rhokm_land
+      rhokm_surf_w2(map_w2(df) + 1) = rhokm_surf_w2(map_w2(df) + 1) +        &
+                                       0.5_r_def * rhokm_surf(map_surf(1))
+      rhokm_surf_w2(map_w2(df+1) + 1) = rhokm_surf_w2(map_w2(df+1) + 1) +    &
+                                         0.5_r_def * rhokm_surf(map_surf(1))
+      ! rhokm_ssi
+      rhokm_surf_w2(map_w2(df) + 2) = rhokm_surf_w2(map_w2(df) + 2) +        &
+                                       0.5_r_def * rhokm_surf(map_surf(2))
+      rhokm_surf_w2(map_w2(df+1) + 2) = rhokm_surf_w2(map_w2(df+1) + 2) +    &
+                                         0.5_r_def * rhokm_surf(map_surf(2))
+      ! flandg
+      rhokm_surf_w2(map_w2(df) + 3) = rhokm_surf_w2(map_w2(df) + 3) +        &
+                                       0.5_r_def * rhokm_surf(map_surf(3))
+      rhokm_surf_w2(map_w2(df+1) + 3) = rhokm_surf_w2(map_w2(df+1) + 3) +    &
+                                         0.5_r_def * rhokm_surf(map_surf(3))
+    end do
+
+    do k = 1, bl_levels
+      do df = 1,3,2
+        ! Strictly speaking the vertical indexing here is incorrect because
+        ! we want the normal to the cell face at the top and bottom of the cell
+        rhokm_w2(map_w2(df) + k) = rhokm_w2(map_w2(df) + k) +                &
+                                    0.5_r_def * rhokm_bl(map_wth(1) + k)
+        rhokm_w2(map_w2(df+1) + k) = rhokm_w2(map_w2(df+1) + k) +            &
+                                      0.5_r_def * rhokm_bl(map_wth(1) + k)
+        ngstress_w2(map_w2(df) + k) = ngstress_w2(map_w2(df) + k) +          &
+                                       0.5_r_def *ngstress_bl(map_wth(1) + k)
+        ngstress_w2(map_w2(df+1) + k) = ngstress_w2(map_w2(df+1) + k) +      &
+                                         0.5_r_def *ngstress_bl(map_wth(1) + k)
+        dtrdz_w2(map_w2(df) + k) = dtrdz_w2(map_w2(df) + k) +                &
+                                    0.5_r_def * dtrdz_uv_bl(map_w3(1) + k)
+        dtrdz_w2(map_w2(df+1) + k) = dtrdz_w2(map_w2(df+1) + k) +            &
+                                      0.5_r_def * dtrdz_uv_bl(map_w3(1) + k)
+      end do
+    end do
+
+    do k = 2, bl_levels
+      do df = 1,3,2
+        ! Strictly speaking the vertical indexing here is incorrect because
+        ! we want the normal to the cell face at the top and bottom of the cell
+        rdz_w2(map_w2(df) + k) = rdz_w2(map_w2(df) + k) +                    &
+                                  0.5_r_def * rdz_uv_bl(map_wth(1) + k)
+        rdz_w2(map_w2(df+1) + k) = rdz_w2(map_w2(df+1) + k) +                &
+                                    0.5_r_def * rdz_uv_bl(map_wth(1) + k)
+      end do
+    end do
+
+    do k = 1, nlayers
+      do df = 1,3,2
+        du_conv_w2(map_w2(df) + k-1) = du_conv_w2(map_w2(df) + k - 1) +      &
+                                        0.5_r_def * du_conv(map_w3(1) + k-1)
+        du_conv_w2(map_w2(df+1) + k-1) = du_conv_w2(map_w2(df+1) + k - 1) +  &
+                                          0.5_r_def * dv_conv(map_w3(1) + k-1)
+      end do
+    end do
+
+  end subroutine interp_bl_code
+
+end module interp_bl_kernel_mod

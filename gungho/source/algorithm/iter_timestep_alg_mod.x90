@@ -461,13 +461,15 @@ contains
       !--------------------------------------------------------------------
       call invoke( setval_c(dtheta, 0.0_r_def), &
                    setval_c(du, 0.0_r_def) )
+
       call slow_physics(du, dtheta, state_n(igh_t), state_n(igh_d),     &
                         state_n(igh_p), mr_n, mr_after_slow,            &
                         derived_fields, cloud_fields, twod_fields,      &
                         radstep_fields, physics_incs,                   &
                         jules_ancils, jules_prognostics,                &
                         height_w3, height_wth, chi, timestep,           &
-                        twod_mesh_id)
+                        shear, delta, max_diff_smag,                    &
+                        visc_m, visc_h, twod_mesh_id)
       if (use_moisture) then
         do i_mr = 1, nummr
           call invoke( enforce_lower_bound_kernel_type (mr_after_slow(i_mr), 0.0_r_def) )
@@ -556,12 +558,10 @@ contains
         !--------------------------------------------------------------------
         ! Call the fast physics terms
         !--------------------------------------------------------------------
-        call fast_physics(du, dtheta, mr, outer, state_n(igh_t),        &
-                          state_n(igh_d), state_n(igh_p), mr_n,         &
-                          shear, delta, max_diff_smag,                  &
-                          derived_fields, cloud_fields, twod_fields,    &
-                          visc_m, visc_h,                               &
-                          physics_incs, height_w3, height_wth,          &
+        call fast_physics(du, dtheta, mr, outer, state_n(igh_t),             &
+                          state_n(igh_d), state_n(igh_p), mr_n,              &
+                          delta, derived_fields, cloud_fields, twod_fields,  &
+                          physics_incs, height_w3, height_wth,               &
                           jules_ancils, jules_prognostics)
 
         if (use_moisture) then

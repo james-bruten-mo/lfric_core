@@ -180,6 +180,40 @@ contains
       'ls_rain',  vector_space, checkpoint_restart_flag, twod=.true.)
     call add_physics_field(twod_fields, depository, prognostic_fields, &
       'ls_snow',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'blend_height_tq',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'blend_height_uv',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'zh_nonloc',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'shallow_flag',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'uw0_flux',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'vw0_flux',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'lcl_height',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'parcel_top',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'level_parcel_top',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'wstar_2d',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'thv_flux',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'parcel_buoyancy',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'qsat_at_lcl',  vector_space, checkpoint_restart_flag, twod=.true.)
+
+    ! a couple of BL arrays which are helpful to group together as higher
+    ! order fields
+    vector_space=> function_space_collection%get_fs(twod_mesh_id, 1, W3)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'rhokm_surf',  vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(twod_fields, depository, prognostic_fields, &
+      'bl_types',  vector_space, checkpoint_restart_flag, twod=.true.)
 
     !========================================================================
     ! Here we create some cloud fields
@@ -293,6 +327,18 @@ contains
       'sw_heating_rate', vector_space, checkpoint_restart_flag)
     call add_physics_field(physics_incs, depository, prognostic_fields, &
       'lw_heating_rate', vector_space, checkpoint_restart_flag)
+    call add_physics_field(physics_incs, depository, prognostic_fields, &
+      'rhokm_bl',     vector_space, checkpoint_restart_flag)
+    call add_physics_field(physics_incs, depository, prognostic_fields, &
+      'ngstress_bl',     vector_space, checkpoint_restart_flag)
+    call add_physics_field(physics_incs, depository, prognostic_fields, &
+      'bq_bl',     vector_space, checkpoint_restart_flag)
+    call add_physics_field(physics_incs, depository, prognostic_fields, &
+      'bt_bl',     vector_space, checkpoint_restart_flag)
+    call add_physics_field(physics_incs, depository, prognostic_fields, &
+      'dtrdz_tq_bl',     vector_space, checkpoint_restart_flag)
+    call add_physics_field(physics_incs, depository, prognostic_fields, &
+      'rdz_uv_bl',     vector_space, checkpoint_restart_flag)
 
     ! Increments on pgrid (not U and V grids) but rho levels
     vector_space => function_space_collection%get_fs(mesh_id, 0, W3)
@@ -300,6 +346,16 @@ contains
       'du_conv', vector_space, checkpoint_restart_flag)
     call add_physics_field(physics_incs, depository, prognostic_fields, &
       'dv_conv', vector_space, checkpoint_restart_flag)
+    call add_physics_field(physics_incs, depository, prognostic_fields, &
+      'rhokh_bl',     vector_space, checkpoint_restart_flag)
+    call add_physics_field(physics_incs, depository, prognostic_fields, &
+      'moist_flux_bl',     vector_space, checkpoint_restart_flag)
+    call add_physics_field(physics_incs, depository, prognostic_fields, &
+      'heat_flux_bl',     vector_space, checkpoint_restart_flag)
+    call add_physics_field(physics_incs, depository, prognostic_fields, &
+      'dtrdz_uv_bl',     vector_space, checkpoint_restart_flag)
+    call add_physics_field(physics_incs, depository, prognostic_fields, &
+      'rdz_tq_bl',     vector_space, checkpoint_restart_flag)
 
     vector_space=> function_space_collection%get_fs(twod_mesh_id, 0, W3) 
     call add_physics_field(physics_incs, depository, prognostic_fields, &
@@ -394,6 +450,30 @@ contains
       'sw_up_tile', vector_space, checkpoint_restart_flag, twod=.true.)
     call add_physics_field(jules_prognostics, depository, prognostic_fields, &
       'sw_up_blue_tile', vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'tile_heat_flux', vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'tile_moisture_flux', vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'alpha1_tile', vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'ashtf_prime_tile', vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'dtstar_tile', vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'fraca_tile', vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'z0h_tile', vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'z0m_tile', vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'rhokh_tile', vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'chr1p5m_tile', vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'resfs_tile', vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'canhc_tile', vector_space, checkpoint_restart_flag, twod=.true.)
 
     vector_space => function_space_collection%get_fs(twod_mesh_id, 0, W3)
     call add_physics_field(jules_prognostics, depository, prognostic_fields, &
@@ -402,6 +482,10 @@ contains
       'surface_conductance', vector_space, checkpoint_restart_flag, twod=.true.)
     call add_physics_field(jules_prognostics, depository, prognostic_fields, &
       'chloro_sea', vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'ustar', vector_space, checkpoint_restart_flag, twod=.true.)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'soil_moist_avail', vector_space, checkpoint_restart_flag, twod=.true.)
 
     vector_space => function_space_collection%get_fs(twod_mesh_id, soil_order, W3)
     call add_physics_field(jules_prognostics, depository, prognostic_fields, &
@@ -420,6 +504,11 @@ contains
       'sea_ice_pond_frac', vector_space, checkpoint_restart_flag, twod=.true.)
     call add_physics_field(jules_prognostics, depository, prognostic_fields, &
       'sea_ice_pond_depth', vector_space, checkpoint_restart_flag, twod=.true.)
+
+    ! This needs to be order 3 as it is land tile (9) x soil levels (4) = 36
+    vector_space => function_space_collection%get_fs(twod_mesh_id, 3, W3)
+    call add_physics_field(jules_prognostics, depository, prognostic_fields, &
+      'tile_water_extract', vector_space, checkpoint_restart_flag, twod=.true.)
 
   end subroutine create_physics_prognostics
 
