@@ -47,7 +47,7 @@ def _main():
     tree_transforms = []
     if arguments.treeindex:
         renderer = parserender.renderer.HtmlIndexRenderer()
-        indexer = parserender.mirrorer.GenerateTreeIndeces(renderer)
+        indexer = parserender.mirrorer.GenerateTreeIndices(renderer)
         tree_transforms.append(indexer)
 
     mirror_engine = parserender.mirrorer.Mirrorer(arguments.target,

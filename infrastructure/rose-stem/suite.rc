@@ -159,6 +159,11 @@
   # PUBLISH family.
   [[mirror_results_local]]
     inherit = None, LOCAL
+    pre-script = """
+                 {{'\n'|command_list(LOCAL_BASE_SETUP,
+                                     LOCAL_TECHNICAL_SETUP,
+                                     LOCAL_REVEAL_SETUP)}}
+                 """
     script = rose task-run --app-key=publish_mirror
     [[[environment]]]
       REWRITE = ''
@@ -171,6 +176,11 @@
   # PUBLISH family.
   [[mirror_results_remote]]
     inherit = None, LOCAL
+    pre-script = """
+                 {{'\n'|command_list(LOCAL_BASE_SETUP,
+                                     LOCAL_TECHNICAL_SETUP,
+                                     LOCAL_REVEAL_SETUP)}}
+                 """
     script = rose task-run --app-key=publish_mirror
     [[[environment]]]
       REWRITE = {{MIRROR_REWRITE}}

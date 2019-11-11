@@ -55,9 +55,9 @@ class NamelistDescriptionAnalyserTest(unittest.TestCase):
                                                     "objects", "modules")
         result = list(uut.determineLinkDependencies())
 
-        self.assertEqual( [(u'objects/foo', ['objects/bobs/qux.o', \
+        self.assertEqual( [(u'objects/foo', ['objects/bits/bar.o', \
                                              'objects/bits/baz.o', \
-                                             'objects/bits/bar.o', \
+                                             'objects/bobs/qux.o', \
                                              'objects/foo.o'])],   \
                           result )
 

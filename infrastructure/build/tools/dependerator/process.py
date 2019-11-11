@@ -70,7 +70,7 @@ class FortranProcessor():
                                           replaceExtension( unit_file, 'o' ) )
             prerequisites.add( program_object_file )
             yield os.path.join( self._objectDirectory, program ), \
-                  list(prerequisites)
+                  sorted(list(prerequisites))
 
     ##########################################################################
     def _descend( self, programUnit, prerequisites ):

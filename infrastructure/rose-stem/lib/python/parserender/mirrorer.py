@@ -38,7 +38,7 @@ class TreeVisitor(six.with_metaclass(ABCMeta)):
     pass
 
 ##############################################################################
-class GenerateTreeIndeces(TreeVisitor):
+class GenerateTreeIndices(TreeVisitor):
   def __init__( self, renderer ):
     self._renderer = renderer
     self._directoryList = {}
@@ -226,7 +226,7 @@ class UploaderFile(Uploader):
 
   def upload( self, fileObject, filename ):
     absoluteFilename = os.path.join( self._workDirectory, filename )
-    with open( absoluteFilename, 'wt' ) as destination:
+    with open( absoluteFilename, 'wb' ) as destination:
       while True:
         block = fileObject.read( 1024 )
         if block == '':
@@ -350,7 +350,7 @@ class Mirrorer:
 
       for filename in files:
         absoluteFilename = os.path.join( root, filename )
-        with open( absoluteFilename, 'rt' ) as fileStream:
+        with open( absoluteFilename, 'rb' ) as fileStream:
           transformedStream = self._transformFile( absoluteFilename, \
                                                   fileStream )
           self._uploader.upload( transformedStream, \
@@ -373,7 +373,7 @@ class Mirrorer:
     base, extension = os.path.splitext( filename )
     if extension in ['.html', '.xhtml', '.htm']:
       xmlParser = ET.XMLParser()
-      # In the absense of a comprehensive list to just lift up and use we
+      # In the absence of a comprehensive list to just lift up and use we
       # include only those actually appearing in our documents.
       xmlParser.entity['nbsp']  = unichr(160)
       xmlParser.entity['sect']  = unichr(167)

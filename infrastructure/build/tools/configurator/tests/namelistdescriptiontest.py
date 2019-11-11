@@ -1963,7 +1963,7 @@ class NamelistConfigDescriptionTest(unittest.TestCase):
     ##########################################################################
     def test_parser_good_file(self):
 
-        input_file = tempfile.NamedTemporaryFile()
+        input_file = tempfile.NamedTemporaryFile(mode='w+t')
         input_file.write('''
 [namelist:fred]
 
@@ -2006,7 +2006,7 @@ values=foo, bar, baz, qux
     ##########################################################################
     def test_only_enumeration(self):
 
-        input_file = tempfile.NamedTemporaryFile()
+        input_file = tempfile.NamedTemporaryFile(mode='w+t')
         input_file.write('''
 [namelist:barney]
 
@@ -2289,7 +2289,7 @@ end module telly_config_mod
     ##########################################################################
     def test_non_enumeration_no_type(self):
 
-        input_file = tempfile.NamedTemporaryFile()
+        input_file = tempfile.NamedTemporaryFile(mode='w+t')
         input_file.write('''
 [namelist:barney]
 
@@ -2313,7 +2313,7 @@ values=one, two, three
     ##########################################################################
     def test_no_member_type(self):
 
-        input_file = tempfile.NamedTemporaryFile()
+        input_file = tempfile.NamedTemporaryFile(mode='w+t')
         input_file.write('''
 [namelist:santa]
 
@@ -2337,7 +2337,7 @@ length=:
     ##########################################################################
     def test_computed_fields(self):
 
-        input_file = tempfile.NamedTemporaryFile()
+        input_file = tempfile.NamedTemporaryFile(mode='w+t')
         input_file.write('''
 [namelist:teapot]
 
@@ -2386,7 +2386,7 @@ expression=namelist:fridge=milk + (namelist:teapot=foo ** 2) - (source:constants
 ##########################################################################
     def test_constant_in_computed(self):
 
-        input_file = tempfile.NamedTemporaryFile()
+        input_file = tempfile.NamedTemporaryFile(mode='w+t')
         input_file.write('''
 [namelist:cheese]
 
@@ -2420,7 +2420,7 @@ expression=fred * source:constants_mod=FUDGE
 ##########################################################################
     def test_array_fields(self):
 
-        input_file = tempfile.NamedTemporaryFile()
+        input_file = tempfile.NamedTemporaryFile(mode='w+t')
         input_file.write('''
 [namelist:aerial]
 

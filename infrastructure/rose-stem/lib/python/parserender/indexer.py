@@ -155,6 +155,12 @@ class Directory(FileNode, TreeNode):
   def getRunPage( self ):
     return self._runPage
 
+  def __eq__(self, other):
+      return self.name == other.name
+
+  def __lt__(self, other):
+      return self.name < other.name
+
 ##############################################################################
 class Page(FileNode, TreeNode):
   '''
@@ -194,6 +200,12 @@ class Page(FileNode, TreeNode):
     if self._currentDigest is None or self._previousDigest is None:
       return None
     return self._currentDigest != self._previousDigest
+
+  def __eq__(self, other):
+      return self.name == other.name
+
+  def __lt__(self, other):
+      return self.name < other.name
 
 ##############################################################################
 class Indexer(object):
