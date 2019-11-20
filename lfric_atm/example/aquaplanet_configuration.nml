@@ -49,7 +49,6 @@ cellshape='quadrilateral',
 coordinate_order=2,
 element_order=0,
 rehabilitate=.true.,
-supg=.false.,
 vorticity_in_w1=.false.,
 /
 &formulation
@@ -107,7 +106,7 @@ v0=0.0,
 wind_time_period=0.0,
 /
 &io
-checkpoint_read=.false.,
+checkpoint_read=.true.,
 checkpoint_write=.true.,
 diagnostic_frequency=1,
 subroutine_counters=.false.,
@@ -227,8 +226,8 @@ stellar_radius=6.957e8,
 surf_tile_fracs=9*0.0,1.0,0.0,
 /
 &time
-timestep_end=1,
-timestep_start=1,
+timestep_end=6,
+timestep_start=4,
 /
 &timestepping
 alpha=0.55,

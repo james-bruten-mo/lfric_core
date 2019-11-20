@@ -55,24 +55,7 @@ module io_mod
   use runtime_constants_mod,         only: get_coordinates
   use time_config_mod,               only: timestep_start, &
                                            timestep_end
-  use xios,                          only: xios_context,                  &
-                                           xios_duration,                 &
-                                           xios_fieldgroup,               &
-                                           xios_file,                     &
-                                           xios_close_context_definition, &
-                                           xios_context_initialize,       &
-                                           xios_get_axis_attr,            &
-                                           xios_get_domain_attr,          &
-                                           xios_get_handle,               &
-                                           xios_is_valid_field,           &
-                                           xios_is_valid_file,            &
-                                           xios_recv_field,               &
-                                           xios_send_field,               &
-                                           xios_set_attr,                 &
-                                           xios_set_axis_attr,            &
-                                           xios_set_current_context,      &
-                                           xios_set_domain_attr,          &
-                                           xios_set_timestep
+  use xios
 
   implicit none
   private
@@ -129,6 +112,7 @@ subroutine xios_domain_init(xios_ctx, mpi_comm, dtime, &
 
 
   ! Local variables
+  type(xios_date)                      :: xios_start_date
   type(xios_duration)                  :: xios_timestep
   type(xios_duration)                  :: o_freq, cp_freq, dump_freq
   type(xios_duration)                  :: av_freq
@@ -296,7 +280,13 @@ subroutine xios_domain_init(xios_ctx, mpi_comm, dtime, &
 
   !!!!!!!!!!!!!!!!!!!!!! Setup calendar and finalise context !!!!!!!!!!!!!!!!!!!!
 
+  call xios_get_start_date(xios_start_date)
+
   xios_timestep%second = dtime
+
+  xios_start_date = xios_start_date + (timestep_start-1) * xios_timestep
+
+  call xios_set_start_date(xios_start_date)
 
   call xios_set_timestep(xios_timestep)
 
