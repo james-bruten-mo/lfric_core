@@ -35,6 +35,7 @@ module linked_list_mod
 
   contains
     procedure, public :: insert_item
+    procedure, public :: remove_item
     procedure, public :: item_exists
     procedure, public :: get_length
     procedure, public :: get_item
@@ -359,6 +360,53 @@ subroutine insert_item(self, new_data, insert_point, placement)
 
 end subroutine insert_item
 
+!> Removes an item from the list
+!> @param inout item (optional) The item to be removed.
+!>                              Otherwise current is removed
+subroutine remove_item(self, item )
+
+  implicit none
+
+  class(linked_list_type), intent (inout)   :: self
+
+  ! Optional argument to decide which item to remove
+  ! if missing, remove 'current'
+  type(linked_list_item_type), optional, pointer, intent(inout) :: item
+
+  type(linked_list_item_type), pointer :: to_remove
+
+  ! Select the item to be removed
+  if ( present(item) ) then
+    to_remove => item
+  else
+    to_remove => self%current
+  end if
+
+  ! If the item to be removed doesn't exist, don't try to remove it
+  if ( associated(to_remove) ) then
+
+    ! Update the next/prev pointers in the surrounding items in the list
+    ! so they bypass the items to be removed
+    if ( associated(to_remove%prev) ) to_remove%prev%next => to_remove%next
+    if ( associated(to_remove%next) ) to_remove%next%prev => to_remove%prev
+
+    self%length = self%length - 1
+    ! If head or tail is being removed set a new head/tail
+    if ( associated(to_remove,self%head) ) self%head => to_remove%next
+    if ( associated(to_remove,self%tail) ) self%tail => to_remove%prev
+
+    ! If current is being removed set a new current to the next item in the list
+    ! If that is null (i.e. at the end of the list) use the previous item
+    if ( associated(self%current, to_remove) ) self%current => to_remove%next
+    if ( .not.associated(self%current) ) self%current => to_remove%prev
+
+    ! Remove the item
+    deallocate(to_remove%payload)
+    deallocate(to_remove)
+
+  end if
+
+end subroutine remove_item
 
 !> Clears the list
 subroutine clear(self)

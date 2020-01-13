@@ -42,6 +42,7 @@ module field_collection_mod
   contains
     procedure, public :: add_field
     procedure, public :: add_reference_to_field
+    procedure, public :: remove_field
     procedure, public :: get_field
     procedure, public :: get_iterator
     procedure, public :: get_length
@@ -218,6 +219,52 @@ subroutine add_reference_to_field(self, field_ptr)
   call self%add_field( field_pointer )
 
 end subroutine add_reference_to_field
+
+!> Remove a field from the collection
+!> @param [in] field_name The name of the field to be removed
+subroutine remove_field(self, field_name)
+
+  implicit none
+
+  class(field_collection_type), intent(inout) :: self
+  character(*), intent(in) :: field_name
+
+  type(field_type), pointer :: field
+
+  ! Pointer to linked list - used for looping through the list
+  type(linked_list_item_type), pointer :: loop => null()
+
+  ! start at the head of the mesh collection linked list
+  loop => self%field_list%get_head()
+
+  do
+    ! If list is empty or we're at the end of list and we didn't find the
+    ! field, fail with an error
+    if ( .not. associated(loop) ) then
+      write(log_scratch_space, '(4A)') 'Cannot remove field. No field [', &
+         trim(field_name), '] in field collection: ', trim(self%name)
+      call log_event( log_scratch_space, LOG_LEVEL_ERROR)
+    end if
+    ! otherwise search list for the name of field we want
+
+    ! 'cast' to the field_type
+    select type(listfield => loop%payload)
+      type is (field_type)
+      if ( trim(field_name) == trim(listfield%get_name()) ) then
+          call self%field_list%remove_item(loop)
+          exit
+      end if
+      type is (field_pointer_type)
+      if ( trim(field_name) == trim(listfield%field_ptr%get_name()) ) then
+          call self%field_list%remove_item(loop)
+          exit
+      end if
+    end select
+
+    loop => loop%next
+  end do
+
+end subroutine remove_field
 
 !> Access a field from the collection
 !> @param [in] field_name The name of the field to be accessed

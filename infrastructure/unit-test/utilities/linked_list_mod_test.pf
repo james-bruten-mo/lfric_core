@@ -123,6 +123,17 @@ contains
 
   @assertEqual(this%test_value3, this%test_item%payload%get_id()  )
 
+  ! Check that an item can be removed from the list
+  ! Remove at the middle entry from the list (which should contain test_value1)
+  this%test_item => this%test_item%next
+  call this%test_list%remove_item(this%test_item)
+
+  ! Test that the list length has dropped back down to 2
+  @assertEqual( 2, this%test_list%get_length() )
+  ! Test that the removed item is no longer in the list
+  this%item_exists = this%test_list%item_exists(this%test_value1)
+  @assertFalse( this%item_exists )
+
   ! Test that the list is properly cleared
 
   call this%test_list%clear()
