@@ -1,5 +1,5 @@
 &aerosol
-c_aerosol='glomap_mode_climatology'
+c_aerosol='glomap_mode_climatology',
 /
 &base_mesh
 filename='mesh_C12.nc',
@@ -12,6 +12,18 @@ flux_bc_opt=0,
 /
 &checks
 limit_cfl=.false.,
+/
+&section_choice
+aerosol='um',
+boundary_layer='um',
+cloud='um',
+convection='um',
+dynamics='gungho',
+microphysics='um',
+orographic_drag='none',
+radiation='socrates',
+spectral_gwd='none',
+surface='jules',
 /
 &cloud
 rh_crit=0.92,0.916,0.912,0.903,0.891,0.885,0.869,0.85,0.828,0.815,
@@ -114,6 +126,9 @@ write_minmax_tseries=.false.,
 &logging
 run_log_level='info',
 /
+&microphysics
+dummy_var=0,
+/
 &mixed_solver
 gcrk=18,
 guess_np1=.false.,
@@ -125,7 +140,6 @@ si_preconditioner='pressure',
 si_tolerance=1.0e-6,
 /
 &mixing
-method='blending',
 smagorinsky=.false.,
 viscosity=.false.,
 viscosity_mu=0.0,
@@ -155,7 +169,7 @@ semimajor_axis_inc=0.0,
 spin='user',
 /
 &orography
-orog_init_option = 'none'
+orog_init_option='none'
 profile='none',
 /
 &partitioning
@@ -171,7 +185,6 @@ heldsuarez_wind_placement=0,
 microphysics_placement='slow',
 radiation_placement='slow',
 sample_physics_winds=.true.,
-spectral_gwd_placement='slow',
 /
 &planet
 cp=1005.0,
@@ -183,9 +196,11 @@ rd=287.05,
 scaling_factor=1.0,
 /
 &radiation
-cloud_inhomogeneity='homogeneous',
-cloud_overlap='maximum_random',
+cloud_horizontal_rsd=0.75,
+cloud_inhomogeneity='mcica',
+cloud_overlap='exponential_random',
 cloud_representation='no_cloud',
+cloud_vertical_decorr=10000.0,
 i_cloud_ice_type_lw=11,
 i_cloud_ice_type_sw=11,
 i_cloud_liq_type_lw=5,
@@ -205,20 +220,10 @@ l_o3_lw=.true.,
 l_o3_sw=.true.,
 l_planet_grey_surface=.false.,
 l_rayleigh_sw=.true.,
+mcica_data_file='ga7/mcica_data',
 n_radstep=1,
 spectral_file_lw='ga7/sp_lw_ga7',
 spectral_file_sw='ga7/sp_sw_ga7',
-/
-&section_choice
-aerosol='um',
-boundary_layer='um',
-cloud='um',
-convection='um',
-dynamics='gungho',
-microphysics='um',
-radiation='socrates',
-spectral_gwd='none',
-surface='jules',
 /
 &solver
 gcrk=18,
