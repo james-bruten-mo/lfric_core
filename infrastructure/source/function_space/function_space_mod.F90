@@ -163,9 +163,8 @@ type, extends(linked_list_data_type), public :: function_space_type
   !> A linked list of stencil dofmaps
   type(linked_list_type)      :: dofmap_list
 
-  !> Flag holds whether MPI communications have been set up for this
-  !> function space
-  logical(l_def) :: comms_fs
+  !> Flag holds whether fields on this function space will be readonly
+  logical(l_def) :: readonly
 contains
 
   !> @brief Gets the total number of unique degrees of freedom for this space,
@@ -332,8 +331,11 @@ contains
   generic             :: get_last_dof_halo => get_last_dof_halo_any, &
                                               get_last_dof_halo_deepest
 
-  !> Returns whether MPI comms have been set up for this function space
-  procedure, public :: is_comms_fs
+  !> Returns whether fields on this function space are readonly
+  procedure, public :: is_readonly
+
+  !> Returns whether fields on this function space can be written to
+  procedure, public :: is_writable
 
   !> Get the instance of a stencil dofmap with for a given id
   procedure, public   :: get_stencil_dofmap
@@ -534,12 +536,12 @@ subroutine init_function_space( self )
   ! create the linked list
   self%dofmap_list = linked_list_type()
 
-  ! Don't set up routing tables for WCHI. Fields on this function space are
-  ! constant so will never need to be halo exchanged
+  ! Set the readonly flag for WCHI. This means routing tables don't need to be
+  ! set up for this function space
   if( self%fs == WCHI ) then
-    self%comms_fs=.false.
+    self%readonly=.true.
   else
-    self%comms_fs=.true.
+    self%readonly=.false.
   end if
 
   ! Set up the fractional levels (for diagnostic output) for this fs
@@ -1174,18 +1176,33 @@ function get_last_dof_halo_deepest(self) result (last_dof_halo)
   return
 end function get_last_dof_halo_deepest
 
-!-----------------------------------------------------------------------------
-! Returns whether this function space supports MPI comms functionality
-!-----------------------------------------------------------------------------
-function is_comms_fs(self) result(return_comms_fs)
+
+!> @brief Returns whether fields on this function space are readonly
+!> @return return_readonly Flag describes if fields on this function space
+!>                         will be readonly
+function is_readonly(self) result(return_readonly)
   implicit none
 
   class(function_space_type), intent(in) :: self
-  logical(l_def) :: return_comms_fs
+  logical(l_def) :: return_readonly
 
-  return_comms_fs = self%comms_fs
+  return_readonly = self%readonly
 
-end function is_comms_fs
+end function is_readonly
+
+
+!> @brief Returns whether fields on this function space can be written to
+!> @return return_writable Flag describes if fields on this function space
+!>                         can be written to
+function is_writable(self) result(return_writable)
+  implicit none
+
+  class(function_space_type), intent(in) :: self
+  logical(l_def) :: return_writable
+
+  return_writable = .not.self%readonly
+
+end function is_writable
 
 !> Get the instance of a stencil dofmap with for a given shape and size
 !> @param[in] stencil_shape The shape identifier for the stencil dofmap to

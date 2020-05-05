@@ -57,6 +57,7 @@ contains
     integer(i_def) :: nverts
 
     integer(i_native) :: alloc_error
+    integer(i_def)    :: depth
 
     ! Break encapsulation and get the proxy.
     chi_proxy(1) = chi(1)%get_proxy()
@@ -105,6 +106,13 @@ contains
                                domain_size%minimum%y )
     end do
     ! Loop over all the cells
+
+    ! As we have correctly set the chi fields into their full halos,
+    ! mark their halos as clean, out to the full halo depth
+    depth = mesh%get_halo_depth()
+    call chi_proxy(1)%set_clean(depth)
+    call chi_proxy(2)%set_clean(depth)
+    call chi_proxy(3)%set_clean(depth)
 
     deallocate ( dz, column_coords, vertex_coords )
 

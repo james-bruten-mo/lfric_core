@@ -14,7 +14,6 @@
 module field_parent_mod
 
   use constants_mod,               only: i_def, l_def, str_def, r_def, real_type
-  use fs_continuity_mod,           only: WCHI
   use function_space_mod,          only: function_space_type
   use halo_routing_collection_mod, only: halo_routing_collection
   use halo_routing_mod,            only: halo_routing_type
@@ -189,8 +188,9 @@ contains
 
     self%vspace => vector_space
 
-    ! chi fields are never halo exchanged - so don't need a routing table
-    if ( vector_space%which() /= WCHI ) then
+    ! Fields on a read-only function space can never halo exchanged
+    ! - so only need a routing table for writable function spaces
+    if ( vector_space%is_writable() ) then
       self%halo_routing => &
         halo_routing_collection%get_halo_routing( &
                                              vector_space%get_mesh_id(), &

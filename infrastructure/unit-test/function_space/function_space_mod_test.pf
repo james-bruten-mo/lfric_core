@@ -69,7 +69,7 @@ module function_space_mod_test
             test_space, test_stencil_point, test_stencil_1dx, &
             test_stencil_1dy, test_stencil_cross, test_mesh,  &
             test_entities, test_get_whole_dofmap,             &
-            test_get_last_dof, test_is_comms_fs
+            test_get_last_dof, test_is_readonly
 
   @testParameter
   type, public, extends(MPITestParameter) :: function_space_parameter_type
@@ -108,7 +108,7 @@ module function_space_mod_test
     procedure test_mesh
     procedure test_entities
     procedure test_get_last_dof
-    procedure test_is_comms_fs
+    procedure test_is_readonly
   end type test_function_space_type
 
   integer(i_def), parameter :: element_order = 0
@@ -743,7 +743,7 @@ contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   @Test( npes=[1] )
-  subroutine test_is_comms_fs( this )
+  subroutine test_is_readonly( this )
 
     implicit none
 
@@ -751,22 +751,32 @@ contains
 
     type(function_space_type) :: test_fs
 
-    logical(l_def) :: is_comms_fs_expected
-    logical(l_def) :: is_comms_fs_returned
+    logical(l_def) :: is_readonly_expected
+    logical(l_def) :: is_readonly_returned
+    logical(l_def) :: is_writable_expected
+    logical(l_def) :: is_writable_returned
 
-    is_comms_fs_expected=.true.
-    if( this%function_space == Wchi) is_comms_fs_expected=.false.
+    is_readonly_expected=.false.
+    is_writable_expected=.true.
+    if ( this%function_space == Wchi ) then
+      is_readonly_expected=.true.
+      is_writable_expected=.false.
+    end if
 
     test_fs = function_space_type( this%mesh_id,  &
                                    element_order, &
                                    this%function_space )
 
-    is_comms_fs_returned=test_fs%is_comms_fs()
+    is_readonly_returned=test_fs%is_readonly()
 
-    @assertEqual ( is_comms_fs_expected, is_comms_fs_returned )
+    @assertEqual ( is_readonly_expected, is_readonly_returned )
+
+    is_writable_returned=test_fs%is_writable()
+
+    @assertEqual ( is_writable_expected, is_writable_returned )
 
     call test_fs%clear()
 
-  end subroutine test_is_comms_fs
+  end subroutine test_is_readonly
 
 end module function_space_mod_test

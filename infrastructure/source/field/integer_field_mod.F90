@@ -836,8 +836,8 @@ contains
     type(xt_redist) :: redist
     type(halo_routing_type), pointer :: halo_routing => null()
 
-    if( self%vspace%is_comms_fs() ) then
-      if( depth > self%max_halo_depth() ) &
+    if ( self%vspace%is_writable() ) then
+      if ( depth > self%max_halo_depth() ) &
         call log_event( 'Error in field: '// &
                         'attempt to exchange halos with depth out of range.', &
                         LOG_LEVEL_ERROR )
@@ -851,6 +851,10 @@ contains
       self%halo_dirty(1:depth) = 0
       ! If a halo counter has been set up, increment it
       if (allocated(halo_calls)) call halo_calls%counter_inc()
+    else
+      call log_event( 'Error in field: '// &
+        'attempt to exchange halos (a write operation) on a read-only field.', &
+         LOG_LEVEL_ERROR )
     end if
 
   end subroutine halo_exchange
@@ -868,8 +872,8 @@ contains
     type(xt_redist) :: redist
     type(halo_routing_type), pointer :: halo_routing => null()
 
-    if( self%vspace%is_comms_fs() ) then
-      if( depth > self%max_halo_depth() ) &
+    if ( self%vspace%is_writable() ) then
+      if ( depth > self%max_halo_depth() ) &
         call log_event( 'Error in field: '// &
                         'attempt to exchange halos with depth out of range.', &
                         LOG_LEVEL_ERROR )
@@ -877,6 +881,10 @@ contains
       halo_routing => self%get_halo_routing()
       redist = halo_routing%get_redist(depth)
       call xt_redist_a_exchange(redist, self%data, self%data, self%halo_request)
+    else
+      call log_event( 'Error in field: '// &
+        'attempt to exchange halos (a write operation) on a read-only field.', &
+         LOG_LEVEL_ERROR )
     end if
 
   end subroutine halo_exchange_start
@@ -893,8 +901,8 @@ contains
     class( integer_field_proxy_type ), target, intent(inout) :: self
     integer(i_def), intent(in) :: depth
 
-    if( self%vspace%is_comms_fs() ) then
-      if( depth > self%max_halo_depth() ) &
+    if ( self%vspace%is_writable() ) then
+      if ( depth > self%max_halo_depth() ) &
         call log_event( 'Error in field: '// &
                         'attempt to exchange halos with depth out of range.', &
                         LOG_LEVEL_ERROR )
@@ -906,6 +914,10 @@ contains
       self%halo_dirty(1:depth) = 0
       ! If a halo counter has been set up, increment it
       if (allocated(halo_calls)) call halo_calls%counter_inc()
+    else
+      call log_event( 'Error in field: '// &
+        'attempt to exchange halos (a write operation) on a read-only field.', &
+         LOG_LEVEL_ERROR )
     end if
 
   end subroutine halo_exchange_finish
@@ -924,16 +936,13 @@ contains
 
     integer(i_def) :: i
 
-    if( self%vspace%is_comms_fs() ) then
+    ! Generate local sum
+    l_sum = 0_i_def
+    do i = 1, self%vspace%get_last_dof_owned()
+      l_sum = l_sum + self%data(i)
+    end do
 
-      ! Generate local sum
-      l_sum = 0
-      do i = 1, self%vspace%get_last_dof_owned()
-        l_sum = l_sum + self%data(i)
-      end do
-
-      call global_sum( l_sum, answer )
-    end if
+    call global_sum( l_sum, answer )
   end function get_sum
 
   !! Start the calculation of the global minimum of the field
@@ -950,16 +959,13 @@ contains
 
     integer(i_def) :: i
 
-    if( self%vspace%is_comms_fs() ) then
+    ! Generate local min
+    l_min = self%data(1)
+    do i = 2, self%vspace%get_last_dof_owned()
+      if( self%data(i) < l_min ) l_min = self%data(i)
+    end do
 
-      ! Generate local min
-      l_min = self%data(1)
-      do i = 2, self%vspace%get_last_dof_owned()
-        if( self%data(i) < l_min ) l_min = self%data(i)
-      end do
-
-      call global_min( l_min, answer )
-    end if
+    call global_min( l_min, answer )
 
   end function get_min
 
@@ -977,16 +983,13 @@ contains
 
     integer(i_def) :: i
 
-    if( self%vspace%is_comms_fs() ) then
+    ! Generate local max
+    l_max = self%data(1)
+    do i = 2, self%vspace%get_last_dof_owned()
+      if( self%data(i) > l_max ) l_max = self%data(i)
+    end do
 
-      ! Generate local max
-      l_max = self%data(1)
-      do i = 2, self%vspace%get_last_dof_owned()
-        if( self%data(i) > l_max ) l_max = self%data(i)
-      end do
-
-      call global_max( l_max, answer )
-    end if
+    call global_max( l_max, answer )
 
   end function get_max
 
@@ -1003,16 +1006,11 @@ contains
 
     logical(l_def) :: is_dirty_tmp
 
-    if( self%vspace%is_comms_fs() ) then
-
-      is_dirty_tmp=self%is_dirty(1)    ! reduction_finish currently does nothing.
+    is_dirty_tmp=self%is_dirty(1)    ! reduction_finish currently does nothing.
                                     ! The "self" that is passed in automatically
                                     ! to a type-bound subroutine is not used -
                                     ! so the compilers complain -  have to use
                                     ! it for something harmless.
-
-
-    end if
 
   end subroutine reduction_finish
 
