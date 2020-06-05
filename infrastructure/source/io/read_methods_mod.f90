@@ -182,73 +182,38 @@ subroutine read_field_single_face(xios_field_name, field_proxy)
   ! all 2D fields are nominally in W3, hence half levels
   call xios_get_domain_attr('face_half_levels', ni=domain_size)
 
-  if (ndata == 1) then
-    ! Size the array to be what is expected
-    allocate(recv_field(domain_size))
+  ! Size the array to be what is expected
+  allocate(recv_field(domain_size*ndata))
 
-    ! Read the data into a temporary array - this should be in the correct order
-    ! as long as we set up the horizontal domain using the global index
-    call xios_recv_field(xios_field_name, recv_field)
-
-    ! Cast to field kinds to access data
-    select type(field_proxy)
-
-      type is (field_proxy_type)
-      field_proxy%data(1:undf) = recv_field(1:domain_size)
-
-      type is (integer_field_proxy_type)
-      field_proxy%data(1:undf) = recv_field(1:domain_size)
-
-    end select
-
-  else
-      ! Size the array to be what is expected
-    allocate(recv_field(domain_size*ndata))
-
-    ! If the fields do not have the same size, then exit with error
-    if ( size(recv_field) /= undf ) then
-      call log_event( "Global size of model field /= size of field from file", &
-                      LOG_LEVEL_ERROR )
-    end if
-
-    ! Read the data into a temporary array - this should be in the correct order
-    ! as long as we set up the horizontal domain using the global index
-    call xios_recv_field(xios_field_name, recv_field)
-
-    ! We need to reshape the incoming data to get the correct data layout for the LFRic
-    ! multi-data field
-    ! We need to cast to the field kind to access the data
-    select type(field_proxy)
-
-      type is (field_proxy_type)
-      if ( field_proxy%is_ndata_first() ) then
-        do i = 0, ndata-1
-          field_proxy%data(i+1:(ndata*domain_size)+i:ndata) = &
-                  recv_field(i*(domain_size)+1:(i*(domain_size)) + domain_size)
-        end do
-      else
-        do i = 0, ndata-1
-          field_proxy%data( (i*domain_size)+1:(i+1)*domain_size ) = &
-                  recv_field(i*(domain_size)+1:(i*(domain_size)) + domain_size)
-        end do
-      end if
-
-      type is (integer_field_proxy_type)
-      if ( field_proxy%is_ndata_first() ) then
-        do i = 0, ndata-1
-          field_proxy%data(i+1:(ndata*domain_size)+i:ndata) = &
-                  recv_field(i*(domain_size)+1:(i*(domain_size)) + domain_size)
-        end do
-      else
-        do i = 0, ndata-1
-          field_proxy%data( (i*domain_size)+1:(i+1)*domain_size ) = &
-                  recv_field(i*(domain_size)+1:(i*(domain_size)) + domain_size)
-        end do
-      end if
-
-    end select
-
+  ! If the fields do not have the same size, then exit with error
+  if ( size(recv_field) /= undf ) then
+    call log_event( "Global size of model field /= size of field from file", &
+                    LOG_LEVEL_ERROR )
   end if
+
+  ! Read the data into a temporary array - this should be in the correct order
+  ! as long as we set up the horizontal domain using the global index
+  call xios_recv_field(xios_field_name, recv_field)
+
+  ! We need to reshape the incoming data to get the correct data layout for the LFRic
+  ! multi-data field
+  ! We need to cast to the field kind to access the data
+  select type(field_proxy)
+
+    ! Pass the correct data from the recieved field to the field proxy data
+    type is (field_proxy_type)
+    do i = 0, ndata-1
+      field_proxy%data(i+1:(ndata*domain_size)+i:ndata) = &
+              recv_field(i*(domain_size)+1:(i*(domain_size)) + domain_size)
+    end do
+
+    type is (integer_field_proxy_type)
+    do i = 0, ndata-1
+      field_proxy%data(i+1:(ndata*domain_size)+i:ndata) = &
+              recv_field(i*(domain_size)+1:(i*(domain_size)) + domain_size)
+    end do
+
+  end select
 
   deallocate(recv_field)
 

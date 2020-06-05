@@ -21,6 +21,7 @@ module io_dev_init_mod
   use pure_abstract_field_mod,        only : pure_abstract_field_type
   ! Configuration
   use finite_element_config_mod,      only : element_order
+  use initialization_config_mod,      only : init_option, init_option_fd_start_dump
   ! I/O methods
   use read_methods_mod,               only : read_field_face, &
                                              read_field_single_face, &
@@ -59,8 +60,8 @@ module io_dev_init_mod
     type(field_collection_type), intent(out) :: output_fields
 
     ! Local variables
-    type(field_type)       :: input_face_field, input_single_face_field
-    type(field_type)       :: node_field, face_field, single_face_field
+    type(field_type)       :: input_face_field, input_single_face_field, input_multi_data_field
+    type(field_type)       :: node_field, face_field, single_face_field, multi_data_field
     type(field_proxy_type) :: tmp_proxy
     integer(i_def)         :: u
 
@@ -117,6 +118,30 @@ module io_dev_init_mod
     call input_single_face_field%set_read_behaviour( tmp_read_ptr )
     call depository%add_field( input_single_face_field )
 
+    call multi_data_field%initialise( vector_space = &
+                   function_space_collection%get_fs(twod_mesh_id, element_order, W3, ndata=5), &
+                   name = 'multi_data_field' )
+    tmp_write_ptr => write_field_single_face
+    call multi_data_field%set_write_behaviour( tmp_write_ptr )
+    call depository%add_field( multi_data_field )
+
+    call input_multi_data_field%initialise( vector_space = &
+                   function_space_collection%get_fs(twod_mesh_id, element_order, W3, ndata=5), &
+                   name = 'input_multi_data_field' )
+    tmp_read_ptr => read_field_single_face
+    call input_multi_data_field%set_read_behaviour( tmp_read_ptr )
+    call depository%add_field( input_multi_data_field )
+
+    !----------------------------------------------------------------------------
+    ! Input fields
+    !----------------------------------------------------------------------------
+    ! Add fields to input_fields collection
+
+    if ( init_option == init_option_fd_start_dump ) then
+      tmp_field_ptr => depository%get_field( 'input_multi_data_field' )
+      call input_fields%add_reference_to_field( tmp_field_ptr )
+    end if
+
     !----------------------------------------------------------------------------
     ! Output fields
     !----------------------------------------------------------------------------
@@ -129,6 +154,9 @@ module io_dev_init_mod
     call output_fields%add_reference_to_field( tmp_field_ptr )
 
     tmp_field_ptr => depository%get_field( 'single_face_field' )
+    call output_fields%add_reference_to_field( tmp_field_ptr )
+
+    tmp_field_ptr => depository%get_field( 'multi_data_field' )
     call output_fields%add_reference_to_field( tmp_field_ptr )
 
     nullify( tmp_read_ptr )
@@ -153,7 +181,7 @@ module io_dev_init_mod
     type(field_collection_type), intent(inout) :: output_fields
 
     ! Local variables
-    integer(i_def) :: dof_index
+    integer(i_def) :: dof_index, ndata, ndata_index, domain_size
     character(str_def) :: input_field_name
     type(field_collection_iterator_type) :: iter
     type(field_proxy_type) :: input_proxy, core_proxy
@@ -166,7 +194,9 @@ module io_dev_init_mod
     ! Read input fields from file
     ! This line will be enabled with the second round of rose-stem tests, which
     ! will include the reading of data generated in the first round.
-    !call read_state( input_fields )
+    if ( init_option == init_option_fd_start_dump ) then
+      call read_state( input_fields )
+    end if
 
     ! Populate core fields from input fields
     iter = output_fields%get_iterator()
@@ -189,6 +219,7 @@ module io_dev_init_mod
           else
             ! Initialise field to default value (number of dofs)
             core_proxy = fld%get_proxy()
+
             do dof_index = 1, core_proxy%vspace%get_last_dof_owned()
               core_proxy%data(dof_index) = core_proxy%vspace%get_last_dof_owned()
             end do

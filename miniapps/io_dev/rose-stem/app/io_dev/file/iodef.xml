@@ -11,6 +11,7 @@
    <axis_definition>
     <axis id="vert_axis_half_levels" name="half_levels"/>
     <axis id="vert_axis_full_levels" name="full_levels"/>
+    <axis id="multi_data_axis" name="multi_data_axis" n_glo="5"/>
    </axis_definition>
 
    <domain_definition>
@@ -58,6 +59,7 @@
         <field id="node_field" name="node_field" long_name="Field on W0 function space" unit="1" grid_ref="node_grid" />
         <field id="face_field" name="face_field" long_name="Field on W3 function space" unit="1" grid_ref="half_level_face_grid" />
         <field id="single_face_field" name="single_face_field" long_name="Two dimensional field on W3 function space" unit="1" domain_ref="face_half_levels" />
+        <field id="multi_data_field" name="multi_data_field" long_name="Multi_data (ndata=5) field on W3, 2D function space" unit="1" domain_ref="face_half_levels" axis_ref="multi_data_axis"/>
      </field_group>
 
      <!-- Checkpoint group -->
@@ -90,6 +92,11 @@
       <!-- File definition for output fields -->
       <file id="io_dev_output" name="io_dev_output" mode="write" output_freq="1ts" convention="UGRID" enabled=".TRUE.">
         <field_group group_ref="core_fields" />
+      </file>
+
+      <!-- File definition for input_multi-data fields -->
+      <file id="multi_data_C12" name="multi_data_C12" mode="read" output_freq="1ts" convention="UGRID" enabled=".FALSE.">
+        <field id="input_multi_data_field" name="multi_data_field" long_name="Multi_data (ndata=5) field on W3, 2D function space" unit="1" operation="once" domain_ref="face_half_levels" axis_ref="multi_data_axis"/>
       </file>
 
       <!-- File definition for checkpoint write -->

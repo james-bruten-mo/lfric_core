@@ -246,7 +246,7 @@ subroutine write_field_single_face(xios_field_name, field_proxy)
   character(len=*),               intent(in) :: xios_field_name
   class(field_parent_proxy_type), intent(in) :: field_proxy
 
-  integer(i_def) :: undf, ndata
+  integer(i_def) :: i, undf, ndata
   integer(i_def) :: domain_size
   real(dp_xios), allocatable :: send_field(:)
 
@@ -257,51 +257,36 @@ subroutine write_field_single_face(xios_field_name, field_proxy)
   ! all 2D fields are nominally in W3, hence half levels
   call xios_get_domain_attr('face_half_levels', ni=domain_size)
 
-  if (ndata == 1) then
-    ! Size the arrays to be what is expected
-    allocate(send_field(domain_size))
+  ! Size the array to be what is expected
+  allocate(send_field(domain_size*ndata))
 
-    ! Different field kinds are selected to access data
-    select type(field_proxy)
-
-      type is (field_proxy_type)
-      send_field(1:domain_size) = field_proxy%data(1:undf)
-
-      type is (integer_field_proxy_type)
-      if ( any( abs(field_proxy%data) > xios_max_int) ) then
-        call log_event( 'Data for integer field "'// trim(adjustl(xios_field_name)) // &
-                        '" contains values too large for 16-bit precision', LOG_LEVEL_ERROR )
-      end if
-      send_field(1:domain_size) = real( field_proxy%data(1:undf), dp_xios )
-
-    end select
-
-  else
-    ! Size the array to be what is expected
-    allocate(send_field(domain_size*ndata))
-
-    ! If the fields do not have the same size, then exit with error
-    if ( size(send_field) /= undf ) then
-      call log_event( "Global size of model field /= size of field from file", &
-                      LOG_LEVEL_ERROR )
-    end if
-
-    ! Different field kinds are selected to access data
-    select type(field_proxy)
-
-      type is (field_proxy_type)
-      send_field(1:size(send_field)) = field_proxy%data(1:undf)
-
-      type is (integer_field_proxy_type)
-      if ( any( abs(field_proxy%data) > xios_max_int) ) then
-        call log_event( 'Data for integer field "'// trim(adjustl(xios_field_name)) // &
-                        '" contains values too large for 16-bit precision', LOG_LEVEL_ERROR )
-      end if
-      send_field(1:size(send_field)) = real( field_proxy%data(1:undf), dp_xios )
-
-    end select
-
+  ! If the fields do not have the same size, then exit with error
+  if ( size(send_field) /= undf ) then
+    call log_event( "Global size of model field /= size of field from file", &
+                    LOG_LEVEL_ERROR )
   end if
+
+  ! Different field kinds are selected to access data - data is re-ordered into
+  ! slabs according to ndata
+  select type(field_proxy)
+
+    type is (field_proxy_type)
+    do i = 0, ndata-1
+      send_field(i*(domain_size)+1:(i*(domain_size)) + domain_size) = &
+                              field_proxy%data(i+1:(ndata*domain_size)+i:ndata)
+    end do
+
+    type is (integer_field_proxy_type)
+    if ( any( abs(field_proxy%data) > xios_max_int) ) then
+      call log_event( 'Data for integer field "'// trim(adjustl(xios_field_name)) // &
+                      '" contains values too large for 16-bit precision', LOG_LEVEL_ERROR )
+    end if
+    do i = 0, ndata-1
+      send_field(i*(domain_size)+1:(i*(domain_size)) + domain_size) = &
+                              field_proxy%data(i+1:(ndata*domain_size)+i:ndata)
+    end do
+
+  end select
 
   call xios_send_field(xios_field_name, send_field)
 
