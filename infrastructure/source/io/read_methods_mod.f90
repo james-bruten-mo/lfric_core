@@ -35,7 +35,6 @@ module read_methods_mod
             read_field_single_face,  &
             read_state,              &
             read_checkpoint,         &
-            dump_read_xios,          &
             read_field_time_var,     &
             read_time_data
 
@@ -383,25 +382,6 @@ subroutine read_checkpoint(state, timestep)
   nullify(fld)
 
 end subroutine read_checkpoint
-
-!> @brief   Read a field from a dump via XIOS
-!>@param[in] xios_field_name XIOS identifier for the field
-!>@param[in,out] field_proxy a field proxy containing the data to output
-subroutine dump_read_xios(xios_field_name, field_proxy)
-
-  implicit none
-
-  character(len=*),               intent(in)    :: xios_field_name
-  class(field_parent_proxy_type), intent(inout) :: field_proxy
-
-  select type(field_proxy)
-
-    type is (field_proxy_type)
-    call read_field_face("read_"//xios_field_name, field_proxy)
-
-  end select
-
-end subroutine dump_read_xios
 
 !> @brief   Read a time-varying field in UGRID format using XIOS
 !>@param[in]    xios_field_name XIOS identifier for the field

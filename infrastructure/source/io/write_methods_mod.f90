@@ -36,8 +36,7 @@ module write_methods_mod
             write_field_face,         &
             write_field_edge,         &
             write_state,              &
-            write_checkpoint,         &
-            dump_write_xios
+            write_checkpoint
 
 contains
 
@@ -557,24 +556,5 @@ subroutine write_checkpoint( state, clock )
   nullify(fld)
 
 end subroutine write_checkpoint
-
-!> @brief   Write a field to a dump via XIOS
-!>@param[in] xios_field_name XIOS identifier for the field
-!>@param[in] field_proxy a field proxy containing the data to output
-subroutine dump_write_xios(xios_field_name, field_proxy)
-
-  implicit none
-
-  character(len=*),               intent(in) :: xios_field_name
-  class(field_parent_proxy_type), intent(in) :: field_proxy
-
-  select type(field_proxy)
-
-    type is (field_proxy_type)
-    call write_field_face(xios_field_name, field_proxy)
-
-  end select
-
-end subroutine dump_write_xios
 
 end module write_methods_mod
