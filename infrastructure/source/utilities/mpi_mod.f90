@@ -11,19 +11,10 @@
 !> functionality to work, the subroutine store_comm must first be called to
 !> store a valid MPI communicator.
 !>
-!> @todo This module should not be using default kinds of any sort. Instead
-!>       it should provide routines specific to a particular word size. The
-!>       compiler will then choose the correct one through an interface
-!>       regardless of what the default is set to. I have not blitzed the file
-!>       as I have other things which need doing yesterday but the broadcast
-!>       of reals shows the model.
-!>
 module mpi_mod
 
-  use constants_mod, only : i_def, i_halo_index, i_native, &
-                            l_def,                         &
-                            r_def, r_double, r_single,     &
-                            str_def,                       &
+  use constants_mod, only : i_def, i_halo_index, i_native,              &
+                            l_def, r_double, r_single, str_def,         &
                             real_type, integer_type, logical_type
   use mpi,           only : mpi_comm_rank, mpi_comm_size, mpi_finalize, &
                             mpi_init, mpi_success, mpi_comm_world,      &
@@ -63,20 +54,23 @@ module mpi_mod
 
   ! Generic interface for specific global_sum functions
   interface global_sum
-   module procedure global_sum_i_def, &
-                    global_sum_r_def
+   module procedure global_sum_i_def,    &
+                    global_sum_r_double, &
+                    global_sum_r_single
   end interface
 
   ! Generic interface for specific max functions
   interface global_max
-   module procedure global_max_i_def, &
-                    global_max_r_def
+   module procedure global_max_i_def,    &
+                    global_max_r_double, &
+                    global_max_r_single
   end interface
 
   ! Generic interface for specific min functions
   interface global_min
-   module procedure global_min_i_def, &
-                    global_min_r_def
+   module procedure global_min_i_def,    &
+                    global_min_r_double, &
+                    global_min_r_single
   end interface
 
 contains
@@ -141,16 +135,16 @@ contains
   !> @param l_sum The sum of the reals on the local partition
   !> @param g_sum The calculated global sum
   !>
-  subroutine global_sum_r_def(l_sum, g_sum)
+  subroutine global_sum_r_double(l_sum, g_sum)
     implicit none
-    real(r_def), intent(in)  :: l_sum
-    real(r_def), intent(out) :: g_sum
+    real(r_double), intent(in)  :: l_sum
+    real(r_double), intent(out) :: g_sum
 
     integer(i_def) :: err
 
     if(comm_set)then
       ! Generate global sum
-      call mpi_allreduce( l_sum, g_sum, 1, get_mpi_datatype( real_type, r_def ), &
+      call mpi_allreduce( l_sum, g_sum, 1, get_mpi_datatype( real_type, r_double ), &
                           mpi_sum, comm, err )
       if (err /= mpi_success) &
         call log_event('Call to real global_sum failed with an MPI error.', &
@@ -161,7 +155,36 @@ contains
       LOG_LEVEL_ERROR )
     end if
 
-  end subroutine global_sum_r_def
+  end subroutine global_sum_r_double
+
+
+  !> Calculates the global sum of a collection of real32 local sums
+  !>
+  !> @param l_sum The sum of the reals on the local partition
+  !> @param g_sum The calculated global sum
+  !>
+  subroutine global_sum_r_single(l_sum, g_sum)
+    implicit none
+    real(r_single), intent(in)  :: l_sum
+    real(r_single), intent(out) :: g_sum
+
+    integer(i_def) :: err
+
+    if(comm_set)then
+      ! Generate global sum
+      call mpi_allreduce( l_sum, g_sum, 1, get_mpi_datatype( real_type, r_single), &
+                          mpi_sum, comm, err )
+      if (err /= mpi_success) &
+        call log_event('Call to real global_sum failed with an MPI error.', &
+                       LOG_LEVEL_ERROR )
+    else
+      call log_event( &
+      'Call to global_sum failed. Must call store_comm first',&
+      LOG_LEVEL_ERROR )
+    end if
+
+  end subroutine global_sum_r_single
+
 
   !> Calculates the global sum of a collection of integer local sums
   !>
@@ -196,16 +219,16 @@ contains
   !> @param l_min The min on the local partition
   !> @param g_min The calculated global minimum
   !>
-  subroutine global_min_r_def(l_min, g_min)
+  subroutine global_min_r_double(l_min, g_min)
     implicit none
-    real(r_def), intent(in)  :: l_min
-    real(r_def), intent(out) :: g_min
+    real(r_double), intent(in)  :: l_min
+    real(r_double), intent(out) :: g_min
 
     integer(i_def)  :: err
 
     if(comm_set)then
       ! Generate global min
-      call mpi_allreduce( l_min, g_min, 1, get_mpi_datatype( real_type, r_def ), &
+      call mpi_allreduce( l_min, g_min, 1, get_mpi_datatype( real_type, r_double ), &
                           mpi_min, comm, err )
       if (err /= mpi_success) &
         call log_event('Call to global_min failed with an MPI error.', &
@@ -216,7 +239,34 @@ contains
       LOG_LEVEL_ERROR )
     end if
 
-  end subroutine global_min_r_def
+  end subroutine global_min_r_double
+
+  !> Calculates the global minimum of a collection of local real32 minimums
+  !>
+  !> @param l_min The min on the local partition
+  !> @param g_min The calculated global minimum
+  !>
+  subroutine global_min_r_single(l_min, g_min)
+    implicit none
+    real(r_single), intent(in)  :: l_min
+    real(r_single), intent(out) :: g_min
+
+    integer(i_def)  :: err
+
+    if(comm_set)then
+      ! Generate global min
+      call mpi_allreduce( l_min, g_min, 1, get_mpi_datatype( real_type, r_single), &
+                          mpi_min, comm, err )
+      if (err /= mpi_success) &
+        call log_event('Call to global_min failed with an MPI error.', &
+                       LOG_LEVEL_ERROR )
+    else
+      call log_event( &
+      'Call to global_min failed. Must call store_comm first',&
+      LOG_LEVEL_ERROR )
+    end if
+
+  end subroutine global_min_r_single
 
 
   !> Calculates the global minimum of a collection of local integer minimums
@@ -252,16 +302,16 @@ contains
   !> @param l_min The max on the local partition
   !> @param g_max The calculated global maximum
   !>
-  subroutine global_max_r_def(l_max, g_max)
+  subroutine global_max_r_double(l_max, g_max)
     implicit none
-    real(r_def), intent(in)  :: l_max
-    real(r_def), intent(out) :: g_max
+    real(r_double), intent(in)  :: l_max
+    real(r_double), intent(out) :: g_max
 
     integer(i_def)  :: err
 
     if(comm_set)then
       ! Generate global max
-      call mpi_allreduce( l_max, g_max, 1, get_mpi_datatype( real_type, r_def ), &
+      call mpi_allreduce( l_max, g_max, 1, get_mpi_datatype( real_type, r_double ), &
                           mpi_max, comm, err )
       if (err /= mpi_success) &
         call log_event('Call to global_max failed with an MPI error.', &
@@ -272,7 +322,35 @@ contains
       LOG_LEVEL_ERROR )
     end if
 
-  end subroutine global_max_r_def
+  end subroutine global_max_r_double
+
+
+  !> Calculates the global maximum of a collection of local real32 maximums
+  !>
+  !> @param l_min The max on the local partition
+  !> @param g_max The calculated global maximum
+  !>
+  subroutine global_max_r_single(l_max, g_max)
+    implicit none
+    real(r_single), intent(in)  :: l_max
+    real(r_single), intent(out) :: g_max
+
+    integer(i_def)  :: err
+
+    if(comm_set)then
+      ! Generate global max
+      call mpi_allreduce( l_max, g_max, 1, get_mpi_datatype( real_type, r_single), &
+                          mpi_max, comm, err )
+      if (err /= mpi_success) &
+        call log_event('Call to global_max failed with an MPI error.', &
+                       LOG_LEVEL_ERROR )
+    else
+      call log_event( &
+      'Call to global_max failed. Must call store_comm first',&
+      LOG_LEVEL_ERROR )
+    end if
+
+  end subroutine global_max_r_single
 
 
   !> Calculates the global maximum of a collection of local integer maximums
@@ -561,7 +639,8 @@ contains
       case (real64)
         mpi_datatype = MPI_DOUBLE_PRECISION
       case (real128)
-        mpi_datatype = MPI_REAL4
+        call log_event( 'Attempt to use real128 Fortran kind used for MPI comms - &
+           &NOT YET SUPPORTED', LOG_LEVEL_ERROR )
       case default
         call log_event( 'Unrecognised Fortran kind used for MPI comms', &
            LOG_LEVEL_ERROR )
