@@ -32,7 +32,7 @@
                     'module load environment/lfric/gnu/6.1.0'
                 ]
             },
-            'plot' : ['module load scitools/production-os41-1'],
+            'plot' : ['module load scitools/production-os43-2'],
             'reveal' : ['module list 2>&1', 'export'],
             'tech' : ['module load common-environment/lfric']
         },
