@@ -13,9 +13,8 @@
 
         <domain_definition>
             <domain id="node" name="Mesh2d_node" nvertex="1"/>
-            <domain id="face_half_levels" name="Mesh2d_half_levels" nvertex="4"/>
-            <domain id="face_full_levels" name="Mesh2d_full_levels" nvertex="4"/>
-            <domain id="edge_half_levels" name="Mesh2d_edge_half_levels" nvertex="2"/>
+            <domain id="face" name="Mesh2d_face" nvertex="4"/>
+            <domain id="edge" name="Mesh2d_edge" nvertex="2"/>
             <domain id="checkpoint_W0" name="checkpoint_W0" nvertex="1"/>
             <domain id="checkpoint_W1" name="checkpoint_W1" nvertex="1"/>
             <domain id="checkpoint_W2" name="checkpoint_W2" nvertex="1"/>
@@ -31,15 +30,15 @@
                 <axis axis_ref="vert_axis_full_levels"/>
             </grid>
             <grid id="half_level_face_grid">
-                <domain domain_ref="face_half_levels"/>
+                <domain domain_ref="face"/>
                 <axis axis_ref="vert_axis_half_levels"/>
             </grid>
             <grid id="full_level_face_grid">
-                <domain domain_ref="face_full_levels"/>
+                <domain domain_ref="face"/>
                 <axis axis_ref="vert_axis_full_levels"/>
             </grid>
             <grid id="half_level_edge_grid">
-                <domain domain_ref="edge_half_levels"/>
+                <domain domain_ref="edge"/>
                 <axis axis_ref="vert_axis_half_levels"/>
             </grid>
         </grid_definition>

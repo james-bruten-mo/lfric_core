@@ -177,7 +177,7 @@ subroutine read_field_edge(xios_field_name, field_proxy)
   undf = field_proxy%vspace%get_last_dof_owned()
 
   ! Get the expected horizontal and vertical axis size
-  call xios_get_domain_attr('edge_half_levels', ni=domain_size)
+  call xios_get_domain_attr('edge', ni=domain_size)
   call xios_get_axis_attr("vert_axis_half_levels", n_glo=axis_size)
 
   ! Size the arrays to be what is expected
@@ -235,10 +235,10 @@ subroutine read_field_face(xios_field_name, field_proxy)
 
   ! get the horizontal / vertical domain sizes
   if ( fs_id == W3 ) then
-    call xios_get_domain_attr('face_half_levels', ni=domain_size)
+    call xios_get_domain_attr('face', ni=domain_size)
     call xios_get_axis_attr("vert_axis_half_levels", n_glo=axis_size)
   else
-    call xios_get_domain_attr('face_full_levels', ni=domain_size)
+    call xios_get_domain_attr('face', ni=domain_size)
     call xios_get_axis_attr("vert_axis_full_levels", n_glo=axis_size)
   end if
 
@@ -299,7 +299,7 @@ subroutine read_field_single_face(xios_field_name, field_proxy)
 
   ! Get the expected horizontal size
   ! all 2D fields are nominally in W3, hence half levels
-  call xios_get_domain_attr('face_half_levels', ni=domain_size)
+  call xios_get_domain_attr('face', ni=domain_size)
 
   ! Size the array to be what is expected
   allocate(recv_field(domain_size*ndata))
@@ -520,11 +520,11 @@ subroutine read_field_time_var(xios_field_name, field_proxy, time_indices)
 
   ! get the horizontal / vertical / time domain sizes
   if ( fs_id == W3 ) then
-    call xios_get_domain_attr( 'face_half_levels', ni=domain_size )
+    call xios_get_domain_attr( 'face', ni=domain_size )
     call xios_get_axis_attr( 'vert_axis_half_levels', n_glo=vert_axis_size )
     call xios_get_axis_attr( 'monthly_axis', n_glo=time_axis_size )
   else if ( fs_id == WTheta ) then
-    call xios_get_domain_attr( 'face_full_levels', ni=domain_size )
+    call xios_get_domain_attr( 'face', ni=domain_size )
     call xios_get_axis_attr( 'vert_axis_full_levels', n_glo=vert_axis_size )
     call xios_get_axis_attr( "monthly_axis", n_glo=time_axis_size )
   else
