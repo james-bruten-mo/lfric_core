@@ -124,6 +124,13 @@ subroutine weighted_proj_theta2_vert_code(cell, nlayers, ncell_3d,              
           grad_theta_at_quad(:) = grad_theta_at_quad(:) &
                                 + theta_e(df)*wtheta_diff_basis(:,df,qp1,qp2)
         end do
+        ! Avoid issues when theta gradient is zero or negative:
+        ! The helmholtz equation is (vastly simplified)
+        ! (1 + div[g/theta * dtheta/dz * grad])Pi = rhs
+        ! and so if dtheta/dz =< 0 then the characteristic of this
+        ! equation changes and this can cause issues for iterative solvers
+        ! so the pragmatic solution is to enfoce dtheta/dz > 0 here
+        grad_theta_at_quad(3) = max(1.0_r_def, grad_theta_at_quad(3))
         i1 = scalar*grad_theta_at_quad*wqp_h(qp1)*wqp_v(qp2)
         do df2 = ndf_w2h+1,ndf_w2
           i2 = dot_product(i1,w2_basis(:,df2,qp1,qp2))

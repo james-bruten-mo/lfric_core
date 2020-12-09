@@ -163,6 +163,7 @@ contains
   ! Second stage: Apply pointwise mapping of grad_p to t
   t_e = 0.0_r_def
   do k = 0,nlayers-1
+    ik = (cell-1)*nlayers + k + 1
     t_e(k)   = t_e(k)   + ptheta2v(1,5,ik)*grad_p(5,k)
     t_e(k+1) = t_e(k+1) + ptheta2v(2,6,ik)*grad_p(6,k)
   end do
