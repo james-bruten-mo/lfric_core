@@ -1397,16 +1397,16 @@ contains
     call log_event("Precondition only starting", LOG_LEVEL_INFO)
     call self%prec%apply(b,x)         ! x = P^{-1}.b
 
-    ! Compute initial and final error
-    call b%duplicate(res)
-    call res%copy(b)
     if( self%d_norm ) then
-       e0 = res%norm()
-    end if
-    call x%duplicate(Ax)
-    call self%lin_op%apply(x, Ax)
-    call res%axpy(-1.0_r_def, Ax)
-    if( self%d_norm ) then
+       ! Compute initial and final error
+       call b%duplicate(res)
+       call res%copy(b)
+       if( self%d_norm ) then
+          e0 = res%norm()
+       end if
+       call x%duplicate(Ax)
+       call self%lin_op%apply(x, Ax)
+       call res%axpy(-1.0_r_def, Ax)
        e = res%norm()
        write(log_scratch_space,'(A,3E15.8)')  &
             "Precondition only error,init, relative: = ", e,e0,e/e0
