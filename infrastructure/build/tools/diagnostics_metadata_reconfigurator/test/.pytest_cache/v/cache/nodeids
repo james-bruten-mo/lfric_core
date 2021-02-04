@@ -1,4 +1,0 @@
-[
-  "integration_test.py::TestIntegration::test_run",
-  "integration_test.py::TestIntegration::test_with_template"
-]

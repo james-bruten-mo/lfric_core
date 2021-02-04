@@ -56,19 +56,18 @@ def parse_args():
 
     arg_parser = argparse.ArgumentParser(description='''
 This tool generates meta data from fortran files. It will find all files that
-end in __meta_mod.f90. These files should contain declarations for instances of 
-a specific fortran type, field_meta_data_type. The information in these 
+end in __meta_mod.f90. These files should contain declarations for instances
+of a specific fortran type, field_meta_data_type. The information in these
 declarations are used to generate output files. These output files can be used
 in a configuration utility, such as rose.''')
     arg_parser.add_argument("-v", "--verbose", action="store_true",
                             help="increase output verbosity")
     arg_parser.add_argument("-p", "--path", type=str,
                             help='''
-This tool will recursively search through a folder structure looking for files 
-that end in __meta_mod.f90
-The folder structure should be 
+This tool will recursively search through a folder structure looking for files
+that end in __meta_mod.f90.  The folder structure should be
 <root_folder>/<project directory>/source/diagnostics_meta/
-There is default behaviour that will attempt to find the root folder of the 
+There is default behaviour that will attempt to find the root folder of the
 repository. If a specific folder is desired, specify it here.''')
     arg_parser.add_argument("-o", "--output", type=str,
                             help='''
@@ -89,7 +88,7 @@ levels_enum_mod.f90
 positive_enum_mod.f90
 time_step_enum_mod.f90
 vertical_dimensions_mod.f90
-Specify the folder containing these files, otherwise the tool will use the 
+Specify the folder containing these files, otherwise the tool will use the
 default location''')
 
     args = arg_parser.parse_args()
@@ -158,7 +157,7 @@ def run():
     if "support_types" in args:
         meta_types_folder = args["support_types"]
     else:
-        meta_types_folder = "/gungho/unit-test/diagnostics_meta/meta_types/"
+        meta_types_folder = "/um_physics/source/diagnostics_meta/meta_types/"
 
     # Find meta data in fortran meta_mod.f90 files
     LOGGER.info("Starting parser")

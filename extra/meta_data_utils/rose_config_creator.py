@@ -9,6 +9,7 @@ import logging
 import os
 from textwrap import wrap
 from typing import Dict
+
 from entities import Section
 
 LOGGER = logging.getLogger("lfric_meta_data_parser")
@@ -30,7 +31,8 @@ def create_rose_meta(meta_data: Dict[str, Section], directory: str, file_name):
     Creates a rose_meta.conf file using the supplied meta data
     :param meta_data: List containing all meta data
     :param directory: The directory the file will be saved in
-    :param file_name: The name of the file that the meta data will be written to
+    :param file_name: The name of the file that the meta data will be
+    written to
     :return rose_meta: The rose-meta file as a string, ready to be written to
     disk
     """
@@ -57,7 +59,8 @@ title={group.title}"""
 [field_config:{section.name}:{group.name}={field.unique_id}]
 type=boolean
 title=Enable {field.item_title}
-trigger=field_config:{section.name}:{group.name}={field.unique_id}{field.trigger}
+trigger=field_config:{section.name}:{group.name}={field.unique_id}
+{field.trigger}
 help=Unit of Measure: {field.units}
     =Function Space: {field.function_space}
     =Data type: {field.data_type}
@@ -65,10 +68,19 @@ help=Unit of Measure: {field.units}
     =Interpolation: {field.recommended_interpolation}
 """
                 if field.vertical_dimension:
-                    attribute_string = f"   =vertical_dimension:" + os.linesep
+                    attribute_string = f"    =vertical_dimension:{os.linesep}"
                     for key, value in field.vertical_dimension.items():
-                        attribute_string += "       =" + \
-                                        key + " : " + str(value) + os.linesep
+                        attribute_string += f"       ={key}: " \
+                                            f"{str(value)}{os.linesep}"
+
+                    rose_meta += attribute_string
+
+                if field.synonyms:
+                    attribute_string = f"    =Synonyms:{os.linesep}"
+                    for key, values in field.synonyms:
+                        for value in values:
+                            attribute_string += f"       ={key}: " \
+                                                f"{str(value)}{os.linesep}"
 
                     rose_meta += attribute_string
 
@@ -103,8 +115,8 @@ def add_file_meta(meta_data: Dict[str, Section], rose_meta: str) -> str:
 
                 values_list.append(field.unique_id)
                 titles_list.append(
-                    section.title + ": " + group.title +
-                    ": " + field.item_title)
+                        section.title + ": " + group.title +
+                        ": " + field.item_title)
 
     values = ', '.join(values_list)
     titles = '", "'.join(titles_list)

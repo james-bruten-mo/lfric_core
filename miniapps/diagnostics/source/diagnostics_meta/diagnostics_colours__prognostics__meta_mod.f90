@@ -23,6 +23,8 @@ module diagnostics_colours__prognostics__meta_mod
     use time_step_enum_mod,             only: STANDARD_TIMESTEP
     use interpolation_enum_mod,         only: BILINEAR
     use vertical_dimensions_mod,        only: model_height_dimension
+    use levels_enum_mod,                only: BOTTOM_ATMOSPHERIC_LEVEL, &
+                                              TOP_ATMOSPHERIC_LEVEL
 
     implicit none
 
@@ -70,7 +72,9 @@ contains
             time_step = STANDARD_TIMESTEP, &
             recommended_interpolation = BILINEAR, &
             packing = 0, &
-            vertical_dimension = model_height_dimension(), &
+            vertical_dimension = model_height_dimension( &
+                                              BOTTOM_ATMOSPHERIC_LEVEL, &
+                                              TOP_ATMOSPHERIC_LEVEL), &
             standard_name = "red")
 
         self%green = field_meta_data_type(&
@@ -86,7 +90,7 @@ contains
             time_step = STANDARD_TIMESTEP, &
             recommended_interpolation = BILINEAR, &
             packing = 0, &
-            vertical_dimension = model_height_dimension(), &
+            vertical_dimension = model_height_dimension(bottom=BOTTOM_ATMOSPHERIC_LEVEL, top=TOP_ATMOSPHERIC_LEVEL), &
             standard_name = "green")
 
         self%blue = field_meta_data_type(&
@@ -102,7 +106,7 @@ contains
             time_step = STANDARD_TIMESTEP, &
             recommended_interpolation = BILINEAR, &
             packing = 0, &
-            vertical_dimension = model_height_dimension(), &
+            vertical_dimension = model_height_dimension(bottom=BOTTOM_ATMOSPHERIC_LEVEL, top=TOP_ATMOSPHERIC_LEVEL), &
             standard_name = "blue")
 
         end function diagnostics_colours__prognostics__meta_constructor

@@ -1,7 +1,15 @@
-
-from dimension_parser import *
-from diag_meta_gen import get_root_dir
+###############################################################################
+# (c) Crown copyright 2020 Met Office. All rights reserved.
+# The file LICENCE, distributed with this code, contains details of the terms
+# under which the code may be used.
+###############################################################################
+"""Test the dimension parsing..."""
 import os
+
+from diag_meta_gen import get_root_dir
+from dimension_parser import *
+
+TYPES_DIR = "/um_physics/source/diagnostics_meta/meta_types/"
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__)) + "/test_data"
 enum_test_file = "/enum_test_file"
@@ -15,7 +23,7 @@ def test_read_enum():
 
 def test_get_default_values():
     test_file = "/get_default_values_test_file"
-    path = get_root_dir() + "/gungho/unit-test/diagnostics_meta/meta_types/"
+    path = get_root_dir() + TYPES_DIR
     levels = read_enum(path + "levels_enum_mod.f90")
     reader = FortranFileReader(TEST_DIR + test_file)
     parse_tree = F2003_PARSER(reader)
@@ -39,13 +47,15 @@ def test_get_hard_coded_values():
 
     for statement in walk(parse_tree.content, Assignment_Stmt):
         results.append(get_hard_coded_values(statement))
-    assert results == [{'another_test_string': '',
-                        'test_name': 'test_string',
-                        'test_symbol': 'TEST_SYMBOL'}]
+    assert results == [{
+                           'another_test_string': '',
+                           'test_name': 'test_string',
+                           'test_symbol': 'TEST_SYMBOL'
+                           }]
 
 
 def test_parse_vertical_dimension_info():
-    root_dir = get_root_dir() + "/gungho/unit-test/diagnostics_meta/meta_types/"
+    root_dir = get_root_dir() + TYPES_DIR
     dimension_def = parse_vertical_dimension_info(root_dir)
 
     assert "model_depth_dimension" in dimension_def.keys()
@@ -55,31 +65,44 @@ def test_parse_vertical_dimension_info():
 
 
 def test_translate_vertical_dimension():
-    root_dir = get_root_dir() + "/gungho/unit-test/diagnostics_meta/meta_types/"
+    root_dir = get_root_dir() + TYPES_DIR
     dimension_def = parse_vertical_dimension_info(root_dir)
 
     model_height = translate_vertical_dimension(dimension_def,
-                                                "model_height_dimension()")
+                                                "model_height_dimension("
+                                                "bottom="
+                                                "BOTTOM_ATMOSPHERIC_LEVEL, "
+                                                "top=TOP_ATMOSPHERIC_LEVEL)")
     model_depth = translate_vertical_dimension(dimension_def,
-                                                "model_depth_dimension()")
+                                               "model_depth_dimension("
+                                               "bottom=BOTTOM_SOIL_LEVEL, "
+                                               "top=TOP_SOIL_LEVEL)")
     fixed_height = translate_vertical_dimension(dimension_def,
                                                 "fixed_height_dimension()")
     fixed_depth = translate_vertical_dimension(dimension_def,
-                                                "fixed_depth_dimension()")
+                                               "fixed_depth_dimension()")
 
-    assert model_height == {"standard_name": "height",
-                            "units": "m",
-                            "top_arg": "TOP_ATMOSPHERIC_LEVEL",
-                            "bottom_arg": "BOTTOM_ATMOSPHERIC_LEVEL",
-                            "positive": "POSITIVE_UP"}
-    assert model_depth == {"standard_name": "depth",
-                            "units": "m",
-                            "top_arg": "TOP_SOIL_LEVEL",
-                            "bottom_arg": "BOTTOM_SOIL_LEVEL",
-                            "positive": "POSITIVE_DOWN"}
-    assert fixed_height == {"standard_name": "height",
-                            "units": "m",
-                            "positive": "POSITIVE_UP"}
-    assert fixed_depth == {"standard_name": "depth",
-                            "units": "m",
-                            "positive": "POSITIVE_DOWN"}
+    assert model_height == {
+        "standard_name": "height",
+        "units": "m",
+        "top_arg": "TOP_ATMOSPHERIC_LEVEL",
+        "bottom_arg": "BOTTOM_ATMOSPHERIC_LEVEL",
+        "positive": "POSITIVE_UP"
+        }
+    assert model_depth == {
+        "standard_name": "depth",
+        "units": "m",
+        "top_arg": "TOP_SOIL_LEVEL",
+        "bottom_arg": "BOTTOM_SOIL_LEVEL",
+        "positive": "POSITIVE_DOWN"
+        }
+    assert fixed_height == {
+        "standard_name": "height",
+        "units": "m",
+        "positive": "POSITIVE_UP"
+        }
+    assert fixed_depth == {
+        "standard_name": "depth",
+        "units": "m",
+        "positive": "POSITIVE_DOWN"
+        }

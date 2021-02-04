@@ -3,16 +3,21 @@
 # The file LICENCE, distributed with this code, contains details of the terms
 # under which the code may be used.
 ##############################################################################
-"""This modules contains three classes that represent the three structures that
-field meta data is kept in. Field encapsulates a field and all the meta data for
-that field. Fields objects are held within Group objects. Group objects are then
- in turn held within Section objects."""
+"""This modules contains three classes that represent the three structures
+that field meta data is kept in. Field encapsulates a field and all the meta
+data for that field. Fields objects are held within Group objects. Group
+objects are then in turn held within Section objects."""
 
 import logging
 import re
-from typing import Dict
+from typing import Dict, List, Union
+
+from standards.standard_synonyms import StandardSynonyms
 
 LOGGER = logging.getLogger(__name__)
+
+
+# these just need loading once as they are static
 
 
 class Field:
@@ -20,7 +25,7 @@ class Field:
     derived fields and check for valid meta data"""
 
     UNIQUE_ID_REGEX = re.compile(
-        r"(?P<section_name>[a-z_]+)__(?P<item_name>[a-z_]+)")
+            r"(?P<section_name>[a-z_]+)__(?P<item_name>[a-z_]+)")
 
     def __init__(self, file_name):
         self.file_name = file_name
@@ -38,7 +43,8 @@ class Field:
         self.vertical_dimension = None
         self.standard_name = None
         self.level_definition = None
-        self.misc_meta_data = None
+        self.misc_meta_data = {}
+        self.synonyms = {}
         self.item_name = None
         self.item_title = None
         self.long_name = None
@@ -64,50 +70,43 @@ class Field:
             self._unique_id = var
         else:
             LOGGER.error(
-                "Unique ID %s has already been set. Tried to set to %s",
-                self.unique_id, var)
+                    "Unique ID %s has already been set. Tried to set to %s",
+                    self.unique_id, var)
 
-    def is_valid(self) -> bool:
-        """Checks for existence of mandatory values within the field.
-        Logs any non-existent fields as errors
-        :return: is_valid: A boolean value, True if meta data is valid,
-        False otherwise"""
-        is_valid = True
+    def add_value(self, property_name, value):
+        """handle creation in stages"""
+        if property_name == "synonyms":
+            self.add_synonym(*value)
+        elif isinstance(getattr(self, property_name), dict):
+            dictionary = getattr(self, property_name, {})
+            key, val = value
+            dictionary.update({key: val})
+            setattr(self, property_name, dictionary)
+        elif isinstance(getattr(self, property_name), list):
+            list_values = getattr(self, property_name, [])
+            list_values.append(value)
+            setattr(self, property_name, list_values)
+        else:
+            setattr(self, property_name, value)
 
-        if not self.unique_id:
-            LOGGER.error("A unique id is missing from a field in %s",
-                         self.file_name)
-            is_valid = False
-        if not self.units:
-            LOGGER.error("A unit of measure is missing from a field in %s",
-                         self.file_name)
-            is_valid = False
-        if not self.function_space:
-            LOGGER.error("A function space is missing from a field in %s",
-                         self.file_name)
-            is_valid = False
-        if not self.trigger:
-            LOGGER.error("Triggering syntax is missing from a field in %s",
-                         self.file_name)
-            is_valid = False
-        if not self.description:
-            LOGGER.error("A description is missing from a field in %s",
-                         self.file_name)
-            is_valid = False
-        if not self.data_type:
-            LOGGER.error("A data type is missing from a field in %s",
-                         self.file_name)
-            is_valid = False
-        if not self.time_step:
-            LOGGER.error("A time step is missing from a field in %s",
-                         self.file_name)
-            is_valid = False
-        if not self.recommended_interpolation:
-            LOGGER.error(
-                "A recommended_interpolation attribute is missing from a"
-                " field in %s", self.file_name)
-            is_valid = False
-        return is_valid
+    def add_synonym(self, synonym: Union[str, StandardSynonyms],
+                    value: Union[List[str], str]):
+        """
+        Handle the addition of synonyms via either str or enum and value of
+        list or individual
+        @param synonym: Union[str, StandardSynonyms] str must be the name of
+        a standard synonym
+        @param value: Union[List[str], str])
+        @return:
+        """
+        if isinstance(synonym, str):
+            synonym = StandardSynonyms[synonym]
+        if synonym not in self.synonyms:
+            self.synonyms.update({synonym: []})
+        if isinstance(value, List):
+            self.synonyms[synonym] += value
+        else:
+            self.synonyms[synonym].append(value)
 
 
 class Group:
@@ -133,6 +132,7 @@ class Group:
 class Section:
     """Represents a science section. Encapsulates all aspects of a section and
     is composed of the groups within the section"""
+
     def __init__(self, name: str):
         self.title = name.replace("_", " ").title()
         self.name = name

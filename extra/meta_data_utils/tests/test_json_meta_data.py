@@ -1,9 +1,16 @@
+###############################################################################
+# (c) Crown copyright 2020 Met Office. All rights reserved.
+# The file LICENCE, distributed with this code, contains details of the terms
+# under which the code may be used.
+###############################################################################
+"""Check the json output works"""
 from json_meta_data import *
 
 TEST_DATA_DIR = os.path.dirname(os.path.abspath(__file__)) + "/test_data/"
 
 
 def test_write_json_meta():
+    """Check that it writes json with a checksum in the right shape"""
     test_data = {'section_name': 'test_section', 'unique_id': 'test_id'}
 
     write_json_meta(test_data, TEST_DATA_DIR, )
@@ -18,6 +25,7 @@ def test_write_json_meta():
 
 
 def test_set_checksum():
+    """check the checksum actually seems plausible"""
     test_dict = {}
     test_dict_2 = {"a key": "a value"}
 

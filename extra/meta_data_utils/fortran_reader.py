@@ -12,15 +12,17 @@ import re
 from typing import Dict, Tuple
 
 from fparser.common.readfortran import FortranFileReader
-from fparser.two.Fortran2003 import Assignment_Stmt, Structure_Constructor_2, \
-    Section_Subscript_List, Char_Literal_Constant, Array_Constructor, \
-    Level_3_Expr, Structure_Constructor, Part_Ref
+from fparser.two.Fortran2003 import Array_Constructor, Assignment_Stmt, \
+    Char_Literal_Constant, \
+    Level_3_Expr, Part_Ref, Section_Subscript_List, Structure_Constructor, \
+    Structure_Constructor_2
 from fparser.two.parser import ParserFactory
-from fparser.two.utils import walk, FparserException
+from fparser.two.utils import FparserException, walk
 
 from dimension_parser import parse_vertical_dimension_info, \
     translate_vertical_dimension
-from entities import Field, Section, Group
+from entities import Field, Group, Section
+from field_validator import validate_field
 
 
 class FortranMetaDataReader:
@@ -48,8 +50,9 @@ class FortranMetaDataReader:
 
         self.logger.info("Scanning for fortran meta data files...")
         self.meta_mod_files = glob.glob(
-            self.__root_dir + '/**/source/diagnostics_meta/**/*__meta_mod.*90',
-            recursive=True)
+                self.__root_dir +
+                '/**/source/diagnostics_meta/**/*__meta_mod.*90',
+                recursive=True)
 
         self.meta_mod_files.sort()
         self.logger.info("Found %i meta data files", len(self.meta_mod_files))
@@ -59,7 +62,7 @@ class FortranMetaDataReader:
         the hard coded and default values"""
         self.vertical_dimension_definition = \
             parse_vertical_dimension_info(
-                self.__root_dir + self.meta_types_path)
+                    self.__root_dir + self.meta_types_path)
 
     def read_fortran_files(self) -> Tuple[Dict[str, Section], bool]:
         """Takes a list of file names (meta_mod.f90 files)
@@ -90,11 +93,13 @@ class FortranMetaDataReader:
 
                 section_name = file_name_parts.group("section_name")
                 group_name = file_name_parts.group("group_name")
-                file_name = file_path[file_path.rfind("/")+1:]
+                file_name = file_path[file_path.rfind("/") + 1:]
 
                 if section_name not in meta_data:
-                    meta_data.update({section_name:
-                                      Section(name=section_name)})
+                    meta_data.update({
+                        section_name:
+                            Section(name=section_name)
+                        })
 
                 group = Group(name=group_name, file_name=file_name)
 
@@ -110,7 +115,7 @@ class FortranMetaDataReader:
                         self.valid_meta_data = False
                         file_valid = False
 
-                    if field.is_valid():
+                    if validate_field(field):
                         group.add_field(field)
                     else:
                         self.logger.error("%s is invalid. Please check",
@@ -148,58 +153,67 @@ class FortranMetaDataReader:
 
         # For every instance argument in object creation
         for parameter in walk(definition, Structure_Constructor_2):
-
-            value = None
             key = parameter.children[0].string
 
+            # This ignore's args used in vertical dimension creation
+            key_blacklist = ["top", "bottom"]
+            if key in key_blacklist:
+                continue
+
+            # Adds the key / value to the Field object
+            if not hasattr(field, key):
+                self.logger.error("Unexpected Field Property: %s", key)
+                valid_field = False
+
             try:
-                # For multi line statements
+                # For multi line statements - override the key value
                 if isinstance(parameter.parent, Level_3_Expr):
                     key, value = self.extract_multi_line_statement(parameter)
+                    field.add_value(key, value)
 
                 # ENUM's
                 elif isinstance(parameter.children[1], Char_Literal_Constant):
-                    value = parameter.children[1].string[1:-1]
+                    field.add_value(key, parameter.children[1].string[1:-1])
 
                 # Dimension object creation without args
                 # (Structure_Constructor) or with args (Part_Ref)
                 elif isinstance(parameter.children[1],
                                 (Part_Ref, Structure_Constructor)):
-                    value = translate_vertical_dimension(
-                        self.vertical_dimension_definition,
-                        parameter.children[1].string)
+                    field.add_value(key, translate_vertical_dimension(
+                            self.vertical_dimension_definition,
+                            parameter.children[1].string))
 
-                # For statements with arrays in them (misc_meta_data)
+                # For statements with arrays in them (misc_meta_data /
+                # synonyms)
                 elif isinstance(parameter.children[1], Array_Constructor):
-                    value = {}
                     for array in walk(parameter.children,
                                       types=Section_Subscript_List):
-                        value.update({array.children[0].string[1:-1]:
-                                      array.children[1].string[1:-1]})
+                        if isinstance(array.children[0],
+                                      Char_Literal_Constant):
+                            # children0.string = "'foo'"
+                            inner_key = array.children[0].string[1:-1]
+                        else:
+                            # children0.string = "foo"
+                            inner_key = array.children[0].string
+
+                        field.add_value(
+                                key,
+                                (inner_key, array.children[1].string[1:-1])
+                                )
 
                 else:
-                    # This ignore's args used in vertical dimension creation
-                    key_blacklist = ["top", "bottom"]
-                    if key in key_blacklist:
-                        continue
 
-                    value = parameter.children[1].string
+                    field.add_value(key, parameter.children[1].string)
 
             except Exception as error:
                 if field.unique_id:
                     self.logger.warning(
-                        "Key: %s on field: %s in file: %s is invalid: %s", key,
-                        field.unique_id, file_name, error)
+                            "Key: %s on field: %s in file: %s is invalid: %s",
+                            key,
+                            field.unique_id, file_name, error)
                 else:
                     self.logger.warning("Key: %s in file: %s is invalid: %s ",
                                         key, file_name, error)
-
-            # Adds the key / value to the Field object
-            if hasattr(field, key):
-                setattr(field, key, value)
-            else:
-                self.logger.error("Unexpected Field Property: %s", key)
-                valid_field = False
 
         return field, valid_field
 

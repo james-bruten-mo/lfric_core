@@ -63,84 +63,57 @@ module vertical_dimensions_mod
 
   !> @brief Returns a range_vertical_dimension_meta_data_type
   !> @details For creating a depth vertical dimension on model levels using
-  !> default settings. Developer can optionally supply highest and lowest model
+  !> default settings. Developer must supply the highest and lowest model
   !> level. Since the majority of fields will be over all levels, a user can
-  !> use the syntax "model_depth_dimension() to obtain a dimension with
+  !> use the syntax "model_depth_dimension(bottom=BOTTOM_SOIL_LEVEL, top=TOP_SOIL_LEVEL)"
+  !> to obtain a dimension with
   !> default settings. But can provide arguments if a different levels are
   !> required.
-  !> @param [in,optional] bottom The bottom level as per levels_enum
-  !> @param [in,optional] top The top level as per levels_enum
+  !> @param [in] bottom The bottom level as per levels_enum
+  !> @param [in] top The top level as per levels_enum
   function model_depth_dimension(bottom, top) result (vertical_type)
 
     implicit none
 
-    integer(i_def), intent(in), optional  :: bottom, top
-
-    integer(i_def)                        :: upper_level, lower_level
+    integer(i_def), intent(in)  :: bottom, top
 
     type(range_vertical_dimension_meta_data_type) :: vertical_type
-
-    !> Set defaults if arguments not supplied
-    if(present(bottom)) then
-      lower_level = bottom
-    else
-      lower_level = BOTTOM_SOIL_LEVEL
-    endif
-
-    if(present(top)) then
-      upper_level = top
-    else
-      upper_level = TOP_SOIL_LEVEL
-    endif
 
     vertical_type = range_vertical_dimension_meta_data_type(&
                     standard_name = 'depth',                &
                     units = 'm',                            &
                     positive = POSITIVE_DOWN,               &
-                    lower_level = lower_level,              &
-                    upper_level = upper_level)
+                    lower_level = bottom,              &
+                    upper_level = top)
 
   end function model_depth_dimension
 
 
   !> @brief Returns a range_vertical_dimension_meta_data_type
   !> @details For creating a depth vertical dimension on model levels using
-  !> default settings. Developer can optionally supply highest and lowest model
+  !> default settings. Developer must supply highest and lowest model
   !> level. Since the majority of fields will be over all levels, a user can
-  !> use the syntax "model_height_dimension() to obtain a dimension with
-  !> default settings. But can provide arguments if a different levels are
-  !> required.
-  !> @param [in,optional] bottom The bottom level as per levels_enum
-  !> @param [in,optional] top The top level as per levels_enum
+  !> use the syntax
+  !> "model_height_dimension(bottom=BOTTOM_ATMOSPHERIC_LEVEL, top=TOP_ATMOSPHERIC_LEVEL)"
+  !> to obtain a dimension with default settings. But can provide arguments
+  !> if a different levels are required.
+  !> @param [in] bottom The bottom level as per levels_enum
+  !> @param [in] top The top level as per levels_enum
   function model_height_dimension(bottom, top) result (vertical_type)
 
     implicit none
 
-    integer(i_def), intent(in), optional :: bottom, top
-
-    integer(i_def)                       :: upper_level, lower_level
+    integer(i_def), intent(in)           :: bottom, top
 
     type(range_vertical_dimension_meta_data_type)  :: vertical_type
 
-    !> Set defaults if arguments not supplied
-    if(present(bottom)) then
-      lower_level = bottom
-    else
-      lower_level = BOTTOM_ATMOSPHERIC_LEVEL
-    endif
-
-    if(present(top)) then
-      upper_level = top
-    else
-      upper_level = TOP_ATMOSPHERIC_LEVEL
-    endif
 
     vertical_type = range_vertical_dimension_meta_data_type(&
                     standard_name = 'height',                 &
                     positive = POSITIVE_UP,                   &
                     units = 'm',                              &
-                    lower_level = lower_level,                &
-                    upper_level = upper_level)
+                    lower_level = bottom,                &
+                    upper_level = top)
 
   end function model_height_dimension
 

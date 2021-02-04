@@ -18,6 +18,7 @@ module diagnostics_mod
                                           abstract_vertical_meta_data_type
   use non_spatial_dimension_mod,    only: non_spatial_dimension_type
   use misc_meta_data_mod,           only: misc_meta_data_type
+  use field_synonym_mod,            only: field_synonym_type
 
   implicit none
   private
@@ -29,6 +30,8 @@ module diagnostics_mod
     character(str_def)  ::  unique_id
     !> Long name of the field
     character(str_def)  ::  long_name
+    !> Any synonyms for the field
+    type(field_synonym_type), allocatable  :: synonyms(:)
     !> the SI unit of measure for the field
     character(str_def)  ::  units
 
@@ -104,27 +107,29 @@ contains
   !> @param [in,optional] positive The direction for positive numbers
   !> @param [in,optional] vertical_dimension The vertical dimension of the field
   !> @param [in,optional] non_spatial_dimension The non-spatial dimension(s) of the field
+  !> @param [in,optional] synonyms Holds a key/value pair of field_synonyms_enum / string
   !> @param [in,optional] misc_meta_data Holds a key/value pair of strings
   !> used for any miscellaneous data that a field might need
   !> @return self the meta_data object
   !>
-  function meta_data_constructor(unique_id,                 &
-                                 units,                     &
-                                 function_space,            &
-                                 order,                     &
-                                 io_driver,                 &
-                                 trigger,                   &
-                                 description,               &
-                                 data_type,                 &
-                                 time_step,                 &
-                                 recommended_interpolation, &
-                                 packing,                   &
-                                 standard_name,             &
-                                 long_name,                 &
-                                 positive,                  &
-                                 vertical_dimension,        &
-                                 non_spatial_dimension,     &
-                                 misc_meta_data)            &
+  function meta_data_constructor(unique_id,                     &
+                                 units,                         &
+                                 function_space,                &
+                                 order,                         &
+                                 io_driver,                     &
+                                 trigger,                       &
+                                 description,                   &
+                                 data_type,                     &
+                                 time_step,                     &
+                                 recommended_interpolation,     &
+                                 packing,                       &
+                                 standard_name,                 &
+                                 long_name,                     &
+                                 positive,                      &
+                                 vertical_dimension,            &
+                                 non_spatial_dimension,         &
+                                 synonyms,                      &
+                                 misc_meta_data)                &
                                  result(self)
 
     implicit none
@@ -143,11 +148,12 @@ contains
     character(*), optional,              intent(in) :: standard_name
     character(*), optional,              intent(in) :: long_name
     integer(i_native), optional,         intent(in) :: positive
+    type(misc_meta_data_type), optional, intent(in) :: misc_meta_data(:)
+    type(field_synonym_type), optional,  intent(in) :: synonyms(:)
     class(abstract_vertical_meta_data_type), optional, &
                                          intent(in) :: vertical_dimension
     type(non_spatial_dimension_type),        optional, &
                                          intent(in) :: non_spatial_dimension(:)
-    type(misc_meta_data_type), optional, intent(in) :: misc_meta_data(:)
 
     type(field_meta_data_type)   :: self
 
@@ -194,6 +200,10 @@ contains
 
     if(present(misc_meta_data)) then
       allocate(self%misc_meta_data, source=misc_meta_data)
+    end if
+
+    if(present(synonyms)) then
+      allocate(self%synonyms, source=synonyms)
     end if
 
   end function meta_data_constructor

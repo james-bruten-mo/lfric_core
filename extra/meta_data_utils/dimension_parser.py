@@ -13,12 +13,11 @@ import re
 from typing import Dict
 
 from fparser.common.readfortran import FortranFileReader
-from fparser.two.Fortran2003 import Function_Subprogram, \
-    Execution_Part, Function_Stmt, If_Construct, Else_Stmt, If_Then_Stmt, \
-    Assignment_Stmt, Structure_Constructor_2, Name, Enumerator_Def_Stmt
+from fparser.two.Fortran2003 import Assignment_Stmt, Else_Stmt, \
+    Enumerator_Def_Stmt, Execution_Part, Function_Stmt, Function_Subprogram, \
+    If_Construct, If_Then_Stmt, Name, Structure_Constructor_2
 from fparser.two.parser import ParserFactory
 from fparser.two.utils import walk
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -191,10 +190,11 @@ def translate_vertical_dimension(dimension_definition, dimension_declaration):
             parsed_definition["bottom_arg"] = bottom_arg.group("bottom_arg")
         else:
             parsed_definition["bottom_arg"] = \
-                dimension_definition[dimension_type]["default_values"]["bottom"]
+                dimension_definition[dimension_type]["default_values"][
+                    "bottom"]
 
     for key, value in dimension_definition[dimension_type][
-                "hard_coded_values"].items():
+            "hard_coded_values"].items():
 
         parsed_definition[key] = value
 

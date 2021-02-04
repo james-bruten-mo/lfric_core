@@ -11,7 +11,7 @@ module example_module_meta_mod_test
 
   ! Global use statements go here
 
-  use constants_mod, only : r_def, i_def, r_single, real_type
+  use constants_mod, only : r_def, i_def, r_single, real_type, str_def
 
   use pFUnit_Mod
 
@@ -115,6 +115,8 @@ contains
     !> Create misc meta data objects
     type(misc_meta_data_type) :: meta_data_test_1
     type(misc_meta_data_type) :: meta_data_test_2
+    
+    character(str_def) :: target, actual
 
 
     !> Instantiate example fields
@@ -122,9 +124,11 @@ contains
 
 
     !> Instantiate auto generated vertical dimension objects
-    model_height_object = model_height_dimension()
+    model_height_object = model_height_dimension(BOTTOM_ATMOSPHERIC_LEVEL, &
+                                                 TOP_ATMOSPHERIC_LEVEL)
     fixed_height_object = fixed_height_dimension(level_definition = [1.0_r_def, 2.0_r_def, 3.0_r_def])
-    model_depth_object = model_depth_dimension()
+    model_depth_object = model_depth_dimension(BOTTOM_SOIL_LEVEL, &
+                                               TOP_SOIL_LEVEL)
     fixed_depth_object = fixed_depth_dimension(level_definition = [4.0_r_def, 5.0_r_def, 6.0_r_def])
 
     model_custom_object = model_custom_dimension(name="test_custom_model",  &
@@ -140,25 +144,46 @@ contains
 
 
     !> Testing the eastward wind field
-    @assertEqual('example_fields__eastward_wind', example_science_section__example_fields__meta%eastward_wind%get_unique_id())
+    target = 'example_fields__eastward_wind'
+    actual = example_science_section__example_fields__meta%&
+                &eastward_wind%get_unique_id()
+    @assertEqual(target, actual)
 
     !> Testing the rate_of_increase_of_rain_mass_due_to_autoconversion_from_liquid_cloud field
-    @assertEqual('example_fields__rate_of_increase_of_rain_mass_due_to_autoconversion_from_liquid_cloud', example_science_section__example_fields__meta%rate_of_increase_rain_mass_due_to_autoconv_from_liquid_cloud%get_unique_id())
+    target = 'example_fields__rate_of_increase_of_rain_mass_due_to_autoconversion_from_liquid_cloud'
+    actual = example_science_section__example_fields__meta%&
+                &rate_of_increase_rain_mass_due_to_autoconv_from_liquid_cloud%get_unique_id()
+    @assertEqual(target, actual)
 
     !> Testing the air_potential_temperature field
-    @assertEqual('example_fields__air_potential_temperature', example_science_section__example_fields__meta%air_potential_temperature%get_unique_id())
+    target = 'example_fields__air_potential_temperature'
+    actual = example_science_section__example_fields__meta%&
+                &air_potential_temperature%get_unique_id()
+    @assertEqual(target, actual)
 
-    !> Testing the we_thickness_of_moisture_content_of_soil_layer field
-    @assertEqual('example_fields__lwe_thickness_of_moisture_content_of_soil_layer', example_science_section__example_fields__meta%lwe_thickness_of_moisture_content_of_soil_layer%get_unique_id())
+    !> Testing the moisture_content_of_soil_layer field
+    target = 'example_fields__moisture_content_of_soil_layer'
+    actual = example_science_section__example_fields__meta%&
+                &moisture_content_of_soil_layer%get_unique_id()
+    @assertEqual(target, actual)
 
     !> Testing the surface_altitude field
-    @assertEqual('example_fields__surface_altitude', example_science_section__example_fields__meta%surface_altitude%get_unique_id())
+    target = 'example_fields__surface_altitude'
+    actual = example_science_section__example_fields__meta%&
+                &surface_altitude%get_unique_id()
+    @assertEqual(target, actual)
 
     !> Testing the air_temperature_over_tiles field
-    @assertEqual('example_fields__air_temperature_over_tiles', example_science_section__example_fields__meta%air_temperature_over_tiles%get_unique_id())
+    target = 'example_fields__air_temperature_over_tiles'
+    actual = example_science_section__example_fields__meta%&
+                &air_temperature_over_tiles%get_unique_id()
+    @assertEqual(target, actual)
 
     !> Testing the low_type_cloud_area_fraction field
-    @assertEqual('example_fields__low_type_cloud_area_fraction', example_science_section__example_fields__meta%low_type_cloud_area_fraction%get_unique_id())
+    target = 'example_fields__low_type_cloud_area_fraction'
+    actual = example_science_section__example_fields__meta%&
+                &low_type_cloud_area_fraction%get_unique_id()
+    @assertEqual(target, actual)
 
   end subroutine example_module_meta_test
 end module example_module_meta_mod_test
