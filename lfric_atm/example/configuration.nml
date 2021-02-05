@@ -177,6 +177,7 @@ blayer_placement='fast',
 heldsuarez_thermo_placement=0,
 heldsuarez_wind_placement=0,
 lowest_level='gradient',
+sample_physics_scalars=.true.,
 sample_physics_winds=.true.,
 /
 &planet

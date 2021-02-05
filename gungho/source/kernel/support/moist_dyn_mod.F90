@@ -14,6 +14,6 @@ implicit none
 integer, parameter :: num_moist_factors = 3
 integer, parameter :: gas_law           = 1 ! 1 + m_v / epsilon
 integer, parameter :: total_mass        = 2 ! 1 + sum (m_x)
-integer, parameter :: water             = 3 ! For furure development
+integer, parameter :: water             = 3 ! For future development
 
 end module moist_dyn_mod

@@ -9,13 +9,20 @@ module physics_mappings_alg_mod
 
   use constants_mod,                         only: r_def, i_def
   use field_mod,                             only: field_type
+  use finite_element_config_mod,             only: nqp_exact
+  use fs_continuity_mod,                     only: W3, WTHETA
   use function_space_mod,                    only: function_space_type
   use function_space_collection_mod,         only: function_space_collection
+  use galerkin_projection_algorithm_mod,     only: galerkin_projection_algorithm
+  use log_mod,                               only: LOG_LEVEL_ERROR, log_event, &
+                                                   LOG_LEVEL_INFO
   use quadrature_xyoz_mod,                   only: quadrature_xyoz_type
   use quadrature_rule_gaussian_mod,          only: quadrature_rule_gaussian_type
-  use finite_element_config_mod,             only: nqp_exact
-  use physics_config_mod,                    only: sample_physics_winds
-  use galerkin_projection_algorithm_mod,     only: galerkin_projection_algorithm
+  use physics_config_mod,                    only: sample_physics_scalars, &
+                                                   sample_physics_winds
+  use runtime_constants_mod,                 only: get_height
+  use sample_w3_to_wtheta_kernel_mod,        only: sample_w3_to_wtheta_kernel_type
+  use sample_wtheta_to_w3_kernel_mod,        only: sample_wtheta_to_w3_kernel_type
 
   implicit none
 
@@ -27,8 +34,8 @@ contains
 
   !> @details An algorithm to map native FE scalar fields to the appropriate
   !>          location for the FD physics codes
-  !> @param[inout] target_field Field in the target space
-  !> @param[in]    source_field Field in the source (native) space
+  !> @param[in,out] target_field Field in the target space
+  !> @param[in]     source_field Field in the source (native) space
   subroutine map_physics_scalars(target_field, source_field)
 
     implicit none
@@ -40,14 +47,51 @@ contains
     type( quadrature_xyoz_type )          :: qr
     type( quadrature_rule_gaussian_type ) :: quadrature_rule
     type( field_type )                    :: projected_field(1)
+    type( field_type ), pointer           :: height_w3 => null()
+    type( field_type ), pointer           :: height_wt => null()
     integer(i_def)                        :: mesh_id
 
-    qr = quadrature_xyoz_type(nqp_exact, quadrature_rule)
-    mesh_id =  source_field%get_mesh_id() ! Currently only coded for fields on the same mesh
-    call projected_field(1)%initialise( vector_space = target_field%get_function_space() )
-    call galerkin_projection_algorithm(projected_field, source_field, mesh_id, &
-       1, qr)
-    call invoke( setval_X(target_field, projected_field(1)) )
+    call source_field%log_minmax(LOG_LEVEL_INFO, 'source field')
+
+    if ( sample_physics_scalars ) then
+      ! Determine situation from number of DoFs
+      ! First check that both fields are lowest order
+      if (.not. ((target_field%get_element_order() == 0) .and. &
+                 (source_field%get_element_order() == 0))) then
+        call log_event('sample_physics_scalars only works with the lowest order spaces', &
+                       LOG_LEVEL_ERROR)
+      end if
+
+      ! Now determine situation depending on function spaces
+      if (( target_field%which_function_space() == WTHETA ) &
+           .and. ( source_field%which_function_space() == W3 ) ) then
+        ! Target is lowest order Wtheta, source is lowest order W3
+        height_w3 => get_height(W3)
+        height_wt => get_height(WTHETA)
+        call invoke( sample_w3_to_wtheta_kernel_type(target_field, source_field, &
+                                                     height_wt, height_w3 ) )
+        nullify(height_w3, height_wt)
+
+      elseif (( target_field%which_function_space() == W3 ) &
+              .and. ( source_field%which_function_space() == WTHETA )) then
+        ! Target is lowest order W3, source is lowest order Wtheta
+        call invoke( sample_wtheta_to_w3_kernel_type(target_field, source_field) )
+      else
+        call log_event('sample_physics_scalars only works with lowest order W3 and Wtheta fields', &
+                       LOG_LEVEL_ERROR)
+      end if
+
+    else
+      ! Do galerkin projection
+      qr = quadrature_xyoz_type(nqp_exact, quadrature_rule)
+      mesh_id =  source_field%get_mesh_id() ! Currently only coded for fields on the same mesh
+      call projected_field(1)%initialise( vector_space = target_field%get_function_space() )
+      call galerkin_projection_algorithm(projected_field, source_field, mesh_id, &
+         1, qr)
+      call invoke( setval_X(target_field, projected_field(1)) )
+    end if
+
+    call target_field%log_minmax(LOG_LEVEL_INFO, 'target field')
 
   end subroutine map_physics_scalars
 

@@ -387,6 +387,7 @@ contains
       end do
       call copy_bundle(mr, mr_n, nummr)
       call copy_bundle(mr, mr_after_slow, nummr)
+      call invoke(moist_dyn_factors_kernel_type(moist_dyn, mr_n))
     end if
     call copy_bundle(state, state_n, bundle_size)
     call copy_bundle(state, state_after_slow, bundle_size)
@@ -398,8 +399,8 @@ contains
       ! Calculate fields derived from dynamics fields for use in physics
       call map_physics_fields_alg(state_n(igh_u), state_n(igh_p),              &
                                   state_n(igh_d), state_n(igh_t),              &
-                                  mr_n, dA, height_wth, height_w3, chi_xyz,    &
-                                  derived_fields)
+                                  moist_dyn, dA, height_wth, height_w3,        &
+                                  chi_xyz, derived_fields)
       call slow_physics(du, dtheta, mr_after_slow, visc_m, visc_h,             &
                         state_n(igh_t), state_n(igh_d), state_n(igh_p),        &
                         mr_n,  derived_fields, radiation_fields,               &
@@ -417,9 +418,6 @@ contains
     !--------------------------------------------------------------------
     ! Compute the time-level n dynamics terms
     !--------------------------------------------------------------------
-    if (use_moisture) then
-      call invoke(moist_dyn_factors_kernel_type(moist_dyn, mr_n))
-    end if
     call rhs_alg(rhs_n, varbeta*dt, state_after_slow, state_n, moist_dyn, &
                  .false., .false.)
 
