@@ -116,7 +116,6 @@ class MetadataExtractor:
 
         # hard-code following attributes for now
         field.grid_ref = 'half_level_face_grid'
-        field.order = 0
         field.mesh_id = 1
         field.io_driver = 'WRITE_FIELD_FACE'
         return field

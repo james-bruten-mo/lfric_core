@@ -65,7 +65,7 @@
 <field_group enabled=".TRUE." freq_op="1ts" id="example_science_section__example_fields" operation="instant">
 <field grid_ref="half_level_face_grid" id="example_science_section__air_potential_temperature" standard_name="air_potential_temperature" unit="K">
 <variable name="checksum" type="bool">true</variable>
-<variable name="element_order" type="int">0</variable>
+<variable name="element_order" type="int">1</variable>
 <variable name="field_type" type="string">REAL_TYPE</variable>
 <variable name="function_space" type="string">Wtheta</variable>
 <variable name="io_driver" type="string">WRITE_FIELD_FACE</variable>

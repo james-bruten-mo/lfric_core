@@ -72,7 +72,7 @@
                             "_unique_id": "example_science_section__air_potential_temperature",
                             "units": "K",
                             "function_space": "Wtheta",
-                            "order": "0",
+                            "order": "1",
                             "io_driver": "WRITE_FIELD FACE",
                             "trigger": "__checksum: true;",
                             "description": "Potential temperature on p points on native c grid.",
@@ -231,5 +231,5 @@
             }
         }
     },
-    "checksum": "md5: c2624a0154cc7db95dea5e2fde70f171"
+    "checksum": "md5: 61fe397b9397773b56dc76c29cc66aee"
 }
