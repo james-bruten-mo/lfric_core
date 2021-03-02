@@ -231,7 +231,8 @@ contains
     integer(i_test) :: l_local_i(3)
     integer(i_test) :: l_sum_i, l_max_i, l_min_i
     integer(i_test) :: g_sum_i, g_max_i, g_min_i
-    integer(i_test) :: i_buffer(1),i_buffer_ans(1)
+    integer(i_test) :: i_buffer(1)
+    integer(i_test), allocatable :: i_buffer_ans(:)
     integer(i_test) :: w, answer
     character(len=2)  :: str_buffer(1)
     integer(i_native) :: i, mpi_datatype
@@ -242,6 +243,8 @@ contains
     num_processes = this%context%getNumProcesses()
     proc_num      = this%getProcessRank()
     l_local_i(:)  = l_array_i(:)*(proc_num+1)
+
+    allocate(i_buffer_ans(num_processes))
 
     ! Test integer global sum routine
     l_sum_i = 0_i_test
@@ -276,9 +279,11 @@ contains
     @assertEqual( answer, g_min_i )
 
     ! Test integer gather routine
-    i_buffer(1) = 700_i_test
+    i_buffer(1) = 700_i_test * (proc_num + 1_i_test)
     call all_gather(i_buffer, i_buffer_ans, 1)
-    @assertEqual( 700_i_test, i_buffer_ans(1) )
+    do i = 1,num_processes
+      @assertEqual( i * 700_i_test, i_buffer_ans(i) )
+    end do
 
     ! Test integer broadcast routine
     i_buffer(1) = 900_i_test*(proc_num+1)
@@ -300,6 +305,8 @@ contains
 
     rank_number=get_comm_rank()
     @assertTrue( rank_number <= total_ranks)
+
+    deallocate(i_buffer_ans)
 
   end subroutine test_int
 
