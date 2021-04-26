@@ -8,8 +8,10 @@
 !>
 module lfric_xios_io_mod
 
-  use base_mesh_config_mod,          only: geometry, &
-                                           geometry_spherical
+  use base_mesh_config_mod,          only: geometry,           &
+                                           geometry_spherical, &
+                                           topology,           &
+                                           topology_fully_periodic
   use clock_mod,                     only: clock_type
   use constants_mod,                 only: dp_xios,                       &
                                            i_def, i_halo_index, i_native, &
@@ -282,13 +284,13 @@ contains
                                      = (/W0, W1, W2, W3, Wtheta/)
     integer(i_native) :: fs_index
 
-
     ! Variables needed to compute output domain coordinates in lat-long
-
-    ! Transformed coords for nodal output
+    type( field_type ) :: chi_w0(3)
+    type( field_type ) :: sample_chi(3)
     type( field_type ) :: coord_output(3)
     ! Field proxies (to calculate domain coordinate info)
     type(field_proxy_type), target  :: proxy_coord_output(3)
+
 
     ! Variables for local and global mesh information
     type(mesh_type), pointer :: mesh => null()
@@ -321,6 +323,7 @@ contains
     ! Set up fields to hold the output coordinates
     output_field_fs => function_space_collection%get_fs( mesh_id, element_order, W0 )
     do i = 1,3
+      call chi_w0(i)%initialise( vector_space = output_field_fs )
       call coord_output(i)%initialise( vector_space = output_field_fs )
       proxy_coord_output(i) = coord_output(i)%get_proxy()
     end do
@@ -337,7 +340,7 @@ contains
     num_edge_local = w2h_fs%get_last_dof_owned()/size(w2h_fs%get_levels())
 
     ! Get the local value for last owned dof
-    local_undf(1)  = proxy_coord_output(1)%vspace%get_last_dof_owned()
+    local_undf(1) = proxy_coord_output(1)%vspace%get_last_dof_owned()
 
     ! Get the unique fractional levels to set up vertical output domain
     nfull_levels = size( proxy_coord_output(1)%vspace%get_levels() )
@@ -345,6 +348,18 @@ contains
     ! Get sizes of full nodal coordinate field as well as local partition size
     coord_dim_full = size(proxy_coord_output(1)%data) / nfull_levels
     coord_dim_owned = local_undf(1) / nfull_levels
+
+    ! Sample chi on W0 function space to prevent "unzipping"of cubed-sphere mesh
+    if ( geometry == geometry_spherical .and. topology == topology_fully_periodic ) then
+      call invoke_nodal_coordinates_kernel(chi_w0, chi)
+      do i = 1,3
+        call chi_w0(i)%copy_field(sample_chi(i))
+      end do
+    else
+      do i = 1,3
+        call chi(i)%copy_field(sample_chi(i))
+      end do
+    end if
 
     ! Allocate coordinate arrays
     allocate(nodes_lon_full(coord_dim_full))
@@ -363,7 +378,7 @@ contains
     allocate(bnd_edges_lat(nodes_per_edge,num_edge_local))
 
     ! Calculate the node coords arrays and also the face and edge bounds
-    call calc_xios_domain_coords(mesh, coord_output, chi,  &
+    call calc_xios_domain_coords(mesh, coord_output, sample_chi, &
                                  nfull_levels, num_face_local,   &
                                  nodes_lon_full, nodes_lat_full, &
                                  bnd_faces_lon, bnd_faces_lat,   &
@@ -374,9 +389,9 @@ contains
     bnd_nodes_lat=(reshape(nodes_lat, (/1, size(nodes_lat)/) ) )
 
     ! Initialise XIOS UGRID domains
-    call init_xios_ugrid_domain( "node", mesh_id, W0,  chi, bnd_nodes_lon, bnd_nodes_lat )
-    call init_xios_ugrid_domain( "face", mesh_id, W3,  chi, bnd_faces_lon, bnd_faces_lat )
-    call init_xios_ugrid_domain( "edge", mesh_id, W2H, chi, bnd_edges_lon, bnd_edges_lat )
+    call init_xios_ugrid_domain( "node", mesh_id, W0,  sample_chi, bnd_nodes_lon, bnd_nodes_lat )
+    call init_xios_ugrid_domain( "face", mesh_id, W3,  sample_chi, bnd_faces_lon, bnd_faces_lat )
+    call init_xios_ugrid_domain( "edge", mesh_id, W2H, sample_chi, bnd_edges_lon, bnd_edges_lat )
 
     ! Initialise XIOS axes
     call init_xios_axis( "vert_axis_full_levels", mesh_id, W0 )
@@ -393,10 +408,10 @@ contains
       ! Enable use of the XIOS i_index for relevant function spaces
       if (any( use_i_index == domain_function_spaces(fs_index) )) then
         call checkpoint_domain_init(domain_function_spaces(fs_index), &
-                                    trim(domain_name), mesh_id, chi, .true.)
+                                    trim(domain_name), mesh_id, sample_chi, .true.)
       else
         call checkpoint_domain_init(domain_function_spaces(fs_index), &
-                                    trim(domain_name), mesh_id, chi, .false.)
+                                    trim(domain_name), mesh_id, sample_chi, .false.)
       end if
 
     end do

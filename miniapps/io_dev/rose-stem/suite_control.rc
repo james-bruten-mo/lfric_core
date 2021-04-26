@@ -44,6 +44,7 @@
     'check_style_graph()',
     'api_documentation_graph(publish=True)',
     'compare_restart_kgos_graph()',
+    'check_output_format_graph()',
     'run_application("io_dev", "default", resolutions=[("C12", 3.0)],
                      env={"crun":1, "nrun":20,}, checkkgo=True,
                      plotstr="plot_io_dev.py $NODAL_DATA_DIR/io_dev_diag.nc time_var:domains W0_field:W2H_field:W3_field")',

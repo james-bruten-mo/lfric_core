@@ -1091,3 +1091,21 @@
 {%-                   for DIRECTIVE in TARGET_TECHNICAL_BATCHER_DIRECTIVES %}
             {{DIRECTIVE}}
 {%-                   endfor %}
+
+{# #############################################################################}
+{# CHECK_OUTPUT_FORMAT #}
+    [[check_output_format]]
+        pre-script = """
+                     {{TARGET_PLOT_PYTHON_SETUP}}
+                     """
+
+        script = rose task-run --app-key=check_output_format
+
+        [[[environment]]]
+            APP_NAME   = {{projectName}}
+            TARGET_OPT = {{TARGET_OPT}}
+
+        [[[directives]]]
+{%-                   for DIRECTIVE in TARGET_TECHNICAL_BATCHER_DIRECTIVES %}
+            {{DIRECTIVE}}
+{%-                   endfor %}
