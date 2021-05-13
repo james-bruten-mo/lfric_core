@@ -179,7 +179,7 @@ contains
          rhcrit, ice_fraction_method,falliceshear_method, cff_spread_rate, &
          l_subgrid_qv, ice_width, min_liq_overlap, i_eacf, not_mixph,      &
          i_pc2_checks_cld_frac_method, l_ensure_min_in_cloud_qcf,          &
-         l_simplify_pc2_init_logic, dbsdtbs_turb_0,                        &
+         i_pc2_init_logic, dbsdtbs_turb_0,                                 &
          i_pc2_erosion_method, i_pc2_homog_g_method, i_pc2_init_method,    &
          check_run_cloud,                                                  &
          forced_cu_fac, i_pc2_conv_coupling, allicetdegc, starticetkelvin
@@ -229,7 +229,7 @@ contains
          i_cld_bimodal, rhcpt_off, acf_off, real_shear, rhcpt_tke_based,   &
          pc2eros_exp_rh,pc2eros_hybrid_allfaces,pc2eros_hybrid_sidesonly,  &
          original_but_wrong, acf_cusack, cbl_and_cu, pc2init_smith,        &
-         pc2init_bimodal, i_pc2_homog_g_cf
+         pc2init_logic_original, pc2init_bimodal, i_pc2_homog_g_cf
     use rad_input_mod, only: two_d_fsd_factor
     use science_fixes_mod, only:  i_fix_mphys_drop_settle, second_fix,      &
          l_pc2_homog_turb_q_neg, l_fix_ccb_cct, l_fix_conv_precip_evap,     &
@@ -666,7 +666,7 @@ contains
         i_pc2_homog_g_method         = i_pc2_homog_g_cf
         i_pc2_init_method            = pc2init_smith
         l_ensure_min_in_cloud_qcf    = .false.
-        l_simplify_pc2_init_logic    = .false.
+        i_pc2_init_logic             = pc2init_logic_original
         starticetkelvin              = 263.15_r_um
         if (pc2ini == pc2ini_smith)   i_pc2_init_method = pc2init_smith
         if (pc2ini == pc2ini_bimodal) i_pc2_init_method = pc2init_bimodal
