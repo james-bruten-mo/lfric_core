@@ -77,7 +77,8 @@ module um_physics_init_mod
                                         droplet_tpr, shape_rime,       &
                                         qcl_rime,                      &
                                         ndrop_surf_in => ndrop_surf,   &
-                                        z_surf_in => z_surf
+                                        z_surf_in => z_surf,           &
+                                        turb_gen_mixph
 
   use mixing_config_mod,         only : smagorinsky,                &
                                         mixing_method => method,    &
@@ -224,7 +225,7 @@ contains
         sediment_loc, i_mcr_iter_tstep, all_sed_start,                       &
         check_run_precip, graupel_option, no_graupel, a_ratio_exp,           &
         a_ratio_fac, l_droplet_tpr, qclrime, l_shape_rime, ndrop_surf,       &
-        z_surf, l_fsd_generator
+        z_surf, l_fsd_generator, mp_dz_scal, l_subgrid_qcl_mp
     use pc2_constants_mod, only: i_cld_off, i_cld_smith, i_cld_pc2,        &
          i_cld_bimodal, rhcpt_off, acf_off, real_shear, rhcpt_tke_based,   &
          pc2eros_exp_rh,pc2eros_hybrid_allfaces,pc2eros_hybrid_sidesonly,  &
@@ -735,8 +736,9 @@ contains
       l_psd          = .true.
       l_rain         = .true.
       l_shape_rime   = shape_rime
-      ! l_subgrid_qcl_mp should be set here - needs coding??
+      l_subgrid_qcl_mp = turb_gen_mixph
       l_warm_new     = .true.
+      mp_dz_scal     = 1.0_r_um
       ndrop_surf     = real(ndrop_surf_in, r_um)
       qclrime        = real(qcl_rime, r_um)
       sediment_loc   = all_sed_start

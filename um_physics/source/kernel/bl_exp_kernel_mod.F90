@@ -32,6 +32,7 @@ module bl_exp_kernel_mod
                                      scheme_bimodal, scheme_pc2,              &
                                      pc2ini, pc2ini_bimodal
   use convection_config_mod,  only : use_jules_flux
+  use microphysics_config_mod, only: turb_gen_mixph
   use mixing_config_mod,      only : smagorinsky
   use surface_config_mod,     only : albedo_obs, sea_surf_alg, &
                                      sea_surf_alg_fixed_roughness, &
@@ -1749,11 +1750,14 @@ contains
     end if
 
     ! Liquid temperature gradient for bimodal cloud scheme
-    if (scheme == scheme_bimodal .or. (scheme == scheme_pc2 .and.         &
-        pc2ini == pc2ini_bimodal ) ) then
+    if (scheme == scheme_bimodal .or. &
+         (scheme == scheme_pc2 .and. pc2ini == pc2ini_bimodal ) ) then
       do k = 1, nlayers
         dsldzm(map_wth(1)+k) = tgrad_bm(1,1,k)
       end do
+    end if
+    if (scheme == scheme_bimodal .or. turb_gen_mixph .or. &
+         (scheme == scheme_pc2 .and. pc2ini == pc2ini_bimodal ) ) then
       do k = 2, nlayers
         wvar(map_wth(1)+k-1) = bl_w_var(1,1,k)
       end do

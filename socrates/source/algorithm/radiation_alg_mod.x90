@@ -143,7 +143,6 @@ subroutine radiation_alg(dtheta_rad, theta, exner, mr,                    &
                         cloud_droplet_re_rts
 
   call log_event( 'slow_physics: Running Radiation', LOG_LEVEL_INFO )
-  call theta%copy_field_properties(dtheta_rad)
 
   mesh_id = theta%get_mesh_id()
 

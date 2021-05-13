@@ -110,8 +110,6 @@ contains
     type( field_type ), pointer :: z_lcl => null()
     type( field_type ), pointer :: inv_depth => null()
     type( field_type ), pointer :: qcl_at_inv_top => null()
-    type( field_type ), pointer :: dt_bl => null()
-    type( field_type ), pointer :: dmv_bl => null()
     type( field_type ), pointer :: rhokm_bl => null()
     type( field_type ), pointer :: rhokh_bl => null()
     type( field_type ), pointer :: ngstress_bl => null()
@@ -184,7 +182,8 @@ contains
 
     type(function_space_type), pointer  :: vector_space => null()
     type( field_type ) :: rhokm_w2, rhokm_surf_w2, ngstress_w2, dtrdz_w2, &
-                          rdz_w2, fd_tau_w2, du_conv_w2, dw_conv
+                          rdz_w2, fd_tau_w2, du_conv_w2, dw_conv, dmv_bl, &
+                          dt_bl
 
     integer(kind=i_def) :: mesh_id
 
@@ -214,8 +213,6 @@ contains
     z_lcl => turbulence_fields%get_field('z_lcl')
     inv_depth => turbulence_fields%get_field('inv_depth')
     qcl_at_inv_top => turbulence_fields%get_field('qcl_at_inv_top')
-    dt_bl => turbulence_fields%get_field('dt_bl')
-    dmv_bl => turbulence_fields%get_field('dmv_bl')
     rhokm_bl => turbulence_fields%get_field('rhokm_bl')
     rhokh_bl => turbulence_fields%get_field('rhokh_bl')
     ngstress_bl => turbulence_fields%get_field('ngstress_bl')
@@ -302,6 +299,7 @@ contains
 
     ! Set up the BL increments
     call theta%copy_field_properties(dtheta_bl)
+    call mr(imr_v)%copy_field_properties(dmv_bl)
 
     ! Map the convection wind increments into w2 space
     call theta%copy_field_properties(dw_conv)
@@ -381,6 +379,7 @@ contains
     if (write_diag .and. use_xios_io .and. outer == outer_iterations) then
 
       ! BL diagnostics
+      call dtheta_bl%copy_field_properties(dt_bl)
       call invoke(    X_times_Y(dt_bl,dtheta_bl,exner_in_wth), &
                   inc_X_minus_Y(dt_bl,dt_conv) )
       call dt_bl%write_field('dt_bl')

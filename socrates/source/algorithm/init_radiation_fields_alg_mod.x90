@@ -32,6 +32,8 @@ contains
     type(field_collection_type), intent(inout) :: radiation_fields
 
     ! Outputs from the radiation scheme
+    type( field_type ), pointer :: dtheta_rad        => null()
+    type( field_type ), pointer :: dmv_pc2_rad       => null()
     type( field_type ), pointer :: sw_heating_rate   => null()
     type( field_type ), pointer :: lw_heating_rate   => null()
     type( field_type ), pointer :: sw_up_tile        => null()
@@ -42,6 +44,8 @@ contains
     type( field_type ), pointer :: sw_down_surf      => null()
     type( field_type ), pointer :: sw_down_blue_surf => null()
 
+    dtheta_rad        => radiation_fields%get_field('dtheta_rad')
+    dmv_pc2_rad       => radiation_fields%get_field('dmv_pc2_rad')
     sw_heating_rate   => radiation_fields%get_field('sw_heating_rate')
     lw_heating_rate   => radiation_fields%get_field('lw_heating_rate')
     sw_up_tile        => radiation_fields%get_field('sw_up_tile')
@@ -53,7 +57,9 @@ contains
     sw_down_blue_surf => radiation_fields%get_field('sw_down_blue_surf')
 
     ! Initialise the increments to 0 for use when the scheme isn't called
-    call invoke( setval_c(sw_heating_rate,   0.0_r_def),   &
+    call invoke( setval_c(dtheta_rad,        0.0_r_def),   &
+                 setval_c(dmv_pc2_rad,       0.0_r_def),   &
+                 setval_c(sw_heating_rate,   0.0_r_def),   &
                  setval_c(lw_heating_rate,   0.0_r_def),   &
                  setval_c(sw_up_tile,        0.0_r_def),   &
                  ! Set to zero if ancil/prognostic isn't read

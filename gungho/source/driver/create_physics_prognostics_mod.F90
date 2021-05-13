@@ -44,6 +44,7 @@ module create_physics_prognostics_mod
   use surface_config_mod,             only : albedo_obs, srf_ex_cnv_gust,      &
                                              sea_alb_var_chl
   use spectral_gwd_config_mod,        only : add_cgw
+  use microphysics_config_mod,        only : turb_gen_mixph
 
   implicit none
 
@@ -257,6 +258,10 @@ contains
       'sw_heating_rate', wtheta_space )
     call add_physics_field( radiation_fields, depository, prognostic_fields,   &
       'lw_heating_rate', wtheta_space )
+    call add_physics_field( radiation_fields, depository, prognostic_fields,   &
+      'dtheta_rad', wtheta_space )
+    call add_physics_field( radiation_fields, depository, prognostic_fields,   &
+      'dmv_pc2_rad', wtheta_space )
 
     ! Fields which need checkpointing for radiation timestepping
     !
@@ -331,9 +336,9 @@ contains
 
     ! 3D fields, don't need checkpointing
     call add_physics_field( microphysics_fields, depository, prognostic_fields,&
-      'dtl_mphys', wtheta_space )
+      'dtheta_mphys', wtheta_space )
     call add_physics_field( microphysics_fields, depository, prognostic_fields,&
-      'dmt_mphys', wtheta_space )
+      'dmv_mphys', wtheta_space )
 
     !========================================================================
     ! Fields owned by the orographic drag schemes
@@ -375,6 +380,9 @@ contains
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
       'zh',      twod_space, checkpoint_flag=checkpoint_flag, twod=.true. )
 
+    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
+      'wvar',    wtheta_space, checkpoint_flag=turb_gen_mixph )
+
     ! 2D fields, don't need checkpointing
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
       'ntml',    twod_space, twod=.true. )
@@ -404,10 +412,6 @@ contains
 
     ! 3D fields, don't need checkpointing
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
-      'dt_bl', wtheta_space )
-    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
-      'dmv_bl', wtheta_space )
-    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
       'rhokm_bl', wtheta_space )
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
       'ngstress_bl', wtheta_space )
@@ -427,8 +431,6 @@ contains
       'lmix_bl', wtheta_space )
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
       'dsldzm',  wtheta_space )
-    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
-      'wvar',    wtheta_space )
 
     ! 3D fields on W3 (rho) levels
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &

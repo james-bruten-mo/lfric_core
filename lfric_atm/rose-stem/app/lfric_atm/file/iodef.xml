@@ -113,6 +113,7 @@
 	<field id="checkpoint_dd_mf_cb" name="dd_mf_cb" long_name="downdraft_massflux_at_cloud_base" unit="Pa s-1" domain_ref="face" />
 	<!-- Turbulence fields -->
 	<field id="checkpoint_zh" name="zh" long_name="boundary_layer_depth" unit="m" domain_ref="face" />
+	<field id="checkpoint_wvar" name="wvar" long_name="vertical_velocity_variance" unit="m2 s-2" grid_ref="full_level_face_grid" />
 	<!-- Surface fields -->
 	<field id="checkpoint_z0msea" name="z0msea" long_name="sea_surface_roughness_length" unit="m" domain_ref="face" />
 	<field id="checkpoint_surface_conductance" name="surface_conductance" long_name="surface_conductance" unit="m s-1" domain_ref="face" />
@@ -304,7 +305,7 @@
 	<field id="shallow_prec" name="shallow_prec" long_name="shallow_convective_precipitation_rate" unit="kg m-2 s-1" domain_ref="face" />
 	<field id="mid_prec" name="mid_prec" long_name="midlevel_convection_precipitation_rate" unit="kg m-2 s-1" domain_ref="face" />
 	<field id="deep_term" name="deep_term" long_name="termination_level_of_deep_convection" unit="level number" domain_ref="face" />
-        <field id="cape_diluted" name="cape_diluted" long_name="cape_diluted" unit="J/kg" domain_ref="face" />
+	<field id="cape_diluted" name="cape_diluted" long_name="cape_diluted" unit="J/kg" domain_ref="face" />
 	<field id="cape_timescale" name="cape_timescale" long_name="cape_timescale" unit="s" domain_ref="face" />
 	<field id="freeze_level" name="freeze_level" long_name="freeze_level" unit="model level" domain_ref="face" />
 	<field id="lowest_cv_base" name="lowest_cv_base" long_name="lowest_cv_base" unit="model level" domain_ref="face" />
@@ -498,6 +499,7 @@
 	<field id="restart_dd_mf_cb" name="dd_mf_cb" long_name="downdraft_massflux_at_cloud_base" unit="Pa s-1" operation="instant" domain_ref="face" />
 	<!-- Turbulence fields -->
 	<field id="restart_zh" name="zh" long_name="boundary_layer_depth" unit="m" operation="instant" domain_ref="face" />
+        <field id="restart_wvar" name="wvar" long_name="vertical_velocity_variance" unit="m2 s-2" operation="instant" grid_ref="full_level_face_grid" />
 	<!-- Surface fields -->
 	<field id="restart_z0msea" name="z0msea" long_name="sea_surface_roughness_length" unit="m" operation="instant" domain_ref="face" />
 	<field id="restart_surface_conductance" name="surface_conductance" long_name="surface_conductance" unit="m s-1" operation="instant" domain_ref="face" />

@@ -37,7 +37,8 @@ module slow_physics_alg_mod
   use enforce_lower_bound_kernel_mod, only: enforce_lower_bound_kernel_type
   use moisture_conservation_alg_mod,  only: moisture_conservation_alg
   use fs_continuity_mod,         only: W3, Wtheta
-  use field_bundle_mod,          only: add_bundle
+  use field_bundle_mod,          only: add_bundle, clone_bundle, &
+                                       set_bundle_scalar
   use formulation_config_mod,    only: use_moisture
   use io_config_mod,             only: subroutine_timers,                    &
                                        write_conservation_diag
@@ -138,12 +139,10 @@ contains
     ! ...for H-S physics
     type( field_type ) :: dtheta_hs, du_hs
     ! ...for microphysics
-    type( field_type ) :: dtheta_mphys
     type( field_type ) :: dmr_mphys(nummr)
     type( field_type ) :: dcfl_pc2_mphys, dcff_pc2_mphys, dbcf_pc2_mphys
     ! ...for radiation
-    type( field_type ) :: dtheta_rad, dtheta_pc2_rad
-    type( field_type ) :: dqv_pc2_rad, dqcl_pc2_rad
+    type( field_type ) :: dtheta_pc2_rad, dmcl_pc2_rad
     type( field_type ) :: dcfl_pc2_rad, dbcf_pc2_rad
 #ifdef UM_PHYSICS
     type( field_type ) :: trop_level
@@ -163,7 +162,7 @@ contains
 #ifdef UM_PHYSICS
     ! ...for PC2 checks
     type( field_type ) :: dtheta_pc2_checks, theta_updated
-    type( field_type ) :: dqv_pc2_checks, dqcl_pc2_checks, dqcf_pc2_checks
+    type( field_type ) :: dmv_pc2_checks, dmcl_pc2_checks, dmcf_pc2_checks
     type( field_type ) :: dcfl_pc2_checks, dcff_pc2_checks, dbcf_pc2_checks
     ! ...for fractional standard deviation cloud (microphysics and radiation)
     type( field_type ) :: f_arr
@@ -175,6 +174,9 @@ contains
     type( field_type ), pointer :: departure_exner_wth => null()
 #endif
     type( field_type ), pointer :: exner_in_wth => null()
+    type( field_type ), pointer :: dtheta_mphys => null()
+    type( field_type ), pointer :: dtheta_rad => null()
+    type( field_type ), pointer :: dmv_pc2_rad => null()
     ! Fields required by PC2
     type( field_type ), pointer :: liquid_fraction => null()
     type( field_type ), pointer :: ice_fraction    => null()
@@ -254,12 +256,15 @@ contains
     !--------------------------------------------------------------------
     ! UM microphysics scheme
     !--------------------------------------------------------------------
+    dtheta_mphys => microphysics_fields%get_field('dtheta_mphys')
+    call clone_bundle(mr_n, dmr_mphys, nummr)
+    call set_bundle_scalar(0.0_r_def, dmr_mphys, nummr)
     if ( microphysics == microphysics_um .and. &
          microphysics_placement == microphysics_placement_slow) then
       call mphys_alg( mr_n, theta, rho, derived_fields, microphysics_fields, &
-                      cloud_fields, aerosol_fields, f_arr, dmr_mphys,        &
-                      dtheta_mphys, dcfl_pc2_mphys, dcff_pc2_mphys,          &
-                      dbcf_pc2_mphys )
+                      cloud_fields, aerosol_fields, turbulence_fields,       &
+                      f_arr, dmr_mphys, dtheta_mphys, dcfl_pc2_mphys,        &
+                      dcff_pc2_mphys, dbcf_pc2_mphys )
       microphysics_done=.true. ! Collect this increment later on
     end if
 
@@ -307,6 +312,8 @@ contains
                         surface_fields, soil_fields, snow_fields,       &
                         albedo_obs_scaling, twod_mesh_id)
 
+      dtheta_rad => radiation_fields%get_field('dtheta_rad')
+      dmv_pc2_rad => radiation_fields%get_field('dmv_pc2_rad')
       call radiation_alg( dtheta_rad, theta, exner, mr_n,                    &
                           derived_fields, radiation_fields, cloud_fields,    &
                           convection_fields, aerosol_fields, surface_fields, &
@@ -329,8 +336,8 @@ contains
                                    dtheta_rad,     & ! IN
                                                      ! Responses
                                    dtheta_pc2_rad, & ! OUT
-                                   dqv_pc2_rad,    & ! OUT
-                                   dqcl_pc2_rad,   & ! OUT
+                                   dmv_pc2_rad,    & ! OUT
+                                   dmcl_pc2_rad,   & ! OUT
                                    dcfl_pc2_rad,   & ! OUT
                                    dbcf_pc2_rad )    ! OUT
       end if ! (scheme == scheme_pc2)
@@ -381,7 +388,7 @@ contains
     if (boundary_layer == boundary_layer_um ) then
       call bl_exp_alg(visc_m, visc_h, theta, rho, exner, mr_n,           &
                       derived_fields, radiation_fields,                  &
-                      microphysics_fields, orography_fields,             &
+                      microphysics_fields, dmr_mphys, orography_fields,  &
                       turbulence_fields, convection_fields, cloud_fields,&
                       surface_fields, soil_fields, snow_fields,          &
                       albedo_obs_scaling)
@@ -420,8 +427,8 @@ contains
       if (scheme == scheme_pc2) then
         call invoke(name="update_with_pc2_rad_inc",                &
                     inc_X_plus_Y(dtheta_rad,      dtheta_pc2_rad), &
-                    inc_X_plus_Y(mr(imr_v),       dqv_pc2_rad),    &
-                    inc_X_plus_Y(mr(imr_cl),      dqcl_pc2_rad),   &
+                    inc_X_plus_Y(mr(imr_v),       dmv_pc2_rad),    &
+                    inc_X_plus_Y(mr(imr_cl),      dmcl_pc2_rad),   &
                     inc_X_plus_Y(liquid_fraction, dcfl_pc2_rad),   &
                     inc_X_plus_Y(bulk_fraction,   dbcf_pc2_rad)    )
       end if
@@ -464,9 +471,9 @@ contains
                              derived_fields,    & ! Current state IN
                              cloud_fields,      & ! Current state IN
                              dtheta_pc2_checks, & ! Increments OUT
-                             dqv_pc2_checks,    & ! Increments OUT
-                             dqcl_pc2_checks,   & ! Increments OUT
-                             dqcf_pc2_checks,   & ! Increments OUT
+                             dmv_pc2_checks,    & ! Increments OUT
+                             dmcl_pc2_checks,   & ! Increments OUT
+                             dmcf_pc2_checks,   & ! Increments OUT
                              dcfl_pc2_checks,   & ! Increments OUT
                              dcff_pc2_checks,   & ! Increments OUT
                              dbcf_pc2_checks)     ! Increments OUT
@@ -474,9 +481,9 @@ contains
         ! Update all fields and the theta increment again
         call invoke(name="update_after_pc2_checks",                   &
                     inc_X_plus_Y(dtheta,          dtheta_pc2_checks), &
-                    inc_X_plus_Y(mr(imr_v),       dqv_pc2_checks),    &
-                    inc_X_plus_Y(mr(imr_cl),      dqcl_pc2_checks),   &
-                    inc_X_plus_Y(mr(imr_ci),      dqcf_pc2_checks),   &
+                    inc_X_plus_Y(mr(imr_v),       dmv_pc2_checks),    &
+                    inc_X_plus_Y(mr(imr_cl),      dmcl_pc2_checks),   &
+                    inc_X_plus_Y(mr(imr_ci),      dmcf_pc2_checks),   &
                     inc_X_plus_Y(liquid_fraction, dcfl_pc2_checks),   &
                     inc_X_plus_Y(ice_fraction,    dcff_pc2_checks),   &
                     inc_X_plus_Y(bulk_fraction,   dbcf_pc2_checks)    )

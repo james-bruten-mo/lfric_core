@@ -29,7 +29,7 @@ contains
   !>@param[in]     cloud_fields   Group of cloud fields
   !>@param[in]     dtheta_forcing Potential temperature forcing (not T) in wth space
   !>@param[out]    dtheta_pc2_inc Potential temperature response in wth space
-  !>@param[out]    dqv_pc2_inc    Vapour                response in wth space
+  !>@param[in,out] dqv_pc2_inc    Vapour                response in wth space
   !>@param[out]    dqcl_pc2_inc   Liquid water content  response in wth space
   !>@param[out]    dcfl_pc2_inc   Liquid cloud fraction response in wth space
   !>@param[out]    dbcf_pc2_inc   Bulk cloud fraction   response in wth space
@@ -62,7 +62,7 @@ contains
 
     ! Increments out.
     type( field_type ), intent( out ) :: dtheta_pc2_inc
-    type( field_type ), intent( out ) :: dqv_pc2_inc
+    type( field_type ), intent( inout ) :: dqv_pc2_inc
     type( field_type ), intent( out ) :: dqcl_pc2_inc
     type( field_type ), intent( out ) :: dcfl_pc2_inc
     type( field_type ), intent( out ) :: dbcf_pc2_inc
@@ -90,7 +90,6 @@ contains
     call theta%copy_field_properties(dqv_forcing)
     call theta%copy_field_properties(dqcl_forcing)
     call theta%copy_field_properties(dtheta_pc2_inc)
-    call theta%copy_field_properties(dqv_pc2_inc)
     call theta%copy_field_properties(dqcl_pc2_inc)
     call theta%copy_field_properties(dcfl_pc2_inc)
     call theta%copy_field_properties(dbcf_pc2_inc)

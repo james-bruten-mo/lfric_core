@@ -10,6 +10,7 @@ module mphys_kernel_mod
 use argument_mod,      only: arg_type,                  &
                              GH_FIELD, GH_REAL,         &
                              GH_READ, GH_WRITE,         &
+                             GH_READWRITE,              &
                              ANY_DISCONTINUOUS_SPACE_1, &
                              ANY_DISCONTINUOUS_SPACE_2, &
                              CELL_COLUMN
@@ -47,18 +48,18 @@ type, public, extends(kernel_type) :: mphys_kernel_type
        arg_type(GH_FIELD, GH_REAL, GH_READ,  W3),                           & ! height_w3
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA),                       & ! height_wth
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA),                       & ! cloud_drop_no_conc
-       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA),                       & ! dmv_wth
-       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA),                       & ! dml_wth
-       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA),                       & ! dmi_wth
+       arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),                   & ! dmv_wth
+       arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),                   & ! dml_wth
+       arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),                   & ! dmi_wth
        arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA),                       & ! dmr_wth
        arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA),                       & ! dmg_wth
        arg_type(GH_FIELD, GH_REAL, GH_WRITE, ANY_DISCONTINUOUS_SPACE_1),    & ! ls_rain
        arg_type(GH_FIELD, GH_REAL, GH_WRITE, ANY_DISCONTINUOUS_SPACE_1),    & ! ls_snow
        arg_type(GH_FIELD, GH_REAL, GH_WRITE, ANY_DISCONTINUOUS_SPACE_1),    & ! lsca_2d
-       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA),                       & ! theta_inc
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA),                       & ! dcfl_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA),                       & ! dcff_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA),                       & ! dbcf_wth
+       arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),                   & ! theta_inc
+       arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),                   & ! dcfl_wth
+       arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),                   & ! dcff_wth
+       arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),                   & ! dbcf_wth
        arg_type(GH_FIELD, GH_REAL, GH_READ,  ANY_DISCONTINUOUS_SPACE_2)     & ! f_arr_wth
        /)
    integer :: operates_on = CELL_COLUMN
@@ -177,8 +178,6 @@ subroutine mphys_code( nlayers,                     &
     use planet_constants_mod,       only: p_zero, kappa, planet_radius
     use arcl_mod,                   only: npd_arcl_compnts
     use def_easyaerosol,            only: t_easyaerosol_cdnc
-
-    use mphys_turb_gen_mixed_phase_mod, only: mphys_turb_gen_mixed_phase
 
     implicit none
 
@@ -359,15 +358,16 @@ subroutine mphys_code( nlayers,                     &
 
           t_n(i,j,k)    = theta_in_wth(map_wth(1) + k) *                       &
                           exner_in_wth(map_wth(1) + k)
-          t_work(i,j,k) = t_n(i,j,k)
+          ! N.B. theta_inc is actually a temperature increment when passed in
+          t_work(i,j,k) = t_n(i,j,k) + theta_inc(map_wth(1) + k)
 
           ! pressure on theta levels
           p_theta_levels(i,j,k)    = p_zero*(exner_in_wth(map_wth(1) + k))     &
                                           **(1.0_r_um/kappa)
           ! Compulsory moist prognostics
-          q_work(i,j,k)    = mv_wth(map_wth(1) + k)
-          qcl_work(i,j,k)  = ml_wth(map_wth(1) + k)
-          qcf_work(i,j,k)  = mi_wth(map_wth(1) + k)
+          q_work(i,j,k)    = mv_wth(map_wth(1) + k) + dmv_wth(map_wth(1) + k )
+          qcl_work(i,j,k)  = ml_wth(map_wth(1) + k) + dml_wth(map_wth(1) + k )
+          qcf_work(i,j,k)  = mi_wth(map_wth(1) + k) + dmi_wth(map_wth(1) + k )
 
         end do ! i
       end do   ! j
@@ -502,9 +502,9 @@ subroutine mphys_code( nlayers,                     &
       do k = 1, model_levels
         do j = 1, rows
           do i = 1, row_length
-            cf_work(i,j,k)  = cf_wth( map_wth(1) + k)
-            cfl_work(i,j,k) = cfl_wth(map_wth(1) + k)
-            cff_work(i,j,k) = cff_wth(map_wth(1) + k)
+            cf_work(i,j,k)  = cf_wth( map_wth(1) + k) + dbcf_wth( map_wth(1) + k)
+            cfl_work(i,j,k) = cfl_wth(map_wth(1) + k) + dcfl_wth( map_wth(1) + k)
+            cff_work(i,j,k) = cff_wth(map_wth(1) + k) + dcff_wth( map_wth(1) + k)
 
             rhcpt(k) = rhcrit(k)
 
@@ -513,19 +513,8 @@ subroutine mphys_code( nlayers,                     &
       end do
     end if ! i_cld_vn
 
-    ! CALL to pc2_turbulence_ctl would normally be here in microphys_ctl
-    !      if l_micro_eros (run_cloud) is True
-
-
-    ! CALL to ls_calc_rhcrit would normally be here in microphys_ctl
-    !      if i_rhcpt == rhcpt_horiz_var
-
-
-    ! CALL to ls_cld omitted from here as it is plain daft
-
     ! CALL to lsp_froude_moist should be here once the orographic precipitation
     !      scheme is coupled up.
-
 
     ! CALL to ls_ppn
     call ls_ppn(                                                               &
@@ -557,14 +546,6 @@ subroutine mphys_code( nlayers,                     &
                 ls_rainfrac, land_points, land_index,                          &
                 l_cosp_lsp,                                                    &
                 hmteff, zb, tnuc_new)
-
-    ! CALL to mphys_turb_gen_mixed_phase would be here if l_subgrid_qcl_mp
-    !      is True. This requires the PC2 scheme, so isn't added for now.
-
-    ! CALL if required to  pc2_turbulence_ctl
-
-
-  ! CALL to electric_main if electric method is em_gwp or em_mccaul
 
 ! Lightning scheme
 ! Should not change prognostic variables, but is worth including here
