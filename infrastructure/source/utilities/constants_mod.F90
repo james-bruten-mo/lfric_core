@@ -24,7 +24,7 @@ module constants_mod
             l_def, l_native,                                             &
             r_def, r_double, r_ncdf, r_native, r_second, r_single, r_um, &
             r_solver,                                                    &
-            CMDI, EIMDI, EMDI, IMDI, RMDI,                               &
+            CMDI, UNSET_KEY, EMDI, IMDI, RMDI,                           &
             real_type, r_solver_real_type, integer_type, logical_type,   &
             EPS, tiny_eps,                                               &
             str_def, str_long, str_max_filename, str_short,              &
@@ -161,11 +161,11 @@ module constants_mod
 
   !> @}
   ! Missing data indicators
-  real     (r_def),     parameter :: RMDI  = -huge(0.0_r_def)     !< Value for real numbers
-  integer  (i_def),     parameter :: IMDI  = -huge(0_i_def)       !< Value for integer numbers
-  character(str_short), parameter :: CMDI  = 'unset'              !< Value for characters
-  character(str_short), parameter :: EMDI  = 'missing data'       !< Chararater value for namelist enumerations
-  integer  (i_native),  parameter :: EIMDI = int(IMDI, i_native)  !< Integer value for namelist enumerations
+  real     (r_def),     parameter :: RMDI  = -huge(0.0_r_def) !< Value for real numbers
+  integer  (i_def),     parameter :: IMDI  = -huge(0_i_def)   !< Value for integer numbers
+  character(str_short), parameter :: CMDI  = 'unset'          !< Value for characters
+  character(str_short), parameter :: UNSET_KEY  = CMDI        !< Chararater value for namelist enumerations
+  integer  (i_native),  parameter :: EMDI  = -1_i_native      !< Integer value for namelist enumerations
   !> @}
 
 end module constants_mod

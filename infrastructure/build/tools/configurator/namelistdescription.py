@@ -106,7 +106,8 @@ class _String(_Property):
     def get_configure_type(self):
         return 'string'
 
-    def get_missing_data_indicator(self):
+    @property
+    def missing_data_indicator(self):
         return self._missing_data_indicator
 
 ##############################################################################
@@ -130,6 +131,9 @@ class _Enumeration(_Property):
     def get_configure_type(self):
         return 'enumeration'
 
+    @property
+    def missing_data_indicator(self):
+        return self._missing_data_indicator
 
 ##############################################################################
 class _Scalar(_Property):
@@ -176,7 +180,8 @@ class _Scalar(_Property):
     def get_configure_type(self):
         return 'scalar'
 
-    def get_missing_data_indicator(self):
+    @property
+    def missing_data_indicator(self):
         return self._missing_data_indicator
 
 
@@ -219,6 +224,10 @@ class _Array(_Property):
     def get_configure_type(self):
         return 'array'
 
+    @property
+    def missing_data_indicator(self):
+        return self.content._missing_data_indicator
+
     def is_immediate_size(self):
         if self.bounds.isdigit():
             return True
@@ -238,6 +247,7 @@ class _Array(_Property):
         return False
 
 
+
 ##############################################################################
 class NamelistDescription(object):
 
@@ -251,7 +261,7 @@ class NamelistDescription(object):
 
         self._parameters = collections.OrderedDict()
         self._module_usage = collections.defaultdict(set)
-        self._module_usage['constants_mod'] = set(['cmdi', 'emdi',
+        self._module_usage['constants_mod'] = set(['cmdi', 'emdi', 'unset_key',
                                                    'imdi', 'rmdi'])
         self._last_enum_key = 1
         self._fix_enum = fix_enum

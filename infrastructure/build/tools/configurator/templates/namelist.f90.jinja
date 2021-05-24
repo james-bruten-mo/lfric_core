@@ -41,18 +41,18 @@ module {{listname}}_config_mod
   integer(i_native), parameter, public :: max_array_size = 100
 {%- endif %}
 
-{%- for name, parameter in  parameters | dictsort %}
+{%- for name, parameter in parameters | dictsort %}
 {%-   if loop.first %}{{'\n'}}{%- endif %}
 {%-   if parameter.get_configure_type() == 'enumeration' %}
-  integer(i_native), public, protected :: {{parameter.name}}
+  integer(i_native), public, protected :: {{parameter.name}} = {{parameter.missing_data_indicator}}
 {%-   elif parameter.get_configure_type() == 'array' %}
 {%-     if parameter.is_immediate_size() %}
-  {{parameter.fortran_type.declaration()}}, public, protected :: {{parameter.name}}({{parameter.bounds[0]}})
+  {{parameter.fortran_type.declaration()}}, public, protected :: {{parameter.name}}({{parameter.bounds[0]}}) = {{parameter.missing_data_indicator}}
 {%-     else %}
   {{parameter.fortran_type.declaration()}}, public, protected, allocatable :: {{parameter.name}}(:)
 {%-     endif %}
 {%-   else %}
-  {{parameter.fortran_type.declaration()}}, public, protected :: {{parameter.name}}
+  {{parameter.fortran_type.declaration()}}, public, protected :: {{parameter.name}} = {{parameter.missing_data_indicator}}
 {%-   endif %}
 {%- endfor %}
 
@@ -102,10 +102,10 @@ contains
 
     integer(i_native) :: key_index
 
-    if (key == emdi) then
+    if (key == unset_key) then
       write( log_scratch_space, '(A)') &
           'Missing key for {{name}} enumeration in {{listname}} namelist.'
-      {{name}}_from_key = int(imdi,i_native)
+      {{name}}_from_key = emdi
       call log_event( log_scratch_space, LOG_LEVEL_WARNING )
       return
     end if
@@ -143,8 +143,8 @@ contains
 
     value_index = 1
     do
-      if ({{name}}_value(value_index) == int(imdi,i_native)) then
-        key_from_{{name}} = emdi
+      if ({{name}}_value(value_index) == emdi) then
+        key_from_{{name}} = unset_key
         return
       else if ({{name}}_value(value_index) == value) then
         key_from_{{name}} = {{name}}_key(value_index)
@@ -247,7 +247,7 @@ contains
 {%-   if loop.first %}{{'\n'}}{%- endif %}
 {%-   if parameter.fortran_type.intrinsic_type == "integer" %}
 {%-     if parameter.get_configure_type() == 'enumeration' %}
-    {{name}} = emdi
+    {{name}} = unset_key
 {%-     else %}
     {{name}} = imdi
 {%-     endif %}
@@ -312,7 +312,7 @@ contains
 {%-     if parameter.dereferenced_list_vars %}
     if ( any([{{ parameter.dereferenced_list_vars | join(', ') }}] == imdi) .or. &
          any([{{ parameter.dereferenced_list_vars | join(', ') }}] == rmdi) ) then
-      {{parameter.name}} = {{parameter.get_missing_data_indicator()}}
+      {{parameter.name}} = {{parameter.missing_data_indicator}}
     else
       {{parameter.name}} = {{parameter.computation}}
     end if
@@ -364,7 +364,7 @@ contains
 {%-   set parameter = parameters[name] %}
 {%-   if parameter.is_arbitrary_size() %}
     do index_{{name}}=ubound({{name}}, 1), 1, -1
-      if ({{name}}(index_{{name}}) /= {{parameter.content.get_missing_data_indicator()}}) exit
+      if ({{name}}(index_{{name}}) /= {{parameter.content.missing_data_indicator}}) exit
     end do
     size = index_{{name}}
 {%-   endif %}
@@ -424,7 +424,7 @@ contains
 {%-   if name not in allocatables %}
 {%-     if parameter.fortran_type.intrinsic_type == "integer" %}
 {%-       if parameter.get_configure_type() == 'enumeration' %}
-    {{name}} = int(imdi,i_native)
+    {{name}} = emdi
 {%-       else %}
     {{name}} = imdi
 {%-       endif %}

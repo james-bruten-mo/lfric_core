@@ -52,7 +52,7 @@ module test_config_mod
   use mpi_mod,       only: broadcast
   use mpi,           only: MPI_SUCCESS
 
-  use constants_mod, only: cmdi, emdi, imdi, rmdi
+  use constants_mod, only: cmdi, emdi, imdi, rmdi, unset_key
 
   implicit none
 
@@ -65,19 +65,19 @@ module test_config_mod
   integer(i_native), public, parameter :: enum_three = 870
   integer(i_native), public, parameter :: enum_two = 584
 
-  integer(i_def), public, protected :: dint
-  logical(l_def), public, protected :: dlog
-  real(r_def), public, protected :: dreal
-  character(str_def), public, protected :: dstr
-  integer(i_native), public, protected :: enum
-  character(str_max_filename), public, protected :: fstr
-  integer(i_long), public, protected :: lint
-  real(r_double), public, protected :: lreal
-  integer(i_short), public, protected :: sint
-  real(r_single), public, protected :: sreal
-  integer(i_def), public, protected :: vint
-  real(r_def), public, protected :: vreal
-  character(str_def), public, protected :: vstr
+  integer(i_def), public, protected :: dint = imdi
+  logical(l_def), public, protected :: dlog = .false.
+  real(r_def), public, protected :: dreal = rmdi
+  character(str_def), public, protected :: dstr = cmdi
+  integer(i_native), public, protected :: enum = emdi
+  character(str_max_filename), public, protected :: fstr = cmdi
+  integer(i_long), public, protected :: lint = imdi
+  real(r_double), public, protected :: lreal = rmdi
+  integer(i_short), public, protected :: sint = imdi
+  real(r_single), public, protected :: sreal = rmdi
+  integer(i_def), public, protected :: vint = imdi
+  real(r_def), public, protected :: vreal = rmdi
+  character(str_def), public, protected :: vstr = cmdi
 
   logical :: namelist_loaded = .false.
 
@@ -107,10 +107,10 @@ contains
 
     integer(i_native) :: key_index
 
-    if (key == emdi) then
+    if (key == unset_key) then
       write( log_scratch_space, '(A)') &
           'Missing key for enum enumeration in test namelist.'
-      enum_from_key = int(imdi,i_native)
+      enum_from_key = emdi
       call log_event( log_scratch_space, LOG_LEVEL_WARNING )
       return
     end if
@@ -148,8 +148,8 @@ contains
 
     value_index = 1
     do
-      if (enum_value(value_index) == int(imdi,i_native)) then
-        key_from_enum = emdi
+      if (enum_value(value_index) == emdi) then
+        key_from_enum = unset_key
         return
       else if (enum_value(value_index) == value) then
         key_from_enum = enum_key(value_index)
@@ -229,7 +229,7 @@ contains
     dlog = .false.
     dreal = rmdi
     dstr = cmdi
-    enum = emdi
+    enum = unset_key
     fstr = cmdi
     lint = imdi
     lreal = rmdi
@@ -342,7 +342,7 @@ contains
     dlog = .false.
     dreal = real(rmdi,r_def)
     dstr = cmdi
-    enum = int(imdi,i_native)
+    enum = emdi
     fstr = cmdi
     lint = imdi
     lreal = real(rmdi,r_double)
@@ -396,7 +396,7 @@ module test_config_mod
   use mpi_mod,       only: broadcast
   use mpi,           only: MPI_SUCCESS
 
-  use constants_mod, only: cmdi, emdi, imdi, rmdi
+  use constants_mod, only: cmdi, emdi, imdi, rmdi, unset_key
 
   implicit none
 
@@ -404,7 +404,7 @@ module test_config_mod
   public :: read_test_namelist, postprocess_test_namelist, &
             test_is_loadable, test_is_loaded, test_final
 
-  integer(i_def), public, protected :: foo
+  integer(i_def), public, protected :: foo = imdi
 
   logical :: namelist_loaded = .false.
 
@@ -536,7 +536,7 @@ module test_config_mod
   use mpi_mod,       only: broadcast
   use mpi,           only: MPI_SUCCESS
 
-  use constants_mod, only: cmdi, emdi, imdi, rmdi
+  use constants_mod, only: cmdi, emdi, imdi, rmdi, unset_key
 
   implicit none
 
@@ -544,8 +544,8 @@ module test_config_mod
   public :: read_test_namelist, postprocess_test_namelist, &
             test_is_loadable, test_is_loaded, test_final
 
-  real(r_def), public, protected :: bar
-  integer(i_def), public, protected :: foo
+  real(r_def), public, protected :: bar = rmdi
+  integer(i_def), public, protected :: foo = imdi
 
   logical :: namelist_loaded = .false.
 
@@ -698,7 +698,7 @@ module enum_config_mod
   use mpi_mod,       only: broadcast
   use mpi,           only: MPI_SUCCESS
 
-  use constants_mod, only: cmdi, emdi, imdi, rmdi
+  use constants_mod, only: cmdi, emdi, imdi, rmdi, unset_key
 
   implicit none
 
@@ -711,7 +711,7 @@ module enum_config_mod
   integer(i_native), public, parameter :: value_three = 870
   integer(i_native), public, parameter :: value_two = 584
 
-  integer(i_native), public, protected :: value
+  integer(i_native), public, protected :: value = emdi
 
   logical :: namelist_loaded = .false.
 
@@ -741,10 +741,10 @@ contains
 
     integer(i_native) :: key_index
 
-    if (key == emdi) then
+    if (key == unset_key) then
       write( log_scratch_space, '(A)') &
           'Missing key for value enumeration in enum namelist.'
-      value_from_key = int(imdi,i_native)
+      value_from_key = emdi
       call log_event( log_scratch_space, LOG_LEVEL_WARNING )
       return
     end if
@@ -782,8 +782,8 @@ contains
 
     value_index = 1
     do
-      if (value_value(value_index) == int(imdi,i_native)) then
-        key_from_value = emdi
+      if (value_value(value_index) == emdi) then
+        key_from_value = unset_key
         return
       else if (value_value(value_index) == value) then
         key_from_value = value_key(value_index)
@@ -838,7 +838,7 @@ contains
 
     integer(i_native) :: condition
 
-    value = emdi
+    value = unset_key
 
     if (local_rank == 0) then
 
@@ -906,7 +906,7 @@ contains
 
     implicit none
 
-    value = int(imdi,i_native)
+    value = emdi
 
     return
   end subroutine enum_final
@@ -941,7 +941,7 @@ module twoenum_config_mod
   use mpi_mod,       only: broadcast
   use mpi,           only: MPI_SUCCESS
 
-  use constants_mod, only: cmdi, emdi, imdi, rmdi
+  use constants_mod, only: cmdi, emdi, imdi, rmdi, unset_key
 
   implicit none
 
@@ -958,8 +958,8 @@ module twoenum_config_mod
   integer(i_native), public, parameter :: second_bee = 785
   integer(i_native), public, parameter :: second_see = 65
 
-  integer(i_native), public, protected :: first
-  integer(i_native), public, protected :: second
+  integer(i_native), public, protected :: first = emdi
+  integer(i_native), public, protected :: second = emdi
 
   logical :: namelist_loaded = .false.
 
@@ -997,10 +997,10 @@ contains
 
     integer(i_native) :: key_index
 
-    if (key == emdi) then
+    if (key == unset_key) then
       write( log_scratch_space, '(A)') &
           'Missing key for first enumeration in twoenum namelist.'
-      first_from_key = int(imdi,i_native)
+      first_from_key = emdi
       call log_event( log_scratch_space, LOG_LEVEL_WARNING )
       return
     end if
@@ -1038,8 +1038,8 @@ contains
 
     value_index = 1
     do
-      if (first_value(value_index) == int(imdi,i_native)) then
-        key_from_first = emdi
+      if (first_value(value_index) == emdi) then
+        key_from_first = unset_key
         return
       else if (first_value(value_index) == value) then
         key_from_first = first_key(value_index)
@@ -1070,10 +1070,10 @@ contains
 
     integer(i_native) :: key_index
 
-    if (key == emdi) then
+    if (key == unset_key) then
       write( log_scratch_space, '(A)') &
           'Missing key for second enumeration in twoenum namelist.'
-      second_from_key = int(imdi,i_native)
+      second_from_key = emdi
       call log_event( log_scratch_space, LOG_LEVEL_WARNING )
       return
     end if
@@ -1111,8 +1111,8 @@ contains
 
     value_index = 1
     do
-      if (second_value(value_index) == int(imdi,i_native)) then
-        key_from_second = emdi
+      if (second_value(value_index) == emdi) then
+        key_from_second = unset_key
         return
       else if (second_value(value_index) == value) then
         key_from_second = second_key(value_index)
@@ -1172,8 +1172,8 @@ contains
 
     integer(i_native) :: condition
 
-    first = emdi
-    second = emdi
+    first = unset_key
+    second = unset_key
 
     if (local_rank == 0) then
 
@@ -1244,8 +1244,8 @@ contains
 
     implicit none
 
-    first = int(imdi,i_native)
-    second = int(imdi,i_native)
+    first = emdi
+    second = emdi
 
     return
   end subroutine twoenum_final
@@ -1281,7 +1281,7 @@ module teapot_config_mod
   use mpi_mod,       only: broadcast
   use mpi,           only: MPI_SUCCESS
 
-  use constants_mod, only: cmdi, emdi, imdi, rmdi
+  use constants_mod, only: cmdi, emdi, imdi, rmdi, unset_key
   use fridge_config_mod, only: milk
 
   implicit none
@@ -1290,10 +1290,10 @@ module teapot_config_mod
   public :: read_teapot_namelist, postprocess_teapot_namelist, &
             teapot_is_loadable, teapot_is_loaded, teapot_final
 
-  real(r_def), public, protected :: bar
-  real(r_def), public, protected :: bif
-  real(r_def), public, protected :: foo
-  real(r_def), public, protected :: fum
+  real(r_def), public, protected :: bar = rmdi
+  real(r_def), public, protected :: bif = rmdi
+  real(r_def), public, protected :: foo = rmdi
+  real(r_def), public, protected :: fum = rmdi
 
   logical :: namelist_loaded = .false.
 
@@ -1457,7 +1457,7 @@ module cheese_config_mod
   use mpi_mod,       only: broadcast
   use mpi,           only: MPI_SUCCESS
 
-  use constants_mod, only: cmdi, emdi, FUDGE, imdi, rmdi
+  use constants_mod, only: cmdi, emdi, FUDGE, imdi, rmdi, unset_key
 
   implicit none
 
@@ -1465,8 +1465,8 @@ module cheese_config_mod
   public :: read_cheese_namelist, postprocess_cheese_namelist, &
             cheese_is_loadable, cheese_is_loaded, cheese_final
 
-  real(r_def), public, protected :: fred
-  real(r_def), public, protected :: wilma
+  real(r_def), public, protected :: fred = rmdi
+  real(r_def), public, protected :: wilma = rmdi
 
   logical :: namelist_loaded = .false.
 
@@ -1615,7 +1615,7 @@ module aerial_config_mod
   use mpi_mod,       only: broadcast
   use mpi,           only: MPI_SUCCESS
 
-  use constants_mod, only: cmdi, emdi, imdi, rmdi
+  use constants_mod, only: cmdi, emdi, imdi, rmdi, unset_key
   use wibble_mod, only: esize
 
   implicit none
@@ -1626,9 +1626,9 @@ module aerial_config_mod
 
   integer(i_native), parameter, public :: max_array_size = 100
 
-  character(str_def), public, protected :: absolute(5)
+  character(str_def), public, protected :: absolute(5) = cmdi
   integer(i_def), public, protected, allocatable :: inlist(:)
-  integer(i_native), public, protected :: lsize
+  integer(i_native), public, protected :: lsize = imdi
   real(r_def), public, protected, allocatable :: outlist(:)
   integer(i_def), public, protected, allocatable :: unknown(:)
 
@@ -1942,7 +1942,7 @@ module telly_config_mod
   use mpi_mod,       only: broadcast
   use mpi,           only: MPI_SUCCESS
 
-  use constants_mod, only: cmdi, emdi, imdi, rmdi
+  use constants_mod, only: cmdi, emdi, imdi, rmdi, unset_key
 
   implicit none
 
@@ -1955,7 +1955,7 @@ module telly_config_mod
   integer(i_native), public, parameter :: tubbies_lala = 1
   integer(i_native), public, parameter :: tubbies_po = 2
 
-  integer(i_native), public, protected :: tubbies
+  integer(i_native), public, protected :: tubbies = emdi
 
   logical :: namelist_loaded = .false.
 
@@ -1985,10 +1985,10 @@ contains
 
     integer(i_native) :: key_index
 
-    if (key == emdi) then
+    if (key == unset_key) then
       write( log_scratch_space, '(A)') &
           'Missing key for tubbies enumeration in telly namelist.'
-      tubbies_from_key = int(imdi,i_native)
+      tubbies_from_key = emdi
       call log_event( log_scratch_space, LOG_LEVEL_WARNING )
       return
     end if
@@ -2026,8 +2026,8 @@ contains
 
     value_index = 1
     do
-      if (tubbies_value(value_index) == int(imdi,i_native)) then
-        key_from_tubbies = emdi
+      if (tubbies_value(value_index) == emdi) then
+        key_from_tubbies = unset_key
         return
       else if (tubbies_value(value_index) == value) then
         key_from_tubbies = tubbies_key(value_index)
@@ -2082,7 +2082,7 @@ contains
 
     integer(i_native) :: condition
 
-    tubbies = emdi
+    tubbies = unset_key
 
     if (local_rank == 0) then
 
@@ -2150,7 +2150,7 @@ contains
 
     implicit none
 
-    tubbies = int(imdi,i_native)
+    tubbies = emdi
 
     return
   end subroutine telly_final
