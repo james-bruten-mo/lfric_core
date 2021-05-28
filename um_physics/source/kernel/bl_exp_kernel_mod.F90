@@ -51,7 +51,7 @@ module bl_exp_kernel_mod
   !>
   type, public, extends(kernel_type) :: bl_exp_kernel_type
     private
-    type(arg_type) :: meta_args(122) = (/                                      &
+    type(arg_type) :: meta_args(123) = (/                                      &
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      WTHETA),                   &! theta_in_wth
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      W3),                       &! rho_in_w3
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      W3),                       &! wetrho_in_w3
@@ -121,6 +121,7 @@ module bl_exp_kernel_mod
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      WTHETA),                   &! lw_heating_rate
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      WTHETA),                   &! ozone
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      WTHETA),                   &! cf_bulk
+         arg_type(GH_FIELD, GH_REAL,  GH_READ,      WTHETA),                   &! cf_liquid
          arg_type(GH_FIELD, GH_REAL,  GH_READWRITE, WTHETA),                   &! rh_crit
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     WTHETA),                   &! dsldzm
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     WTHETA),                   &! wvar
@@ -259,6 +260,7 @@ contains
   !> @param[in]     lw_heating_rate        Longwave radiation heating rate
   !> @param[in]     ozone                  Ozone field
   !> @param[in]     cf_bulk                Bulk cloud fraction
+  !> @param[in]     cf_liquid              Liquid cloud fraction
   !> @param[in,out] rh_crit                Critical rel humidity
   !> @param[in,out] visc_m_blend           Blended BL-Smag diffusion coefficient for momentum
   !> @param[in,out] visc_h_blend           Blended BL-Smag diffusion coefficient for scalars
@@ -416,6 +418,7 @@ contains
                          lw_heating_rate,                       &
                          ozone,                                 &
                          cf_bulk,                               &
+                         cf_liquid,                             &
                          rh_crit,                               &
                          dsldzm,                                &
                          wvar,                                  &
@@ -613,7 +616,8 @@ contains
                                                            dtl_mphys,dmt_mphys,&
                                                            sw_heating_rate,    &
                                                            lw_heating_rate,    &
-                                                           cf_bulk, ozone
+                                                           cf_bulk, cf_liquid, &
+                                                           ozone
 
     real(kind=r_def), dimension(undf_2d), intent(inout) :: zh_2d,              &
                                                            z0msea_2d
@@ -718,8 +722,8 @@ contains
 
     ! profile fields from level 1 upwards
     real(r_um), dimension(row_length,rows,nlayers) ::                        &
-         rho_wet, rho_dry, z_rho, z_theta, bulk_cloud_fraction, rho_wet_tq,  &
-         u_p, v_p, rhcpt
+         rho_wet, rho_dry, z_rho, z_theta, bulk_cloud_fraction,              &
+         liquid_cloud_fraction, rho_wet_tq, u_p, v_p, rhcpt
 
     real(r_um), dimension(0:row_length+1,0:rows+1,nlayers) :: rho_wet_rsq,   &
          p_rho_levels, u_px, v_px, exner_rho_levels
@@ -1241,6 +1245,7 @@ contains
       qcf(1,1,k) = m_ci_n(map_wth(1) + k)
       ! cloud fraction variables
       bulk_cloud_fraction(1,1,k) = cf_bulk(map_wth(1) + k)
+      liquid_cloud_fraction(1,1,k) = cf_liquid(map_wth(1) + k)
     end do
 
     if ( smagorinsky ) then
@@ -1340,8 +1345,8 @@ contains
     !     IN: input from the wave model
          charnock_w,                                                           &
     !     IN everything not covered so far
-         t_soil_soilt, ti_sice,                                                &
-         ti_sice_ncat,tstar,zh_prev,ddmfx,bulk_cloud_fraction,zhpar,zlcl,      &
+         t_soil_soilt, ti_sice, ti_sice_ncat, tstar, zh_prev,                  &
+         ddmfx, bulk_cloud_fraction, liquid_cloud_fraction, zhpar, zlcl,       &
     !     IN SCM namelist data
          L_spec_z0, z0m_scm, z0h_scm, flux_e, flux_h, ustar_in,                &
     !     SCM diagnostics and STASH
@@ -1479,8 +1484,8 @@ contains
     !     IN: input from the wave model
          charnock_w,                                                    &
     !     IN everything not covered so far
-         t_soil_soilt, ti_sice,                                           &
-         ti_sice_ncat,tstar,zh_prev,ddmfx,bulk_cloud_fraction,zhpar,zlcl, &
+         t_soil_soilt, ti_sice, ti_sice_ncat, tstar, zh_prev,           &
+         ddmfx, bulk_cloud_fraction, liquid_cloud_fraction, zhpar, zlcl,&
     !     IN SCM namelist data
          L_spec_z0, z0m_scm, z0h_scm, flux_e, flux_h, ustar_in,         &
     !     SCM diagnostics and STASH

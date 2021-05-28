@@ -37,7 +37,7 @@ module um_physics_init_mod
                                         free_atm_mix_ntml_corrected,          &
                                         free_atm_mix_free_trop_layer,         &
                                         new_kcloudtop, p_unstable,            &
-                                        reduce_fa_mix,                        &
+                                        reduce_fa_mix, noice_in_turb,         &
                                         reduce_fa_mix_inv_and_cu_lcl,         &
                                         reduce_fa_mix_inv_only,               &
                                         relax_sc_over_cu_in=>relax_sc_over_cu,&
@@ -175,7 +175,7 @@ contains
          ntml_level_corrn, free_trop_layers, sharpest, sg_shear_enh_lambda,&
          l_new_kcloudtop, buoy_integ, l_reset_dec_thres, DynDiag_ZL_CuOnly,&
          var_diags_opt, i_interp_local, i_interp_local_gradients,          &
-         original_vars
+         original_vars, l_noice_in_turb
     use cloud_inputs_mod, only: i_cld_vn, forced_cu, i_rhcpt, i_cld_area,  &
          rhcrit, ice_fraction_method,falliceshear_method, cff_spread_rate, &
          l_subgrid_qv, ice_width, min_liq_overlap, i_eacf, not_mixph,      &
@@ -420,6 +420,7 @@ contains
       end select
 
       kprof_cu = buoy_integ
+      l_noice_in_turb = noice_in_turb
       ! l_bl_mix_qcf = .true should be set here, but code is complicated
       !  to implement in LFRic, and since it moves to false at GA8
       !  we don't plan on implementing it...

@@ -138,11 +138,12 @@ contains
     type( field_type ), pointer :: qsat_at_lcl      => null()
     type( field_type ), pointer :: dd_mf_cb         => null()
 
-    type( field_type ), pointer :: cf_bulk => null()
-    type( field_type ), pointer :: rh_crit => null()
+    type( field_type ), pointer :: cf_bulk          => null()
+    type( field_type ), pointer :: cf_liquid        => null()
+    type( field_type ), pointer :: rh_crit          => null()
 
-    type( field_type ), pointer :: dsldzm => null()
-    type( field_type ), pointer :: wvar   => null()
+    type( field_type ), pointer :: dsldzm           => null()
+    type( field_type ), pointer :: wvar             => null()
 
     type( field_type ), pointer :: dtheta_mphys => null()
 
@@ -279,8 +280,9 @@ contains
     dd_mf_cb         => convection_fields%get_field('dd_mf_cb')
 
     ! Unpack cloud fields
-    cf_bulk => cloud_fields%get_field('bulk_fraction')
-    rh_crit => cloud_fields%get_field('rh_crit')
+    cf_bulk          => cloud_fields%get_field('bulk_fraction')
+    cf_liquid        => cloud_fields%get_field('liquid_fraction')
+    rh_crit          => cloud_fields%get_field('rh_crit')
 
     ! Unpack the microphysics fields
     dtheta_mphys => microphysics_fields%get_field('dtheta_mphys')
@@ -391,7 +393,7 @@ contains
                            lw_down_surf, sw_down_blue_surf, dd_mf_cb,          &
                            dtl_mphys, dmt_mphys,                               &
                            sw_heating_rate, lw_heating_rate, ozone,            &
-                           cf_bulk, rh_crit, dsldzm, wvar,                     &
+                           cf_bulk, cf_liquid, rh_crit, dsldzm, wvar,          &
                            visc_m, visc_h, du_bl,                              &
                            rhokm_bl, rhokm_surf, rhokh_bl, ngstress_bl,        &
                            bq_bl, bt_bl, moist_flux_bl, heat_flux_bl,          &
