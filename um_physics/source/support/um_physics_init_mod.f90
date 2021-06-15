@@ -220,6 +220,7 @@ contains
     use g_wave_input_mod, only: ussp_launch_factor, wavelstar, l_add_cgw,  &
          cgw_scale_factor, i_moist
     use mphys_bypass_mod, only: mphys_mod_top
+    use mphys_constants_mod, only: cx, constp
     use mphys_inputs_mod, only: ai, ar, bi, c_r_correl, ci_input, cic_input, &
         di_input, dic_input, i_mcr_iter, l_diff_icevt,                       &
         l_mcr_qrain, l_psd, l_rain, l_warm_new, timestep_mp_in, x1r, x2r,    &
@@ -709,6 +710,14 @@ contains
     ! ----------------------------------------------------------------
     ! UM microphysics settings - contained in UM module mphys_inputs_mod
     ! ----------------------------------------------------------------
+
+    ! The following are needed by the bimodal cloud scheme, hence we initialise
+    ! them even when microphysics isn't used
+    ai             = 2.5700e-2_r_um
+    bi             = 2.00_r_um
+    cx(84)         = 1.0_r_um
+    constp(35)     = 1.0_r_um
+
     if ( microphysics == microphysics_um ) then
 
       if ( cloud /= cloud_um ) then
@@ -722,9 +731,7 @@ contains
 
       a_ratio_exp    = real(a_ratio_exp_in, r_um)
       a_ratio_fac    = real(a_ratio_fac_in, r_um)
-      ai             = 2.5700e-2_r_um
       ar             = 1.00_r_um
-      bi             = 2.00_r_um
       c_r_correl     = 0.9_r_um
       ci_input       = 14.3_r_um
       cic_input      = 1024.0_r_um
@@ -754,8 +761,12 @@ contains
       ! Domain top used in microphysics - contained in mphys_bypass_mod
       mphys_mod_top  = real(domain_top, r_um)
 
+    end if
+
+    if ( microphysics == microphysics_um                                    &
+         .or. radiation == radiation_socrates ) then
       ! Options for the subgrid cloud variability parametrization used
-      ! in microphysics but living elsewhere in the UM
+      ! in microphysics and radiation but living elsewhere in the UM
       ! ... contained in rad_input_mod
       two_d_fsd_factor = 1.5_r_um
       ! ... contained in fsd_parameters_mod
