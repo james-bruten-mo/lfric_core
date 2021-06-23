@@ -9,7 +9,7 @@
 
 module gravity_wave_io_mod
 
-  use constants_mod,           only : i_def, i_native
+  use constants_mod,           only : i_def, i_native, r_second
   use field_mod,               only : field_type
   use io_config_mod,           only : use_xios_io
   use io_context_mod,          only : io_context_type
@@ -62,23 +62,24 @@ contains
     !--------------------------------------------------------------------------
 
     if (use_xios_io) then
-      call initialise_xios( io_context,     &
-                            context_name,   &
-                            comm,           &
-                            mesh_id,        &
-                            twod_mesh_id,   &
-                            chi_sph,        &
-                            panel_id,       &
-                            timestep_start, &
-                            timestep_end,   &
-                            spinup_period,  &
-                            dt )
+      call initialise_xios( io_context,        &
+                            context_name,      &
+                            comm,              &
+                            mesh_id,           &
+                            twod_mesh_id,      &
+                            chi_sph,           &
+                            panel_id,          &
+                            timestep_start,    &
+                            timestep_end,      &
+                            spinup_period,     &
+                            real(dt, r_second) )
     else
-      call initialise_simple_io( io_context,     &
-                                 timestep_start, &
-                                 timestep_end,   &
-                                 spinup_period,  &
-                                 dt )
+      call initialise_simple_io( io_context,         &
+                                 timestep_start,     &
+                                 timestep_end,       &
+                                 spinup_period,      &
+                                 real(dt, r_second)  &
+                                 )
     end if
 
   end subroutine initialise_io

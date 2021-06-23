@@ -14,7 +14,6 @@ module calc_phys_predictors_alg_mod
   use derived_config_mod,       only: bundle_size
   use moist_dyn_mod,            only: num_moist_factors
   use field_indices_mod,        only: igh_u, igh_t
-  use timestepping_config_mod,  only: dt
   use formulation_config_mod,   only: dlayer_on, use_wavedynamics
 
   use physics_mappings_alg_mod,   only: map_physics_winds
@@ -45,9 +44,10 @@ contains
   !> @param[in]     moist_dyn        Factors relating to moist dynamics
   !> @param[in]     varalpha         Alpha weight (may be varied in spinup)
   !> @param[in]     clock            The model clock
-   subroutine calc_phys_predictors_alg(derived_fields, rhs_np1,                &
+  !> @param[in]     dt               The model timestep length
+subroutine calc_phys_predictors_alg(derived_fields, rhs_np1,                &
                                        rhs_adv, rhs_n, state, state_after_slow,&
-                                       moist_dyn, varalpha, clock)
+                                       moist_dyn, varalpha, clock, dt)
 
     implicit none
     ! Prognostic fields
@@ -63,6 +63,7 @@ contains
     real(kind=r_def), intent(in):: varalpha
 
     class(clock_type), intent(in) :: clock
+    real(kind=r_def),  intent(in) :: dt
 
     type( field_type ), pointer :: theta_star => null()
     type( field_type ), pointer :: u_star => null()
@@ -90,7 +91,7 @@ contains
       call mass_matrix_solver_alg(theta_star, dtheta)
 
       ! Compute u_star = u_np1 + M^-1(-rhs_np1 + rhs_n + rhs_a)
-      call rhs_alg(rhs_np1, -varalpha*dt, state, state, moist_dyn, .false., dlayer_on)
+      call rhs_alg(rhs_np1, -varalpha*dt, state, state, moist_dyn, .false., dlayer_on, dt)
       call du%initialise( rhs_adv(igh_u)%get_function_space() )
       call invoke( setval_c(du, 0.0_r_def),                                 &
                    inc_aX_plus_Y(-1.0_r_def, rhs_np1(igh_u), rhs_n(igh_u)), &

@@ -731,6 +731,8 @@ subroutine invoke_calc_deppts(  u_n,                  &
                                                STENCIL_1DY
   use flux_direction_mod,               only : x_direction, y_direction
   use mesh_mod,                         only : mesh_type
+  use timestepping_config_mod,          only : dt
+
   implicit none
 
   type( field_type ), intent( in )    :: u_n
@@ -805,7 +807,7 @@ subroutine invoke_calc_deppts(  u_n,                  &
                                     u_n_proxy%data,               &
                                     u_np1_proxy%data,             &
                                     direction,                    &
-                                    dep_pt_method )
+                                    dep_pt_method, dt )
 
   end do
   call dep_pts_proxy%set_dirty()

@@ -6,8 +6,8 @@
 !> @brief    Module which updates rho using rho_n - dt * increment.
 module density_inc_update_alg_mod
 
+  use constants_mod,            only: r_def
   use field_mod,                only: field_type
-  use timestepping_config_mod,  only: dt
 
   implicit none
 
@@ -22,13 +22,16 @@ contains
   !>           separate subroutine.
   !> @param[inout]    density       Density
   !> @param[in]       increment     Density increment
+  !> @param[in]       dt            The model timestep length
   subroutine density_inc_update_alg(density,              &
-                                    increment)
+                                    increment,            &
+                                    dt)
 
     implicit none
 
     type(field_type),    intent(inout)    :: density
     type(field_type),    intent(in)       :: increment
+    real(r_def),         intent(in)       :: dt
 
     call invoke( inc_X_minus_bY( density, dt, increment ) )
 

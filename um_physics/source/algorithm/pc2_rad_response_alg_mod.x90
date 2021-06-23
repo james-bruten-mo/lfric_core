@@ -7,6 +7,7 @@
 
 module pc2_rad_response_alg_mod
 
+   use constants_mod,        only: r_def
    use field_mod,            only: field_type
    use field_collection_mod, only: field_collection_type
 
@@ -33,6 +34,7 @@ contains
   !>@param[out]    dqcl_pc2_inc   Liquid water content  response in wth space
   !>@param[out]    dcfl_pc2_inc   Liquid cloud fraction response in wth space
   !>@param[out]    dbcf_pc2_inc   Bulk cloud fraction   response in wth space
+  !> @param[in]    dt             The model timestep length
 
   subroutine pc2_rad_response_alg( mr_n,           &
                                    theta,          &
@@ -43,7 +45,7 @@ contains
                                    dqv_pc2_inc,    &
                                    dqcl_pc2_inc,   &
                                    dcfl_pc2_inc,   &
-                                   dbcf_pc2_inc    )
+                                   dbcf_pc2_inc, dt )
 
     use pc2_homogeneous_kernel_mod, only: pc2_homogeneous_kernel_type
     use mr_indices_mod,             only: imr_v, imr_cl, imr_ci, nummr
@@ -66,6 +68,7 @@ contains
     type( field_type ), intent( out ) :: dqcl_pc2_inc
     type( field_type ), intent( out ) :: dcfl_pc2_inc
     type( field_type ), intent( out ) :: dbcf_pc2_inc
+    real( kind=r_def ), intent( in )  :: dt
 
     ! Temporary unpacked fields from collections
     type( field_type ), pointer :: exner_wth  => null()
@@ -114,7 +117,8 @@ contains
                                                dqv_pc2_inc,           &
                                                dqcl_pc2_inc,          &
                                                dcfl_pc2_inc,          &
-                                               dbcf_pc2_inc         ) )
+                                               dbcf_pc2_inc,          &
+                                               dt ) )
 
     ! N.B. We are not updating the variables that came in, just
     !      providing increments that need to be added on later.

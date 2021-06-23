@@ -136,7 +136,7 @@ contains
 
     call limit_wind_code( nlayers,         &
                           wind,            &
-                          dJ_on_w2,        &
+                          dJ_on_w2, dt,    &
                           ndf_w2, undf_w2, &
                           map_w2(:,cell)   &
                           )

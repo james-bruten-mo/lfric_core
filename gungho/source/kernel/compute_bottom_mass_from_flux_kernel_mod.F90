@@ -12,16 +12,15 @@
 !>
 module compute_bottom_mass_from_flux_kernel_mod
 
-  use argument_mod,            only : arg_type,          &
-                                      GH_FIELD, GH_REAL, &
-                                      GH_WRITE, GH_READ, &
-                                      CELL_COLUMN,       &
+  use argument_mod,            only : arg_type,               &
+                                      GH_FIELD, GH_REAL,      &
+                                      GH_WRITE, GH_READ,      &
+                                      GH_SCALAR, CELL_COLUMN, &
                                       ANY_DISCONTINUOUS_SPACE_1
   use constants_mod,           only : r_def, i_def
   use fs_continuity_mod,       only : W2
   use kernel_mod,              only : kernel_type
   use reference_element_mod,   only : B
-  use timestepping_config_mod, only : dt
 
   implicit none
 
@@ -35,10 +34,11 @@ module compute_bottom_mass_from_flux_kernel_mod
   !>
   type, public, extends(kernel_type) :: compute_bottom_mass_from_flux_kernel_type
     private
-    type(arg_type) :: meta_args(3) = (/                                    &
-         arg_type(GH_FIELD, GH_REAL, GH_WRITE, ANY_DISCONTINUOUS_SPACE_1), &
-         arg_type(GH_FIELD, GH_REAL, GH_READ,  ANY_DISCONTINUOUS_SPACE_1), &
-         arg_type(GH_FIELD, GH_REAL, GH_READ,  W2)                         &
+    type(arg_type) :: meta_args(4) = (/                                     &
+         arg_type(GH_FIELD,  GH_REAL, GH_WRITE, ANY_DISCONTINUOUS_SPACE_1), &
+         arg_type(GH_FIELD,  GH_REAL, GH_READ,  ANY_DISCONTINUOUS_SPACE_1), &
+         arg_type(GH_FIELD,  GH_REAL, GH_READ,  W2),                        &
+         arg_type(GH_SCALAR, GH_REAL, GH_READ)                              &
          /)
     integer :: operates_on = CELL_COLUMN
   contains
@@ -58,6 +58,7 @@ contains
 !!                    on the bottom boundary
 !! @param[in] area    A field in W2 whose values are the areas of each
 !!                    face of each element
+!! @param[in] dt      The model timestep length
 !! @param[in] ndf_2d  The number of degrees of freedom per cell for 2D field
 !! @param[in] undf_2d The number of unique degrees of freedom for 2D field
 !! @param[in] map_2d  Dofmap for the cell at the base of the column
@@ -70,9 +71,10 @@ subroutine compute_bottom_mass_from_flux_code(                            &
                                                mass,                      &
                                                flux,                      &
                                                area,                      &
+                                               dt,                        &
                                                ndf_2d, undf_2d, map_2d,   &
-                                               ndf_w2, undf_w2, map_w2    &
-                                               )
+                                               ndf_w2, undf_w2, map_w2   &
+                                             )
   implicit none
 
   ! Arguments
@@ -83,6 +85,7 @@ subroutine compute_bottom_mass_from_flux_code(                            &
   real(kind=r_def), dimension(undf_2d),   intent(inout) :: mass
   real(kind=r_def), dimension(undf_2d),   intent(in)    :: flux
   real(kind=r_def), dimension(undf_w2),   intent(in)    :: area
+  real(kind=r_def),                       intent(in)    :: dt
 
   mass( map_2d(1) ) = flux( map_2d(1) ) * area( map_w2(B) ) * dt
 

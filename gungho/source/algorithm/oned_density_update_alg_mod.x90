@@ -43,11 +43,13 @@ contains
 !> @param[in]    cell_orientation Orientation of cells, in particular halo cells
 !> @param[in]    rho_in           Density at time n
 !> @param[inout] rho_out          Density after advective update
+!> @param[in]    dt               The model timestep length
   subroutine oned_density_update_alg(   direction,            &
                                         dep_pts,              &
                                         cell_orientation,     &
                                         rho_in,               &
-                                        rho_out)
+                                        rho_out,              &
+                                        dt)
 
     implicit none
 
@@ -56,6 +58,7 @@ contains
     type(field_type),    intent(in)     :: cell_orientation
     type(field_type),    intent(in)     :: rho_in
     type(field_type),    intent(inout)  :: rho_out
+    real(r_def),         intent(in)     :: dt
 
     type( field_type ) :: a0, a1, a2
     type( field_type ) :: rho_adv, rho_hat_adv
@@ -97,7 +100,7 @@ contains
                                a0, a1, a2, direction, dep_pt_stencil_extent)
 
     call cusph_density_update_alg(rho_in, mass_flux, rho_adv_np1, &
-                                  cell_orientation, direction)
+                                  cell_orientation, direction, dt)
 
     ! Calculate the fluxes for rho=1
     call invoke( setval_c(mass_flux,      0.0_r_def), &
@@ -115,7 +118,7 @@ contains
                                a0, a1, a2, direction, dep_pt_stencil_extent)
 
     call cusph_density_update_alg(rho_constant_1, mass_flux, rho_constant_np1, &
-                                  cell_orientation, direction)
+                                  cell_orientation, direction, dt)
 
     ! Perform multiplicative correction to obtain the advective update of density
     call invoke( X_divideby_Y(rho_out, rho_adv_np1, rho_constant_np1) )

@@ -23,7 +23,6 @@ module yz_bip_cosmic_alg_mod
   use oned_conservative_flux_alg_mod,    only: oned_conservative_flux_alg
   use oned_density_update_alg_mod,       only: oned_density_update_alg
   use cosmic_divergence_alg_mod,         only: cosmic_divergence_alg
-  use timestepping_config_mod,           only: dt
   use flux_direction_mod,                only: x_direction, y_direction, z_direction
 
   implicit none
@@ -45,7 +44,9 @@ contains
   !> @param[in]     dep_pts_y    Departure points in the y-direction
   !> @param[in]     dep_pts_z    Departure points in the z-direction
   !> @param[in]     detj_at_w2   Det(J) at W2 dofs
-  subroutine yz_bip_cosmic_step( increment, rho, dep_pts_y, dep_pts_z, detj_at_w2 )
+  !> @param[in]     dt           The model timestep length
+  subroutine yz_bip_cosmic_step( increment, rho, dep_pts_y, dep_pts_z, &
+                                 detj_at_w2, dt )
 
     implicit none
 
@@ -54,6 +55,7 @@ contains
     type(field_type), intent(in)    :: dep_pts_y
     type(field_type), intent(in)    :: dep_pts_z
     type(field_type), intent(in)    :: detj_at_w2
+    real(r_def),      intent(in)    :: dt
 
     type(field_type) :: cell_orientation
     type(field_type) :: mass_flux_y, mass_flux_z
@@ -84,7 +86,7 @@ contains
 
     ! Perform advective update in the Y direction.
     call oned_density_update_alg( y_direction, dep_pts_y, cell_orientation,    &
-                                  rho, rho_adv_y )
+                                  rho, rho_adv_y, dt )
 
     ! Perform advective update in the Z direction.
     call vert_advective_cosmic_alg( rho_adv_z, rho, dep_pts_z, detj_at_w2,     &

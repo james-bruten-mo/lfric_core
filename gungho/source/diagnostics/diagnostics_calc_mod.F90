@@ -119,7 +119,8 @@ subroutine write_density_diagnostic( rho_field, clock )
 
   ! Note that timestep (ts) is required for the actual calculation
   ! of the density diagnostic and so is passed to the algorithm call
-  call density_diagnostic_alg( l2_norm, rho_field, clock%get_step() )
+  call density_diagnostic_alg( l2_norm, rho_field, clock%get_step(), &
+                               real(clock%get_seconds_per_step(), r_def) )
 
   write( log_scratch_space, '(A,E16.8)' )  &
        'L2 of rho difference =', l2_norm

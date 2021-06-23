@@ -7,6 +7,7 @@
 
 module pc2_pressure_forcing_alg_mod
 
+   use constants_mod,        only: r_def
    use field_mod,            only: field_type
    use field_collection_mod, only: field_collection_type
 
@@ -27,12 +28,13 @@ contains
   !>@param[in]     exner_wth            (in)     Current exner function in wth
   !>@param[in]     cloud_fields         (in,out) Group of cloud fields
   !>@param[in,out] dtheta_pc2_inc       (in,out) Potential temperature response
+  !>@param[in]     dt                   (in)     The model timestep length
 
   subroutine pc2_pressure_forcing_alg( mr,                   &
                                        theta,                &
                                        exner_wth,            &
                                        cloud_fields,         &
-                                       dtheta_pc2_inc )
+                                       dtheta_pc2_inc, dt )
 
     use pc2_homogeneous_kernel_mod, only: pc2_homogeneous_kernel_type
     use mr_indices_mod,             only: imr_v, imr_cl, imr_ci, nummr
@@ -44,6 +46,7 @@ contains
     type( field_type ), intent( in )    :: theta
     type( field_type ), intent( inout ) :: mr ( nummr )
     type( field_type ), intent( in )    :: exner_wth
+    real( kind=r_def ), intent( in )    :: dt
 
     type( field_collection_type ), intent(in) :: cloud_fields
 
@@ -105,7 +108,8 @@ contains
                                               dqv_pc2_inc,           &
                                               dqcl_pc2_inc,          &
                                               dcfl_pc2_inc,          &
-                                              dbcf_pc2_inc ),        &
+                                              dbcf_pc2_inc,          &
+                                              dt ),                  &
                                                                      !
      ! N.B. all fields that need to get updated are being updated apart from
      ! theta (where we pass an increment back up instead).

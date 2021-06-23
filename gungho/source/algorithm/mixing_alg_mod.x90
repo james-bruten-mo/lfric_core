@@ -24,8 +24,9 @@ contains
   !> @param[in]     derived_fields Group of derived fields
   !> @param[in]     rho            Density
   !> @param[in]     step           model timestep index
-  subroutine mixing_alg(mr, theta, u, visc_m,                   &
-                        visc_h, derived_fields, rho, step)
+  !> @param[in]     dt             The model timestep length
+  subroutine mixing_alg(mr, theta, u, visc_m, visc_h, derived_fields, &
+                        rho, step, dt)
 
     use constants_mod,                 only: i_def,r_def
     use log_mod,                       only: log_event,         &
@@ -37,7 +38,6 @@ contains
     use smagorinsky_alg_mod,           only: smagorinsky_alg
     use tracer_viscosity_kernel_mod,   only: tracer_viscosity_kernel_type
     use momentum_viscosity_kernel_mod, only: momentum_viscosity_kernel_type
-    use timestepping_config_mod,       only: dt
     use geometric_constants_mod,       only: get_coordinates, get_panel_id
 
     implicit none
@@ -52,6 +52,7 @@ contains
 
     ! Timestepping information
     integer( i_def ),   intent(in) :: step
+    real( r_def ),      intent(in) :: dt
 
     ! Increment fields
     type( field_type ) :: du, dtheta
@@ -65,7 +66,7 @@ contains
     ! Apply horizontal Smagorinsky subgrid mixing
     !--------------------------------------------------------------------
     if ( smagorinsky ) call smagorinsky_alg(mr, theta, u, visc_m, visc_h,     &
-                                            derived_fields, rho, step)
+                                            derived_fields, rho, step, dt)
     !--------------------------------------------------------------------
     ! Apply viscosity
     !--------------------------------------------------------------------

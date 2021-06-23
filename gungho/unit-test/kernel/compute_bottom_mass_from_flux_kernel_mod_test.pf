@@ -169,7 +169,7 @@ contains
                                             nlayers,                 &
                                             mass,                    &
                                             flux,                    &
-                                            area,                    &
+                                            area, dt,                &
                                             ndf_w3, undf_w3, map_w3, &
                                             ndf_w2, undf_w2, map_w2  &
                                             )

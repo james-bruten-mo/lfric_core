@@ -7,7 +7,7 @@
 !>@brief Contains code for Smagorinsky diffusion calculation
 module smagorinsky_alg_mod
 
-  use constants_mod,            only: i_def
+  use constants_mod,            only: i_def, r_def
   use field_mod,                only: field_type
   use field_collection_mod,     only: field_collection_type
   use mr_indices_mod,           only: nummr, imr_v, imr_cl
@@ -16,7 +16,6 @@ module smagorinsky_alg_mod
   use section_choice_config_mod, only: boundary_layer,     &
                                        boundary_layer_um
   use mixing_config_mod,         only: mix_factor
-  use timestepping_config_mod,   only: dt
 
   use tracer_smagorinsky_diff_kernel_mod, only: tracer_smagorinsky_diff_kernel_type
   use momentum_smagorinsky_kernel_mod,    only: momentum_smagorinsky_kernel_type
@@ -54,8 +53,9 @@ contains
   !> @param[in]     derived_fields Group of derived fields
   !> @param[in]     rho            Density
   !> @param[in]     step           Model timestep
-  subroutine smagorinsky_alg(mr, theta, u, visc_m,                   &
-                             visc_h, derived_fields, rho, step )
+  !> @param[in]     dt             The model timestep length
+subroutine smagorinsky_alg(mr, theta, u, visc_m,                   &
+                             visc_h, derived_fields, rho, step, dt )
 
     implicit none
 
@@ -68,6 +68,7 @@ contains
 
     integer( i_def ),   intent(in) :: step
     type( field_type ), intent(in) :: rho
+    real( r_def ),      intent(in) :: dt
 
     ! Increments on state fields
     type( field_type ) :: du, dtheta

@@ -30,12 +30,14 @@ contains
 
   !> @details Checks and modifies fields where necessary
   !> @param[inout] state Current state of the model prognostics
-  subroutine check_fields(state)
+  !> @param[in]    dt    The model timestep length
+  subroutine check_fields(state, dt)
 
     implicit none
 
     ! Prognostic fields
     type(field_type), intent( inout ) :: state(bundle_size)
+    real(kind=r_def), intent( in )    :: dt
 
     type( field_type ), pointer  :: detJ => null() ! Areas of faces
 
@@ -43,7 +45,7 @@ contains
 
     if (limit_cfl)then
 
-      call invoke(limit_wind_kernel_type(state(igh_u), detJ))
+      call invoke(limit_wind_kernel_type(state(igh_u), detJ, dt))
 
     end if
 

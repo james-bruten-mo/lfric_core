@@ -10,7 +10,7 @@ module pc2_conv_coupling_kernel_mod
 use argument_mod,      only: arg_type,              &
                              GH_FIELD, GH_REAL,     &
                              GH_READ, GH_READWRITE, &
-                             CELL_COLUMN
+                             GH_SCALAR, CELL_COLUMN
 use fs_continuity_mod, only: WTHETA
 use kernel_mod,        only: kernel_type
 
@@ -25,22 +25,23 @@ private
 
 type, public, extends(kernel_type) :: pc2_conv_coupling_kernel_type
   private
-  type(arg_type) :: meta_args(15) = (/                         &
-       arg_type(GH_FIELD, GH_REAL, GH_READ,      WTHETA),      & ! theta_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,      WTHETA),      & ! mv_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,      WTHETA),      & ! ml_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,      WTHETA),      & ! mi_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,      WTHETA),      & ! cfl_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,      WTHETA),      & ! cff_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,      WTHETA),      & ! bcf_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,      WTHETA),      & ! exner_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),      & ! dt_conv_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),      & ! dmv_conv_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),      & ! dmcl_conv_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),      & ! dmcf_conv_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),      & ! dcfl_conv_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),      & ! dcff_conv_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA)       & ! dbcf_conv_wth
+  type(arg_type) :: meta_args(16) = (/                         &
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,      WTHETA),      & ! theta_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,      WTHETA),      & ! mv_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,      WTHETA),      & ! ml_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,      WTHETA),      & ! mi_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,      WTHETA),      & ! cfl_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,      WTHETA),      & ! cff_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,      WTHETA),      & ! bcf_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,      WTHETA),      & ! exner_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READWRITE, WTHETA),      & ! dt_conv_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READWRITE, WTHETA),      & ! dmv_conv_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READWRITE, WTHETA),      & ! dmcl_conv_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READWRITE, WTHETA),      & ! dmcf_conv_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READWRITE, WTHETA),      & ! dcfl_conv_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READWRITE, WTHETA),      & ! dcff_conv_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READWRITE, WTHETA),      & ! dbcf_conv_wth
+       arg_type(GH_SCALAR, GH_REAL, GH_READ)                    & ! dt
        /)
    integer :: operates_on = CELL_COLUMN
 contains
@@ -74,6 +75,7 @@ contains
 !> @param[in,out] dcfl_conv_wth Increment to liquid cloud fraction from convection in theta space
 !> @param[in,out] dcff_conv_wth Increment to ice cloud fraction from convection in theta space
 !> @param[in,out] dbcf_conv_wth Increment to bulk cloud fraction from convection in theta space
+!> @param[in]     dt            The model timestep length
 !> @param[in]     ndf_wth       Number of degrees of freedom per cell for theta space
 !> @param[in]     undf_wth      Number of unique degrees of freedom for theta space
 !> @param[in]     map_wth       Dofmap for the cell at the base of the column for theta space
@@ -97,7 +99,7 @@ subroutine pc2_conv_coupling_code( nlayers,                                    &
                                    dcff_conv_wth,                              &
                                    dbcf_conv_wth,                              &
                                    ! Other
-                                   ndf_wth, undf_wth, map_wth )
+                                   dt, ndf_wth, undf_wth, map_wth )
 
     use constants_mod, only: r_def, i_def, r_um, i_um
 
@@ -110,7 +112,6 @@ subroutine pc2_conv_coupling_code( nlayers,                                    &
     use pc2_hom_conv_mod,           only: pc2_hom_conv
     use cloud_inputs_mod,           only: dbsdtbs_turb_0
     use planet_constants_mod,       only: p_zero, kappa
-    use timestepping_config_mod,    only: dt
 
     implicit none
 
@@ -138,6 +139,9 @@ subroutine pc2_conv_coupling_code( nlayers,                                    &
     real(kind=r_def), intent(inout), dimension(undf_wth) :: dcfl_conv_wth
     real(kind=r_def), intent(inout), dimension(undf_wth) :: dcff_conv_wth
     real(kind=r_def), intent(inout), dimension(undf_wth) :: dbcf_conv_wth
+
+    ! The model timestep length
+    real(kind=r_def), intent(in) :: dt
 
     ! Local variables
     real(r_um), dimension(row_length,rows,model_levels) ::                     &

@@ -30,7 +30,6 @@ module rk_transport_theta_mod
   use finite_element_config_mod,          only: element_order,          &
                                                 spherical_coord_system, &
                                                 spherical_coord_system_xyz
-  use timestepping_config_mod,            only: dt
   use runge_kutta_init_mod,               only: num_rk_stage, ak
   use fem_constants_mod,                  only: get_mass_matrix,                &
                                                 get_mass_matrix_diagonal,       &

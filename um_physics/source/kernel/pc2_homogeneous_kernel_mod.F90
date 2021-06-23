@@ -10,7 +10,7 @@ module pc2_homogeneous_kernel_mod
 use argument_mod,      only: arg_type,          &
                              GH_FIELD, GH_REAL, &
                              GH_READ, GH_WRITE, &
-                             CELL_COLUMN
+                             GH_SCALAR, CELL_COLUMN
 use fs_continuity_mod, only: WTHETA
 use kernel_mod,        only: kernel_type
 
@@ -25,23 +25,24 @@ private
 
 type, public, extends(kernel_type) :: pc2_homogeneous_kernel_type
   private
-  type(arg_type) :: meta_args(16) = (/                &
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! mv_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! ml_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! cfl_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! cff_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! bcf_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! theta_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! exner_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! exner_earlier_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! dtheta_forcing_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! dqv_forcing_wth
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! dqcl_forcing_wth
-       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA), & ! dtheta_inc
-       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA), & ! dqv_inc_wth
-       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA), & ! dqcl_inc_wth
-       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA), & ! dcfl_inc_wth
-       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA)  & ! dbcf_inc_wth
+  type(arg_type) :: meta_args(17) = (/                 &
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,  WTHETA), & ! mv_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,  WTHETA), & ! ml_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,  WTHETA), & ! cfl_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,  WTHETA), & ! cff_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,  WTHETA), & ! bcf_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,  WTHETA), & ! theta_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,  WTHETA), & ! exner_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,  WTHETA), & ! exner_earlier_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,  WTHETA), & ! dtheta_forcing_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,  WTHETA), & ! dqv_forcing_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,  WTHETA), & ! dqcl_forcing_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_WRITE, WTHETA), & ! dtheta_inc
+       arg_type(GH_FIELD,  GH_REAL, GH_WRITE, WTHETA), & ! dqv_inc_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_WRITE, WTHETA), & ! dqcl_inc_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_WRITE, WTHETA), & ! dcfl_inc_wth
+       arg_type(GH_FIELD,  GH_REAL, GH_WRITE, WTHETA), & ! dbcf_inc_wth
+       arg_type(GH_SCALAR, GH_REAL, GH_READ)          & ! dt
        /)
    integer :: operates_on = CELL_COLUMN
 contains
@@ -70,6 +71,7 @@ contains
 !> @param[in,out] dqcl_inc_wth       Increment to liquid water content
 !> @param[in,out] dcfl_inc_wth       Increment to liquid cloud fraction
 !> @param[in,out] dbcf_inc_wth       Increment to bulk cloud fraction
+!> @param[in]     dt                 The model timestep length
 !> @param[in]     ndf_wth            Number of degrees of freedom per cell for
 !!                                    potential temperature space
 !> @param[in]     undf_wth           Number of unique of degrees of freedom
@@ -97,6 +99,7 @@ subroutine pc2_homogeneous_code( nlayers,                    &
                                  dcfl_inc_wth,               &
                                  dbcf_inc_wth,               &
                                         ! Other
+                                 dt,                         &
                                  ndf_wth, undf_wth, map_wth  )
 
     use constants_mod, only: r_def, i_def, r_um, i_um
@@ -108,7 +111,6 @@ subroutine pc2_homogeneous_code( nlayers,                    &
     use pc2_homog_plus_turb_mod,    only: pc2_homog_plus_turb
     use planet_constants_mod,       only: p_zero, kappa
     use gen_phys_inputs_mod,        only: l_mr_physics
-    use timestepping_config_mod,    only: dt
 
     implicit none
 
@@ -116,6 +118,7 @@ subroutine pc2_homogeneous_code( nlayers,                    &
     integer(kind=i_def), intent(in) :: nlayers
     integer(kind=i_def), intent(in) :: ndf_wth
     integer(kind=i_def), intent(in) :: undf_wth
+    real(kind=r_def),    intent(in) :: dt
 
     real(kind=r_def), intent(in),  dimension(undf_wth) :: mv_wth
     real(kind=r_def), intent(in),  dimension(undf_wth) :: ml_wth

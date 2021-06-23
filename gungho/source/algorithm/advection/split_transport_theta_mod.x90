@@ -12,7 +12,6 @@ module split_transport_theta_mod
 
   use constants_mod,                     only: r_def, i_def, tiny_eps
   use log_mod,                           only: log_event, LOG_LEVEL_ERROR
-  use timestepping_config_mod,           only: dt
   use fem_constants_mod,                 only: get_detj_at_w2
   use transport_config_mod,              only: theta_splitting_vh,             &
                                                theta_splitting_hv,             &
@@ -41,15 +40,17 @@ module split_transport_theta_mod
   !> @param[in]     wind         The 3D wind field
   !> @param[in,out] theta        A theta/tracer type field
   !> @param[in] theta_splitting  The splitting approach
+  !> @param[in]     dt           The model timestep length
   !===========================================================================
 
-  subroutine split_transport_theta_step( wind, theta, theta_splitting)
+  subroutine split_transport_theta_step( wind, theta, theta_splitting, dt )
 
     implicit none
 
     type( field_type ), intent( in    ) :: wind
     type( field_type ), intent( inout ) :: theta
     integer(i_def),     intent( in )    :: theta_splitting
+    real(r_def),        intent( in )    :: dt
 
     type(field_type) :: wind_horiz, wind_horiz2
     type(field_type) :: wind_vert

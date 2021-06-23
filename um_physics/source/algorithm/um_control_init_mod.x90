@@ -10,12 +10,13 @@ module um_control_init_mod
 
   ! LFRic namelists which have bee read
   use extrusion_config_mod,        only : number_of_layers
-  use timestepping_config_mod,     only : dt, outer_iterations
+  use timestepping_config_mod,     only : outer_iterations
 
   ! Other modules used
   use constants_mod,               only : i_um, r_um, rmdi, i_def, r_def
   use physical_op_constants_mod,   only : get_delta_at_wtheta
   use field_mod,                   only : field_type
+  use clock_mod,                   only : clock_type
   use planet_config_mod,           only : radius
 
   implicit none
@@ -34,7 +35,8 @@ contains
   !>          to be variable in the UM and therefore declared as such in the
   !>          UM modules which contains it).
   !> @param[in] mesh_id        Mesh_id
-  subroutine um_control_init(mesh_id)
+  !> @param[in] clock          The model clock object
+subroutine um_control_init(mesh_id, clock)
 
     ! UM modules containing things that need setting
     use atm_fields_bounds_mod, only: atm_fields_bounds_init
@@ -55,6 +57,7 @@ contains
     implicit none
 
     integer(i_def),   intent(in)    :: mesh_id
+    type(clock_type), intent(in)    :: clock
 
     ! Local variables
     type(mesh_type),  pointer       :: mesh => null()
@@ -105,7 +108,7 @@ contains
 
     ! Timestep used in UM code - contained in UM timestep_mod.
     ! Set from LFRic input timestep.
-    timestep = real(dt, r_um)
+    timestep = real(clock%get_seconds_per_step(), r_um)
 
     ! Number of outer iterations of the dynamics - contained in UM
     ! dynamics_input_mod.

@@ -25,7 +25,6 @@ module cosmic_divergence_alg_mod
   use fv_divergence_kernel_mod,          only: fv_divergence_kernel_type
   use psykal_lite_mod,                   only: invoke_fv_divergence
   use flux_direction_mod,                only: x_direction, y_direction, z_direction
-  use timestepping_config_mod,           only: dt
 
   implicit none
 

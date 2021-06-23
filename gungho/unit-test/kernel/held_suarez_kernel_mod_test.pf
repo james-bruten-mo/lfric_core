@@ -236,6 +236,7 @@ contains
                               chi_data(:,2),                        &
                               chi_data(:,3),                        &
                               panel_id(:),                          &
+                              dt,                                   &
                               ndf_wth, undf_wth, map_wth(:,cell),   &
                               ndf_w3, undf_w3, map_w3(:,cell),      &
                               ndf_w3, undf_w3, map_w3(:,cell)       &
@@ -248,7 +249,7 @@ contains
                                    du_data,                              &
                                    u_data,                               &
                                    exner_data,                           &
-                                   w2_rmultiplicity_data,                &
+                                   w2_rmultiplicity_data, dt,            &
                                    ndf_w2, undf_w2, map_w2(:,cell),      &
                                    ndf_wth, undf_wth, map_wth(:,cell)    &
                                  )

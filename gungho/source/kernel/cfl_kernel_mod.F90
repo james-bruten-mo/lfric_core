@@ -14,7 +14,6 @@ module cfl_kernel_mod
   use constants_mod,           only : i_def, r_def
   use fs_continuity_mod,       only : W2
   use kernel_mod,              only : kernel_type
-  use timestepping_config_mod, only : dt
 
   implicit none
 
@@ -56,8 +55,9 @@ contains
 !! @param[in]     ndf_w2 Number of degrees of freedom per cell
 !! @param[in]     undf_w2 Total number of degrees of freedom
 !! @param[in]     map_w2 Dofmap for the cell at the base of the column
+!! @param[in]     dt The model timestep length
 subroutine cfl_code(nlayers, cflx, cfly, cflz, wind, dJ_on_w2, &
-                    ndf_w2, undf_w2, map_w2)
+                    ndf_w2, undf_w2, map_w2, dt)
 
   use analytic_density_profiles_mod, only : analytic_density
 
@@ -70,6 +70,7 @@ subroutine cfl_code(nlayers, cflx, cfly, cflz, wind, dJ_on_w2, &
   real(kind=r_def), dimension(undf_w2), intent(inout) :: cflx, cfly, cflz
   real(kind=r_def), dimension(undf_w2), intent(in)    :: wind
   real(kind=r_def), dimension(undf_w2), intent(in)    :: dJ_on_w2
+  real(kind=r_def),                     intent(in)    :: dt
 
   ! Internal variables
   integer(kind=i_def) :: k

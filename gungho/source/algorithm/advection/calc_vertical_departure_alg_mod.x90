@@ -29,13 +29,15 @@ contains
 !> @details Algorithm for calculating vertical departure points.
 !> @param[in]     wind              Advecting wind field.
 !> @param[in,out] dep_pts_z         Departure points in z direction.
+!> @param[in]     dt                The model timestep length
 !-----------------------------------------------------------------------------
-  subroutine calc_vertical_departure( wind, dep_pts_z )
+  subroutine calc_vertical_departure( wind, dep_pts_z, dt )
 
     implicit none
 
     type( field_type ), intent(in)    :: wind
     type( field_type ), intent(inout) :: dep_pts_z
+    real( kind=r_def ), intent(in)    :: dt
 
     type( field_type )                   :: dep_wind_n
     type( field_type )                   :: dep_wind_np1
@@ -67,7 +69,7 @@ contains
     !
     call invoke( calc_departure_wind_kernel_type(dep_wind_n, wind, chi_sph, panel_id) )
     call invoke( setval_X(dep_wind_np1, dep_wind_n) )
-    call invoke( vertical_trapezoidal_kernel_type(dep_pts_z, dep_wind_n, dep_wind_np1) )
+    call invoke( vertical_trapezoidal_kernel_type(dep_pts_z, dep_wind_n, dep_wind_np1, dt) )
 
     nullify( w2_fs, chi_sph, panel_id )
 

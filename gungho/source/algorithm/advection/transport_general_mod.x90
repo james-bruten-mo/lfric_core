@@ -29,15 +29,15 @@ module transport_general_mod
   !> @param[in] shifted_grid  True/False to specify if grid is shifted or not
   !> @param[in] conservative  True/False to specify if the transport problem is
   !>                          the conservative form (true) or advective form (false)
+  !> @param[in] dt            The model timestep length
 
-  subroutine transport_general(wind, field, adv_scheme, shifted_grid, conservative )
+  subroutine transport_general(wind, field, adv_scheme, shifted_grid, conservative, dt)
 
   use constants_mod,                 only: r_def, i_def, l_def, tiny_eps
   use field_mod,                     only: field_type
   use timer_mod,                     only: timer
   use io_config_mod,                 only: subroutine_timers
   use advection_alg_mod,             only: advect_field
-  use timestepping_config_mod,       only: dt
   use function_space_mod,            only: function_space_type
   use transport_config_mod,          only: scheme_method_of_lines,     &
                                            cfl_mol_3d_stab, &
@@ -55,6 +55,7 @@ module transport_general_mod
   type(field_type), intent(inout)   :: field
   integer(i_def),   intent(in)      :: adv_scheme
   logical(l_def),   intent(in)      :: conservative, shifted_grid
+  real(r_def),      intent(in)      :: dt
 
   type(function_space_type), pointer :: w2_fs => null()
   type(field_type),          pointer :: detj_at_w2 => null()
@@ -115,7 +116,8 @@ module transport_general_mod
          call advect_field(mass_flux, field, wind,                          &
                            scheme_method_of_lines, wind, wind,              &
                            advect_density, dt_substep, si_advective_terms,  &
-                           shifted, density_predictor, logspace=log_rho     )
+                           shifted, density_predictor, logspace=log_rho,    &
+                           dt=dt)
 
          call invoke( setval_c(r_rho, 0.0_r_def),                              &
                       matrix_vector_kernel_type(r_rho, mass_flux, div),        &
@@ -133,7 +135,8 @@ module transport_general_mod
          call advect_field(field_inc, field, wind,                          &
                            scheme_method_of_lines, wind, wind,              &
                            advect_density, dt_substep, si_advective_terms,  &
-                           shifted, density_predictor, logspace=.false.     )
+                           shifted, density_predictor, logspace=.false.,    &
+                           dt=dt)
 
          call invoke( aX_plus_Y(field, dt_substep, field_inc, field_old) )
 
@@ -147,7 +150,7 @@ module transport_general_mod
                         adv_scheme, wind, wind,                 &
                         advect_density, dt, si_advective_terms, &
                         shifted, density_predictor,             &
-                        logspace=.false.              )
+                        logspace=.false., dt=dt                 )
 
        call invoke( setval_c(field, 0.0_r_def),                 &
                      aX_plus_Y(field, dt, field_inc, field_old) )

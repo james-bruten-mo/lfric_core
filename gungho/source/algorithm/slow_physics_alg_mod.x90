@@ -112,6 +112,7 @@ contains
   !> @param[in,out] snow_fields            Fields for snow scheme
   !> @param[in,out] aerosol_fields         Fields for aerosol scheme
   !> @param[in]     clock                  Model time
+  !> @param[in]     dt                     The model timestep length
   !> @param[in]     mesh_id                Identifier given to current mesh
   !> @param[in]     twod_mesh_id           Identifier given to current 2d mesh
   subroutine slow_physics(du, dtheta, mr, visc_m, visc_h,                      &
@@ -120,7 +121,7 @@ contains
                           orography_fields, turbulence_fields,                 &
                           convection_fields, cloud_fields, surface_fields,     &
                           soil_fields, snow_fields, aerosol_fields,            &
-                          clock, mesh_id, twod_mesh_id )
+                          clock, dt, mesh_id, twod_mesh_id )
 
     implicit none
 
@@ -148,7 +149,8 @@ contains
 
     integer, intent(in) :: mesh_id
     integer, intent(in) :: twod_mesh_id
-    class(clock_type), intent(in) :: clock
+    class(clock_type),  intent(in) :: clock
+    real( kind=r_def ), intent(in) :: dt
 
     ! Local fields...
     ! ...for H-S physics
@@ -243,7 +245,7 @@ contains
     if ( heldsuarez_thermo_placement < 0 .OR. &
          heldsuarez_wind_placement < 0 ) then
       call held_suarez_alg(derived_fields, theta, exner_in_wth,          &
-                           dtheta_hs, du_hs,                             &
+                           dtheta_hs, du_hs, dt,                         &
                            held_suarez_thermo_done, held_suarez_wind_done)
     end if
 
@@ -295,7 +297,7 @@ contains
       call mphys_alg( mr_n, theta, rho, derived_fields, microphysics_fields, &
                       cloud_fields, aerosol_fields, turbulence_fields,       &
                       f_arr, dmr_mphys, dtheta_mphys, dcfl_pc2_mphys,        &
-                      dcff_pc2_mphys, dbcf_pc2_mphys )
+                      dcff_pc2_mphys, dbcf_pc2_mphys, dt )
       microphysics_done=.true. ! Collect this increment later on
     end if
 
@@ -370,7 +372,8 @@ contains
                                    dmv_pc2_rad,    & ! OUT
                                    dmcl_pc2_rad,   & ! OUT
                                    dcfl_pc2_rad,   & ! OUT
-                                   dbcf_pc2_rad )    ! OUT
+                                   dbcf_pc2_rad,   & ! OUT
+                                   dt )              ! IN
       end if ! (scheme == scheme_pc2)
 
     end if
@@ -443,7 +446,7 @@ contains
       if ( cloud == cloud_um .and. scheme == scheme_pc2 ) then
         ! Update the cloud fields if using PC2
         call pc2_conv_coupling_alg( mr, derived_fields,                  &
-                                    convection_fields, cloud_fields )
+                                    convection_fields, cloud_fields, dt)
       else
         ! Without PC2, just update vapour field
         dmv_conv => convection_fields%get_field('dmv_conv')

@@ -44,10 +44,11 @@ contains
   !>@param[in,out] dcfl           Increment to liquid cloud fraction
   !>@param[in,out] dcff           Increment to ice cloud fraction
   !>@param[in,out] dbcf           Increment to bulk cloud fraction
+  !>@param[in]     dt             The model timestep length
   subroutine mphys_alg( mr_n, theta, dry_rho_in_w3, derived_fields,            &
                         microphysics_fields, cloud_fields, aerosol_fields,     &
                         turbulence_fields, f_arr, dmr_mphys, theta_inc, dcfl,  &
-                        dcff, dbcf )
+                        dcff, dbcf, dt )
 
     use pc2_conv_coupling_kernel_mod, only: pc2_conv_coupling_kernel_type
     use mphys_kernel_mod, only: mphys_kernel_type
@@ -70,6 +71,7 @@ contains
     type( field_collection_type ), intent(in)    :: aerosol_fields
     type( field_collection_type ), intent(in)    :: turbulence_fields
     type( field_type ),            intent(in)    :: f_arr
+    real( kind=r_def ),            intent(in)    :: dt
 
     type( field_type ), intent( inout ) :: dmr_mphys ( nummr )
     type( field_type ), intent( inout ) :: theta_inc
@@ -146,7 +148,7 @@ contains
                                                  dmr_mphys(imr_v),             &
                                                  dmr_mphys(imr_cl),            &
                                                  dmr_mphys(imr_ci),            &
-                                                 dcfl, dcff, dbcf) )
+                                                 dcfl, dcff, dbcf, dt) )
     end if
 
     call invoke( mphys_kernel_type ( mr_n(imr_v), mr_n(imr_cl), mr_n(imr_ci),  &

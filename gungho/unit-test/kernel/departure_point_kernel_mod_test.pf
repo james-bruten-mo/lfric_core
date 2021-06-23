@@ -161,7 +161,7 @@ contains
                                     u_field,                       &
                                     u_field,                       &
                                     x_direction,                   &
-                                    method_euler )
+                                    method_euler, dt)
     @assertEqual(1.0_r_def, dep_pts(1), tol)
 
     ! Linearly varying wind field values which are determined by the above
@@ -193,7 +193,7 @@ contains
                                     u_field,                       &
                                     u_field,                       &
                                     x_direction,                   &
-                                    method_euler )
+                                    method_euler, dt )
     @assertEqual(1.5_r_def, dep_pts(1), tol)
     @assertEqual(0.0_r_def, dep_pts(2), tol)
     @assertEqual(1.6_r_def, dep_pts(3), tol)
@@ -244,7 +244,7 @@ contains
                                     u_field,                       &
                                     u_field,                       &
                                     x_direction,                   &
-                                    method_euler )
+                                    method_euler, dt )
     @assertEqual(1.5_r_def, dep_pts(1), tol)
     @assertEqual(0.0_r_def, dep_pts(2), tol)
     @assertEqual(1.6_r_def, dep_pts(3), tol)

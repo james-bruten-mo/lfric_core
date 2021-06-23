@@ -21,8 +21,7 @@ module rk_alg_timestep_mod
                                                 vorticity_in_w1
   use formulation_config_mod,             only: rotating
   use runge_kutta_init_mod,               only: num_rk_stage, ak
-  use timestepping_config_mod,            only: dt, &
-                                                outer_iterations, &
+  use timestepping_config_mod,            only: outer_iterations, &
                                                 inner_iterations
   use derived_config_mod,                 only: bundle_size
   use fem_constants_mod,                  only: get_mass_matrix,          &
@@ -176,12 +175,15 @@ contains
   !> @param[inout] rho Density
   !> @param[inout] theta Potential temperature
   !> @param[inout] moist_dyn Moist dynamics factors
-  subroutine rk_alg_step(u, rho, theta, moist_dyn, exner)
+  !> @param[inout] exner Exner pressure field
+  !> @param[in] dt The model timestep length
+  subroutine rk_alg_step(u, rho, theta, moist_dyn, exner, dt)
 
     implicit none
     ! Prognostic fields
     type( field_type ), intent( inout ) :: u, rho, theta, moist_dyn(num_moist_factors), &
                                            exner
+    real( r_def ),      intent( in )    :: dt
 
     ! The quadrature object
     type( quadrature_xyoz_type ),  pointer :: qr => null()

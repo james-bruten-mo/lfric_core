@@ -388,7 +388,7 @@ contains
         call socrates_init()
       end if
       ! Initialisation of UM high-level variables
-      call um_control_init(mesh_id)
+      call um_control_init(mesh_id, clock)
       ! Initialisation of UM physics variables
       call um_physics_init()
       ! Initialisation of Jules high-level variables

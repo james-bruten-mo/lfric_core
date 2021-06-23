@@ -88,7 +88,8 @@ contains
   !> @param[in,out] l2   l2 norm
   !> @param[in] rho_num  Density
   !> @param[in] timestep Timestep
-  subroutine density_diagnostic_alg(l2, rho_num, timestep)
+  !> @param[in] dt       The model timestep length
+  subroutine density_diagnostic_alg(l2, rho_num, timestep, dt)
     use fem_constants_mod,            only: get_mass_matrix, &
                                             w3_id
     use operator_mod,                 only: operator_type
@@ -101,6 +102,7 @@ contains
     real(r_def), intent(inout)   :: l2
     type(field_type), intent(in) :: rho_num
     integer(i_def),   intent(in) :: timestep
+    real(r_def),      intent(in) :: dt
 
     type(field_type)             :: rho_analytic
     type(field_type)             :: rho_diff
@@ -117,7 +119,7 @@ contains
 
     mm_w3 => get_mass_matrix(w3_id)
 
-    call set_rho_alg( rho_analytic, timestep )
+    call set_rho_alg( rho_analytic, timestep, dt )
 
     ! The normalised l2 error norm with cell volume weightings is calculated as:
     ! l2 = sqrt(I((rho_num - rho_analytic)^2))/sqrt(I(rho_analtyic^2))

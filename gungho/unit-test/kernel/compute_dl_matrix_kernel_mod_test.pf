@@ -138,6 +138,7 @@ contains
     real(r_def), parameter :: dx = 6000.0_r_def
     real(r_def), parameter :: dy = 1000.0_r_def
     real(r_def), parameter :: dz = 2000.0_r_def
+    real(r_def), parameter :: dt = 1.0_r_def
     integer(i_def), parameter :: nlayers = 3
 
     integer(i_def) :: i, j, k, cell
@@ -202,6 +203,7 @@ contains
                                  chi2,            &
                                  chi3,            &
                                  panel_id,        &
+                                 dt,              &
                                  ndf_w2,          &
                                  basis_w2,        &
                                  ndf_w0,          &

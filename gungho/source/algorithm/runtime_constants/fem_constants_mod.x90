@@ -332,7 +332,7 @@ contains
     ! but until the final form is settled upon it is left separate
     if (dlayer_on) call invoke( compute_dl_matrix_kernel_type( &
                                     mm_dl(level), chi_mg,      &
-                                    panel_id_mg, qr)           )
+                                    panel_id_mg, dt, qr)       )
 
     ! Compute Coriolis operator
     coriolis = operator_type( w2_fs, w2_fs )
@@ -571,7 +571,7 @@ contains
          ! Eventually this may be absorbed into the DeRham complex computations
          ! but until the final form is settled upon it is left separate
          if (dlayer_on) call invoke( compute_dl_matrix_kernel_type( &
-              mm_dl(level), chi_mg, panel_id_mg, qr) )
+              mm_dl(level), chi_mg, panel_id_mg, dt, qr) )
 
          call ones%initialise( vector_space = wtheta_fs )
 

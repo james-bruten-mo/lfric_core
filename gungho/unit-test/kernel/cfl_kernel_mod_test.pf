@@ -143,8 +143,9 @@ contains
                    wind,            &
                    dJ_on_w2,        &
                    ndf_w2, undf_w2, &
-                   map_w2(:,cell)   &
-                   )
+                   map_w2(:,cell),  &
+                   DT &
+                  )
 
 
     ! The answer returns the CFL. If the kernel is correct, then

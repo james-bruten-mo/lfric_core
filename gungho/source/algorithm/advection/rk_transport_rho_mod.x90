@@ -35,7 +35,6 @@ module rk_transport_rho_mod
   use finite_element_config_mod,         only: element_order,          &
                                                spherical_coord_system, &
                                                spherical_coord_system_xyz
-  use timestepping_config_mod,           only: dt
   use runge_kutta_init_mod,              only: num_rk_stage, ak
   use fem_constants_mod,                 only: get_mass_matrix,                &
                                                get_mass_matrix_diagonal,       &
@@ -315,13 +314,15 @@ contains
   !>        depending on the maximum Courant number.
   !> @param[in]     u 3D wind field
   !> @param[in,out] rho Density like tracer
+  !> @param[in]     dt The model timestep length
 
-  subroutine rk_transport_rho_multistep(wind, density)
+  subroutine rk_transport_rho_multistep(wind, density, dt)
 
    implicit none
 
    type(field_type), intent(in)       :: wind
    type(field_type), intent(inout)    :: density
+   real(r_def),      intent(in)       :: dt
 
    type(function_space_type), pointer :: w2_fs => null()
    type(field_type),          pointer :: detj_at_w2 => null()

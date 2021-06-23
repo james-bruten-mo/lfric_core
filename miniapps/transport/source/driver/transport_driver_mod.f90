@@ -331,7 +331,7 @@ contains
     class(clock_type), pointer :: clock
     type(field_type)    :: density_t0, density_inc, density_n
     type(field_type)    :: theta_t0, theta_inc, theta_n
-    real(r_def)         :: err_rho, err_theta
+    real(r_def)         :: err_rho, err_theta, dt
     logical(l_def)      :: conservative_form, shifted_grid
     logical(l_def)      :: time_varying_wind
 
@@ -378,9 +378,10 @@ contains
       end if
 
     clock => io_context%get_clock()
+    dt = real(clock%get_seconds_per_step(), r_def)
 
     ! Initialise winds before first time step
-    call set_winds( wind_n, mesh_id, clock%get_step() )
+    call set_winds( wind_n, mesh_id, clock%get_step(), dt )
 
     !--------------------------------------------------------------------------
     ! Model step
@@ -395,7 +396,7 @@ contains
 
       ! Only update the wind for time varying prescribed profiles
       if (time_varying_wind) then
-        call set_winds( wind_n, mesh_id, clock%get_step() )
+        call set_winds( wind_n, mesh_id, clock%get_step(), dt )
       end if
 
       if (scheme /= scheme_method_of_lines    .or. &
@@ -404,7 +405,7 @@ contains
         ! Calculate departure points.
         ! Here the wind is assumed to be the same at timestep n and timestep n+1
         call calc_dep_pts( dep_pts_x, dep_pts_y, dep_pts_z, wind_divergence, &
-                           wind_n, wind_n, detj_at_w2, cell_orientation )
+                           wind_n, wind_n, detj_at_w2, cell_orientation, dt )
       end if
 
       if ( subroutine_timers ) call timer( 'transport step' )
@@ -417,18 +418,20 @@ contains
         select case( scheme )
           case ( scheme_yz_bip_cosmic )
             call yz_bip_cosmic_step( increment, density, dep_pts_y, dep_pts_z, &
-                                                                   detj_at_w2  )
-            call density_inc_update_alg(density, increment)
+                                     detj_at_w2, dt  )
+            call density_inc_update_alg(density, increment, dt)
 
           case ( scheme_horz_cosmic )
             call cusph_cosmic_transport_step( increment, density, dep_pts_x,    &
-                                        dep_pts_y, detj_at_w2, cell_orientation )
-            call density_inc_update_alg(density, increment)
+                                        dep_pts_y, detj_at_w2, cell_orientation, &
+                                        dt )
+            call density_inc_update_alg(density, increment, dt)
 
           case ( scheme_cosmic_3D )
             call cosmic_threed_transport_step( increment, density, dep_pts_x,   &
-                             dep_pts_y, dep_pts_z, detj_at_w2, cell_orientation )
-            call density_inc_update_alg(density, increment)
+                         dep_pts_y, dep_pts_z, detj_at_w2, cell_orientation,    &
+                         dt )
+            call density_inc_update_alg(density, increment, dt)
 
           case ( scheme_method_of_lines )
 
@@ -438,10 +441,12 @@ contains
             conservative_form = .true.
 
             call transport_general(wind_n, density, scheme_method_of_lines, &
-                                   shifted_grid, conservative_form          )
+                                   shifted_grid, conservative_form ,        &
+                                   dt)
             conservative_form = .false.
             call transport_general(wind_n, theta, scheme_method_of_lines,   &
-                                  shifted_grid, conservative_form           )
+                                  shifted_grid, conservative_form,          &
+                                  dt)
 
           case default
             write(log_scratch_space, '(A, A)') &
@@ -459,10 +464,12 @@ contains
          shifted_grid = .false.
          conservative_form = .true.
          call transport_general(wind_n, density, rho_splitting, &
-                                shifted_grid, conservative_form )
+                                shifted_grid, conservative_form, &
+                                dt )
          conservative_form = .false.
          call transport_general(wind_n, theta, theta_splitting, &
-                                shifted_grid, conservative_form )
+                                shifted_grid, conservative_form, &
+                                dt )
       end if
 
       if ( subroutine_timers ) call timer( 'transport step' )

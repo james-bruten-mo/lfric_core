@@ -13,7 +13,7 @@ module gungho_step_mod
 
   use clock_mod,                      only : clock_type
   use conservation_algorithm_mod,     only : conservation_algorithm
-  use constants_mod,                  only : i_def
+  use constants_mod,                  only : i_def, r_def
   use diagnostics_calc_mod,           only : write_density_diagnostic
   use field_collection_mod,           only : field_collection_type
   use field_mod,                      only : field_type
@@ -90,6 +90,8 @@ module gungho_step_mod
     type( field_type), pointer :: exner => null()
     type( field_type), pointer :: dA => null()  ! Areas of faces
 
+    real(r_def) :: dt
+
     write( log_scratch_space, '("/", A, "\ ")' ) repeat( "*", 76 )
     call log_event( log_scratch_space, LOG_LEVEL_TRACE )
     write( log_scratch_space, &
@@ -122,13 +124,16 @@ module gungho_step_mod
     exner => prognostic_fields%get_field('exner')
     dA => get_da_at_w2(mesh_id)
 
+    ! Get timestep parameters from clock
+    dt = real(clock%get_seconds_per_step(), r_def)
+
     if ( transport_only ) then
       select case( scheme )
         case ( scheme_method_of_lines )
           if ( use_moisture ) then
-            call rk_transport_step( clock%get_step(), u, rho, theta, mr )
+            call rk_transport_step( clock%get_step(), dt, u, rho, theta, mr )
           else
-            call rk_transport_step( clock%get_step(), u, rho, theta )
+            call rk_transport_step( clock%get_step(), dt, u, rho, theta )
           end if
       end select
       call write_density_diagnostic( rho, clock )
@@ -154,9 +159,9 @@ module gungho_step_mod
                                       cloud_fields, surface_fields,            &
                                       soil_fields, snow_fields,                &
                                       aerosol_fields, lbc_fields,              &
-                                      clock, mesh_id, twod_mesh_id)
+                                      clock, dt, mesh_id, twod_mesh_id)
         case( method_rk )             ! RK
-          call rk_alg_step(u, rho, theta, moist_dyn, exner)
+          call rk_alg_step(u, rho, theta, moist_dyn, exner, dt)
       end select
 
       if ( write_conservation_diag ) then
@@ -174,7 +179,8 @@ module gungho_step_mod
                                                        microphysics_fields, &
                                                        convection_fields,   &
                                                        surface_fields,      &
-                                                       dA )
+                                                       dA,                  &
+                                                       dt )
         end if
       end if
 

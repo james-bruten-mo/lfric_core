@@ -30,7 +30,6 @@ module cusph_cosmic_transport_alg_mod
   use enforce_bc_kernel_mod,             only: enforce_bc_kernel_type
   use quadrature_xyoz_mod,               only: quadrature_xyoz_type
   use quadrature_rule_gaussian_mod,      only: quadrature_rule_gaussian_type
-  use timestepping_config_mod,           only: dt
   use mass_matrix_solver_alg_mod,        only: mass_matrix_solver_alg
   use strong_curl_kernel_mod,            only: strong_curl_kernel_type
   use base_mesh_config_mod,              only: geometry, geometry_spherical
@@ -60,13 +59,15 @@ contains
   !> @param[in,out]   u         3D wind field
   !> @param[in]       mesh_id   Mesh id of mesh on which the model runs
   !> @param[in]       timestep  Timestep
-  subroutine set_winds(u, mesh_id, timestep)
+  !> @param[in]       dt        The model imestep length
+subroutine set_winds(u, mesh_id, timestep, dt)
 
     implicit none
 
     integer(i_def),   intent(in)    :: mesh_id
     type(field_type), intent(inout) :: u
     integer(i_def),   intent(in)    :: timestep
+    real(r_def),      intent(in)    :: dt
 
     type(function_space_type), pointer    :: w1_fs   => null()
     type(function_space_type), pointer    :: w2_fs   => null()
@@ -148,12 +149,14 @@ contains
   !> @param[in]     dep_pts_y         Departure points in the y direction
   !> @param[in]     detj_at_w2        Det(J) at W2 dofs
   !> @param[in]     cell_orientation  Orientation of halo cells
+  !> @param[in]     dt                The model timestep length
   subroutine cusph_cosmic_transport_step( increment,          &
                                           rho,                &
                                           dep_pts_x,          &
                                           dep_pts_y,          &
                                           detj_at_w2,         &
-                                          cell_orientation )
+                                          cell_orientation,   &
+                                          dt )
 
     implicit none
 
@@ -163,6 +166,7 @@ contains
     type(field_type),    intent(in)    :: dep_pts_y
     type(field_type),    intent(in)    :: detj_at_w2
     type(field_type),    intent(in)    :: cell_orientation
+    real(r_def),         intent(in)    :: dt
 
     type(function_space_type), pointer :: w2_fs     => null()
     type(function_space_type), pointer :: w3_fs     => null()
@@ -181,7 +185,7 @@ contains
     ! Call algorithm to calculate mass fluxes in x and y direction using COSMIC scheme
     call cusph_split_transport_alg( rho, cell_orientation,             &
                                     mass_flux_x, mass_flux_y, dep_pts_x, &
-                                    dep_pts_y )
+                                    dep_pts_y, dt )
 
     ! Calculate divergence (increment) in the x direction
     call cusph_fv_density_update_alg( increment_x, mass_flux_x, mass_flux_y,     &

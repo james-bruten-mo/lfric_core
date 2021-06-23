@@ -14,12 +14,11 @@ module calc_departure_point_kernel_mod
                                           GH_FIELD, GH_REAL,       &
                                           GH_READ, GH_WRITE,       &
                                           GH_BASIS, GH_DIFF_BASIS, &
-                                          CELL_COLUMN
+                                          GH_SCALAR, CELL_COLUMN
   use biperiodic_deppt_config_mod, only : n_dep_pt_iterations
   use constants_mod,               only : r_def, i_def
   use fs_continuity_mod,           only : W0, W2, W3
   use kernel_mod,                  only : kernel_type
-  use timestepping_config_mod,     only : dt
 
   implicit none
 
@@ -33,9 +32,10 @@ module calc_departure_point_kernel_mod
   !>
   type, public, extends(kernel_type) :: calc_departure_point_kernel_type
     private
-    type(arg_type) :: meta_args(2) = (/             &
-         arg_type(GH_FIELD, GH_REAL, GH_WRITE, W3), &
-         arg_type(GH_FIELD, GH_REAL, GH_READ,  W2)  &
+    type(arg_type) :: meta_args(3) = (/              &
+         arg_type(GH_FIELD,  GH_REAL, GH_WRITE, W3), &
+         arg_type(GH_FIELD,  GH_REAL, GH_READ,  W2), &
+         arg_type(GH_SCALAR, GH_REAL, GH_READ)       &
          /)
     integer :: operates_on = CELL_COLUMN
   contains
@@ -64,6 +64,7 @@ contains
 !! @param[in]    u_np1 Wind in W2 space at time n+1
 !! @param[in]    direction Direction in which to calculate departure points
 !! @param[in]    dep_pt_method Enumeration of method to use
+!! @param[in]    dt The model timestep length
 subroutine calc_departure_point_code( nlayers,                       &
                                       dep_pts,                       &
                                       departure_pt_stencil_length,   &
@@ -77,7 +78,7 @@ subroutine calc_departure_point_code( nlayers,                       &
                                       u_n,                           &
                                       u_np1,                         &
                                       direction,                     &
-                                      dep_pt_method )
+                                      dep_pt_method, dt )
 
   use biperiodic_deppts_mod, only : calc_dep_point
   use cosmic_flux_mod,       only : calc_stencil_ordering, w2_dof, reorientate_w2field
@@ -99,6 +100,7 @@ subroutine calc_departure_point_code( nlayers,                       &
   real(kind=r_def), intent(in)            :: cell_orientation(1:undf_w3)
   integer(kind=i_def), intent(in)         :: direction
   integer(kind=i_def), intent(in)         :: dep_pt_method
+  real(kind=r_def), intent(in)            :: dt
 
   real(kind=r_def)     :: xArrival
   real(kind=r_def)     :: u_n_local(1:departure_pt_stencil_length+1)

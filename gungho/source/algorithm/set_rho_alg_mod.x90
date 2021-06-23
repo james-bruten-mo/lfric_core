@@ -9,7 +9,6 @@ module set_rho_alg_mod
 
   use constants_mod,                   only: r_def, i_def
   use finite_element_config_mod,       only: nqp_exact
-  use timestepping_config_mod,         only: dt
   use geometric_constants_mod,         only: get_coordinates, &
                                              get_panel_id
   ! PsyKAl PSYClone kernels
@@ -29,12 +28,14 @@ contains
   !> @details An algorithm for setting rho field
   !> @param[inout] rho Density field
   !> @param[in] timestep Loop counter for timestep iterations
-  subroutine set_rho_alg( rho, timestep)
+  !> @param[in] dt The model timestep length
+subroutine set_rho_alg( rho, timestep, dt )
 
     implicit none
 
     ! Mesh id, timestep
     integer(i_def),  intent(in) :: timestep
+    real(r_def),     intent(in) :: dt
     ! Prognostic fields
     type( field_type ), intent( inout ) :: rho
 

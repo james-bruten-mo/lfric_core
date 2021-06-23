@@ -18,7 +18,8 @@ module compute_dl_matrix_kernel_mod
                                        GH_REAL, ANY_SPACE_9,      &
                                        ANY_DISCONTINUOUS_SPACE_3, &
                                        GH_BASIS, GH_DIFF_BASIS,   &
-                                       CELL_COLUMN, GH_QUADRATURE_XYoZ
+                                       GH_SCALAR, CELL_COLUMN,    &
+                                       GH_QUADRATURE_XYoZ
   use base_mesh_config_mod,      only: geometry, geometry_spherical
   use constants_mod,             only: i_def, r_def, PI
   use coord_transform_mod,       only: xyz2llr
@@ -30,7 +31,6 @@ module compute_dl_matrix_kernel_mod
   use fs_continuity_mod,         only: W2
   use planet_config_mod,         only: radius
   use kernel_mod,                only: kernel_type
-  use timestepping_config_mod,   only: dt
   use coordinate_jacobian_mod,   only: coordinate_jacobian
 
   implicit none
@@ -43,10 +43,11 @@ module compute_dl_matrix_kernel_mod
 
   type, public, extends(kernel_type) :: compute_dl_matrix_kernel_type
     private
-    type(arg_type) :: meta_args(3) = (/                                      &
-         arg_type(GH_OPERATOR, GH_REAL, GH_WRITE, W2, W2),                   &
-         arg_type(GH_FIELD*3,  GH_REAL, GH_READ,  ANY_SPACE_9),              &
-         arg_type(GH_FIELD,    GH_REAL, GH_READ,  ANY_DISCONTINUOUS_SPACE_3) &
+    type(arg_type) :: meta_args(4) = (/                                       &
+         arg_type(GH_OPERATOR, GH_REAL, GH_WRITE, W2, W2),                    &
+         arg_type(GH_FIELD*3,  GH_REAL, GH_READ,  ANY_SPACE_9),               &
+         arg_type(GH_FIELD,    GH_REAL, GH_READ,  ANY_DISCONTINUOUS_SPACE_3), &
+         arg_type(GH_SCALAR,   GH_REAL, GH_READ)                              &
          /)
     type(func_type) :: meta_funcs(2) = (/                                    &
          func_type(ANY_SPACE_9, GH_BASIS, GH_DIFF_BASIS),                    &
@@ -76,6 +77,7 @@ contains
   !! @param[in] chi2     2nd (spherical) coordinate field in Wchi
   !! @param[in] chi3     3rd (spherical) coordinate field in Wchi
   !! @param[in] panel_id Field giving the ID for mesh panels
+  !! @param[in] dt       The model timestep length
   !! @param[in] ndf_w2   Degrees of freedom per cell
   !! @param[in] basis_w2 Vector basis functions evaluated at quadrature points.
   !! @param[in] ndf_chi  Degrees of freedom per cell for chi field
@@ -94,7 +96,7 @@ contains
   !! @param[in] wqp_v    Vertical quadrature weights
   subroutine compute_dl_matrix_code(cell, nlayers, ncell_3d,     &
                                     mm, chi1, chi2, chi3,        &
-                                    panel_id,                    &
+                                    panel_id, dt,                &
                                     ndf_w2, basis_w2,            &
                                     ndf_chi, undf_chi, map_chi,  &
                                     basis_chi, diff_basis_chi,   &
@@ -121,6 +123,7 @@ contains
     real(kind=r_def),    intent(in)    :: chi2(undf_chi)
     real(kind=r_def),    intent(in)    :: chi3(undf_chi)
     real(kind=r_def),    intent(in)    :: panel_id(undf_pid)
+    real(kind=r_def),    intent(in)    :: dt
     real(kind=r_def),    intent(in)    :: wqp_h(nqp_h)
     real(kind=r_def),    intent(in)    :: wqp_v(nqp_v)
     real(kind=r_def),    intent(in)    :: basis_w2(3,ndf_w2,nqp_h,nqp_v)

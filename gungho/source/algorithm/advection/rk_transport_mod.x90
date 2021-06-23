@@ -45,7 +45,6 @@ module rk_transport_mod
   use fem_constants_mod,                 only: get_qr
   use strong_curl_kernel_mod,            only: strong_curl_kernel_type
   use timer_mod,                         only: timer
-  use timestepping_config_mod,           only: dt
 
   implicit none
 
@@ -91,11 +90,13 @@ contains
   !> @details An algorithm for timstepping the transport equation using the
   !>          Runge-Kutta algorithm. theta, rho and u fields are initialised before
   !>          this algorithm is called.
+  !> @param[in]     timestep The model timestep
+  !> @param[in]     dt       The model timestep length
   !> @param[in,out] wind     3D wind field
   !> @param[in,out] rho      Density like tracer
   !> @param[in,out] theta    Temperature like tracer
   !> @param[in,out] mr       Bundle of moisture variables as tracers
-  subroutine rk_transport_step( timestep, wind, rho, theta, mr )
+  subroutine rk_transport_step( timestep, dt, wind, rho, theta, mr )
     use field_bundle_mod, only: clone_bundle, add_bundle, copy_bundle
 
     implicit none
@@ -104,6 +105,7 @@ contains
     type(field_type),    intent(inout)           :: wind, rho, theta
     type(field_type),    intent(inout), optional :: mr(nummr)
     integer(kind=i_def), intent(in)              :: timestep
+    real(kind=r_def),    intent(in)              :: dt
 
     ! Internal variables
     type(field_type), allocatable                :: state(:), rhs_adv(:)
