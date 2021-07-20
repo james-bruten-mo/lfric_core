@@ -431,7 +431,9 @@ contains
     end do
 
     is_spherical = .false.
+    ! TODO: Change these options to use geometry and topology in #2693
     if ( trim(local_mesh%get_mesh_class()) == "sphere" ) is_spherical = .true.
+    if ( trim(local_mesh%get_mesh_class()) == "lam" ) is_spherical = .true.
 
     ! Set base surface height
     vertex_coords_2d(3,:) = self%domain_bottom

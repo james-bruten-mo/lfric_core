@@ -707,8 +707,9 @@ contains
 
   end subroutine create_boundary_mask
 
-  ! Returns the physical coordinate of a boundary on a cubed sphere,
-  ! in radians i.e. alpha-beta space (either alpha or beta).
+  ! Returns the physical coordinate of a boundary of the part of the domain
+  ! used by the linear solver. This function is use on a cubed sphere, and
+  ! returns coordinates in radians i.e. alpha-beta space (either alpha or beta).
   !
   ! boundary[in]     The number of cells from panel edge to boundary.
   ! edge_cells[in]   The total number of cells along the panel edge.
@@ -737,19 +738,25 @@ contains
 
   end function spherical_boundary
 
-  ! Returns the physical coordinate of North or South boundary on
-  ! a planar mesh, in metres i.e. Cartesian.
+  ! Returns the physical coordinate of North or South boundary of the part of
+  ! the domain in which the linear-solver is used.
+  ! For planar geometry this coordinate will be in metres, but for spherical
+  ! geometry it will be in degrees. This routine is used with planar domains
+  ! or regional non-periodic LAMs on the sphere.
   !
   ! boundary[in]     The number of cells from domain edge to boundary.
   ! edge_cells[in]   The total number of cells in N-S (y) direction.
   ! minus[in]        Adding or subtracting cells from the edge, depending
   !                  on whether it is the North or South boundary.
-  ! coord_bound[out] Coordinates of the boundary in metres
+  ! coord_bound[out] Coordinates of the boundary in metres for planar geometry
+  !                  or degrees for spherical geometry.
   function planar_boundary_ns(boundary, edge_cells, minus) result(coord_bound)
 
-    use constants_mod,            only: PI
+    use base_mesh_config_mod,     only: geometry, geometry_spherical
+    use constants_mod,            only: PI, degrees_to_radians
     use domain_size_config_mod,   only: planar_domain_max_y, &
                                         planar_domain_min_y
+
     implicit none
 
     integer(i_def), intent (in)  :: boundary
@@ -765,19 +772,30 @@ contains
       coord_bound = planar_domain_min_y + dy * boundary
     endif
 
+    ! NB: we expect the user here to have correctly entered the domain extents
+    ! in degrees!
+    if (geometry == geometry_spherical) then
+      coord_bound = coord_bound * degrees_to_radians
+    end if
+
   end function planar_boundary_ns
 
-  ! Returns the physical coordinate of East or West boundary on
-  ! a planar mesh, in metres i.e. Cartesian.
+  ! Returns the physical coordinate of East or West boundary of the part of the
+  ! domain in which the linear-solver is used.
+  ! For planar geometry this coordinate will be in metres, but for spherical
+  ! geometry it will be in degrees. This routine is used with planar domains
+  ! or regional non-periodic LAMs on the sphere.
   !
   ! boundary[in]     The number of cells from domain edge to boundary.
   ! edge_cells[in]   The total number of cells in E-W (x) direction.
   ! minus[in]        Adding or subtracting cells from the edge, depending
   !                  on whether it is the East or West boundary.
-  ! coord_bound[out] Coordinates of the boundary in metres.
+  ! coord_bound[out] Coordinates of the boundary in metres for planar geometry
+  !                  or degrees for spherical geometry.
   function planar_boundary_ew(boundary, edge_cells, minus) result(coord_bound)
 
-    use constants_mod,            only: PI
+    use base_mesh_config_mod,     only: geometry, geometry_spherical
+    use constants_mod,            only: PI, degrees_to_radians
     use domain_size_config_mod,   only: planar_domain_max_x, &
                                         planar_domain_min_x
     implicit none
@@ -794,6 +812,12 @@ contains
     else
       coord_bound = planar_domain_min_x + dx * boundary
     endif
+
+    ! NB: we expect the user here to have correctly entered the domain extents
+    ! in degrees!
+    if (geometry == geometry_spherical) then
+      coord_bound = coord_bound * degrees_to_radians
+    end if
 
   end function planar_boundary_ew
 

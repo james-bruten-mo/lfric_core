@@ -2938,7 +2938,7 @@ contains
                                 constructor_inputs = test_str3 )
 
     @assertEqual( mesh_name, trim(test_str1) )
-    @assertEqual( 'plane', trim(test_str2) )
+    @assertEqual( 'lam', trim(test_str2) )
     @assertEqual( 'edge_cells_x=1;edge_cells_y=1;periodic_x=F;periodic_y=F;domain_x=50.00;domain_y=10.00;coord_sys=ll;rotate_mesh=F', trim(test_str3) )
 
     ! Generate the mesh and connectivity
@@ -3090,7 +3090,7 @@ contains
                                 constructor_inputs = test_str3 )
 
     @assertEqual( mesh_name, trim(test_str1) )
-    @assertEqual( 'plane', trim(test_str2) )
+    @assertEqual( 'lam', trim(test_str2) )
     @assertEqual( 'edge_cells_x=1;edge_cells_y=1;periodic_x=F;periodic_y=F;domain_x=180.00;domain_y=10.00;coord_sys=ll;rotate_mesh=T;target_pole=[0.00,180.00];first_node=[-85.00,0.00]', trim(test_str3) )
 
     ! Generate the mesh and connectivity
@@ -3252,7 +3252,7 @@ contains
                                 constructor_inputs = test_str3 )
 
     @assertEqual( mesh_name, trim(test_str1) )
-    @assertEqual( 'plane', trim(test_str2) )
+    @assertEqual( 'lam', trim(test_str2) )
     @assertEqual( 'edge_cells_x=1;edge_cells_y=1;periodic_x=F;periodic_y=F;domain_x=50.00;domain_y=10.00;coord_sys=ll;rotate_mesh=T;target_pole=[25.00,90.00];first_node=[0.00,-5.00]', trim(test_str3) )
 
     ! Generate the mesh and connectivity
@@ -3415,7 +3415,7 @@ contains
                                 constructor_inputs = test_str3 )
 
     @assertEqual( mesh_name, trim(test_str1) )
-    @assertEqual( 'plane', trim(test_str2) )
+    @assertEqual( 'lam', trim(test_str2) )
     @assertEqual( 'edge_cells_x=1;edge_cells_y=1;periodic_x=F;periodic_y=F;domain_x=180.00;domain_y=10.00;coord_sys=ll;rotate_mesh=T;target_pole=[90.00,180.00];first_node=[5.00,0.00]', trim(test_str3) )
 
     ! Generate the mesh and connectivity

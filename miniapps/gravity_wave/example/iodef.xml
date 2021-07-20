@@ -3,7 +3,7 @@
 
   <context id = "gravity_wave">
 
-   <calendar type = "Gregorian" start_date = "2016-01-01 15:00:00" />
+   <calendar type = "Gregorian" start_date = "2016-01-01 15:00:00" time_origin = "2016-01-01 15:00:00" />
 
    <axis_definition>
     <axis id="vert_axis_half_levels" name="half_levels"/>
@@ -78,20 +78,20 @@
       <!-- Checkpoint groups -->
 
       <!-- File definition for checkpoint write -->
-      <file id="lfric_checkpoint_write" name="lfric_gw_checkpoint" convention="CF" enabled=".FALSE.">
+      <file id="lfric_checkpoint_write" name="lfric_checkpoint" convention="CF" enabled=".FALSE.">
         <field field_ref="checkpoint_pressure"/>
         <field field_ref="checkpoint_buoyancy"/>
         <field field_ref="checkpoint_wind"/>
       </file>
 
        <!-- file definition for checkpoint read -->
-      <file id="lfric_checkpoint_read" name="lfric_gw_checkpoint" mode="read" output_freq="1ts" cyclic="true" enabled=".FALSE.">
+      <file id="lfric_checkpoint_read" name="lfric_checkpoint" mode="read" output_freq="1ts" cyclic="true" enabled=".FALSE.">
        <field id="restart_pressure" name="pressure" long_name="air_pressure" standard_name="air_pressure" unit="Pa" operation="instant" domain_ref="checkpoint_W3" />
        <field id="restart_buoyancy" name="buoyancy" long_name="buoyancy" unit="kg m s-2" operation="instant" domain_ref="checkpoint_Wtheta" />
        <field id="restart_wind" name="wind" long_name="wind" unit="m s-1" operation="instant" domain_ref="checkpoint_W2" />
       </file>
 
-      <file id="lfric_diag" name="lfric_gw_diag" output_freq="10ts" convention="UGRID" enabled=".TRUE.">
+      <file id="lfric_diag" name="lfric_diag" output_freq="1ts" convention="UGRID" enabled=".TRUE.">
         <field field_ref="wind1"/>
         <field field_ref="wind2"/>
         <field field_ref="wind3"/>
@@ -99,7 +99,7 @@
         <field field_ref="buoyancy"/>
       </file>
 
-      <file id="lfric_initial" name="lfric_gw_initial" output_freq="1ts" convention="UGRID" enabled=".TRUE.">
+      <file id="lfric_initial" name="lfric_initial" output_freq="1ts" convention="UGRID" enabled=".TRUE.">
         <field field_ref="init_wind1"/>
         <field field_ref="init_wind2"/>
         <field field_ref="init_wind3"/>

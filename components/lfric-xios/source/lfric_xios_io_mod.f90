@@ -9,9 +9,7 @@
 module lfric_xios_io_mod
 
   use base_mesh_config_mod,          only: geometry,           &
-                                           geometry_spherical, &
-                                           topology,           &
-                                           topology_fully_periodic
+                                           geometry_spherical
   use clock_mod,                     only: clock_type
   use constants_mod,                 only: dp_xios,                       &
                                            i_def, i_halo_index, i_native, &
@@ -370,15 +368,15 @@ contains
     coord_dim_owned = local_undf(1) / nfull_levels
 
     ! Obtain sample_chi, which will be used for setting up XIOS coordinates
-    if ( geometry == geometry_spherical .and. topology == topology_fully_periodic ) then
+    if ( geometry == geometry_spherical ) then
       ! Sample chi on W0 function space to prevent "unzipping" of cubed-sphere mesh
       do i = 1,3
         call sample_chi(i)%initialise( vector_space = output_field_fs )
       end do
-      ! Convert to (X,Y,Z) coordinates in Wchi
+      ! Convert to (X,Y,Z) coordinates
       call invoke_nodal_xyz_coordinates_kernel(sample_chi, chi, panel_id)
     else
-      ! For planar geometries just re-use existing chi
+      ! For planar geometries just re-use existing chi which are already (X,Y,Z)
       do i = 1,3
         call chi(i)%copy_field(sample_chi(i))
       end do

@@ -182,7 +182,9 @@ contains
     ! though many functions assume radians. Convert
     ! coords to radians before going any further into
     ! code
-    if (trim(self%mesh_class) == 'sphere') then
+    ! TODO: Change these options to use geometry and topology in #2693
+    if ( (trim(self%mesh_class) == 'sphere') .or. &
+         (trim(self%mesh_class) == 'lam') ) then
       self%vert_coords(:,:) = self%vert_coords(:,:) * degrees_to_radians
       self%cell_coords(:,:) = self%cell_coords(:,:) * degrees_to_radians
     end if

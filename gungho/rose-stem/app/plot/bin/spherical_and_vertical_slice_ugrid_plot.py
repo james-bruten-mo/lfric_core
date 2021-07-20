@@ -52,13 +52,12 @@ def make_figures(filein, plotpath, field_list, slice_list,
     # If specific model levels / slices are desired, they can be put here
     plot_lat = None
     plot_lon = None
-    plot_level = None
+    plot_level = 5 if testname == 'lam_gw' else 0
 
 #------------------------------------------------------------------------------#
 # Set some plotting style details
 #------------------------------------------------------------------------------#
 
-    plt.rc('text', usetex=True)
     plt.rc('font', family='serif', size=36)
 
     # Preset conditions for some specific tests
@@ -70,13 +69,16 @@ def make_figures(filein, plotpath, field_list, slice_list,
         zmin = 0.0
         zmax = 2000.
 
-    elif testname in ['baroclinic', 'aquaplanet', 'spherical']:
+    elif testname in ['baroclinic', 'aquaplanet', 'spherical', 'lam_gw']:
         spherical = True
 
         if testname == 'spherical':
             # This is a special 2D spherical shell
             zmin = 0.0
             zmax = 1.0
+        elif testname == 'lam_gw':
+            zmin = 0.0
+            zmax = 10000.0 # A 10 km lid
         elif spherical:
             zmin = 0.0
             zmax = 30000.  # Assume 30 km lid
@@ -92,10 +94,14 @@ def make_figures(filein, plotpath, field_list, slice_list,
     title_dict = {'theta': r'$\theta \ / $ K',
                   'rho': r'$\rho \ / $ kg m$^{-3}$',
                   'density':r'$\rho \ / $ kg m$^{-3}$',
-                  'm_v': r'$m_v \ / $ kg kg$^{-1}$'}
+                  'm_v': r'$m_v \ / $ kg kg$^{-1}$',
+                  'buoyancy': r'$b \ / $ m s$^{-2}$'}
 
     # Find number of full levels by asking for theta
-    cube = read_ugrid_data(filein, 'theta')
+    try:
+        cube = read_ugrid_data(filein, 'theta')
+    except iris.exceptions.ConstraintMismatchError:
+        cube = read_ugrid_data(filein, 'buoyancy')
     levels_name = cube.dim_coords[-1].name()
     nz_full = len(cube.coord(levels_name).points)
 
@@ -113,8 +119,11 @@ def make_figures(filein, plotpath, field_list, slice_list,
     plot_latmax = np.amax(np.abs(lat_data))
 
     epsilon = 1e-12
+    if testname == 'lam_gw':
+        # This is a domain not centred on zero
+        plot_lonmin = np.amin(lon_data)
     # Assume a sensible domain here
-    if np.amin(lon_data) < - epsilon:
+    elif np.amin(lon_data) < - epsilon:
         # Assume this means lon=0 in the middle of the domain
         plot_lonmin = -plot_lonmax
     else:
@@ -163,10 +172,11 @@ def make_figures(filein, plotpath, field_list, slice_list,
             length_scaling = 1.0
             height_scaling = 1.0 / 1000.0 # Height in km
 
-            plot_latmin = -90.
-            plot_latmax = 90.
-            plot_lonmin = -180.
-            plot_lonmax = 180.
+            if testname != "lam_gw":
+                plot_latmin = -90.
+                plot_latmax = 90.
+                plot_lonmin = -180.
+                plot_lonmax = 180.
 
         else:
             lon_data = np.around(cube.coord('longitude').points, decimals=5)
@@ -321,7 +331,12 @@ def make_figures(filein, plotpath, field_list, slice_list,
                     max_field = 6.0
                     contour_colours = np.arange(min_field, max_field+step, step=step)
                     contour_lines = np.copy(contour_colours)
-
+                elif (testname == 'lam_gw' and field == 'buoyancy'):
+                    step = 0.002
+                    min_field = -0.014
+                    max_field = 0.014
+                    contour_colours = np.arange(min_field, max_field+step, step=step)
+                    contour_lines = np.copy(contour_colours)
                 else:
                     # Set some nice contours based on the min and max fields
                     # Values are specific for this slice at this time

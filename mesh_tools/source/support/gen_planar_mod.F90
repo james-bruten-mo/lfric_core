@@ -60,7 +60,9 @@ module gen_planar_mod
 
   ! Prefix for error messages
   character(len=*),   parameter :: PREFIX = "[Planar Mesh] "
-  character(str_def), parameter :: MESH_CLASS = "plane"
+  ! TODO: Change these options to use geometry and topology in #2693
+  character(str_def), parameter :: MESH_CLASS_PLANE = "plane"
+  character(str_def), parameter :: MESH_CLASS_LAM = "lam"
 
   ! Flag to print out mesh data for debugging purposes
   logical(l_def),     parameter :: DEBUG = .false.
@@ -283,9 +285,13 @@ function gen_planar_constructor( reference_element,          &
     call log_event( PREFIX//"Invalid dimension choices.", LOG_LEVEL_ERROR )
   end if
 
+  if (coord_sys == coord_sys_xyz) then
+    self%mesh_class = trim(MESH_CLASS_PLANE)
+  else
+    self%mesh_class = trim(MESH_CLASS_LAM)
+  end if
 
   self%mesh_name    = trim(mesh_name)
-  self%mesh_class   = trim(MESH_CLASS)
   self%edge_cells_x = edge_cells_x
   self%edge_cells_y = edge_cells_y
   self%npanels      = NPANELS

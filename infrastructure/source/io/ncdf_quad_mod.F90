@@ -775,7 +775,7 @@ subroutine assign_attributes(self)
   ! 6.0 Add attributes for mesh node coordinate variables
   !===================================================================
   select case (trim(self%mesh_class))
-  case ('sphere')
+  case ('sphere','lam')
     std_x_name  = 'longitude'
     std_y_name  = 'latitude'
     long_x_name = 'longitude of 2D mesh nodes.'
@@ -844,7 +844,7 @@ subroutine assign_attributes(self)
   ! 7.0 Add attributes for mesh face coordinate variables
   !===================================================================
   select case (trim(self%mesh_class))
-  case ('sphere')
+  case ('sphere','lam')
     std_x_name  = 'longitude'
     std_y_name  = 'latitude'
     long_x_name = 'longitude of 2D face centres'
