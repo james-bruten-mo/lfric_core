@@ -4,14 +4,14 @@
 ! under which the code may be used.
 !-----------------------------------------------------------------------------
 
-!> @brief Compute the operators for the left hand side of the equation of
-!>        state.
+!> @brief Compute the normalised operators for the left hand side of the
+!>        equation of state.
 !>
-!> @details Compute the operators for the semi-implicit left hand side of the
-!>          equation of state. These are:
-!>          m3exner = (1-kappa)/kappa*<sigma,sigma/exner*det(J)>
-!>          m3rho   = <sigma,sigma/rho*det(J)>
-!>          p3theta = <sigma,gamma/theta*det(J)>
+!> @details Compute the normalised operators for the semi-implicit left hand
+!>          side of the equation of state. These are:
+!>          m3exner = M3^{-1}*(1-kappa)/kappa*<sigma,sigma/exner*det(J)>
+!>          m3rho   = M3^{-1}*<sigma,sigma/rho*det(J)>
+!>          p3theta = M3^{-1}*<sigma,gamma/theta*det(J)>
 !>          for functions sigma in W3 and gamma in the theta space
 !>
 module eos_operators_kernel_mod
@@ -37,10 +37,11 @@ module eos_operators_kernel_mod
   !---------------------------------------------------------------------------
   type, public, extends(kernel_type) :: eos_operators_kernel_type
     private
-    type(arg_type) :: meta_args(9) = (/                                       &
+    type(arg_type) :: meta_args(10) = (/                                      &
          arg_type(GH_OPERATOR, GH_REAL, GH_WRITE, W3, W3),                    &
          arg_type(GH_OPERATOR, GH_REAL, GH_WRITE, W3, W3),                    &
          arg_type(GH_OPERATOR, GH_REAL, GH_WRITE, W3, Wtheta),                &
+         arg_type(GH_OPERATOR, GH_REAL, GH_READ, W3, W3),                     &
          arg_type(GH_FIELD,    GH_REAL, GH_READ,  W3),                        &
          arg_type(GH_FIELD,    GH_REAL, GH_READ,  W3),                        &
          arg_type(GH_FIELD,    GH_REAL, GH_READ,  Wtheta),                    &
@@ -75,6 +76,8 @@ contains
 !! @param[in,out] m3rho W3 mass matrix weighted by reference density
 !! @param[in] ncell_3d3 ncell*nlayers
 !! @param[in,out] p3theta Projection matrix weighted by reference potential temperature
+!! @param[in] ncell_3d4 ncell*nlayers
+!! @param[in] m3_inv Inverse W3 mass matrix
 !! @param[in] exner Reference pressure
 !! @param[in] rho Reference density
 !! @param[in] theta Reference potential temperature
@@ -107,6 +110,7 @@ subroutine eos_operators_code(cell, nlayers,                      &
                               ncell_3d1, m3exner,                 &
                               ncell_3d2, m3rho,                   &
                               ncell_3d3, p3theta,                 &
+                              ncell_3d4, m3_inv,                  &
                               exner, rho, theta,                  &
                               chi1, chi2, chi3,                   &
                               panel_id,                           &
@@ -125,7 +129,7 @@ subroutine eos_operators_code(cell, nlayers,                      &
   integer(kind=i_def), intent(in)     :: nlayers
   integer(kind=i_def), intent(in)     :: ndf_w3, ndf_chi, ndf_wt, ndf_pid
   integer(kind=i_def), intent(in)     :: undf_chi, undf_w3, undf_wt, undf_pid
-  integer(kind=i_def), intent(in)     :: ncell_3d1,  ncell_3d2, ncell_3d3
+  integer(kind=i_def), intent(in)     :: ncell_3d1,  ncell_3d2, ncell_3d3, ncell_3d4
 
   integer(kind=i_def), dimension(ndf_chi), intent(in) :: map_chi
   integer(kind=i_def), dimension(ndf_w3),  intent(in) :: map_w3
@@ -135,6 +139,8 @@ subroutine eos_operators_code(cell, nlayers,                      &
   real(kind=r_def), dimension(ndf_w3,ndf_w3,ncell_3d1),  intent(inout)  :: m3exner
   real(kind=r_def), dimension(ndf_w3,ndf_w3,ncell_3d2),  intent(inout)  :: m3rho
   real(kind=r_def), dimension(ndf_w3,ndf_wt,ncell_3d3),  intent(inout)  :: p3theta
+
+  real(kind=r_def), dimension(ndf_w3,ndf_w3,ncell_3d4),  intent(in)  :: m3_inv
 
   real(kind=r_def), intent(in)  :: basis_chi(1,ndf_chi,nqp_h,nqp_v)
   real(kind=r_def), dimension(3,ndf_chi,nqp_h,nqp_v), intent(in) :: diff_basis_chi
@@ -212,9 +218,13 @@ subroutine eos_operators_code(cell, nlayers,                      &
                                             *basis_wt(1,df2,qp1,qp2)
           end do
         end do
-
       end do
     end do
+
+    ! Normalise by inverse W3 mass matrix
+    p3theta(:,:,ik) = matmul(m3_inv(:,:,ik), p3theta(:,:,ik))
+    m3exner(:,:,ik) = matmul(m3_inv(:,:,ik), m3exner(:,:,ik))
+    m3rho(:,:,ik)   = matmul(m3_inv(:,:,ik), m3rho(:,:,ik))
   end do
 
 end subroutine eos_operators_code

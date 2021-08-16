@@ -128,6 +128,7 @@ contains
     real(r_def), allocatable :: m3exner(:,:,:)
     real(r_def), allocatable :: m3rho(:,:,:)
     real(r_def), allocatable :: p3theta(:,:,:)
+    real(r_def), allocatable :: m3_inv(:,:,:)
     real(r_def), allocatable :: chi_data(:,:)
     real(r_def), allocatable :: exner_data(:)
     real(r_def), allocatable :: rho_data(:)
@@ -171,6 +172,7 @@ contains
     allocate(m3exner(ndf_w3,ndf_w3,ncells))
     allocate(m3rho(ndf_w3,ndf_w3,ncells))
     allocate(p3theta(ndf_w3,ndf_wt,ncells))
+    allocate(m3_inv(ndf_w3,ndf_w3,ncells))
     allocate(exner_data(undf_w3))
     allocate(rho_data(undf_w0))
     allocate(theta_data(undf_w0))
@@ -185,6 +187,7 @@ contains
     m3exner(:,:,:)   = 0.0_r_def
     m3rho(:,:,:)     = 0.0_r_def
     p3theta(:,:,:)   = 0.0_r_def
+    m3_inv(:,:,:)    = 1.0_r_def/(dx*dy*dz)
     rho_data(:)      = 1.0_r_def
     exner_data(:)    = 1.5_r_def
     theta_data(:)    = 300.0_r_def
@@ -198,6 +201,8 @@ contains
                              m3rho,                                   &
                              ncells,                                  &
                              p3theta,                                 &
+                             ncells,                                  &
+                             m3_inv,                                  &
                              exner_data,                              &
                              rho_data,                                &
                              theta_data,                              &
@@ -218,12 +223,12 @@ contains
                            )
 
     answer = 0.5_r_def/exner_data(1)
-    @assertEqual(answer, m3exner(1, 1, 1 )/(dx*dy*dz), tol)
+    @assertEqual(answer, m3exner(1, 1, 1), tol)
     answer = 1.0_r_def/rho_data(1)
-    @assertEqual(answer, m3rho(1, 1, 1 )/(dx*dy*dz), tol)
+    @assertEqual(answer, m3rho(1, 1, 1), tol)
     answer = 0.5_r_def/theta_data(1)
-    @assertEqual(answer, p3theta(1, 1, 1 )/(dx*dy*dz), tol)
-    @assertEqual(answer, p3theta(1, 2, 1 )/(dx*dy*dz), tol)
+    @assertEqual(answer, p3theta(1, 1, 1), tol)
+    @assertEqual(answer, p3theta(1, 2, 1), tol)
 
     deallocate(map_w0)
     deallocate(map_w3)

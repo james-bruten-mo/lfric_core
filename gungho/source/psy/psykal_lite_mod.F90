@@ -1403,8 +1403,7 @@ end subroutine invoke_calc_deppts
   ! see PSyclone #1103: https://github.com/stfc/PSyclone/issues/1103
   ! The LFRic infrastructure for this will be introduced in #2532
   subroutine invoke_helmholtz_operator_kernel_type(helmholtz_operator, hb_lumped_inv, stencil_depth, u_normalisation, div_star, &
-                                                   t_normalisation, ptheta2v, compound_div, m3_exner_star, p3theta, m3_inv, &
-                                                   w2_mask)
+                                                   t_normalisation, ptheta2v, compound_div, m3_exner_star, p3theta, w2_mask)
     use helmholtz_operator_kernel_mod, only: helmholtz_operator_code
     use mesh_mod, only: mesh_type
     use stencil_dofmap_mod, only: stencil_cross
@@ -1413,12 +1412,12 @@ end subroutine invoke_calc_deppts
     implicit none
 
     type(field_type), intent(in) :: helmholtz_operator(9), hb_lumped_inv, u_normalisation, t_normalisation, w2_mask
-    type(operator_type), intent(in) :: div_star, ptheta2v, compound_div, m3_exner_star, p3theta, m3_inv
+    type(operator_type), intent(in) :: div_star, ptheta2v, compound_div, m3_exner_star, p3theta
     integer(kind=i_def), intent(in) :: stencil_depth
     integer(kind=i_def) :: stencil_size
     integer(kind=i_def) cell
     integer(kind=i_def) nlayers
-    type(operator_proxy_type) div_star_proxy, ptheta2v_proxy, compound_div_proxy, m3_exner_star_proxy, p3theta_proxy, m3_inv_proxy
+    type(operator_proxy_type) div_star_proxy, ptheta2v_proxy, compound_div_proxy, m3_exner_star_proxy, p3theta_proxy
     type(field_proxy_type) helmholtz_operator_proxy(9), hb_lumped_inv_proxy, u_normalisation_proxy, t_normalisation_proxy, &
                            w2_mask_proxy
     integer(kind=i_def), pointer :: map_w2(:,:) => null(), map_w3(:,:) => null(), map_wtheta(:,:) => null()
@@ -1449,7 +1448,6 @@ end subroutine invoke_calc_deppts
     compound_div_proxy = compound_div%get_proxy()
     m3_exner_star_proxy = m3_exner_star%get_proxy()
     p3theta_proxy = p3theta%get_proxy()
-    m3_inv_proxy = m3_inv%get_proxy()
     w2_mask_proxy = w2_mask%get_proxy()
     !
     ! Initialise number of layers
@@ -1539,8 +1537,6 @@ end subroutine invoke_calc_deppts
                                    m3_exner_star_proxy%local_stencil, &
                                    p3theta_proxy%ncell_3d, &
                                    p3theta_proxy%local_stencil, &
-                                   m3_inv_proxy%ncell_3d, &
-                                   m3_inv_proxy%local_stencil, &
                                    w2_mask_proxy%data, &
                                    ndf_w3, undf_w3, map_w3(:,cell), &
                                    ndf_w2, undf_w2, map_w2(:,cell), &

@@ -51,7 +51,7 @@ module pressure_operator_alg_mod
                         pressure_operator_type
   private
      !> Temporary fields used in operator application
-     type(field_type) :: grad_p, div_grad_p
+     type(field_type) :: grad_p
      !> Level of the operator (used for multigrid)
      integer(kind=i_def) :: level
      !> Id of function space
@@ -114,8 +114,6 @@ contains
 
     ! Temporaries required in operator application
     call self%grad_p%initialise(vector_space = wu, name='grad_p')
-    call self%div_grad_p%initialise(vector_space = wp, name='div_grad_p')
-
     self%level = level
 
     ! Id of pressure function space
@@ -139,7 +137,6 @@ contains
     ! Deep copy of the contents of the pressure_operator_type
 
     call source%grad_p%copy_field(dest%grad_p)
-    call source%div_grad_p%copy_field(dest%div_grad_p)
     dest%level = source%level
     dest%fs_id = source%fs_id
   end subroutine pressure_operator_assign
@@ -154,7 +151,6 @@ contains
     use operator_mod,                    only: operator_type
     use enforce_bc_kernel_mod,           only: enforce_bc_kernel_type
     use apply_variable_hx_kernel_mod,    only: apply_variable_hx_kernel_type
-    use dg_matrix_vector_kernel_mod,     only: dg_matrix_vector_kernel_type
     use finite_element_config_mod,       only: element_order
     use io_config_mod,                   only: subroutine_timers
     use timer_mod,                       only: timer
@@ -171,8 +167,7 @@ contains
                                     div_star => null(),        &
                                     compound_div => null(),    &
                                     ptheta2 => null(),         &
-                                    p3theta => null(),         &
-                                    m3_inv => null()
+                                    p3theta => null()
     real(kind=r_def), parameter  :: one = 1.0_r_def
     type(field_type),    pointer :: mt_lumped_inv => null(),   &
                                     u_normalisation => null(), &
@@ -207,31 +202,30 @@ contains
            p3theta         => get_p3theta(self%level)
            u_normalisation => get_normalisation(W2, mesh_id)
            hb_lumped_inv   => get_hb_lumped_inv(self%level)
-           m3_inv => get_inverse_w3_mass_matrix(mesh_id)
            if ( limited_area ) then
              w2_mask => get_mask(W2)
              call invoke( setval_c( self%grad_p, 0.0_r_def ),                           &
+                          setval_c( y%vector(1), 0.0_r_def ),                       &
                           scaled_matrix_vector_kernel_type(self%grad_p, x%vector(1),    &
                                                            div_star, hb_lumped_inv,     &
                                                            u_normalisation),            &
                           enforce_bc_kernel_type( self%grad_p ),                        &
                           inc_X_times_Y( self%grad_p, w2_mask ),                        &
-                          apply_variable_hx_kernel_type(self%div_grad_p, self%grad_p,   &
+                          apply_variable_hx_kernel_type(y%vector(1), self%grad_p,   &
                                                         mt_lumped_inv, x%vector(1),     &
                                                         compound_div, p3theta, ptheta2, &
-                                                        m3_exner_star, one),            &
-                          dg_matrix_vector_kernel_type(y%vector(1), self%div_grad_p, m3_inv) )
+                                                        m3_exner_star, one) )
            else
              call invoke( setval_c( self%grad_p, 0.0_r_def ),                           &
+                          setval_c( y%vector(1), 0.0_r_def ),                       &
                           scaled_matrix_vector_kernel_type(self%grad_p, x%vector(1),    &
                                                            div_star, hb_lumped_inv,     &
                                                            u_normalisation),            &
                           enforce_bc_kernel_type( self%grad_p ),                        &
-                          apply_variable_hx_kernel_type(self%div_grad_p, self%grad_p,   &
+                          apply_variable_hx_kernel_type(y%vector(1), self%grad_p,   &
                                                         mt_lumped_inv, x%vector(1),     &
                                                         compound_div, p3theta, ptheta2, &
-                                                        m3_exner_star, one),            &
-                          dg_matrix_vector_kernel_type(y%vector(1), self%div_grad_p, m3_inv) )
+                                                        m3_exner_star, one) )
            end if
            if ( normalise ) then
              h_diag => get_helm_diag(self%level)
@@ -239,7 +233,7 @@ contains
            end if
 
            nullify( m3_exner_star, div_star, compound_div, ptheta2,  &
-                    p3theta, m3_inv, mt_lumped_inv, u_normalisation, &
+                    p3theta, mt_lumped_inv, u_normalisation, &
                     h_diag )
          end if
          if ( limited_area ) then

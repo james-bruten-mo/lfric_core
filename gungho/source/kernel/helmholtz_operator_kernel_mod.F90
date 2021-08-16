@@ -24,7 +24,7 @@ module helmholtz_operator_kernel_mod
 
   type, public, extends(kernel_type) :: helmholtz_operator_kernel_type
     private
-    type(arg_type) :: meta_args(11) = (/                               &
+    type(arg_type) :: meta_args(10) = (/                               &
          arg_type(GH_FIELD*9,  GH_REAL, GH_WRITE, W3),                 & ! Helmholtz operator
          arg_type(GH_FIELD,    GH_REAL, GH_READ,  W2, STENCIL(CROSS)), & ! hb_lumped_inv
          arg_type(GH_FIELD,    GH_REAL, GH_READ,  W2),                 & ! u_normalisation
@@ -34,7 +34,6 @@ module helmholtz_operator_kernel_mod
          arg_type(GH_OPERATOR, GH_REAL, GH_READ,  W3,     W2),         & ! compound_div
          arg_type(GH_OPERATOR, GH_REAL, GH_READ,  W3,     W3),         & ! M3_exner
          arg_type(GH_OPERATOR, GH_REAL, GH_READ,  W3,     Wtheta),     & ! p3theta
-         arg_type(GH_OPERATOR, GH_REAL, GH_READ,  W3,     W3),         & ! M3^-1
          arg_type(GH_FIELD,    GH_REAL, GH_READ,  W2)                  & ! W2 mask
          /)
     integer :: operates_on = CELL_COLUMN
@@ -78,9 +77,7 @@ contains
   !> @param[in]  ncell_3d_4 Total number of cells for m3_exner_star matrix
   !> @param[in]  m3_exner_star weighted W3 mass matrix
   !> @param[in]  ncell_3d_5 Total number of cells for p3t matrix
-  !> @param[in]  p3theta Weighted projection operator from Wtheta to W3
-  !> @param[in]  ncell_3d_6 Total number of cells for m3_inv matrix
-  !> @param[in]  m3_inv Inverse of W3 mass matrix
+  !> @param[in]  p3theta Weighted projection operator from Wtheta to W3x
   !> @param[in]  w2_mask LAM mask for W2 space
   !> @param[in]  ndf_w3 Number of degrees of freedom per cell for the pressure space
   !> @param[in]  undf_w3 Unique number of degrees of freedom  for the pressure space
@@ -111,8 +108,6 @@ contains
                                      m3_exner_star,                    &
                                      ncell_3d_5,                       &
                                      p3theta,                          &
-                                     ncell_3d_6,                       &
-                                     m3_inv,                           &
                                      w2_mask,                          &
                                      ndf_w3, undf_w3, map_w3,          &
                                      ndf_w2, undf_w2, map_w2,          &
@@ -126,7 +121,7 @@ contains
   integer(kind=i_def), dimension(stencil_size),         intent(in) :: cell_stencil
   integer(kind=i_def),                                  intent(in) :: ncell_3d_1, ncell_3d_2, &
                                                                       ncell_3d_3, ncell_3d_4, &
-                                                                      ncell_3d_5, ncell_3d_6
+                                                                      ncell_3d_5
   integer(kind=i_def),                                  intent(in) :: undf_w2, ndf_w2
   integer(kind=i_def),                                  intent(in) :: undf_w3, ndf_w3
   integer(kind=i_def),                                  intent(in) :: undf_wt, ndf_wt
@@ -151,7 +146,6 @@ contains
   real(kind=r_def), dimension(ndf_w3, ndf_wt, ncell_3d_3), intent(in) :: p3theta
   real(kind=r_def), dimension(ndf_wt, ndf_w2, ncell_3d_4), intent(in) :: ptheta2v
   real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell_3d_5), intent(in) :: m3_exner_star
-  real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell_3d_6), intent(in) :: m3_inv
 
   ! Internal variables
   integer(kind=i_def) :: k, ik, kk, df, e, stencil_ik
@@ -215,7 +209,7 @@ contains
   ! | I                      0           0            -Nu*Hb^-1*div_star |
   ! | Mt^-1*pt2v             I           0             0                 |
   ! | tau*dt*M3^-1*D(rho^*)  0           I             0                 |
-  ! | 0                     -M3^-1*P3t  -M3^-1*M3_rho  M3^-1*M3_exner    |
+  ! | 0                      -P3t        M3_rho        M3_exner          |
 
   ! This can be more compactly written as
   ! | I 0 0 A |
@@ -227,9 +221,9 @@ contains
   ! A \equiv -Nu*Hb^-1*div_star       : W3  -> W2
   ! B \equiv  Mt^-1*pt2v              : W2v -> Wt
   ! C \equiv  tau*dt*M3^-1*D(rho^*)   : W2  -> W3
-  ! D \equiv  -M3^-1*P3t              : Wt  -> W3
-  ! E \equiv  -M3^-1*M3_rho           : W3  -> W3
-  ! F \equiv  M3^-1*M3_exner          : W3  -> W3
+  ! D \equiv  -P3t                    : Wt  -> W3
+  ! E \equiv  -M3_rho                 : W3  -> W3
+  ! F \equiv   M3_exner               : W3  -> W3
   !
   ! u + A*p = Ru
   ! t + B*u = Rt
@@ -242,8 +236,8 @@ contains
   ! Given this the Helmholtz operator can be written as:
   ! [F + (D*B + E*C)*A]*exner' = RHS
   !
-  ! and note that E*C equiv -M3^-1*M3_rho*tau*dt*M3^-1*D(rho^*) =
-  ! -M3^-1*compound_div
+  ! and note that E*C equiv -M3_rho*tau*dt*M3^-1*D(rho^*) =
+  ! -compound_div
 
   ! And so we seek to rewrite this operator as the coefficients to
   ! each exner value in the stencil
@@ -404,17 +398,17 @@ contains
     ! Compute E*C for all cells in the stencil
     ! EC maps from W2 points to W3 points and we only need it for the central
     ! cell
-    EC = - matmul(m3_inv(:,:,ik), compound_div(:,:,ik) )
+    EC = - compound_div(:,:,ik)
 
     ! Compute D for all cells in the stencil
     ! D maps from Wtheta points to W3 points and we only need it for the
     ! central cell
-    D = - matmul(m3_inv(:,:,ik), p3theta(:,:,ik) )
+    D = - p3theta(:,:,ik)
 
     ! Compute F for all cells in the stencil
     ! F maps from W3 points to W3 points and we only need it for the central
     ! cell
-    F = matmul( m3_inv(:,:,ik), m3_exner_star(:,:,ik) )
+    F = m3_exner_star(:,:,ik)
 
     ! Now compute the coefficients:
 

@@ -89,7 +89,6 @@ contains
     real(kind=r_def), dimension(ndf_w3, ndf_wt, ncell) :: p3theta
     real(kind=r_def), dimension(ndf_wt, ndf_w2, ncell) :: ptheta2v
     real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell) :: m3_exner_star
-    real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell) :: m3_inv
 
     integer(i_def) :: df, k
     real(r_def)    :: answer
@@ -136,10 +135,9 @@ contains
     ! Very simple test, set the operators and fields to constants
     div_star = 1.0_r_def
     ptheta2v = 0.1_r_def
-    compound_div = 10.0_r_def
-    m3_exner_star = 10.0_r_def
-    p3theta = 10.0_r_def
-    m3_inv = 0.1_r_def
+    compound_div = 1.0_r_def
+    m3_exner_star = 1.0_r_def
+    p3theta = 1.0_r_def
 
     ! Compute Helmholtz operator
     call helmholtz_operator_code(5,                                    &
@@ -160,8 +158,6 @@ contains
                                  m3_exner_star,                        &
                                  ncell,                                &
                                  p3theta,                              &
-                                 ncell,                                &
-                                 m3_inv,                               &
                                  w2_mask,                              &
                                  ndf_w3, undf_w3, map_w3,              &
                                  ndf_w2, undf_w2, map_w2,              &
@@ -169,9 +165,9 @@ contains
     ! In terms of the kernel operators we have
     ! A = -u_norm*w2_mask*hb_inv*div_star = -1
     ! B = t_norm*ptheta2v                 =  1
-    ! EC = - m3_inv*compound_div          = -1
-    ! D = - m3_inv*p3theta                = -1
-    ! F = m3_inv*m3_exner_star            =  1
+    ! EC = - compound_div                 = -1
+    ! D = - p3theta                       = -1
+    ! F = m3_exner_star                   =  1
     ! and the resulting Helmholtz operators are then
     ! HC = F + 6*EC*A + 6*D*B*A = 13
     ! HE,HS,HW,HN = EC*A = 1

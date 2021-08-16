@@ -25,12 +25,11 @@ private
 
 type, public, extends(kernel_type) :: apply_mixed_lp_operator_kernel_type
   private
-  type(arg_type) :: meta_args(8) = (/                       &
+  type(arg_type) :: meta_args(7) = (/                       &
        arg_type(GH_FIELD,    GH_REAL, GH_WRITE, W3),        & ! lhs_exner
        arg_type(GH_FIELD,    GH_REAL, GH_READ,  Wtheta),    & ! theta'
        arg_type(GH_FIELD,    GH_REAL, GH_READ,  W3),        & ! rho'
        arg_type(GH_FIELD,    GH_REAL, GH_READ,  W3),        & ! exner'
-       arg_type(GH_OPERATOR, GH_REAL, GH_READ,  W3, W3),    & ! M3^-1
        arg_type(GH_OPERATOR, GH_REAL, GH_READ,  W3, W3),    & ! M3^exner
        arg_type(GH_OPERATOR, GH_REAL, GH_READ,  W3, W3),    & ! M3^rho
        arg_type(GH_OPERATOR, GH_REAL, GH_READ,  W3, Wtheta) & ! P3t
@@ -47,20 +46,18 @@ public :: apply_mixed_lp_operator_code
 
 contains
 !> @brief Compute the LHS of the equation of state:
-!!        lhs_exner = inv_m3*(m3exner*exner - m3rho*rho - p3theta*theta).
+!!        lhs_exner = m3exner*exner - m3rho*rho - p3theta*theta
 !! @param[in] cell Horizontal cell index
 !! @param[in] nlayers Number of layers
 !! @param[in,out] lhs_exner Mixed operator applied to the equation of state
 !! @param[in] theta Potential temperature field
 !! @param[in] rho Density field
 !! @param[in] exner Exner pressure field
-!! @param[in] ncell1 Total number of cells for the inv_m3 operator
-!! @param[in] inv_m3 Inverse mass matrix for the equation of state
-!! @param[in] ncell2 Total number of cells for the m3exner operator
+!! @param[in] ncell1 Total number of cells for the m3exner operator
 !! @param[in] m3exner W3 mass matrix weighted by the reference Exner pressure
-!! @param[in] ncell3 Total number of cells for the m3rho operator
+!! @param[in] ncell2 Total number of cells for the m3rho operator
 !! @param[in] m3rho W3 mass matrix weighted by the reference density
-!! @param[in] ncell4 Total number of cells for the p3theta operator
+!! @param[in] ncell3 Total number of cells for the p3theta operator
 !! @param[in] p3theta Projection from Wtheta to W3 weighted by the reference
 !!                    potential temperature
 !! @param[in] ndf_w3 Number of degrees of freedom per cell for the density space
@@ -74,10 +71,9 @@ subroutine apply_mixed_lp_operator_code(cell,                    &
                                         nlayers,                 &
                                         lhs_exner,               &
                                         theta, rho, exner,       &
-                                        ncell1, inv_m3,          &
-                                        ncell2, m3exner,         &
-                                        ncell3, m3rho,           &
-                                        ncell4, p3theta,         &
+                                        ncell1, m3exner,         &
+                                        ncell2, m3rho,           &
+                                        ncell3, p3theta,         &
                                         ndf_w3, undf_w3, map_w3, &
                                         ndf_wt, undf_wt, map_wt)
 
@@ -85,8 +81,7 @@ subroutine apply_mixed_lp_operator_code(cell,                    &
 
   ! Arguments
   integer(kind=i_def),                    intent(in) :: cell, nlayers
-  integer(kind=i_def),                    intent(in) :: ncell1, ncell2, ncell3, &
-                                                        ncell4
+  integer(kind=i_def),                    intent(in) :: ncell1, ncell2, ncell3
   integer(kind=i_def),                    intent(in) :: undf_wt, ndf_wt
   integer(kind=i_def),                    intent(in) :: undf_w3, ndf_w3
   integer(kind=i_def), dimension(ndf_wt), intent(in) :: map_wt
@@ -98,10 +93,9 @@ subroutine apply_mixed_lp_operator_code(cell,                    &
   real(kind=r_def), dimension(undf_w3), intent(in)    :: rho, exner
 
   ! Operators
-  real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell1), intent(in) :: inv_m3
-  real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell2), intent(in) :: m3exner
-  real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell3), intent(in) :: m3rho
-  real(kind=r_def), dimension(ndf_w3, ndf_wt, ncell4), intent(in) :: p3theta
+  real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell1), intent(in) :: m3exner
+  real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell2), intent(in) :: m3rho
+  real(kind=r_def), dimension(ndf_w3, ndf_wt, ncell3), intent(in) :: p3theta
 
   ! Internal variables
   integer(kind=i_def)                 :: df, k, ik
@@ -120,9 +114,8 @@ subroutine apply_mixed_lp_operator_code(cell,                    &
     ik = (cell-1)*nlayers + k + 1
 
     ! lhs for this element
-    lhs_e = matmul(inv_m3(:,:,ik), matmul(m3exner(:,:,ik),p_e) &
-                                 - matmul(m3rho(:,:,ik),r_e)   &
-                                 - matmul(p3theta(:,:,ik),t_e))
+    lhs_e = matmul(m3exner(:,:,ik),p_e) - matmul(m3rho(:,:,ik),r_e)   &
+            - matmul(p3theta(:,:,ik),t_e)
     do df = 1, ndf_w3
       lhs_exner(map_w3(df)+k) = lhs_e(df)
     end do

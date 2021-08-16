@@ -195,7 +195,7 @@ contains
                                                            mm_w3_inv, div, tau_r_dt, f_star ),              &
                       apply_mixed_lp_operator_kernel_type( y%vector(igh_p), x%vector(igh_t),                &
                                                            x%vector(igh_d), x%vector(igh_p),                &
-                                                           mm_w3_inv, m3_exner_star, m3_rho_star, p3theta), &
+                                                           m3_exner_star, m3_rho_star, p3theta),            &
                       enforce_bc_kernel_type( y_uvw ) )
 
         ! Lateral boundaries

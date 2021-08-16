@@ -317,7 +317,6 @@ contains
     type( field_vector_type ),                intent( in )    :: rhs0
 
     type( operator_type ), pointer :: m3_rho_star => null(),    &
-                                      m3_inv => null(),         &
                                       p2theta => null(),        &
                                       ptheta2 => null(),        &
                                       p3theta => null(),        &
@@ -326,7 +325,7 @@ contains
                                       u_normalisation => null(),&
                                       h_diag => null(),         &
                                       Hb_lumped_inv => null()
-    type( field_type )             :: r_p, u_term
+    type( field_type )             :: u_term
     real( kind=r_def ), parameter  :: minus_one = -1.0_r_def
     type( field_type )             :: rhs_uvw
     type( field_type ), pointer    :: w2_mask => null(), &
@@ -342,7 +341,6 @@ contains
       call invoke( setval_X( rhs_uvw, rhs0%vector( igh_u ) ) )
     end if
 
-    call r_p%initialise( vector_space = rhs0%vector( igh_p )%get_function_space() )
     call u_term%initialise( vector_space = self%rhs_u%get_function_space() )
 
     if ( limited_area ) then
@@ -354,7 +352,6 @@ contains
     ptheta2         => get_ptheta2v()
     p3theta         => get_p3theta()
     m3_rho_star     => get_m3_rho_star()
-    m3_inv          => get_inverse_w3_mass_matrix(mesh_id)
     compound_div    => get_compound_div()
     u_normalisation => get_normalisation(W2, mesh_id)
     Hb_lumped_inv   => get_Hb_lumped_inv()
@@ -380,24 +377,22 @@ contains
     end if
 
     ! Compute H(u_term)
-    ! r_pi = M3^-1*(rhs_pi + P03*M0^-1*rhs_t + M3rho*M3^-1*rhs_r)
+    ! r_pi = rhs_pi + P03*M0^-1*rhs_t + M3rho*M3^-1*rhs_r
     ! r_rho already contains M3^-1 factor
     mt_lumped_inv => get_normalisation(Wtheta, mesh_id)
     if ( element_order == 0 ) then
-      call invoke( setval_c( r_p, 0.0_r_def ),  &
-                   opt_apply_variable_hx_kernel_type( r_p, u_term, mt_lumped_inv, rhs0%vector(igh_d), &
+      call invoke( setval_c( self%rhs_p, 0.0_r_def ),  &
+                   opt_apply_variable_hx_kernel_type( self%rhs_p, u_term, mt_lumped_inv, rhs0%vector(igh_d), &
                                                       compound_div, p3theta, ptheta2, m3_rho_star,&
                                                       minus_one), &
-                   matrix_vector_kernel_type(r_p, rhs0%vector(igh_t), p3theta), &
-                   dg_matrix_vector_kernel_type(self%rhs_p, r_p, m3_inv), &
+                   matrix_vector_kernel_type(self%rhs_p, rhs0%vector(igh_t), p3theta), &
                    inc_X_plus_Y(self%rhs_p, rhs0%vector(igh_p)) )
     else
-      call invoke( setval_c( r_p, 0.0_r_def ),  &
-                   apply_variable_hx_kernel_type( r_p, u_term, mt_lumped_inv, rhs0%vector(igh_d),  &
+      call invoke( setval_c( self%rhs_p, 0.0_r_def ),  &
+                   apply_variable_hx_kernel_type( self%rhs_p, u_term, mt_lumped_inv, rhs0%vector(igh_d),  &
                                                   compound_div, p3theta, ptheta2, m3_rho_star,&
                                                   minus_one), &
-                   matrix_vector_kernel_type(r_p, rhs0%vector(igh_t), p3theta), &
-                   dg_matrix_vector_kernel_type(self%rhs_p, r_p, m3_inv), &
+                   matrix_vector_kernel_type(self%rhs_p, rhs0%vector(igh_t), p3theta), &
                    inc_X_plus_Y(self%rhs_p, rhs0%vector(igh_p)) )
     end if
 
@@ -412,7 +407,7 @@ contains
 
     call self%rhs_p%log_minmax(LOG_LEVEL_DEBUG, 'helmholtz_rhs')
 
-    nullify( m3_rho_star,  m3_inv, p2theta, ptheta2, p3theta, &
+    nullify( m3_rho_star, p2theta, ptheta2, p3theta, &
              compound_div, mt_lumped_inv, u_normalisation, h_diag, &
              Hb_lumped_inv )
 
