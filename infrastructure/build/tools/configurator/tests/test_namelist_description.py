@@ -44,6 +44,7 @@ module test_config_mod
                            l_def, &
                            r_def, &
                            r_double, &
+                           r_second, &
                            r_single, &
                            str_def, &
                            str_max_filename
@@ -75,6 +76,7 @@ module test_config_mod
   real(r_double), public, protected :: lreal = rmdi
   integer(i_short), public, protected :: sint = imdi
   real(r_single), public, protected :: sreal = rmdi
+  real(r_second), public, protected :: treal = rmdi
   integer(i_def), public, protected :: vint = imdi
   real(r_def), public, protected :: vreal = rmdi
   character(str_def), public, protected :: vstr = cmdi
@@ -206,6 +208,7 @@ contains
     integer(i_native) :: buffer_logical_l_def(1)
     real(r_def) :: buffer_real_r_def(2)
     real(r_double) :: buffer_real_r_double(1)
+    real(r_second) :: buffer_real_r_second(1)
     real(r_single) :: buffer_real_r_single(1)
 
     character(str_def) :: enum
@@ -220,6 +223,7 @@ contains
                     lreal, &
                     sint, &
                     sreal, &
+                    treal, &
                     vint, &
                     vreal, &
                     vstr
@@ -236,6 +240,7 @@ contains
     lreal = rmdi
     sint = imdi
     sreal = rmdi
+    treal = rmdi
     vint = imdi
     vreal = rmdi
     vstr = cmdi
@@ -261,6 +266,7 @@ contains
     buffer_real_r_double(1) = lreal
     buffer_integer_i_short(1) = sint
     buffer_real_r_single(1) = sreal
+    buffer_real_r_second(1) = treal
     buffer_integer_i_def(1) = vint
     buffer_real_r_def(1) = vreal
     buffer_character_str_def(1) = vstr
@@ -274,6 +280,7 @@ contains
     call broadcast( buffer_logical_l_def, 1, 0 )
     call broadcast( buffer_real_r_def, 2, 0 )
     call broadcast( buffer_real_r_double, 1, 0 )
+    call broadcast( buffer_real_r_second, 1, 0 )
     call broadcast( buffer_real_r_single, 1, 0 )
 
     dint = buffer_integer_i_def(2)
@@ -286,6 +293,7 @@ contains
     lreal = buffer_real_r_double(1)
     sint = buffer_integer_i_short(1)
     sreal = buffer_real_r_single(1)
+    treal = buffer_real_r_second(1)
     vint = buffer_integer_i_def(1)
     vreal = buffer_real_r_def(1)
     vstr = buffer_character_str_def(1)
@@ -349,6 +357,7 @@ contains
     lreal = real(rmdi,r_double)
     sint = imdi
     sreal = real(rmdi,r_single)
+    treal = real(rmdi,r_second)
     vint = imdi
     vreal = real(rmdi,r_def)
     vstr = cmdi
@@ -371,6 +380,7 @@ end module test_config_mod
         uut.add_value('dreal', 'real', 'default')
         uut.add_value('sreal', 'real', 'single')
         uut.add_value('lreal', 'real', 'double')
+        uut.add_value('treal', 'real', 'second')
         uut.add_string('vstr')
         uut.add_string('dstr', configure_string_length='default')
         uut.add_string('fstr', configure_string_length='filename')

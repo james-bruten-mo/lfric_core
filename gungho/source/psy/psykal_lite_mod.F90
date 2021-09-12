@@ -607,13 +607,13 @@ subroutine invoke_fv_mass_fluxes( rho,            &
                                   a1_coeffs,      &
                                   a2_coeffs,      &
                                   direction,      &
-                                  stencil_extent )
+                                  stencil_extent, &
+                                  dt )
 
   use fv_mass_flux_kernel_mod,      only: fv_mass_flux_code
   use flux_direction_mod,           only: x_direction, y_direction
   use stencil_dofmap_mod,           only: stencil_dofmap_type, &
                                           STENCIL_1DX, STENCIL_1DY
-  use timestepping_config_mod,      only: dt
   use mesh_mod,                     only: mesh_type
   implicit none
 
@@ -623,6 +623,7 @@ subroutine invoke_fv_mass_fluxes( rho,            &
   type(field_type), intent(in)      :: a0_coeffs
   type(field_type), intent(in)      :: a1_coeffs
   type(field_type), intent(in)      :: a2_coeffs
+  real(r_def),      intent(in)      :: dt
   integer, intent(in)               :: direction
   integer, intent(in)               :: stencil_extent
 
@@ -718,13 +719,14 @@ end subroutine invoke_fv_mass_fluxes
 
 !-------------------------------------------------------------------------------
 !> invoke_calc_deppts: Invoke the calculation of departure points in 1D
-subroutine invoke_calc_deppts(  u_n,                  &
-                                u_np1,                &
-                                dep_pts,              &
-                                cell_orientation,     &
-                                direction,            &
-                                dep_pt_method,        &
-                                dep_pt_stencil_extent )
+subroutine invoke_calc_deppts(  u_n,                   &
+                                u_np1,                 &
+                                dep_pts,               &
+                                cell_orientation,      &
+                                direction,             &
+                                dep_pt_method,         &
+                                dep_pt_stencil_extent, &
+                                dt )
 
   use calc_departure_point_kernel_mod,  only : calc_departure_point_code
   use stencil_dofmap_mod,               only : stencil_dofmap_type, &
@@ -732,7 +734,6 @@ subroutine invoke_calc_deppts(  u_n,                  &
                                                STENCIL_1DY
   use flux_direction_mod,               only : x_direction, y_direction
   use mesh_mod,                         only : mesh_type
-  use timestepping_config_mod,          only : dt
 
   implicit none
 
@@ -743,6 +744,7 @@ subroutine invoke_calc_deppts(  u_n,                  &
   integer, intent(in)                 :: direction
   integer, intent(in)                 :: dep_pt_method
   integer, intent(in)                 :: dep_pt_stencil_extent
+  real( r_def ), intent( in )         :: dt
 
   type( field_proxy_type )        :: u_n_proxy
   type( field_proxy_type )        :: u_np1_proxy

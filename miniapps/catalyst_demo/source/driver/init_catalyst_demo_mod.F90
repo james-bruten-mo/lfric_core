@@ -184,7 +184,7 @@ module init_catalyst_demo_mod
     ! Create runtime_constants object. This in turn creates various things
     ! needed by the timestepping algorithms such as mass matrix operators, mass
     ! matrix diagonal fields and the geopotential field
-    call create_runtime_constants(mesh_id, twod_mesh_id, chi, panel_id)
+    call create_runtime_constants(mesh_id, twod_mesh_id, chi, panel_id, dt)
 
     ! Initialise prognostic fields
     call gw_init_fields_alg(wind, pressure, buoyancy)

@@ -149,7 +149,8 @@ class _Scalar(_Property):
                        'real':      {'default': 'r_def',
                                      'native':  'r_native',
                                      'single':  'r_single',
-                                     'double':  'r_double'}}
+                                     'double':  'r_double',
+                                     'second':  'r_second'}}
 
     _fortranFormatMap = {'character': 'A',
                          'logical':   'L2',

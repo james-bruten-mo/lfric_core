@@ -55,13 +55,15 @@ contains
   !> @param[in] rho_y                Density calculated from advective Cosmic step in y-direction
   !> @param[in,out] mass_flux_x      1D conservative mass flux values in the x-direction
   !> @param[in,out] mass_flux_y      1D conservative mass flux values in the y-direction
+  !> @param[in] dt                   The model timestep length
   subroutine conservative_flux_alg( dep_pts_x,           &
                                     dep_pts_y,           &
                                     cell_orientation,    &
                                     rho_x,               &
                                     rho_y,               &
                                     mass_flux_x,         &
-                                    mass_flux_y )
+                                    mass_flux_y,         &
+                                    dt )
 
     implicit none
 
@@ -72,6 +74,7 @@ contains
     type(field_type),    intent(in)     :: rho_y
     type(field_type),    intent(inout)  :: mass_flux_x
     type(field_type),    intent(inout)  :: mass_flux_y
+    real(r_def),         intent(in)     :: dt
 
     type( field_type ) :: a0_x, a1_x, a2_x, a0_y, a1_y, a2_y
     type( field_type ) :: rho_x_corrected, rho_y_corrected
@@ -113,10 +116,12 @@ contains
                                               dep_pt_stencil_extent  )
 
     call invoke_fv_mass_fluxes(  rho_y, dep_pts_x, mass_flux_x,  &
-                                 a0_y, a1_y, a2_y, x_direction, dep_pt_stencil_extent )
+                                 a0_y, a1_y, a2_y, x_direction, dep_pt_stencil_extent, &
+                                 dt )
 
     call invoke_fv_mass_fluxes(  rho_x, dep_pts_y, mass_flux_y,  &
-                                 a0_x, a1_x, a2_x, y_direction, dep_pt_stencil_extent )
+                                 a0_x, a1_x, a2_x, y_direction, dep_pt_stencil_extent, &
+                                 dt )
 
   end subroutine conservative_flux_alg
 

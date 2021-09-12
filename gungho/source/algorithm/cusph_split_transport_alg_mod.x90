@@ -104,8 +104,9 @@ contains
                  setval_c(mass_flux_x, 0.0_r_def),                                &
                  setval_c(mass_flux_y, 0.0_r_def) )
 
-    call conservative_flux_alg(dep_pts_x, dep_pts_y,             &
-                           cell_orientation, rho_hat_adv_x, rho_hat_adv_y, mass_flux_x, mass_flux_y )
+    call conservative_flux_alg(dep_pts_x, dep_pts_y,                       &
+                               cell_orientation, rho_hat_adv_x, rho_hat_adv_y, &
+                               mass_flux_x, mass_flux_y, dt )
 
     nullify( w2_fs )
     nullify( w3_fs )

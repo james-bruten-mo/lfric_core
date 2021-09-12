@@ -11,7 +11,7 @@
 
 module init_diagnostics_mod
 
-    use constants_mod,                 only : i_def, str_short, str_def
+    use constants_mod,                 only : i_def, str_short, str_def, r_def
     use axisspec_mod,                  only : axisspec_type
     use field_mod,                     only : field_type
     use field_parent_mod,              only : write_interface
@@ -44,12 +44,13 @@ module init_diagnostics_mod
 contains
 
     subroutine init_diagnostics(mesh_id, twod_mesh_id, chi, panel_id, &
-                                model_data, fieldspec_collection)
+                                dt, model_data, fieldspec_collection)
 
         implicit none
 
         integer(i_def), intent(in) :: mesh_id
         integer(i_def), intent(in) :: twod_mesh_id
+        real(r_def),    intent(in) :: dt
 
         type (model_data_type), intent(inout) :: model_data
         type (fieldspec_collection_type), intent(in) :: fieldspec_collection
@@ -190,7 +191,7 @@ contains
             end if
         end do
 
-        call create_runtime_constants(mesh_id, twod_mesh_id, chi, panel_id)
+        call create_runtime_constants(mesh_id, twod_mesh_id, chi, panel_id, dt)
 
         call log_event('diagnostics: Miniapp initialised', LOG_LEVEL_INFO)
 

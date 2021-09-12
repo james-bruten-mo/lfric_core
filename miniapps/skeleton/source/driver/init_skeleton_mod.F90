@@ -11,7 +11,7 @@
 
 module init_skeleton_mod
 
-  use constants_mod,                  only : i_def
+  use constants_mod,                  only : i_def, r_def
   use field_mod,                      only : field_type
   use field_parent_mod,               only : write_interface
   use finite_element_config_mod,      only : element_order
@@ -29,12 +29,13 @@ module init_skeleton_mod
 
   contains
 
-  subroutine init_skeleton(mesh_id, twod_mesh_id, chi, panel_id, field_1)
+  subroutine init_skeleton(mesh_id, twod_mesh_id, chi, panel_id, dt, field_1)
 
     implicit none
 
     integer(i_def), intent(in)               :: mesh_id
     integer(i_def), intent(in)               :: twod_mesh_id
+    real(r_def),    intent(in)               :: dt
     ! Prognostic fields
     type( field_type ), intent(inout)        :: field_1
     ! Coordinate field
@@ -64,7 +65,7 @@ module init_skeleton_mod
     ! Create runtime_constants object. This in turn creates various things
     ! needed by the fem algorithms such as mass matrix operators, mass
     ! matrix diagonal fields and the geopotential field
-    call create_runtime_constants(mesh_id, twod_mesh_id, chi, panel_id)
+    call create_runtime_constants(mesh_id, twod_mesh_id, chi, panel_id, dt)
 
     call log_event( 'skeleton: Miniapp initialised', LOG_LEVEL_INFO )
 

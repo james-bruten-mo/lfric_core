@@ -22,7 +22,7 @@ module multires_coupling_driver_mod
   use checksum_alg_mod,                         only : checksum_alg
   use clock_mod,                                only : clock_type
   use constants_mod,                            only : i_def, i_native, &
-                                                       str_def
+                                                       str_def, r_def
   use lfric_xios_io_mod,                        only : initialise_xios
   use io_config_mod,                            only : write_diag,     &
                                                        use_xios_io,    &
@@ -120,6 +120,8 @@ contains
     character(:),      intent(in), allocatable :: filename
     integer(i_native), intent(in)              :: model_communicator
 
+    real(r_def) :: dt_model
+
     call log_event( 'Initialising Infrastructure...', LOG_LEVEL_ALWAYS )
     call initialise_infrastructure( model_communicator, filename, program_name )
 
@@ -131,6 +133,7 @@ contains
     !-------------------------------------------------------------------------
     ! Initialise meshes, FEM and runtime constants
     !-------------------------------------------------------------------------
+    dt_model = real(dt, r_def)
 
     call initialise_multires_coupling_model( prime_mesh_id, prime_2D_mesh_id,           &
                                              prime_shifted_mesh_id,                     &
@@ -144,7 +147,7 @@ contains
                                              prime_double_level_chi,                    &
                                              chi_fields,                                &
                                              panel_id_fields,                           &
-                                             chi_mg, panel_id_mg )
+                                             chi_mg, panel_id_mg, dt_model )
 
     ! Assign mesh ids panel id fields and coordinate fields
     output_2D_mesh_name = trim(output_mesh_name)//'_2d'

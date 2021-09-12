@@ -51,12 +51,14 @@ contains
 !> @param[in]     rho_x              Density values after advective update in x direction
 !> @param[in]     rho_y              Density values after advective update in y direction
 !> @param[in,out] mass_flux          1D conservative mass flux values in the specified direction
+!> @param[in]     dt                 The model timestep length
   subroutine oned_conservative_flux_alg( direction,           &
                                          dep_pts,             &
                                          cell_orientation,    &
                                          rho_x,               &
                                          rho_y,               &
-                                         mass_flux)
+                                         mass_flux,           &
+                                         dt)
 
     implicit none
 
@@ -66,6 +68,7 @@ contains
     type(field_type),    intent(in)     :: rho_x
     type(field_type),    intent(in)     :: rho_y
     type(field_type),    intent(inout)  :: mass_flux
+    real(r_def),         intent(in)     :: dt
 
     type( field_type ) :: a0, a1, a2
     type( field_type ) :: rho_x_halos_corrected, rho_y_halos_corrected
@@ -97,10 +100,12 @@ contains
 
     if (direction == x_direction) then
       call invoke_fv_mass_fluxes( rho_y, dep_pts, mass_flux,  &
-                                  a0, a1, a2, direction, dep_pt_stencil_extent )
+                                  a0, a1, a2, direction, dep_pt_stencil_extent, &
+                                  dt )
     elseif (direction == y_direction) then
       call invoke_fv_mass_fluxes( rho_y, dep_pts, mass_flux,  &
-                                  a0, a1, a2, direction, dep_pt_stencil_extent )
+                                  a0, a1, a2, direction, dep_pt_stencil_extent, &
+                                  dt )
     end if
 
     nullify(rho_fs)

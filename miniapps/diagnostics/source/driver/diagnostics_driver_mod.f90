@@ -10,7 +10,7 @@
 module diagnostics_driver_mod
 
   use clock_mod,                     only : clock_type
-  use constants_mod,                 only : i_def, i_native, str_def
+  use constants_mod,                 only : i_def, i_native, str_def, r_def
   use diagnostics_configuration_mod, only : load_configuration, program_name
   use field_mod,                     only : field_type
   use field_parent_mod,              only : field_parent_type
@@ -101,6 +101,9 @@ contains
 
     character(len = *), parameter :: xios_ctx = "diagnostics"
 
+    class(clock_type), pointer :: clock
+    real(r_def)                :: dt_model
+
     integer(i_def)     :: total_ranks, local_rank
 
     integer(i_native) :: log_level
@@ -167,11 +170,6 @@ contains
     call log_event("Populating fieldspec collection", LOG_LEVEL_INFO)
     call populate_fieldspec_collection(iodef_path)
 
-    ! Create and initialise prognostic fields
-    call init_diagnostics(mesh_id, twod_mesh_id,          &
-                          chi, panel_id,                  &
-                          model_data, fieldspec_collection)
-
     if (use_xios_io) then
       call log_event( "init XIOS", log_level_info )
       call initialise_xios( io_context,         &
@@ -192,6 +190,14 @@ contains
                                  spinup_period,  &
                                  dt )
     end if
+
+    clock => io_context%get_clock()
+    dt_model = real(clock%get_seconds_per_step(), r_def)
+
+    ! Create and initialise prognostic fields
+    call init_diagnostics(mesh_id, twod_mesh_id,          &
+                          chi, panel_id, dt_model,        &
+                          model_data, fieldspec_collection)
 
     call log_event("seed starting values", LOG_LEVEL_INFO)
     ! Seed values as this is a test!

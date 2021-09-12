@@ -14,7 +14,7 @@ module skeleton_driver_mod
   use clock_mod,                  only : clock_type
   use configuration_mod,          only : final_configuration
   use constants_mod,              only : i_def, i_native, &
-                                         PRECISION_REAL
+                                         PRECISION_REAL, r_def
   use convert_to_upper_mod,       only : convert_to_upper
   use create_mesh_mod,            only : init_mesh
   use create_fem_mod,             only : init_fem
@@ -98,6 +98,9 @@ contains
     integer(i_def)    :: total_ranks, local_rank
     integer(i_native) :: log_level
 
+    class(clock_type), pointer :: clock
+    real(r_def)                :: dt_model
+
     !Store the MPI communicator for later use
     call store_comm( model_communicator )
 
@@ -148,7 +151,7 @@ contains
               source = local_mesh_collection_type() )
 
     allocate( mesh_collection, &
-              source=mesh_collection_type() )
+              source = mesh_collection_type() )
 
     ! Create the mesh
     call init_mesh( local_rank, total_ranks, mesh_id, &
@@ -184,8 +187,11 @@ contains
                                  dt )
     end if
 
+    clock => io_context%get_clock()
+    dt_model = real(clock%get_seconds_per_step(), r_def)
+
     ! Create and initialise prognostic fields
-    call init_skeleton(mesh_id, twod_mesh_id, chi, panel_id, field_1)
+    call init_skeleton(mesh_id, twod_mesh_id, chi, panel_id, dt_model, field_1)
 
   end subroutine initialise
 

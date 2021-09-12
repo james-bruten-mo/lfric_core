@@ -43,6 +43,7 @@ contains
   !> @param[in]     dep_pts_y         Departure points in the y direction
   !> @param[in]     detj_at_w2        Det(J) at W2 dofs
   !> @param[in,out] increment         Density rate increment [kg m^-3 s^-1]
+  !> @param[in]     dt                The model timestep length
   subroutine flux_diff_horz( direction,        &
                              rho_x,            &
                              rho_y,            &
@@ -50,6 +51,7 @@ contains
                              dep_pts_x,        &
                              dep_pts_y,        &
                              detj_at_w2,       &
+                             dt,               &
                              increment )
 
     implicit none
@@ -61,6 +63,7 @@ contains
     type(field_type), intent(in)    :: dep_pts_x
     type(field_type), intent(in)    :: dep_pts_y
     type(field_type), intent(in)    :: detj_at_w2
+    real(r_def),      intent(in)    :: dt
     type(field_type), intent(inout) :: increment
 
     ! Mass fluxes
@@ -79,7 +82,7 @@ contains
                  setval_c(mass_flux_y, 0.0_r_def) )
 
     call conservative_flux_alg( dep_pts_x, dep_pts_y, cell_orientation, &
-                                rho_x, rho_y, mass_flux_x, mass_flux_y )
+                                rho_x, rho_y, mass_flux_x, mass_flux_y, dt )
 
     ! Calculate divergence (increment) in the specified direction
     call cusph_fv_density_update_alg( increment, mass_flux_x, mass_flux_y, &

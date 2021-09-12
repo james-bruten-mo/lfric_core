@@ -9,7 +9,7 @@
 module gravity_wave_driver_mod
 
   use clock_mod,                      only: clock_type
-  use constants_mod,                  only: i_def, i_native
+  use constants_mod,                  only: i_def, i_native, r_def
   use gravity_wave_infrastructure_mod,only: initialise_infrastructure, &
                                             finalise_infrastructure
   use gravity_wave_io_mod,            only: initialise_io, &

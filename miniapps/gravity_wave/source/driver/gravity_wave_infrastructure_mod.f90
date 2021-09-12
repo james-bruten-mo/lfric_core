@@ -8,8 +8,9 @@
 
 module gravity_wave_infrastructure_mod
 
+  use clock_mod,                  only : clock_type
   use configuration_mod,          only : final_configuration
-  use constants_mod,              only : i_def, i_native, PRECISION_REAL
+  use constants_mod,              only : i_def, i_native, PRECISION_REAL, r_def
   use convert_to_upper_mod,       only : convert_to_upper
   use derived_config_mod,         only : set_derived_config
   use gravity_wave_mod,           only : load_configuration
@@ -88,6 +89,9 @@ contains
     integer(i_def) :: total_ranks, local_rank
 
     integer(i_native) :: log_level
+
+    type(clock_type), pointer :: clock
+    real(r_def)               :: dt_model
 
     ! Initialise YAXT
     call xt_initialize(comm)
@@ -173,11 +177,13 @@ contains
     !-------------------------------------------------------------------------
     ! Setup constants
     !-------------------------------------------------------------------------
+    clock => io_context%get_clock()
+    dt_model = real(clock%get_seconds_per_step(), r_def)
 
     ! Create runtime_constants object. This in turn creates various things
     ! needed by the timestepping algorithms such as mass matrix operators, mass
     ! matrix diagonal fields and the geopotential field and limited area masks.
-    call create_runtime_constants(mesh_id, twod_mesh_id, chi, panel_id,  &
+    call create_runtime_constants(mesh_id, twod_mesh_id, chi, panel_id, dt_model,     &
                                   mg_mesh_ids    = multigrid_mesh_ids,                &
                                   mg_2D_mesh_ids = multigrid_2D_mesh_ids,             &
                                   chi_mg         = chi_mg,                            &

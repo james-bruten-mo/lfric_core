@@ -33,7 +33,6 @@ module physical_op_constants_mod
                                                 rehabilitate
   use formulation_config_mod,             only: rotating, use_physics
   use mixing_config_mod,                  only: smagorinsky
-  use timestepping_config_mod,            only: dt
   use planet_config_mod,                  only: radius, gravity, &
                                                 scaled_omega, scaled_radius
   use base_mesh_config_mod,               only: f_lat
@@ -88,13 +87,15 @@ contains
   !> @param[in] mesh_id         Mesh_id
   !> @param[in] chi             coordinate field
   !> @param[in] panel_id        panel id
-  subroutine create_physical_op_constants(mesh_id, chi, panel_id)
+  !> @param[in] dt              The model timestep length
+  subroutine create_physical_op_constants(mesh_id, chi, panel_id, dt)
     implicit none
 
     ! Arguments
     integer(i_def),   intent(in) :: mesh_id
     type(field_type), intent(in) :: chi(:)
     type(field_type), intent(in) :: panel_id
+    real(r_def),      intent(in) :: dt
 
     ! Internal variables
     type(function_space_type),  pointer :: w1_k0_fs  => null()

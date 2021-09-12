@@ -98,7 +98,8 @@ contains
     call invoke_subgrid_coeffs(a0, a1, a2, mass, cell_orientation, direction, &
                                rho_approximation_stencil_extent, dep_pt_stencil_extent)
     call invoke_fv_mass_fluxes(mass, dep_pts, mass_flux, &
-                               a0, a1, a2, direction, dep_pt_stencil_extent)
+                               a0, a1, a2, direction, dep_pt_stencil_extent, &
+                               dt )
 
     call cusph_density_update_alg(rho_in, mass_flux, rho_adv_np1, &
                                   cell_orientation, direction, dt)
@@ -115,7 +116,8 @@ contains
                                rho_approximation_stencil_extent, dep_pt_stencil_extent)
 
     call invoke_fv_mass_fluxes(mass, dep_pts, mass_flux, &
-                               a0, a1, a2, direction, dep_pt_stencil_extent)
+                               a0, a1, a2, direction, dep_pt_stencil_extent, &
+                               dt )
 
     call cusph_density_update_alg(rho_constant_1, mass_flux, rho_constant_np1, &
                                   cell_orientation, direction, dt)

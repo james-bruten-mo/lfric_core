@@ -13,8 +13,7 @@ module transport_driver_mod
   use clock_mod,                      only: clock_type
   use configuration_mod,              only: final_configuration
   use constants_mod,                  only: i_def, i_native, l_def, &
-                                            r_def, r_second, &
-                                            tiny_eps
+                                            r_def
   use convert_to_upper_mod,           only: convert_to_upper
   use create_fem_mod,                 only: init_fem
   use create_mesh_mod,                only: init_mesh
@@ -154,12 +153,15 @@ contains
     character(len=*), parameter :: xios_ctx  = "transport"
 
     class(clock_type), pointer :: clock
+    real(r_def)                :: dt_model
 
     integer(i_def)    :: total_ranks, local_rank
     integer(i_native) :: log_level
 
     integer(i_def), allocatable :: multigrid_mesh_ids(:)
     integer(i_def), allocatable :: multigrid_2d_mesh_ids(:)
+
+    dt_model = real(dt, r_def)
 
     ! Store the MPI communicator for later use
     call store_comm( model_communicator )
@@ -236,7 +238,7 @@ contains
 
     ! Transport initialisation
     call init_transport( mesh_id, twod_mesh_id, chi, panel_id,          &
-                         shifted_mesh_id, shifted_chi,                  &
+                         dt_model, shifted_mesh_id, shifted_chi,        &
                          wind_n, density, theta, dep_pts_x, dep_pts_y,  &
                          dep_pts_z, increment, wind_divergence,         &
                          wind_shifted, density_shifted )
@@ -279,16 +281,14 @@ contains
                             panel_id,           &
                             timestep_start,     &
                             timestep_end,       &
-                            real(spinup_period, &
-                                 r_second),     &
-                            real(dt, r_second) )
+                            spinup_period,      &
+                            dt )
     else
       call initialise_simple_io( io_context,         &
                                  timestep_start,     &
                                  timestep_end,       &
-                                 real(spinup_period, &
-                                      r_second),     &
-                                 real(dt, r_second) )
+                                 spinup_period,      &
+                                 dt )
     end if
 
     clock => io_context%get_clock()

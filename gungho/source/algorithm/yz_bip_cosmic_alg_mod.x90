@@ -100,7 +100,7 @@ contains
 
     ! Calculate the mass flux in the Y direction.
     call oned_conservative_flux_alg( y_direction, dep_pts_y, cell_orientation, &
-                                     rho_hat_adv_z, rho_hat_adv_z, mass_flux_y )
+                                     rho_hat_adv_z, rho_hat_adv_z, mass_flux_y, dt )
 
     ! Calculate the divergence in the Y direction and update density.
     call cosmic_divergence_alg( increment_y, mass_flux_y, detj_at_w2,          &

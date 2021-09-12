@@ -10,7 +10,7 @@
 
 module init_transport_mod
 
-  use constants_mod,                  only: i_def
+  use constants_mod,                  only: i_def, r_def
   use field_mod,                      only: field_type
   use field_parent_mod,               only: write_interface
   use finite_element_config_mod,      only: element_order
@@ -33,6 +33,7 @@ module init_transport_mod
   !> @param[in] twod_mesh_id           2D Mesh-id
   !> @param[in,out] chi                Coordinate field
   !> @param[in,out] panel_id           2D field with cubed sphere panel id
+  !> @param[in]     dt                 The model timestep length
   !> @param[in] shifted_mesh_id        Mesh-id for vertically shifted mesh
   !> @param[in,out] shifted_chi        Coordinate field for vertically shifted mesh
   !> @param[in,out] wind_n             Wind field at timestep n
@@ -46,7 +47,7 @@ module init_transport_mod
   !> @param[in,out] wind_shifted       Wind field on vertically shifted W2 field
   !> @param[in,out] density_shifted    Density field on vertically shifted W3 field
   subroutine init_transport( mesh_id, twod_mesh_id, chi, panel_id, &
-                             shifted_mesh_id, shifted_chi,         &
+                             dt, shifted_mesh_id, shifted_chi,     &
                              wind_n, density, theta,               &
                              dep_pts_x, dep_pts_y, dep_pts_z,      &
                              increment, divergence,                &
@@ -58,6 +59,7 @@ module init_transport_mod
     integer(i_def),   intent(in)      :: twod_mesh_id
     type(field_type), intent(inout)   :: chi(:)
     type(field_type), intent(inout)   :: panel_id
+    real(r_def),      intent(in)      :: dt
     integer(i_def),   intent(in)      :: shifted_mesh_id
     type(field_type), intent(inout)   :: shifted_chi(:)
     type(field_type), intent(inout)   :: wind_n
@@ -104,7 +106,7 @@ module init_transport_mod
 
     ! Create runtime_constants object.
     call create_runtime_constants( mesh_id, twod_mesh_id, chi, panel_id, &
-                                   shifted_mesh_id, shifted_chi )
+                                   dt, shifted_mesh_id, shifted_chi )
 
     ! Initialise density and theta fields
     call transport_init_fields_alg( wind_n,    &

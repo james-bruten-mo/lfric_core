@@ -167,9 +167,9 @@ contains
 
       ! Calculate increments in x and y
       call flux_diff_horz( x_direction, rho_x, rho_y, cell_orientation, &
-                           dep_pts_x, dep_pts_y, detj_at_w2, increment_x )
+                           dep_pts_x, dep_pts_y, detj_at_w2, dt, increment_x )
       call flux_diff_horz( y_direction, rho_x, rho_y, cell_orientation, &
-                           dep_pts_x, dep_pts_y, detj_at_w2, increment_y )
+                           dep_pts_x, dep_pts_y, detj_at_w2, dt, increment_y )
 
       ! Calculate update in horizontal ( rho_xy )
       call invoke( X_plus_Y(increment_xy, increment_x, increment_y), &
@@ -207,9 +207,9 @@ contains
 
       ! Calculate fluxes and increments
       call flux_diff_horz( x_direction, rho_star, rho, cell_orientation, &
-                           dep_pts_x, dep_pts_y, detj_at_w2, increment_x )
+                           dep_pts_x, dep_pts_y, detj_at_w2, dt, increment_x )
       call flux_diff_horz( y_direction, rho_star, rho, cell_orientation, &
-                           dep_pts_x, dep_pts_y, detj_at_w2, increment_y )
+                           dep_pts_x, dep_pts_y, detj_at_w2, dt, increment_y )
       call flux_diff_vert( rho_starstar, cell_orientation, dep_pts_z, &
                            detj_at_w2, dt, increment_z )
 
@@ -257,9 +257,9 @@ contains
       ! Calculate fluxes and increments
       ! F(rho_yz), G(rho_zx), H(rho_xy)
       call flux_diff_horz( x_direction, rho_zx, rho_yz, cell_orientation, &
-                           dep_pts_x, dep_pts_y, detj_at_w2, increment_x )
+                           dep_pts_x, dep_pts_y, detj_at_w2, dt, increment_x )
       call flux_diff_horz( y_direction, rho_zx, rho_yz, cell_orientation, &
-                           dep_pts_x, dep_pts_y, detj_at_w2, increment_y )
+                           dep_pts_x, dep_pts_y, detj_at_w2, dt, increment_y )
       call flux_diff_vert( rho_xy, cell_orientation, dep_pts_z, &
                            detj_at_w2, dt, increment_z )
 
@@ -321,9 +321,9 @@ contains
 
       ! Calculate fluxes and increments
       call flux_diff_horz( x_direction, rho_for_G, rho_for_F, cell_orientation, &
-                           dep_pts_x, dep_pts_y, detj_at_w2, increment_x )
+                           dep_pts_x, dep_pts_y, detj_at_w2, dt, increment_x )
       call flux_diff_horz( y_direction, rho_for_G, rho_for_F, cell_orientation, &
-                           dep_pts_x, dep_pts_y, detj_at_w2, increment_y )
+                           dep_pts_x, dep_pts_y, detj_at_w2, dt, increment_y )
       call flux_diff_vert( rho_for_H, cell_orientation, dep_pts_z, &
                            detj_at_w2, dt, increment_z )
 

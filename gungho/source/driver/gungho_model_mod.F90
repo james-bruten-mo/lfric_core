@@ -16,7 +16,7 @@ module gungho_model_mod
   use create_mesh_mod,            only : init_mesh, final_mesh
   use configuration_mod,          only : final_configuration
   use conservation_algorithm_mod, only : conservation_algorithm
-  use constants_mod,              only : i_def, i_native, &
+  use constants_mod,              only : i_def, i_native, r_def, &
                                          PRECISION_REAL, r_second
   use convert_to_upper_mod,       only : convert_to_upper
   use count_mod,                  only : count_type, halo_calls
@@ -189,6 +189,7 @@ contains
     integer(i_native) :: log_level
 
     class(clock_type), pointer :: clock
+    real(r_def)                :: dt_model
 
     type(field_type) :: surface_altitude
 
@@ -326,19 +327,20 @@ contains
                             panel_id,                      &
                             timestep_start,                &
                             timestep_end,                  &
-                            real(spinup_period, r_second), &
-                            real(dt, r_second),            &
+                            spinup_period,                 &
+                            dt,                            &
                             populate_filelist=populate_pointer )
     else
       call initialise_simple_io( &
                             io_context,                    &
                             timestep_start,                &
                             timestep_end,                  &
-                            real(spinup_period, r_second), &
-                            real(dt, r_second) )
+                            spinup_period,                 &
+                            dt )
     end if
 
     clock => io_context%get_clock()
+    dt_model = real(clock%get_seconds_per_step(), r_def)
 
     ! Set up surface altitude field - this will be used to generate orography
     ! for models with global land mass included (i.e GAL)
@@ -364,8 +366,8 @@ contains
     ! Create runtime_constants object. This in turn creates various things
     ! needed by the timestepping algorithms such as mass matrix operators, mass
     ! matrix diagonal fields and the geopotential field
-    call create_runtime_constants(mesh_id, twod_mesh_id, chi,                 &
-                                  panel_id, shifted_mesh_id, shifted_chi,     &
+    call create_runtime_constants(mesh_id, twod_mesh_id, chi, panel_id,       &
+                                  dt_model, shifted_mesh_id, shifted_chi,     &
                                   double_level_mesh_id, double_level_chi,     &
                                   multigrid_mesh_ids, multigrid_2D_mesh_ids,  &
                                   chi_mg, panel_id_mg)

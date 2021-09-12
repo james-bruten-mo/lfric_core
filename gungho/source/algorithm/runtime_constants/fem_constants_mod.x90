@@ -32,7 +32,7 @@ module fem_constants_mod
   ! Configuration
   use finite_element_config_mod,          only: element_order, nqp_exact
   use formulation_config_mod,             only: dlayer_on, rotating
-  use timestepping_config_mod,            only: dt, tau_u
+  use timestepping_config_mod,            only: tau_u
   use damping_layer_config_mod,           only: dl_base, dl_str
   use extrusion_config_mod,               only: domain_top
   use planet_config_mod,                  only: scaled_omega, radius
@@ -146,10 +146,11 @@ contains
   !> @param[in] chi_list             List of coordinate fields
   !> @param[in] panel_id_list        List of panel_id fields
   !> @param[in] label_list           List of labels for meshes
+  !> @param[in] dt                   The model timestep length
   subroutine create_fem_constants(mesh_id_list,  &
                                   chi_list,      &
                                   panel_id_list, &
-                                  label_list     )
+                                  label_list, dt )
     implicit none
 
     ! Arguments
@@ -157,6 +158,7 @@ contains
     type(field_type),    intent(in) :: chi_list(:,:)
     type(field_type),    intent(in) :: panel_id_list(:)
     integer(kind=i_def), intent(in) :: label_list(:)
+    real(r_def),         intent(in) :: dt
 
     ! Internal variables
     type(function_space_type), pointer :: w0_fs     => null()

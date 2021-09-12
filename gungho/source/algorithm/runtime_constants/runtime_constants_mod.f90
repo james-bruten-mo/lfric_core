@@ -44,6 +44,7 @@ contains
   !> @param[in] twod_mesh_id         Mesh_id for 2D domain
   !> @param[in] chi                  Coordinate field on primary mesh
   !> @param[in] panel_id             panel id
+  !> @param[in] dt                   The model timestep length
   !> @param[in] shifted_mesh_id      Mesh_id for vertically shifted field
   !> @param[in] shifted_chi          Coordinate field for vertically shifted field
   !> @param[in] double_level_mesh_id Mesh_id for double level field
@@ -58,7 +59,7 @@ contains
   !> @param[in] panel_id_extra       The panel_id fields for any extra MG meshes
   subroutine create_runtime_constants(mesh_id, twod_mesh_id, &
                                       chi,                   &
-                                      panel_id,              &
+                                      panel_id, dt,          &
                                       shifted_mesh_id,       &
                                       shifted_chi,           &
                                       double_level_mesh_id,  &
@@ -91,6 +92,7 @@ contains
     integer(kind=i_def),             intent(in) :: mesh_id, twod_mesh_id
     type(field_type),      target,   intent(in) :: chi(:)
     type(field_type),      target,   intent(in) :: panel_id
+    real(r_def),                     intent(in) :: dt
     integer(kind=i_def),   optional, intent(in) :: shifted_mesh_id
     type(field_type),      optional, intent(in) :: shifted_chi(:)
     integer(kind=i_def),   optional, intent(in) :: double_level_mesh_id
@@ -245,9 +247,9 @@ contains
     call create_fem_constants(mesh_id_list,      &
                               chi_list,          &
                               panel_id_list,     &
-                              label_list         )
+                              label_list, dt     )
 
-    call create_physical_op_constants(mesh_id, chi, panel_id)
+    call create_physical_op_constants(mesh_id, chi, panel_id, dt)
 
     if ( limited_area ) then
       call create_limited_area_constants(mesh_id, chi)

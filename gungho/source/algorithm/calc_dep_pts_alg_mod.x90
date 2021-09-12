@@ -174,9 +174,9 @@ contains
     ! The departure points are calculated at cell edge values.
     ! The code assumes lowest order W2 nodal points, i.e. one W2 dof per cell edge.
     call invoke_calc_deppts( corrected_dep_wind_x_n, corrected_dep_wind_x_np1, dep_pts_x,   &
-                             cell_orientation, x_direction, method, dep_pt_stencil_extent )
+                             cell_orientation, x_direction, method, dep_pt_stencil_extent, dt )
     call invoke_calc_deppts( corrected_dep_wind_y_n, corrected_dep_wind_y_np1, dep_pts_y,   &
-                             cell_orientation, y_direction, method, dep_pt_stencil_extent )
+                             cell_orientation, y_direction, method, dep_pt_stencil_extent, dt )
 
     ! Calculate the divergence of the wind field used in Cosmic.
     call cosmic_divergence_alg( divergence_x, corrected_dep_wind_x_n, detj_at_w2, &

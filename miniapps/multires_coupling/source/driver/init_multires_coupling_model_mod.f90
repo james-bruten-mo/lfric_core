@@ -9,7 +9,7 @@
 
 module init_multires_coupling_model_mod
 
-  use constants_mod,                  only : i_def
+  use constants_mod,                  only : i_def, r_def
   use field_mod,                      only : field_type
   use create_mesh_mod,                only : init_mesh, final_mesh
   use create_fem_mod,                 only : init_fem, final_fem
@@ -56,6 +56,7 @@ contains
   !>                 for multires_coupling miniapp
   !> @param [in,out] chi_mg_sph Spherical coordinate fields for multigrid
   !> @param [in,out] panel_id_mg 2D fields giving cubed sphere panel ids for multigrid
+  !> @param [in]     dt The model timestep length
   subroutine initialise_multires_coupling_model(                                  &
                                        prime_mesh_id, prime_2D_mesh_id,           &
                                        prime_shifted_mesh_id,                     &
@@ -67,7 +68,7 @@ contains
                                        prime_shifted_chi,                         &
                                        prime_double_level_chi,                    &
                                        chi_fields,                                &
-                                       panel_id_fields, chi_mg_sph, panel_id_mg )
+                                       panel_id_fields, chi_mg_sph, panel_id_mg, dt )
 
     implicit none
 
@@ -88,6 +89,8 @@ contains
     type(field_type), allocatable, intent(inout) :: panel_id_fields(:)
     type(field_type), allocatable, intent(inout) :: chi_mg_sph(:,:)
     type(field_type), allocatable, intent(inout) :: panel_id_mg(:)
+
+    real(r_def),                   intent(in)    :: dt
 
     integer(kind=i_def) :: total_ranks, local_rank
 
@@ -133,7 +136,7 @@ contains
     ! matrix diagonal fields and the geopotential field
     call create_runtime_constants( prime_mesh_id, prime_2D_mesh_id,           &
                                    prime_chi,                                 &
-                                   prime_panel_id, prime_shifted_mesh_id,     &
+                                   prime_panel_id, dt, prime_shifted_mesh_id, &
                                    prime_shifted_chi,                         &
                                    prime_double_level_mesh_id,                &
                                    prime_double_level_chi,                    &
