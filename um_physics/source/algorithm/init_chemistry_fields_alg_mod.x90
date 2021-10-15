@@ -1,0 +1,81 @@
+!-------------------------------------------------------------------------------
+!(c) Crown copyright 2020 Met Office. All rights reserved.
+!The file LICENCE, distributed with this code, contains details of the terms
+!under which the code may be used.
+!-------------------------------------------------------------------------------
+!>@brief Prepares the UKCA chemistry fields
+module init_chemistry_fields_alg_mod
+
+  use constants_mod,                   only: r_def
+
+  ! Derived Types
+  use field_mod,                       only: field_type
+  use field_collection_mod,            only: field_collection_type
+
+  implicit none
+
+  private
+  public :: init_chemistry_fields_alg
+
+contains
+
+  !> @brief   Initialises the chemistry fields
+  !> @details The chemistry fields need to be initialised so that they have a
+  !>          value when passed on to the physics at the first time step,
+  !>          in case no restart file is used.
+  !> @param[in,out] chemistry_fields   chemistry related fields
+  subroutine init_chemistry_fields_alg(chemistry_fields)
+
+    implicit none
+
+    ! Arguments
+    type( field_collection_type ), intent( in ) :: chemistry_fields
+
+    ! Ancillary/Prognostic fields
+    type( field_type ), pointer :: o3 => null()
+    type( field_type ), pointer :: no3 => null()
+    type( field_type ), pointer :: oh => null()
+    type( field_type ), pointer :: ho2 => null()
+    type( field_type ), pointer :: h2o2_limit => null()
+    type( field_type ), pointer :: h2o2 => null()
+    type( field_type ), pointer :: dms => null()
+    type( field_type ), pointer :: so2 => null()
+    type( field_type ), pointer :: h2so4 => null()
+    type( field_type ), pointer :: dmso => null()
+    type( field_type ), pointer :: monoterpene => null()
+    type( field_type ), pointer :: secondary_organic => null()
+
+    o3 => chemistry_fields%get_field('o3')
+    no3 => chemistry_fields%get_field('no3')
+    oh => chemistry_fields%get_field('oh')
+    ho2 => chemistry_fields%get_field('ho2')
+    h2o2_limit => chemistry_fields%get_field('h2o2_limit')
+    h2o2 => chemistry_fields%get_field('h2o2')
+    dms => chemistry_fields%get_field('dms')
+    so2 => chemistry_fields%get_field('so2')
+    h2so4 => chemistry_fields%get_field('h2so4')
+    dmso => chemistry_fields%get_field('dmso')
+    monoterpene => chemistry_fields%get_field('monoterpene')
+    secondary_organic => chemistry_fields%get_field('secondary_organic')
+
+    ! Set UKCA chemistry fields to fixed values for use in SCM testing
+    ! or when no values are provided by the um2lfric dump
+    call invoke( setval_c( o3,                1.0e-15_r_def ),                 &
+                 setval_c( no3,               1.0e-15_r_def ),                 &
+                 setval_c( oh,                1.0e-15_r_def ),                 &
+                 setval_c( ho2,               1.0e-15_r_def ),                 &
+                 setval_c( h2o2_limit,        9.0e-15_r_def ),                 &
+                 setval_c( h2o2,                  0.0_r_def ),                 &
+                 setval_c( dms,                   0.0_r_def ),                 &
+                 setval_c( so2,                   0.0_r_def ),                 &
+                 setval_c( h2so4,                 0.0_r_def ),                 &
+                 setval_c( dmso,                  0.0_r_def ),                 &
+                 setval_c( monoterpene,           0.0_r_def ),                 &
+                 setval_c( secondary_organic,     0.0_r_def ) )
+
+  end subroutine init_chemistry_fields_alg
+
+end module init_chemistry_fields_alg_mod
+
+
+

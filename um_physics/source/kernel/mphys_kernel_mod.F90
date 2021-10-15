@@ -29,7 +29,7 @@ private
 
 type, public, extends(kernel_type) :: mphys_kernel_type
   private
-  type(arg_type) :: meta_args(31) = (/                                 &
+  type(arg_type) :: meta_args(37) = (/                                 &
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA),                       & ! mv_wth
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA),                       & ! ml_wth
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA),                       & ! mi_wth
@@ -53,9 +53,15 @@ type, public, extends(kernel_type) :: mphys_kernel_type
        arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),                   & ! dmi_wth
        arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA),                       & ! dmr_wth
        arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA),                       & ! dmg_wth
-       arg_type(GH_FIELD, GH_REAL, GH_WRITE, ANY_DISCONTINUOUS_SPACE_1),    & ! ls_rain
-       arg_type(GH_FIELD, GH_REAL, GH_WRITE, ANY_DISCONTINUOUS_SPACE_1),    & ! ls_snow
+       arg_type(GH_FIELD, GH_REAL, GH_WRITE, ANY_DISCONTINUOUS_SPACE_1),    & ! ls_rain_2d
+       arg_type(GH_FIELD, GH_REAL, GH_WRITE, ANY_DISCONTINUOUS_SPACE_1),    & ! ls_snow_2d
        arg_type(GH_FIELD, GH_REAL, GH_WRITE, ANY_DISCONTINUOUS_SPACE_1),    & ! lsca_2d
+       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA),                       & ! ls_rain_3d 
+       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA),                       & ! ls_snow_3d 
+       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA),                       & ! autoconv
+       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA),                       & ! accretion
+       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA),                       & ! rim_cry
+       arg_type(GH_FIELD, GH_REAL, GH_WRITE, WTHETA),                       & ! rim_agg
        arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),                   & ! theta_inc
        arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),                   & ! dcfl_wth
        arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA),                   & ! dcff_wth
@@ -100,6 +106,12 @@ contains
 !> @param[in,out] ls_rain_2d          Large scale rain from twod_fields
 !> @param[in,out] ls_snow_2d          Large scale snow from twod_fields
 !> @param[in,out] lsca_2d             Large scale cloud amount (2d)
+!> @param[in,out] ls_rain_3d          Large scale rain from 3d fields (kg m-2 s-1)
+!> @param[in,out] ls_snow_3d          Large scale snow from 3d fields (kg m-2 s-1)
+!> @param[in,out] autoconv            Rain autoconversion rate (kg kg-1 s-1)
+!> @param[in,out] accretion           Rain accretion rate (kg kg-1 s-1)
+!> @param[in,out] rim_cry             Riming rate for ice crystals (kg kg-1 s-1)
+!> @param[in,out] rim_agg             Riming rate for ice aggregates (kg kg-1 s-1)
 !> @param[in,out] theta_inc           Increment to theta
 !> @param[in,out] dcfl_wth            Increment to liquid cloud fraction
 !> @param[in,out] dcff_wth            Increment to ice cloud fraction
@@ -141,7 +153,11 @@ subroutine mphys_code( nlayers,                     &
                        dmv_wth,  dml_wth,  dmi_wth, &
                        dmr_wth,  dmg_wth,           &
                        ls_rain_2d, ls_snow_2d,      &
-                       lsca_2d, theta_inc,          &
+                       lsca_2d,                     &
+                       ls_rain_3d, ls_snow_3d,      &
+                       autoconv, accretion,         &
+                       rim_cry, rim_agg,            &
+                       theta_inc,                   &
                        dcfl_wth, dcff_wth, dbcf_wth,&
                        f_arr_wth,                   &
                        ndf_wth, undf_wth, map_wth,  &
@@ -179,6 +195,11 @@ subroutine mphys_code( nlayers,                     &
     use arcl_mod,                   only: npd_arcl_compnts
     use def_easyaerosol,            only: t_easyaerosol_cdnc
 
+
+    use mphys_diags_mod,            only: praut, pracw, piacw, psacw,          &
+                                          l_praut_diag, l_pracw_diag,          &
+                                          l_piacw_diag, l_psacw_diag
+
     implicit none
 
     ! Arguments
@@ -215,6 +236,12 @@ subroutine mphys_code( nlayers,                     &
     real(kind=r_def), intent(inout), dimension(undf_2d)  :: ls_rain_2d
     real(kind=r_def), intent(inout), dimension(undf_2d)  :: ls_snow_2d
     real(kind=r_def), intent(inout), dimension(undf_2d)  :: lsca_2d
+    real(kind=r_def), intent(inout), dimension(undf_wth) :: ls_rain_3d
+    real(kind=r_def), intent(inout), dimension(undf_wth) :: ls_snow_3d
+    real(kind=r_def), intent(inout), dimension(undf_wth) :: autoconv
+    real(kind=r_def), intent(inout), dimension(undf_wth) :: accretion
+    real(kind=r_def), intent(inout), dimension(undf_wth) :: rim_cry
+    real(kind=r_def), intent(inout), dimension(undf_wth) :: rim_agg
     real(kind=r_def), intent(inout), dimension(undf_wth) :: theta_inc
     real(kind=r_def), intent(inout), dimension(undf_wth) :: dcfl_wth
     real(kind=r_def), intent(inout), dimension(undf_wth) :: dcff_wth
@@ -516,6 +543,24 @@ subroutine mphys_code( nlayers,                     &
     ! CALL to lsp_froude_moist should be here once the orographic precipitation
     !      scheme is coupled up.
 
+    ! Allocate arrays for diagnostics
+    if (l_praut_diag) then
+      allocate(praut( 1, 1, nlayers ))
+      praut = 0.0_r_um
+    endif
+    if (l_pracw_diag) then
+      allocate(pracw( 1, 1, nlayers ))
+      pracw = 0.0_r_um
+    endif
+    if (l_piacw_diag) then
+      allocate(piacw( 1, 1, nlayers ))
+      piacw = 0.0_r_um
+    endif
+    if (l_psacw_diag) then
+      allocate(psacw( 1, 1, nlayers ))
+      psacw = 0.0_r_um
+    endif
+
     ! CALL to ls_ppn
     call ls_ppn(                                                               &
                 p_theta_levels,                                                &
@@ -613,7 +658,23 @@ end if
   ls_rain_2d(map_2d(1))  = ls_rain(1,1)
   ls_snow_2d(map_2d(1))  = ls_snow(1,1)
   lsca_2d(map_2d(1))     = ls_rainfrac(1)
+  do k = 1, model_levels
+    ls_rain_3d(map_wth(1) + k) = ls_rain3d(1,1,k)
+    ls_snow_3d(map_wth(1) + k) = ls_snow3d(1,1,k)
+  end do
 
+  ! Copy diagnostics if selected: autoconversion, accretion & riming rates
+  do k = 1, model_levels
+    if (l_praut_diag) autoconv(map_wth(1) + k) = praut(1,1,k)
+    if (l_pracw_diag) accretion(map_wth(1) + k) = pracw(1,1,k)
+    if (l_piacw_diag) rim_cry(map_wth(1) + k) = piacw(1,1,k)
+    if (l_psacw_diag) rim_agg(map_wth(1) + k) = psacw(1,1,k)
+  end do
+
+  if (allocated(psacw)) deallocate (psacw)
+  if (allocated(piacw)) deallocate (piacw)
+  if (allocated(pracw)) deallocate (pracw)
+  if (allocated(praut)) deallocate (praut)
   deallocate( precfrac_work )
   deallocate( qgraup_work )
   deallocate( qrain_work  )

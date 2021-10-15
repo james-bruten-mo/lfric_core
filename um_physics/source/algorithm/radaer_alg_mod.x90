@@ -50,7 +50,7 @@ contains
     implicit none
 
     ! Arguments
-    type( field_collection_type ), intent( inout ) :: aerosol_fields
+    type( field_collection_type ), intent( in )    :: aerosol_fields
     type( field_type ), intent( in )               :: theta_in_wth
     type( field_type ), intent( in )               :: exner_in_wth
     type( field_type ), intent( in )               :: trop_level
@@ -95,9 +95,6 @@ contains
     type( field_type ), pointer :: wetdp_ait_sol => null()
     type( field_type ), pointer :: wetdp_acc_sol => null()
     type( field_type ), pointer :: wetdp_cor_sol => null()
-    type( field_type ), pointer :: wetdp_ait_ins => null()
-    type( field_type ), pointer :: wetdp_acc_ins => null()
-    type( field_type ), pointer :: wetdp_cor_ins => null()
     type( field_type ), pointer :: rhopar_ait_sol => null()
     type( field_type ), pointer :: rhopar_acc_sol => null()
     type( field_type ), pointer :: rhopar_cor_sol => null()
@@ -163,9 +160,6 @@ contains
     wetdp_ait_sol => aerosol_fields%get_field('wetdp_ait_sol')
     wetdp_acc_sol => aerosol_fields%get_field('wetdp_acc_sol')
     wetdp_cor_sol => aerosol_fields%get_field('wetdp_cor_sol')
-    wetdp_ait_ins => aerosol_fields%get_field('wetdp_ait_ins')
-    wetdp_acc_ins => aerosol_fields%get_field('wetdp_acc_ins')
-    wetdp_cor_ins => aerosol_fields%get_field('wetdp_cor_ins')
     rhopar_ait_sol => aerosol_fields%get_field('rhopar_ait_sol')
     rhopar_acc_sol => aerosol_fields%get_field('rhopar_acc_sol')
     rhopar_cor_sol => aerosol_fields%get_field('rhopar_cor_sol')
@@ -231,9 +225,6 @@ contains
                                      wetdp_ait_sol,                            &
                                      wetdp_acc_sol,                            &
                                      wetdp_cor_sol,                            &
-                                     wetdp_ait_ins,                            &
-                                     wetdp_acc_ins,                            &
-                                     wetdp_cor_ins,                            &
                                      rhopar_ait_sol,                           &
                                      rhopar_acc_sol,                           &
                                      rhopar_cor_sol,                           &

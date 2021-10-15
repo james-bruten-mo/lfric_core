@@ -38,6 +38,7 @@ module umprintmgr
 ! directed writes
 ! ========================
   CHARACTER (LEN=maxLineLen)    :: umMessage
+!$OMP THREADPRIVATE (umMessage)
 ! ========================
 ! Runtime variables and
 ! initial defaults.
@@ -65,4 +66,10 @@ module umprintmgr
       call log_event(line,LOG_LEVEL_INFO)
 
     end subroutine umprint
+
+    ! Dummy routine 
+    subroutine umprintflush
+    implicit none
+    end subroutine umprintflush
+    
 end module umprintmgr

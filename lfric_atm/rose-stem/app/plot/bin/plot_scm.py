@@ -60,9 +60,12 @@ if __name__ == "__main__":
 
     import sys
     try:
-        datapath, plotpath = sys.argv[1:3]
+        opts = [opt for opt in sys.argv[1:] if opt.startswith('-')]
+        args = [arg for arg in sys.argv[1:] if not arg.startswith('-')]
+        datapath, plotpath = args[0:2]
+        extra_plots_ukca = '-ukca' in opts
     except ValueError:
-        print("Usage: {0} <datapath> <plotpath>".format(sys.argv[0]))
+        print("Usage: {0} [-ukca] <datapath> <plotpath>".format(sys.argv[0]))
         exit(1)
     do_plot(datapath, 'theta', plotpath)
     do_plot(datapath, 'm_v',   plotpath)
@@ -72,3 +75,40 @@ if __name__ == "__main__":
     do_plot(datapath, 'cloud_fraction_rts', plotpath)
     do_time_plot(datapath, 'sw_down_surf', plotpath)
     do_time_plot(datapath, 'trop_level', plotpath)
+    if extra_plots_ukca:
+        do_plot(datapath, 'h2o2', plotpath)
+        do_plot(datapath, 'dms', plotpath)
+        do_plot(datapath, 'so2', plotpath)
+        do_plot(datapath, 'h2so4', plotpath)
+        do_plot(datapath, 'dmso', plotpath)
+        do_plot(datapath, 'monoterpene', plotpath)
+        do_plot(datapath, 'secondary_organic', plotpath)
+        do_plot(datapath, 'n_nuc_sol', plotpath)
+        do_plot(datapath, 'n_ait_sol', plotpath)
+        do_plot(datapath, 'n_acc_sol', plotpath)
+        do_plot(datapath, 'n_cor_sol', plotpath)
+        do_plot(datapath, 'n_ait_ins', plotpath)
+        do_plot(datapath, 'n_acc_ins', plotpath)
+        do_plot(datapath, 'n_cor_ins', plotpath)
+        do_plot(datapath, 'nuc_sol_su', plotpath)
+        do_plot(datapath, 'nuc_sol_om', plotpath)
+        do_plot(datapath, 'ait_sol_su', plotpath)
+        do_plot(datapath, 'ait_sol_bc', plotpath)
+        do_plot(datapath, 'ait_sol_om', plotpath)
+        do_plot(datapath, 'acc_sol_su', plotpath)
+        do_plot(datapath, 'acc_sol_bc', plotpath)
+        do_plot(datapath, 'acc_sol_om', plotpath)
+        do_plot(datapath, 'acc_sol_ss', plotpath)
+        do_plot(datapath, 'acc_sol_du', plotpath)
+        do_plot(datapath, 'cor_sol_su', plotpath)
+        do_plot(datapath, 'cor_sol_bc', plotpath)
+        do_plot(datapath, 'cor_sol_om', plotpath)
+        do_plot(datapath, 'cor_sol_ss', plotpath)
+        do_plot(datapath, 'cor_sol_du', plotpath)
+        do_plot(datapath, 'ait_ins_bc', plotpath)
+        do_plot(datapath, 'ait_ins_om', plotpath)
+        do_plot(datapath, 'acc_ins_du', plotpath)
+        do_plot(datapath, 'cor_ins_du', plotpath)
+        do_plot(datapath, 'cloud_drop_no_conc', plotpath)
+        do_plot(datapath, 'sw_aer_optical_depth_rts', plotpath)
+        do_plot(datapath, 'lw_aer_optical_depth_rts', plotpath)

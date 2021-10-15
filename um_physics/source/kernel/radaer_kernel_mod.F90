@@ -32,7 +32,7 @@ implicit none
 
 type, public, extends(kernel_type) :: radaer_kernel_type
   private
-  type(arg_type) :: meta_args(74) = (/                &
+  type(arg_type) :: meta_args(71) = (/                &
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! theta_in_wth
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! exner_in_wth
        arg_type(GH_FIELD, GH_REAL, GH_READ,  ANY_DISCONTINUOUS_SPACE_1), & !trop_level
@@ -68,9 +68,6 @@ type, public, extends(kernel_type) :: radaer_kernel_type
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! wetdp_ait_sol
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! wetdp_acc_sol
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! wetdp_cor_sol
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! wetdp_ait_ins
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! wetdp_acc_ins
-       arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! wetdp_cor_ins
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! rhopar_ait_sol
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! rhopar_acc_sol
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! rhopar_cor_sol
@@ -162,9 +159,6 @@ contains
 !> @param[in]     wetdp_ait_sol      Avg wet diameter (Ait_Sol)
 !> @param[in]     wetdp_acc_sol      Avg wet diameter (Acc_Sol)
 !> @param[in]     wetdp_cor_sol      Avg wet diameter (Cor_Sol)
-!> @param[in]     wetdp_ait_ins      Avg wet diameter (Ait_Ins)
-!> @param[in]     wetdp_acc_ins      Avg wet diameter (Acc_Ins)
-!> @param[in]     wetdp_cor_ins      Avg wet diameter (Cor_Ins)
 !> @param[in]     rhopar_ait_sol     Particle density (Ait_Sol)
 !> @param[in]     rhopar_acc_sol     Particle density (Acc_Sol)
 !> @param[in]     rhopar_cor_sol     Particle density (Cor_Sol)
@@ -256,9 +250,6 @@ subroutine radaer_code( nlayers,                                               &
                         wetdp_ait_sol,                                         &
                         wetdp_acc_sol,                                         &
                         wetdp_cor_sol,                                         &
-                        wetdp_ait_ins,                                         &
-                        wetdp_acc_ins,                                         &
-                        wetdp_cor_ins,                                         &
                         rhopar_ait_sol,                                        &
                         rhopar_acc_sol,                                        &
                         rhopar_cor_sol,                                        &
@@ -395,9 +386,6 @@ subroutine radaer_code( nlayers,                                               &
   real(kind=r_def), intent(in),    dimension(undf_wth)   :: wetdp_ait_sol
   real(kind=r_def), intent(in),    dimension(undf_wth)   :: wetdp_acc_sol
   real(kind=r_def), intent(in),    dimension(undf_wth)   :: wetdp_cor_sol
-  real(kind=r_def), intent(in),    dimension(undf_wth)   :: wetdp_ait_ins
-  real(kind=r_def), intent(in),    dimension(undf_wth)   :: wetdp_acc_ins
-  real(kind=r_def), intent(in),    dimension(undf_wth)   :: wetdp_cor_ins
   real(kind=r_def), intent(in),    dimension(undf_wth)   :: rhopar_ait_sol
   real(kind=r_def), intent(in),    dimension(undf_wth)   :: rhopar_acc_sol
   real(kind=r_def), intent(in),    dimension(undf_wth)   :: rhopar_cor_sol
@@ -686,9 +674,9 @@ subroutine radaer_code( nlayers,                                               &
     ukca_wet_diam_um(1,k,(mode_ait_sol-1))    = wetdp_ait_sol(map_wth(1) + k)
     ukca_wet_diam_um(1,k,(mode_acc_sol-1))    = wetdp_acc_sol(map_wth(1) + k)
     ukca_wet_diam_um(1,k,(mode_cor_sol-1))    = wetdp_cor_sol(map_wth(1) + k)
-    ukca_wet_diam_um(1,k,(mode_ait_insol-1))  = wetdp_ait_ins(map_wth(1) + k)
-    ukca_wet_diam_um(1,k,(mode_acc_insol-1))  = wetdp_acc_ins(map_wth(1) + k)
-    ukca_wet_diam_um(1,k,(mode_cor_insol-1))  = wetdp_cor_ins(map_wth(1) + k)
+    ukca_wet_diam_um(1,k,(mode_ait_insol-1))  = drydp_ait_ins(map_wth(1) + k)
+    ukca_wet_diam_um(1,k,(mode_acc_insol-1))  = drydp_acc_ins(map_wth(1) + k)
+    ukca_wet_diam_um(1,k,(mode_cor_insol-1))  = drydp_cor_ins(map_wth(1) + k)
   end do
 
   call ukca_radaer_prepare(                                                    &

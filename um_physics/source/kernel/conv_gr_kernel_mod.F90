@@ -31,7 +31,7 @@ module conv_gr_kernel_mod
   !>
   type, public, extends(kernel_type) :: conv_gr_kernel_type
     private
-    type(arg_type) :: meta_args(83) = (/                                          &
+    type(arg_type) :: meta_args(85) = (/                                          &
          arg_type(GH_SCALAR, GH_INTEGER, GH_READ),                                &! outer
          arg_type(GH_FIELD,  GH_REAL,    GH_READ,      W3),                       &! rho_in_w3
          arg_type(GH_FIELD,  GH_REAL,    GH_READ,      WTHETA),                   &! rho_in_wth
@@ -101,6 +101,8 @@ module conv_gr_kernel_mod
          arg_type(GH_FIELD,  GH_REAL,    GH_READWRITE, WTHETA),                   &! mid_dt
          arg_type(GH_FIELD,  GH_REAL,    GH_READWRITE, WTHETA),                   &! mid_dq
          arg_type(GH_FIELD,  GH_REAL,    GH_READWRITE, WTHETA),                   &! mid_massflux
+         arg_type(GH_FIELD,  GH_REAL,    GH_READWRITE, WTHETA),                   &! conv_rain_3d 
+         arg_type(GH_FIELD,  GH_REAL,    GH_READWRITE, WTHETA),                   &! conv_snow_3d 
          arg_type(GH_FIELD,  GH_REAL,    GH_READ,      ANY_DISCONTINUOUS_SPACE_1),&! zh_2d
          arg_type(GH_FIELD,  GH_REAL,    GH_READ,      ANY_DISCONTINUOUS_SPACE_1),&! shallow_flag
          arg_type(GH_FIELD,  GH_REAL,    GH_READ,      ANY_DISCONTINUOUS_SPACE_1),&! uw0_flux
@@ -199,6 +201,8 @@ contains
   !> @param[in,out] mid_dt               Temperature increment from mid convection per timestep
   !> @param[in,out] mid_dq               Vapour increment from mid convection per timestep
   !> @param[in,out] mid_massflux         Upward mass flux from mid convection
+  !> @param[in,out] conv_rain_3d         Rainfall rate from convection (kg/m2/s)
+  !> @param[in,out] conv_snow_3d         Snowfall rate from convection (kg/m2/s)
   !> @param[in]     zh_2d                Boundary layer depth
   !> @param[in]     shallow_flag         Indicator of shallow convection
   !> @param[in]     uw0_flux             'Zonal' surface momentum flux
@@ -295,6 +299,8 @@ contains
                           mid_dt,                            &
                           mid_dq,                            &
                           mid_massflux,                      &
+                          conv_rain_3d,                      &
+                          conv_snow_3d,                      &
                           zh_2d,                             &
                           shallow_flag,                      &
                           uw0_flux,                          &
@@ -385,7 +391,8 @@ contains
                           detrain_up, detrain_down, dd_dt, dd_dq,              &
                           deep_dt, deep_dq, deep_massflux, deep_tops,          &
                           shallow_dt, shallow_dq, shallow_massflux,            &
-                          mid_dt, mid_dq, mid_massflux
+                          mid_dt, mid_dq, mid_massflux,                        &
+                          conv_rain_3d, conv_snow_3d
 
     real(kind=r_def), dimension(undf_w3), intent(inout) :: du_conv, dv_conv
 
@@ -947,6 +954,12 @@ contains
                                        it_dt_midlev(1,1,k)*one_over_conv_calls
         mid_dq(map_wth(1) + k) = mid_dq(map_wth(1) + k) +                    &
                                        it_dq_midlev(1,1,k)*one_over_conv_calls
+        conv_rain_3d(map_wth(1) + k) = conv_rain_3d(map_wth(1) + k) +        &
+                                       it_conv_rain_3d(1,1,k) *              &
+                                       one_over_conv_calls
+        conv_snow_3d(map_wth(1) + k) = conv_snow_3d(map_wth(1) + k) +        &
+                                       it_conv_snow_3d(1,1,k) *              &
+                                       one_over_conv_calls
       end do
 
       if (l_mom) then

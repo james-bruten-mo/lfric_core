@@ -28,27 +28,45 @@ contains
 
     implicit none
     ! Arguments
-    type(field_collection_type), intent(inout) :: microphysics_fields
+    type(field_collection_type), intent(in) :: microphysics_fields
 
     ! Microphysics increments and outputs
-    type( field_type ), pointer :: ls_rain   => null()
-    type( field_type ), pointer :: ls_snow   => null()
-    type( field_type ), pointer :: lsca_2d   => null()
+    type( field_type ), pointer :: ls_rain      => null()
+    type( field_type ), pointer :: ls_snow      => null()
+    type( field_type ), pointer :: lsca_2d      => null()
+    type( field_type ), pointer :: ls_rain_3d   => null()
+    type( field_type ), pointer :: ls_snow_3d   => null()
+    type( field_type ), pointer :: autoconv     => null()
+    type( field_type ), pointer :: accretion    => null()
+    type( field_type ), pointer :: rim_cry      => null()
+    type( field_type ), pointer :: rim_agg      => null()
     type( field_type ), pointer :: dtheta_mphys => null()
-    type( field_type ), pointer :: dmv_mphys => null()
+    type( field_type ), pointer :: dmv_mphys    => null()
 
     dtheta_mphys => microphysics_fields%get_field('dtheta_mphys')
-    dmv_mphys => microphysics_fields%get_field('dmv_mphys')
-    ls_rain   => microphysics_fields%get_field('ls_rain')
-    ls_snow   => microphysics_fields%get_field('ls_snow')
-    lsca_2d   => microphysics_fields%get_field('lsca_2d')
+    dmv_mphys    => microphysics_fields%get_field('dmv_mphys')
+    ls_rain      => microphysics_fields%get_field('ls_rain')
+    ls_snow      => microphysics_fields%get_field('ls_snow')
+    lsca_2d      => microphysics_fields%get_field('lsca_2d')
+    ls_rain_3d   => microphysics_fields%get_field('ls_rain_3d')
+    ls_snow_3d   => microphysics_fields%get_field('ls_snow_3d')
+    autoconv     => microphysics_fields%get_field('autoconv')
+    accretion    => microphysics_fields%get_field('accretion')
+    rim_cry      => microphysics_fields%get_field('rim_cry')
+    rim_agg      => microphysics_fields%get_field('rim_agg')
 
     ! Set microphysics output fields to zero for use when scheme is off
     call invoke( setval_c(dtheta_mphys, 0.0_r_def), &
                  setval_c(dmv_mphys,    0.0_r_def), &
                  setval_c(ls_rain,      0.0_r_def), &
-                 setval_c(ls_snow,   0.0_r_def), &
-                 setval_c(lsca_2d,   0.0_r_def) )
+                 setval_c(ls_snow,      0.0_r_def), &
+                 setval_c(lsca_2d,      0.0_r_def), &
+                 setval_c(ls_rain_3d,   0.0_r_def), &
+                 setval_c(ls_snow_3d,   0.0_r_def), &
+                 setval_c(autoconv,     0.0_r_def), &
+                 setval_c(accretion,    0.0_r_def), &
+                 setval_c(rim_cry,      0.0_r_def), &
+                 setval_c(rim_agg,      0.0_r_def) )
 
   end subroutine init_microphysics_fields_alg
 

@@ -149,7 +149,7 @@ module um_physics_init_mod
 contains
 
   !>@brief Initialise UM physics variables which are either fixed in LFRic
-  !>        or derived from LFRic inputs
+  !>        or derived from LFRic inputs or JULES variables
   !>@details This file sets many parameters and switches which are currently
   !>          in the UM namelists. Many of these will never be promoted to the
   !>          LFRic namelist as they are legacy options not fit for future use.
@@ -216,8 +216,10 @@ contains
     use cv_param_mod, only: mtrig_ntmlplus2, md_pert_orig
     use cv_stash_flg_mod, only: set_convection_output_flags
     use cv_set_dependent_switches_mod, only: cv_set_dependent_switches
-    use dust_parameters_mod, only: i_dust, i_dust_off,                     &
-         dust_parameters_load, dust_parameters_unload
+    use dust_parameters_mod, only: i_dust, i_dust_off, i_dust_flux,        &
+         dust_veg_emiss, us_am, sm_corr, horiz_d, l_fix_size_dist,         &
+         l_twobin_dust, h_orog_limit, dust_parameters_load,                &
+         dust_parameters_unload
     use electric_inputs_mod, only: electric_method, no_lightning
     use fsd_parameters_mod, only: fsd_eff_lam, fsd_eff_phi, f_cons, f_arr
     use glomap_clim_option_mod, only: i_glomap_clim_setup,                 &
@@ -258,6 +260,7 @@ contains
     use ukca_radaer_read_precalc_mod, only: ukca_radaer_read_precalc
     use ukca_radaer_lut, only: ip_ukca_lut_accum, ip_ukca_lut_coarse,          &
          ip_ukca_lut_accnarrow, ip_ukca_lut_sw, ip_ukca_lut_lw
+    
 
     implicit none
 
@@ -265,7 +268,12 @@ contains
     logical(l_def) :: dust_loaded = .false.
 
     ! ----------------------------------------------------------------
-    ! UKCA aerosol scheme settings - contained in glomap_clim_option_mod
+    ! UM aerosol scheme settings 
+    ! For GLOMAP-mode climatology scheme (GLOMAP-clim), these are
+    ! contained in glomap_clim_option_mod
+    ! For prognostic GLOMAP-mode aerosols (using UKCA with aerosol
+    ! precursor chemistry represented by an Offline Oxidants scheme),
+    ! these are set via a UKCA API call in subroutine um_ukca_init.
     ! ----------------------------------------------------------------
     if ( aerosol == aerosol_um ) then
 
@@ -303,9 +311,10 @@ contains
         case(glomap_mode_ukca)
           ! Set up the correct mode and components for GLOMAP-mode:
           ! 7 mode with SU SS OM BC DU components
-          i_glomap_clim_setup = i_gc_sussocbcdu_7mode
-          i_mode_setup = i_gc_sussocbcdu_7mode
-          call ukca_mode_sussbcocdu_7mode()
+          i_glomap_clim_setup = i_gc_sussocbcdu_7mode  !!!! Is this used?
+          ! UKCA initialisation (via a call to um_ukca_init) is deferred
+          ! until after that for JULES since JULES settings are required
+          ! for configuring dry deposition.
 
         case(glomap_mode_off)
           ! Do Nothing
@@ -715,9 +724,32 @@ contains
     ! Classic dust scheme - contained in dust_parameters_mod
     ! ----------------------------------------------------------------
     ! This is not used in LFRic but potentially called from UM code.
-    !  Hence its inputs and options need setting according to the
-    ! scheme being off
-    i_dust = i_dust_off
+    ! Hence its inputs and options need setting according to the
+    ! scheme being either off or running in diagnostic mode to calculate
+    ! dust emissions only if these are potentially required by UKCA.
+
+    ! NOTE RE CURRENT VALUES:
+    ! Parameter values used for emissions are as GA7 except where modified
+    ! to ensure that non-zero dust emissions are produced for UKCA SCM test.
+    ! Increase in 'us_am' effectively increases friction velocity and 
+    ! reduction in 'sm_corr' effectively reduces soil moisture.
+    ! It is also necessary to raise the orography threshold for dust
+    ! production above the default that is used in GA7. These changes
+    ! compensate for initial values that cannot be altered without
+    ! affecting other SCM test configurations.
+ 
+    if (aerosol == aerosol_um .and. glomap_mode == glomap_mode_ukca) THEN
+      i_dust = i_dust_flux
+      dust_veg_emiss = 1
+      us_am = 5                 !!!! for UKCA SCM test (1.45 in GA7)
+      sm_corr = 0.05            !!!! for UKCA SCM test (0.5 in GA7)
+      horiz_d = 2.25
+      l_fix_size_dist = .false.
+      l_twobin_dust = .false.
+      h_orog_limit = 250.0      !!!! Up from default (150.0) for UKCA SCM test
+    else
+      i_dust = i_dust_off
+    end if
     if( dust_loaded ) then
       call dust_parameters_unload( )
       dust_loaded = .false.

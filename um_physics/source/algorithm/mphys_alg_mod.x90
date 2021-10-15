@@ -67,7 +67,7 @@ contains
     type( field_type ), intent( in )    :: mr_n ( nummr ), theta, dry_rho_in_w3
 
     type( field_collection_type ), intent(in)    :: derived_fields
-    type( field_collection_type ), intent(inout) :: microphysics_fields
+    type( field_collection_type ), intent(in)    :: microphysics_fields
     type( field_collection_type ), intent(in)    :: cloud_fields
     type( field_collection_type ), intent(in)    :: aerosol_fields
     type( field_collection_type ), intent(in)    :: turbulence_fields
@@ -94,6 +94,12 @@ contains
     type( field_type ), pointer :: ls_rain             => null()
     type( field_type ), pointer :: ls_snow             => null()
     type( field_type ), pointer :: lsca_2d             => null()
+    type( field_type ), pointer :: ls_rain_3d          => null()
+    type( field_type ), pointer :: ls_snow_3d          => null()
+    type( field_type ), pointer :: autoconv            => null()
+    type( field_type ), pointer :: accretion           => null()
+    type( field_type ), pointer :: rim_cry             => null()
+    type( field_type ), pointer :: rim_agg             => null()
 
     type( field_type ), pointer :: cloud_drop_no_conc  => null()
 
@@ -134,6 +140,12 @@ contains
     ls_rain            => microphysics_fields%get_field('ls_rain')
     ls_snow            => microphysics_fields%get_field('ls_snow')
     lsca_2d            => microphysics_fields%get_field('lsca_2d')
+    ls_rain_3d         => microphysics_fields%get_field('ls_rain_3d')
+    ls_snow_3d         => microphysics_fields%get_field('ls_snow_3d')
+    autoconv           => microphysics_fields%get_field('autoconv')
+    accretion          => microphysics_fields%get_field('accretion')
+    rim_cry            => microphysics_fields%get_field('rim_cry')
+    rim_agg            => microphysics_fields%get_field('rim_agg')
 
     cloud_drop_no_conc => aerosol_fields%get_field('cloud_drop_no_conc')
 
@@ -164,7 +176,9 @@ contains
                                      dmr_mphys(imr_v),  dmr_mphys(imr_cl),     &
                                      dmr_mphys(imr_ci), dmr_mphys(imr_r),      &
                                      dmr_mphys(imr_g), ls_rain, ls_snow,       &
-                                     lsca_2d,                                  &
+                                     lsca_2d, ls_rain_3d, ls_snow_3d,          &
+                                     autoconv, accretion,                      &
+                                     rim_cry, rim_agg,                         &
                                      theta_inc, dcfl, dcff, dbcf, f_arr ) )
 
     if (turb_gen_mixph) then
@@ -193,6 +207,13 @@ contains
       call ls_rain%write_field('ls_rain')
       call ls_snow%write_field('ls_snow')
       call lsca_2d%write_field('lsca_2d')
+      call ls_rain_3d%write_field('ls_rain_3d')
+      call ls_snow_3d%write_field('ls_snow_3d')
+      call autoconv%write_field('autoconv')
+      call accretion%write_field('accretion')
+      call rim_cry%write_field('rim_cry')
+      call rim_agg%write_field('rim_agg')
+
       if ( subroutine_timers ) call timer("mphys_xios")
     end if
 

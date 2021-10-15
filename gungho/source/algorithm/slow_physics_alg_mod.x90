@@ -62,6 +62,7 @@ module slow_physics_alg_mod
   use radaer_alg_mod,            only: radaer_alg
   use glomap_aerosol_alg_mod,    only: glomap_aerosol_alg
   use strat_aerosol_alg_mod,     only: strat_aerosol_alg
+  use aerosol_ukca_alg_mod,      only: aerosol_ukca_alg
   use mphys_alg_mod,             only: mphys_alg
   use illuminate_alg_mod,        only: illuminate_alg
   use rad_tile_alg_mod,          only: rad_tile_alg
@@ -80,6 +81,9 @@ module slow_physics_alg_mod
   use aerosol_config_mod,        only: activation_scheme,                      &
                                        activation_scheme_jones,                &
                                        l_radaer,                               &
+                                       glomap_mode,                            &
+                                       glomap_mode_climatology,                &
+                                       glomap_mode_ukca,                       &
                                        sulphuric_strat_climatology
   use ancil_info,                only: rad_nband
   use jules_control_init_mod,    only: n_land_tile
@@ -113,6 +117,7 @@ contains
   !> @param[in,out] surface_fields         Fields for surface scheme
   !> @param[in,out] soil_fields            Fields for soil hydrology scheme
   !> @param[in,out] snow_fields            Fields for snow scheme
+  !> @param[in,out] chemistry_fields       Fields for chemistry scheme
   !> @param[in,out] aerosol_fields         Fields for aerosol scheme
   !> @param[in]     clock                  Model time
   !> @param[in]     dt                     The model timestep length
@@ -123,8 +128,8 @@ contains
                           radiation_fields, microphysics_fields,               &
                           orography_fields, turbulence_fields,                 &
                           convection_fields, cloud_fields, surface_fields,     &
-                          soil_fields, snow_fields, aerosol_fields,            &
-                          clock, dt, mesh_id, twod_mesh_id )
+                          soil_fields, snow_fields, chemistry_fields,          &
+                          aerosol_fields, clock, dt, mesh_id, twod_mesh_id )
 
     implicit none
 
@@ -148,6 +153,7 @@ contains
     type( field_collection_type ), intent(inout) :: surface_fields
     type( field_collection_type ), intent(inout) :: soil_fields
     type( field_collection_type ), intent(inout) :: snow_fields
+    type( field_collection_type ), intent(inout) :: chemistry_fields
     type( field_collection_type ), intent(inout) :: aerosol_fields
 
     integer( kind=i_def ), intent(in) :: mesh_id
@@ -270,15 +276,36 @@ contains
         ! Tropopause level
         !--------------------------------------------------------------------
         if (sulphuric_strat_climatology .or. l_radaer) then
-          call locate_tropopause_alg(trop_level, theta, exner_in_wth, twod_mesh_id)
+          call locate_tropopause_alg( trop_level, theta, exner_in_wth,         &
+                                      twod_mesh_id )
         end if
 
         !--------------------------------------------------------------------
-        ! Aerosol climatologies
+        ! GLOMAP-mode aerosol scheme
         !--------------------------------------------------------------------
-        if ( activation_scheme == activation_scheme_jones ) then
-          call glomap_aerosol_alg ( aerosol_fields, theta, exner_in_wth )
-        end if
+
+        select case (glomap_mode)
+
+          case(glomap_mode_climatology)
+
+            if ( activation_scheme == activation_scheme_jones ) then
+              call glomap_aerosol_alg ( aerosol_fields, theta, exner_in_wth )
+            end if
+
+          case(glomap_mode_ukca)
+
+            call aerosol_ukca_alg ( derived_fields, radiation_fields,          &
+                                    microphysics_fields, turbulence_fields,    &
+                                    convection_fields, cloud_fields,           &
+                                    surface_fields, soil_fields,               &
+                                    chemistry_fields, aerosol_fields,          &
+                                    theta, exner, mr_n, clock%get_step() )
+
+        end select
+
+        !--------------------------------------------------------------------
+        ! Stratospheric aerosol climatology
+        !--------------------------------------------------------------------
 
         if ( sulphuric_strat_climatology ) then
           call strat_aerosol_alg ( aerosol_fields, trop_level, exner )
@@ -421,7 +448,8 @@ contains
                       derived_fields, radiation_fields,                  &
                       microphysics_fields, dmr_mphys, orography_fields,  &
                       turbulence_fields, convection_fields, cloud_fields,&
-                      surface_fields, soil_fields, snow_fields)
+                      surface_fields, soil_fields, snow_fields,          &
+                      aerosol_fields)
 
     !--------------------------------------------------------------------
     ! Calculate time scales for bimodal cloud scheme

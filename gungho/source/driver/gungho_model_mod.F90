@@ -108,6 +108,7 @@ module gungho_model_mod
   use socrates_init_mod,          only : socrates_init
   use um_control_init_mod,        only : um_control_init
   use um_physics_init_mod,        only : um_physics_init
+  use um_ukca_init_mod,           only : um_ukca_init
 #endif
 
   implicit none
@@ -407,6 +408,8 @@ contains
         ! Initialisation of Jules physics variables
         call jules_physics_init()
       end if
+      ! Initialisation of UKCA physics variables
+      call um_ukca_init()
     end if
 #endif
 

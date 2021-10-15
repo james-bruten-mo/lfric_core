@@ -81,6 +81,7 @@ module gungho_step_mod
     type( field_collection_type ), pointer :: surface_fields => null()
     type( field_collection_type ), pointer :: soil_fields => null()
     type( field_collection_type ), pointer :: snow_fields => null()
+    type( field_collection_type ), pointer :: chemistry_fields => null()
     type( field_collection_type ), pointer :: aerosol_fields => null()
     type( field_collection_type ), pointer :: lbc_fields => null()
 
@@ -113,6 +114,7 @@ module gungho_step_mod
     surface_fields => model_data%surface_fields
     soil_fields => model_data%soil_fields
     snow_fields => model_data%snow_fields
+    chemistry_fields => model_data%chemistry_fields
     aerosol_fields => model_data%aerosol_fields
     lbc_fields => model_data%lbc_fields
 
@@ -158,8 +160,9 @@ module gungho_step_mod
                                       turbulence_fields, convection_fields,    &
                                       cloud_fields, surface_fields,            &
                                       soil_fields, snow_fields,                &
-                                      aerosol_fields, lbc_fields,              &
-                                      clock, dt, mesh_id, twod_mesh_id)
+                                      chemistry_fields, aerosol_fields,        &
+                                      lbc_fields, clock, dt, mesh_id,          &
+                                      twod_mesh_id)
         case( method_rk )             ! RK
           call rk_alg_step(u, rho, theta, moist_dyn, exner, dt)
       end select

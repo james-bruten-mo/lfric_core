@@ -70,6 +70,7 @@ contains
   !> @param[out]   soil_fields Collection of fields for soil hydrology scheme
   !> @param[out]   snow_fields Collection of fields for snow scheme
   !> @param[out]   aerosol_fields Collection of fields for aerosol scheme
+  !> @param[out]   chemistry_fields Collection of fields for chemistry scheme
   subroutine create_physics_prognostics( mesh_id,             &
                                          twod_mesh_id,        &
                                          clock,               &
@@ -85,6 +86,7 @@ contains
                                          surface_fields,      &
                                          soil_fields,         &
                                          snow_fields,         &
+                                         chemistry_fields,    &
                                          aerosol_fields )
 
 #ifdef UM_PHYSICS
@@ -94,6 +96,7 @@ contains
     use jules_surface_types_mod, only: npft
     use nlsizes_namelist_mod,    only: sm_levels
     use ancil_info,              only: rad_nband
+    use dust_parameters_mod,     only: ndiv
 #endif
 
     implicit none
@@ -115,6 +118,7 @@ contains
     type(field_collection_type), intent(out) :: surface_fields
     type(field_collection_type), intent(out) :: soil_fields
     type(field_collection_type), intent(out) :: snow_fields
+    type(field_collection_type), intent(out) :: chemistry_fields
     type(field_collection_type), intent(out) :: aerosol_fields
 
     ! pointers to vector spaces
@@ -166,6 +170,7 @@ contains
     sice_space => function_space_collection%get_fs(twod_mesh_id, 0, W3, n_sea_ice_tile)
     snow_space => function_space_collection%get_fs(twod_mesh_id, 0, W3, snow_lev_tile)
 #endif
+
     !========================================================================
     ! Fields derived from the FE dynamical fields for use in physics
     !========================================================================
@@ -331,6 +336,25 @@ contains
     !========================================================================
     microphysics_fields = field_collection_type(name='microphysics_fields')
 
+    ! 3D fields, might need checkpointing for GLOMAP interactive aerosol
+    if ( aerosol == aerosol_um .and. glomap_mode == glomap_mode_ukca ) then
+       checkpoint_flag = .true.
+    else
+       checkpoint_flag = .false.
+    end if
+    call add_physics_field( microphysics_fields, depository, prognostic_fields,&
+      'ls_rain_3d', wtheta_space, checkpoint_flag=checkpoint_flag )
+    call add_physics_field( microphysics_fields, depository, prognostic_fields,&
+      'ls_snow_3d', wtheta_space, checkpoint_flag=checkpoint_flag )
+    call add_physics_field( microphysics_fields, depository, prognostic_fields,&
+      'autoconv', wtheta_space, checkpoint_flag=checkpoint_flag )
+    call add_physics_field( microphysics_fields, depository, prognostic_fields,&
+      'accretion', wtheta_space, checkpoint_flag=checkpoint_flag )
+    call add_physics_field( microphysics_fields, depository, prognostic_fields,&
+      'rim_cry', wtheta_space, checkpoint_flag=checkpoint_flag )
+    call add_physics_field( microphysics_fields, depository, prognostic_fields,&
+      'rim_agg', wtheta_space, checkpoint_flag=checkpoint_flag )
+
     ! 2D fields, don't need checkpointing
     call add_physics_field( microphysics_fields, depository, prognostic_fields,&
       'ls_rain',  twod_space, twod=.true. )
@@ -377,6 +401,7 @@ contains
     turbulence_fields = field_collection_type(name='turbulence_fields')
 
     ! 2D fields, might need checkpointing
+
     if (boundary_layer == boundary_layer_um) then
       checkpoint_flag = .true.
     else
@@ -384,11 +409,53 @@ contains
     end if
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
       'zh',      twod_space, checkpoint_flag=checkpoint_flag, twod=.true. )
-
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
       'wvar',    wtheta_space, checkpoint_flag=turb_gen_mixph )
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
       'gradrinr', wtheta_space )
+
+    ! 2D fields, might need checkpointing for GLOMAP interactive aerosol
+    if ( aerosol == aerosol_um .and. glomap_mode == glomap_mode_ukca ) then
+      checkpoint_flag = .true.
+    else
+      checkpoint_flag = .false.
+    end if
+    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
+      'zhsc', twod_space, checkpoint_flag=checkpoint_flag, twod=.true. )
+    call add_integer_field( turbulence_fields, depository, prognostic_fields,  &
+      'level_ent', twod_space, checkpoint_flag=checkpoint_flag, twod=.true. )
+    call add_integer_field( turbulence_fields, depository, prognostic_fields,  &
+      'level_ent_dsc', twod_space, checkpoint_flag=checkpoint_flag,            &
+      twod=.true. )
+
+    ! 3D fields, might need checkpointing for GLOMAP interactive aerosol
+    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
+      'tke_bl', wtheta_space, checkpoint_flag=checkpoint_flag )
+    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
+      'dtrdz_tq_bl', wtheta_space, checkpoint_flag=checkpoint_flag )
+    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
+      'rhokh_bl', w3_space, checkpoint_flag=checkpoint_flag )
+    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
+      'rdz_tq_bl', w3_space, checkpoint_flag=checkpoint_flag )
+
+    ! Fields on entrainment levels, might need checkpointing for GLOMAP
+    ! interactive aerosol
+    vector_space => function_space_collection%get_fs(twod_mesh_id, 0, W3, 3)
+    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
+      'ent_we_lim', vector_space, checkpoint_flag=checkpoint_flag, twod=.true. )
+    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
+      'ent_t_frac', vector_space, checkpoint_flag=checkpoint_flag, twod=.true. )
+    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
+      'ent_zrzi', vector_space, checkpoint_flag=checkpoint_flag, twod=.true. )
+    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
+      'ent_we_lim_dsc', vector_space, checkpoint_flag=checkpoint_flag,         &
+      twod=.true. )
+    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
+      'ent_t_frac_dsc', vector_space, checkpoint_flag=checkpoint_flag,         &
+      twod=.true. )
+    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
+      'ent_zrzi_dsc', vector_space, checkpoint_flag=checkpoint_flag,           &
+      twod=.true. )
 
     ! 2D fields, don't need checkpointing
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
@@ -405,8 +472,6 @@ contains
       'blend_height_tq',  twod_space, twod=.true. )
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
       'zh_nonloc',  twod_space, twod=.true. )
-    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
-      'zhsc',  twod_space, twod=.true. )
 
     ! Space for the 7 BL types
     vector_space => function_space_collection%get_fs(twod_mesh_id, 0, W3, 7)
@@ -419,21 +484,15 @@ contains
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
       'bt_bl', wtheta_space )
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
-      'dtrdz_tq_bl', wtheta_space )
-    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
       'lmix_bl', wtheta_space )
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
       'dsldzm',  wtheta_space )
 
     ! 3D fields on W3 (rho) levels
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
-      'rhokh_bl',     w3_space )
-    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
       'moist_flux_bl',     w3_space )
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
       'heat_flux_bl',     w3_space )
-    call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
-      'rdz_tq_bl',     w3_space )
 
     ! W2 fields, don't need checkpointing
     call add_physics_field( turbulence_fields, depository, prognostic_fields,  &
@@ -481,6 +540,17 @@ contains
       'cca', wtheta_space, checkpoint_flag=checkpoint_flag)
     call add_physics_field(convection_fields, depository, prognostic_fields, &
       'ccw', wtheta_space, checkpoint_flag=checkpoint_flag)
+
+    ! 3D fields, might need checkpointing for GLOMAP-mode interactive aerosol
+    if ( aerosol == aerosol_um .and. glomap_mode == glomap_mode_ukca ) then
+       checkpoint_flag = .true.
+    else
+       checkpoint_flag = .false.
+    end if
+    call add_physics_field(convection_fields, depository, prognostic_fields, &
+      'conv_rain_3d', wtheta_space, checkpoint_flag=checkpoint_flag)
+    call add_physics_field(convection_fields, depository, prognostic_fields, &
+      'conv_snow_3d', wtheta_space, checkpoint_flag=checkpoint_flag)
 
     ! 2D fields, don't need checkpointing
     call add_physics_field( convection_fields, depository, prognostic_fields,  &
@@ -632,6 +702,24 @@ contains
     call add_physics_field( surface_fields, depository, prognostic_fields,     &
       'sea_ice_temperature', sice_space, checkpoint_flag=checkpoint_flag, twod=.true. )
 
+    ! 2D fields, might need checkpointing for GLOMAP-mode interactive aerosol
+    if ( aerosol == aerosol_um .and. glomap_mode == glomap_mode_ukca ) then
+       checkpoint_flag = .true.
+    else
+       checkpoint_flag = .false.
+    end if
+    call add_physics_field( surface_fields, depository, prognostic_fields,     &
+      'z0m', twod_space, checkpoint_flag=checkpoint_flag, twod=.true. )
+    call add_physics_field( surface_fields, depository, prognostic_fields,     &
+      'ustar', twod_space, checkpoint_flag=checkpoint_flag, twod=.true. )
+    call add_physics_field( surface_fields, depository, prognostic_fields,     &
+      'wspd10m', twod_space, checkpoint_flag=checkpoint_flag, twod=.true. )
+
+    ! Fields on surface tiles, might need checkpointing for GLOMAP-mode
+    ! interactive aerosol
+    call add_physics_field( surface_fields, depository, prognostic_fields,     &
+      'gc_tile', surft_space, checkpoint_flag=checkpoint_flag, twod=.true. )
+
     ! Fields on surface tiles, don't need checkpointing
     call add_physics_field( surface_fields, depository, prognostic_fields,     &
       'tile_heat_flux', surft_space, twod=.true. )
@@ -659,12 +747,8 @@ contains
       'canhc_tile', surft_space, twod=.true. )
 
     ! 2D fields
-    call add_physics_field( surface_fields, depository, prognostic_fields,     &
-      'ustar', twod_space, twod=.true. )
     call add_physics_field(surface_fields, depository, prognostic_fields,      &
       'net_prim_prod', twod_space, twod=.true.)
-    call add_physics_field( surface_fields, depository, prognostic_fields,     &
-      'wspd10m', twod_space, twod=.true. )
     call add_physics_field( surface_fields, depository, prognostic_fields,     &
       'taux_ssi', twod_space, twod=.true. )
     call add_physics_field( surface_fields, depository, prognostic_fields,     &
@@ -801,96 +885,187 @@ contains
       'snow_unload_rate', pft_space, twod=.true. )
 
     !========================================================================
+    ! Fields owned by the chemistry scheme
+    !========================================================================
+    chemistry_fields = field_collection_type(name='chemistry_fields')
+
+    ! 3D fields, might need checkpointing
+    ! (not advected in Offline Oxidants chemistry scheme)
+    if ( aerosol == aerosol_um .and. glomap_mode == glomap_mode_ukca ) then
+      checkpoint_flag = .true.
+      advection_flag = .false.
+    else
+      checkpoint_flag = .false.
+      advection_flag = .false.
+    end if
+    call add_physics_field( chemistry_fields, depository, prognostic_fields,   &
+      'o3', wtheta_space, checkpoint_flag=checkpoint_flag,                     &
+      advection_flag=advection_flag )
+    call add_physics_field( chemistry_fields, depository, prognostic_fields,   &
+      'no3', wtheta_space, checkpoint_flag=checkpoint_flag,                    &
+      advection_flag=advection_flag )
+    call add_physics_field( chemistry_fields, depository, prognostic_fields,   &
+      'oh', wtheta_space, checkpoint_flag=checkpoint_flag,                     &
+      advection_flag=advection_flag )
+    call add_physics_field( chemistry_fields, depository, prognostic_fields,   &
+      'ho2', wtheta_space, checkpoint_flag=checkpoint_flag,                    &
+      advection_flag=advection_flag )
+    call add_physics_field( chemistry_fields, depository, prognostic_fields,   &
+      'h2o2_limit', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+
+    ! 3D fields, might need checkpointing and advecting
+    if ( aerosol == aerosol_um .and. glomap_mode == glomap_mode_ukca ) then
+      checkpoint_flag = .true.
+      advection_flag = .true.
+    else
+      checkpoint_flag = .false.
+      advection_flag = .false.
+    end if
+    call add_physics_field( chemistry_fields, depository, prognostic_fields,   &
+      'h2o2', wtheta_space, checkpoint_flag=checkpoint_flag,                   &
+      advection_flag=advection_flag )
+    call add_physics_field( chemistry_fields, depository, prognostic_fields,   &
+      'dms', wtheta_space, checkpoint_flag=checkpoint_flag,                    &
+      advection_flag=advection_flag )
+    call add_physics_field( chemistry_fields, depository, prognostic_fields,   &
+      'so2', wtheta_space, checkpoint_flag=checkpoint_flag,                    &
+      advection_flag=advection_flag )
+    call add_physics_field( chemistry_fields, depository, prognostic_fields,   &
+      'h2so4', wtheta_space, checkpoint_flag=checkpoint_flag,                  &
+      advection_flag=advection_flag )
+    call add_physics_field( chemistry_fields, depository, prognostic_fields,   &
+      'dmso', wtheta_space, checkpoint_flag=checkpoint_flag,                   &
+      advection_flag=advection_flag )
+    call add_physics_field( chemistry_fields, depository, prognostic_fields,   &
+      'monoterpene', wtheta_space, checkpoint_flag=checkpoint_flag,            &
+      advection_flag=advection_flag )
+    call add_physics_field( chemistry_fields, depository, prognostic_fields,   &
+      'secondary_organic', wtheta_space, checkpoint_flag=checkpoint_flag,      &
+      advection_flag=advection_flag )
+
+    !========================================================================
     ! Fields owned by the aerosol scheme
     !========================================================================
     aerosol_fields = field_collection_type(name='aerosol_fields')
 
-    ! 3D fields, might need checkpointing
-    if ( ( aerosol == aerosol_um ) .and.                                       &
-         ( ( glomap_mode == glomap_mode_climatology ) .or.                     &
-           ( glomap_mode == glomap_mode_ukca ) ) ) then
+    ! 3D fields, might need checkpointing and/or advecting
+    if ( aerosol == aerosol_um .and.                                           &
+           ( glomap_mode == glomap_mode_climatology .or.                       &
+             glomap_mode == glomap_mode_ukca ) ) then
       checkpoint_flag = .true.
     else
       checkpoint_flag = .false.
     end if
-    ! Nucleation Soluble number mixing ratio
+    if ( aerosol == aerosol_um .and. glomap_mode == glomap_mode_ukca ) then
+      advection_flag = .true.
+    else
+      advection_flag = .false.
+    end if
+    ! Nucleation soluble mode number mixing ratio
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'n_nuc_sol', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Nucleation Soluble Sulphate aerosol mmr
+      'n_nuc_sol', wtheta_space, checkpoint_flag=checkpoint_flag,              &
+      advection_flag=advection_flag )
+    ! Nucleation soluble H2SO4 aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'nuc_sol_su', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Nucleation Soluble Organic Matter aerosol mmr
+      'nuc_sol_su', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Nucleation soluble organic carbon aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'nuc_sol_om', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Aitken Soluble number mixing ratio
+      'nuc_sol_om', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Aitken soluble mode number mixing ratio
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'n_ait_sol', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Aitken Soluble Sulphate aerosol mmr
+      'n_ait_sol', wtheta_space, checkpoint_flag=checkpoint_flag,              &
+      advection_flag=advection_flag )
+    ! Aitken soluble H2SO4 aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'ait_sol_su', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Aitken Soluble Black Carbon aerosol mmr
+      'ait_sol_su', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Aitken soluble black carbon aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'ait_sol_bc', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Aitken Soluble Organic Matter aerosol mmr
+      'ait_sol_bc', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Aitken soluble organic carbon aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'ait_sol_om', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Accumulation Soluble number mixing ratio
+      'ait_sol_om', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Accumulation soluble mode number mixing ratio
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'n_acc_sol', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Accumulation Soluble Sulphate aerosol mmr
+      'n_acc_sol', wtheta_space, checkpoint_flag=checkpoint_flag,              &
+      advection_flag=advection_flag )
+    ! Accumulation soluble H2SO4 aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'acc_sol_su', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Accumulation Soluble Black Carbon aerosol mmr
+      'acc_sol_su', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Accumulation soluble black carbon aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'acc_sol_bc', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Accumulation Soluble Organic Matter aerosol mmr
+      'acc_sol_bc', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Accumulation soluble organic carbon aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'acc_sol_om', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Accumulation Soluble Sea Salt aerosol mmr
+      'acc_sol_om', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Accumulation soluble sea salt aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'acc_sol_ss', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Accumulation Soluble dust aerosol mmr
+      'acc_sol_ss', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Accumulation soluble dust aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'acc_sol_du', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Coarse Soluble number mixing ratio
+      'acc_sol_du', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Coarse soluble mode number mixing ratio
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'n_cor_sol', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Coarse Soluble Sulphate aerosol mmr
+      'n_cor_sol', wtheta_space, checkpoint_flag=checkpoint_flag,              &
+      advection_flag=advection_flag )
+    ! Coarse soluble H2SO4 aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'cor_sol_su', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Coarse Soluble Black Carbon aerosol mmr
+      'cor_sol_su', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Coarse soluble black carbon aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'cor_sol_bc', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Coarse Soluble Organic Matter aerosol mmr
+      'cor_sol_bc', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Coarse soluble organic carbon aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'cor_sol_om', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Coarse Soluble Sea Salt aerosol mmr
+      'cor_sol_om', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Coarse soluble sea salt aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'cor_sol_ss', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Coarse Soluble dust aerosol mmr
+      'cor_sol_ss', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Coarse soluble dust aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'cor_sol_du', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Aitken Insoluble number mixing ratio
+      'cor_sol_du', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Aitken insoluble mode number mixing ratio
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'n_ait_ins', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Aitken Insoluble Black Carbon aerosol mmr
+      'n_ait_ins', wtheta_space, checkpoint_flag=checkpoint_flag,              &
+      advection_flag=advection_flag )
+    ! Aitken insoluble black carbon aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'ait_ins_bc', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Aitken Insoluble Organic Matter aerosol mmr
+      'ait_ins_bc', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Aitken insoluble organic carbon aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'ait_ins_om', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Accumulation Insoluble number mixing ratio
+      'ait_ins_om', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Accumulation insoluble mode number mixing ratio
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'n_acc_ins', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Accumulation Insoluble dust aerosol mmr
+      'n_acc_ins', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Accumulation insoluble dust aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'acc_ins_du', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Coarse Insoluble number mixing ratio
+      'acc_ins_du', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Coarse insoluble mode number mixing ratio
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'n_cor_ins', wtheta_space, checkpoint_flag=checkpoint_flag )
-    ! Coarse Insoluble dust aerosol mmr
+      'n_cor_ins', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
+    ! Coarse insoluble dust aerosol mmr
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'cor_ins_du', wtheta_space, checkpoint_flag=checkpoint_flag )
+      'cor_ins_du', wtheta_space, checkpoint_flag=checkpoint_flag,             &
+      advection_flag=advection_flag )
 
     !========================================================================
     ! Aerosol fields that do not require checkpoint restart
@@ -899,11 +1074,9 @@ contains
     ! Cloud droplet number concentration
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
       'cloud_drop_no_conc', wtheta_space )
-
     ! Sulphuric Acid aerosol MMR
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
       'sulphuric', wtheta_space )
-
     ! Dry diameter Aitken mode (Solvent)
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
       'drydp_ait_sol', wtheta_space )
@@ -931,15 +1104,6 @@ contains
     ! Wet diameter Coarse mode (Solvent)
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
       'wetdp_cor_sol', wtheta_space )
-    ! Wet diameter Aitken mode (Insolvent)
-    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'wetdp_ait_ins', wtheta_space )
-    ! Wet diameter Accumulation mode (Insolvent)
-    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'wetdp_acc_ins', wtheta_space )
-    ! Wet diameter Coarse mode (Insolvent)
-    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
-      'wetdp_cor_ins', wtheta_space )
     ! Particle density Aitken mode (Solvent)
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
       'rhopar_ait_sol', wtheta_space )
@@ -1028,6 +1192,55 @@ contains
     call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
       'pvol_du_cor_ins', wtheta_space )
 
+    !========================================================================
+    ! Emission fields for the aerosol scheme
+    !========================================================================
+
+    ! 2D fields, don't need checkpointing
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'emiss_bc_biofuel', twod_space, twod=.true. )
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'emiss_bc_fossil', twod_space, twod=.true. )
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'emiss_dms_land', twod_space, twod=.true. )
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'dms_conc_ocean', twod_space, twod=.true. )
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'emiss_monoterp', twod_space, twod=.true. )
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'emiss_om_biofuel', twod_space, twod=.true. )
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'emiss_om_fossil', twod_space, twod=.true. )
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'emiss_so2_low', twod_space, twod=.true. )
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'emiss_so2_high', twod_space, twod=.true. )
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'soil_clay', twod_space, twod=.true. )
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'soil_sand', twod_space, twod=.true. )
+
+    ! 3D fields, don't need checkpointing
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'emiss_bc_biomass', wtheta_space )
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'emiss_om_biomass', wtheta_space )
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'emiss_so2_nat', wtheta_space )
+
+    ! Fields on dust space, might need checkpointing
+    if ( aerosol == aerosol_um .and. glomap_mode == glomap_mode_ukca ) then
+       checkpoint_flag = .true.
+    else
+       checkpoint_flag = .false.
+    end if
+    vector_space => function_space_collection%get_fs(twod_mesh_id, 0, W3, ndiv)
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'dust_flux', vector_space, checkpoint_flag=checkpoint_flag, twod=.true. )
+
+    ! Fields on dust space, don't need checkpointing
+    call add_physics_field( aerosol_fields, depository, prognostic_fields,     &
+      'dust_mrel', vector_space, twod=.true. )
 #endif
 
   end subroutine create_physics_prognostics
@@ -1220,7 +1433,7 @@ contains
 
     ! Add the field to the depository
     call depository%add_field(new_field)
-    field_ptr => depository%get_field(name)
+    field_ptr => depository%get_integer_field(name)
     ! Put a pointer to the field in the required collection
     call field_collection%add_reference_to_field( field_ptr )
     ! If checkpointing the field, put a pointer to it in the prognostics collection

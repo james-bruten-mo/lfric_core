@@ -4,12 +4,11 @@
 ! under which the code may be used.
 !-----------------------------------------------------------------------------
 !> @brief Interface to the explicit UM boundary layer scheme.
-!> @todo Doxygen comments are limited due to fparser bug - fix will be
-!>       available with PSyclone 2.0.0
 module bl_exp_kernel_mod
 
   use argument_mod,           only : arg_type,                   &
-                                     GH_FIELD, GH_REAL,          &
+                                     GH_FIELD, GH_REAL,          & 
+                                     GH_INTEGER,                 &
                                      GH_READ, GH_WRITE, GH_INC,  &
                                      GH_READWRITE, CELL_COLUMN,  &
                                      ANY_DISCONTINUOUS_SPACE_1,  &
@@ -22,6 +21,8 @@ module bl_exp_kernel_mod
                                      ANY_DISCONTINUOUS_SPACE_8,  &
                                      ANY_DISCONTINUOUS_SPACE_9,  &
                                      ANY_DISCONTINUOUS_SPACE_10, &
+                                     ANY_DISCONTINUOUS_SPACE_11, &
+                                     ANY_DISCONTINUOUS_SPACE_12, &
                                      STENCIL, CROSS
   use constants_mod,          only : i_def, i_um, r_def, r_um, rmdi
   use fs_continuity_mod,      only : W3, Wtheta, W2
@@ -51,7 +52,7 @@ module bl_exp_kernel_mod
   !>
   type, public, extends(kernel_type) :: bl_exp_kernel_type
     private
-    type(arg_type) :: meta_args(121) = (/                                      &
+    type(arg_type) :: meta_args(136) = (/                                      &
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      WTHETA),                   &! theta_in_wth
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      W3),                       &! rho_in_w3
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      WTHETA),                   &! wetrho_in_wth
@@ -70,6 +71,7 @@ module bl_exp_kernel_mod
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      WTHETA),                   &! max_diff_smag
          arg_type(GH_FIELD, GH_REAL,  GH_READWRITE, ANY_DISCONTINUOUS_SPACE_1),&! zh_2d
          arg_type(GH_FIELD, GH_REAL,  GH_READWRITE, ANY_DISCONTINUOUS_SPACE_1),&! z0msea_2d
+         arg_type(GH_FIELD, GH_REAL,  GH_READWRITE, ANY_DISCONTINUOUS_SPACE_1),&! z0m_2d
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_1),&! ntml_2d
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_1),&! cumulus_2d
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      ANY_DISCONTINUOUS_SPACE_2, STENCIL(CROSS)),&! tile_fraction
@@ -130,6 +132,7 @@ module bl_exp_kernel_mod
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     WTHETA),                   &! rhokm_bl
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_7),&! surf_interp
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     W3),                       &! rhokh_bl
+         arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     WTHETA),                   &! tke_bl
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     WTHETA),                   &! ngstress_bl
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     WTHETA),                   &! bq_bl
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     WTHETA),                   &! bt_bl
@@ -150,6 +153,7 @@ module bl_exp_kernel_mod
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_2),&! rhokh_tile
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_2),&! chr1p5m_tile
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_2),&! resfs_tile
+         arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_2),&! gc_tile
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_2),&! canhc_tile
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_8),&! tile_water_extract
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_1),&! blend_height_tq
@@ -172,7 +176,19 @@ module bl_exp_kernel_mod
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_1),&! qsat_at_lcl
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_9),&! bl_type_ind
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_3),&! snow_unload_rate
-         arg_type(GH_FIELD, GH_REAL,  GH_READ,      ANY_DISCONTINUOUS_SPACE_10)&! albedo_obs_scaling
+         arg_type(GH_FIELD, GH_REAL,  GH_READ,      ANY_DISCONTINUOUS_SPACE_10),&! albedo_obs_scaling
+         arg_type(GH_FIELD, GH_INTEGER,  GH_WRITE,  ANY_DISCONTINUOUS_SPACE_1),&! level_ent 
+         arg_type(GH_FIELD, GH_INTEGER,  GH_WRITE,  ANY_DISCONTINUOUS_SPACE_1),&! level_ent_dsc 
+         arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_11),&! ent_we_lim
+         arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_11),&! ent_t_frac 
+         arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_11),&! ent_zrzi 
+         arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_11),&! ent_we_lim_dsc
+         arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_11),&! ent_t_frac_dsc
+         arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_11),&! ent_zrzi_dsc
+         arg_type(GH_FIELD, GH_REAL,  GH_READ,      ANY_DISCONTINUOUS_SPACE_1),&! soil_clay_2d
+         arg_type(GH_FIELD, GH_REAL,  GH_READ,      ANY_DISCONTINUOUS_SPACE_1),&! soil_sand_2d
+         arg_type(GH_FIELD, GH_REAL,  GH_READ,      ANY_DISCONTINUOUS_SPACE_12),&! dust_div_mrel
+         arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_12)&! dust_div_flux
          /)
     integer :: operates_on = CELL_COLUMN
   contains
@@ -206,7 +222,8 @@ contains
   !> @param[in]     delta                  Edge length on wtheta points
   !> @param[in]     max_diff_smag          Maximum diffusion coefficient allowed
   !> @param[in,out] zh_2d                  Boundary layer depth
-  !> @param[in,out] z0msea_2d              Roughness length
+  !> @param[in,out] z0msea_2d              Roughness length (sea)
+  !> @param[in,out] z0m_2d                 Cell roughness length
   !> @param[in,out] ntml_2d                Number of turbulently mixed levels
   !> @param[in,out] cumulus_2d             Cumulus flag (true/false)
   !> @param[in]     tile_fraction          Surface tile fractions
@@ -267,6 +284,7 @@ contains
   !> @param[in,out] rhokm_bl               Momentum eddy diffusivity on BL levels
   !> @param[in,out] surf_interp            Surface variables for regridding
   !> @param[in,out] rhokh_bl               Heat eddy diffusivity on BL levels
+  !> @param[in,out] tke_bl                 Turbulent kinetic energy (m2 s-2) 
   !> @param[in,out] ngstress_bl            Non-gradient stress function on BL levels
   !> @param[in,out] bq_bl                  Buoyancy parameter for moisture
   !> @param[in,out] bt_bl                  Buoyancy parameter for heat
@@ -287,6 +305,7 @@ contains
   !> @param[in,out] rhokh_tile             Surface heat diffusivity on tiles
   !> @param[in,out] chr1p5m_tile           1.5m transfer coefficients on tiles
   !> @param[in,out] resfs_tile             Combined aerodynamic resistance
+  !> @param[in,out] gc_tile                Stomatal conductance on tiles (m s-1)
   !> @param[in,out] canhc_tile             Canopy heat capacity on tiles
   !> @param[in,out] tile_water_extract     Extraction of water from each tile
   !> @param[in,out] blend_height_tq        Blending height for wth levels
@@ -310,6 +329,18 @@ contains
   !> @param[in,out] bl_type_ind            Diagnosed BL types
   !> @param[in,out] snow_unload_rate       Unloading of snow from PFTs by wind
   !> @param[in]     albedo_obs_scaling     Scaling factor to adjust albedos by
+  !> @param[in,out] level_ent              Level of surface mixed layer inversion
+  !> @param[in,out] level_ent_dsc          Level of decoupled stratocumulus inversion
+  !> @param[in,out] ent_we_lim             Rho * entrainment rate at surface ML inversion (kg m-2 s-1)
+  !> @param[in,out] ent_t_frac             Fraction of time surface ML inversion is above level
+  !> @param[in,out] ent_zrzi               Level height as fraction of DSC inversion height above DSC ML base
+  !> @param[in,out] ent_we_lim_dsc         Rho * entrainment rate at DSC inversion (kg m-2 s-1)
+  !> @param[in,out] ent_t_frac_dsc         Fraction of time DSC inversion is above level
+  !> @param[in,out] ent_zrzi_dsc           Level height as fraction of DSC inversion height above DSC ML base
+  !> @param[in] soil_clay_2d               Soil clay fraction
+  !> @param[in] soil_sand_2d               Soil sand fraction
+  !> @param[in] dust_div_mrel              Relative soil mass in CLASSIC size divisions
+  !> @param[in,out] dust_div_flux          Dust emission fluxes in CLASSIC size divisions (kg m-2 s-1) 
   !> @param[in]     ndf_wth                Number of DOFs per cell for potential temperature space
   !> @param[in]     undf_wth               Number of unique DOFs for potential temperature space
   !> @param[in]     map_wth                Dofmap for the cell at the base of the column for potential temperature space
@@ -346,6 +377,13 @@ contains
   !> @param[in]     ndf_scal               Number of DOFs per cell for albedo scaling
   !> @param[in]     undf_scal              Number of total DOFs for albedo scaling
   !> @param[in]     map_scal               Dofmap for cell at the base of the column
+  !> @param[in]     ndf_ent                Number of DOFs per cell for entrainment levels
+  !> @param[in]     undf_ent               Number of total DOFs for entrainment levels
+  !> @param[in]     map_ent                Dofmap for cell for entrainment levels
+  !> @param[in]     ndf_dust               Number of DOFs per cell for dust divisions
+  !> @param[in]     undf_dust              Number of total DOFs for dust divisions
+  !> @param[in]     map_dust               Dofmap for cell for dust divisions
+
   subroutine bl_exp_code(nlayers,                               &
                          theta_in_wth,                          &
                          rho_in_w3,                             &
@@ -367,6 +405,7 @@ contains
                          max_diff_smag,                         &
                          zh_2d,                                 &
                          z0msea_2d,                             &
+                         z0m_2d,                                &
                          ntml_2d,                               &
                          cumulus_2d,                            &
                          tile_fraction,                         &
@@ -428,6 +467,7 @@ contains
                          rhokm_bl,                              &
                          surf_interp,                           &
                          rhokh_bl,                              &
+                         tke_bl,                                &
                          ngstress_bl,                           &
                          bq_bl,                                 &
                          bt_bl,                                 &
@@ -448,6 +488,7 @@ contains
                          rhokh_tile,                            &
                          chr1p5m_tile,                          &
                          resfs_tile,                            &
+                         gc_tile,                               &
                          canhc_tile,                            &
                          tile_water_extract,                    &
                          blend_height_tq,                       &
@@ -471,6 +512,18 @@ contains
                          bl_type_ind,                           &
                          snow_unload_rate,                      &
                          albedo_obs_scaling,                    &
+                         level_ent,                             &
+                         level_ent_dsc,                         &
+                         ent_we_lim,                            &
+                         ent_t_frac,                            &
+                         ent_zrzi,                              &
+                         ent_we_lim_dsc,                        &
+                         ent_t_frac_dsc,                        &
+                         ent_zrzi_dsc,                          &
+                         soil_clay_2d,                          &
+                         soil_sand_2d,                          &
+                         dust_div_mrel,                         &
+                         dust_div_flux,                         &
                          ndf_wth,                               &
                          undf_wth,                              &
                          map_wth,                               &
@@ -489,7 +542,9 @@ contains
                          ndf_surf, undf_surf, map_surf,         &
                          ndf_smtile, undf_smtile, map_smtile,   &
                          ndf_bl, undf_bl, map_bl,               &
-                         ndf_scal, undf_scal, map_scal)
+                         ndf_scal, undf_scal, map_scal,         &
+                         ndf_ent, undf_ent, map_ent,            &
+                         ndf_dust, undf_dust, map_dust)
 
     !---------------------------------------
     ! LFRic modules
@@ -575,6 +630,10 @@ contains
     integer(kind=i_def), intent(in) :: map_bl(ndf_bl)
     integer(kind=i_def), intent(in) :: ndf_scal, undf_scal
     integer(kind=i_def), intent(in) :: map_scal(ndf_scal)
+    integer(kind=i_def), intent(in) :: ndf_ent, undf_ent
+    integer(kind=i_def), intent(in) :: map_ent(ndf_ent)
+    integer(kind=i_def), intent(in) :: ndf_dust, undf_dust
+    integer(kind=i_def), intent(in) :: map_dust(ndf_dust)
 
     integer(kind=i_def), intent(in) :: u1_w3_stencil_size, u2_w3_stencil_size
     integer(kind=i_def), dimension(ndf_w3,u1_w3_stencil_size), intent(in) :: u1_w3_stencil
@@ -591,6 +650,7 @@ contains
     real(kind=r_def), dimension(undf_wth), intent(inout):: visc_h_blend,       &
                                                            visc_m_blend,       &
                                                            rhokm_bl,           &
+                                                           tke_bl,             &
                                                            ngstress_bl,        &
                                                            bq_bl, bt_bl,       &
                                                            dtrdz_tq_bl,        &
@@ -623,7 +683,8 @@ contains
 
     real(kind=r_def), dimension(undf_2d), intent(inout) :: zh_2d,              &
                                                            zhsc_2d,            &
-                                                           z0msea_2d
+                                                           z0msea_2d,          &
+                                                           z0m_2d
 
     real(kind=r_def), dimension(undf_2d), intent(inout) :: ntml_2d,            &
                                                            cumulus_2d,         &
@@ -708,7 +769,22 @@ contains
                                                             rhokh_tile,       &
                                                             chr1p5m_tile,     &
                                                             resfs_tile,       &
+                                                            gc_tile,          &
                                                             canhc_tile
+
+    integer(kind=i_def), dimension(undf_2d),   intent(inout)  :: level_ent 
+    integer(kind=i_def), dimension(undf_2d),   intent(inout)  :: level_ent_dsc 
+    real(kind=r_def), dimension(undf_ent),  intent(inout)  :: ent_we_lim 
+    real(kind=r_def), dimension(undf_ent),  intent(inout)  :: ent_t_frac 
+    real(kind=r_def), dimension(undf_ent),  intent(inout)  :: ent_zrzi
+    real(kind=r_def), dimension(undf_ent),  intent(inout)  :: ent_we_lim_dsc
+    real(kind=r_def), dimension(undf_ent),  intent(inout)  :: ent_t_frac_dsc 
+    real(kind=r_def), dimension(undf_ent),  intent(inout)  :: ent_zrzi_dsc
+
+    real(kind=r_def), dimension(undf_2d),   intent(in)     :: soil_clay_2d
+    real(kind=r_def), dimension(undf_2d),   intent(in)     :: soil_sand_2d
+    real(kind=r_def), dimension(undf_dust), intent(in)     :: dust_div_mrel
+    real(kind=r_def), dimension(undf_dust), intent(inout)  :: dust_div_flux
 
     !-----------------------------------------------------------------------
     ! Local variables for the kernel
@@ -1199,6 +1275,17 @@ contains
       end do
     end do
 
+    ! Dust source information
+    soil_clay(1, 1) = real(soil_clay_2d(map_2d(1)), r_um)
+    soil_sand(1, 1) = real(soil_sand_2d(map_2d(1)), r_um)
+    if (ndiv > 0) dust_mrel1(1, 1) = real(dust_div_mrel(map_dust(1) + 0), r_um)
+    if (ndiv > 1) dust_mrel2(1, 1) = real(dust_div_mrel(map_dust(1) + 1), r_um)
+    if (ndiv > 2) dust_mrel3(1, 1) = real(dust_div_mrel(map_dust(1) + 2), r_um)
+    if (ndiv > 3) dust_mrel4(1, 1) = real(dust_div_mrel(map_dust(1) + 3), r_um)
+    if (ndiv > 4) dust_mrel5(1, 1) = real(dust_div_mrel(map_dust(1) + 4), r_um)
+    if (ndiv > 5) dust_mrel6(1, 1) = real(dust_div_mrel(map_dust(1) + 5), r_um)
+    dust_flux = 0.0_r_um
+
     !-----------------------------------------------------------------------
     ! For the initial implementation we pass each individual column
     ! of data to an array sized (1,1,k) to match the UMs (i,j,k) data
@@ -1310,7 +1397,6 @@ contains
     !-----------------------------------------------------------------------
     ! code below here should mimic the call from the UMs atmos_physics2
     !-----------------------------------------------------------------------
-
     if (use_jules_flux) then
       l_jules_call=.true.
       call NI_bl_ctl (                                                         &
@@ -1617,6 +1703,18 @@ contains
       dtrdz_tq_bl(map_wth(1) + k) = dtrdz_charney_grid(1,1,k)
       rdz_tq_bl(map_w3(1) + k-1) = rdz_charney_grid(1,1,k)
     end do
+
+    level_ent(map_2d(1)) = int( kent(1,1), i_def )
+    level_ent_dsc(map_2d(1)) = int( kent_dsc(1,1), i_def )
+    do k = 1, 3
+       ent_we_lim(map_ent(1) + k - 1) = real( we_lim(1,1,k), r_def ) 
+       ent_t_frac(map_ent(1) + k - 1) = real( t_frac(1,1,k), r_def ) 
+       ent_zrzi(map_ent(1) + k - 1) = real( zrzi(1,1,k), r_def ) 
+       ent_we_lim_dsc(map_ent(1) + k - 1) = real( we_lim_dsc(1,1,k), r_def ) 
+       ent_t_frac_dsc(map_ent(1) + k - 1) = real( t_frac_dsc(1,1,k), r_def ) 
+       ent_zrzi_dsc(map_ent(1) + k - 1) = real( zrzi_dsc(1,1,k), r_def ) 
+    end do
+
     if (formdrag == formdrag_dist_drag) then
       do k=1,bl_levels
         ! These fields will be passed to set wind, which maps w3 (cell centre)
@@ -1636,6 +1734,8 @@ contains
       gradrinr(map_wth(1) + k-1) = BL_diag%gradrich(1,1,k)
       lmix_bl(map_wth(1) + k-1)  = BL_diag%elm3d(1,1,k)
       ngstress_bl(map_wth(1) + k-1) = f_ngstress(1,1,k)
+      if (BL_diag%l_tke)                                                       &
+         tke_bl(map_wth(1) + k-1) = BL_diag%tke(1,1,k)
     end do
 
     do i = 1, n_land_tile
@@ -1648,6 +1748,7 @@ contains
       rhokh_tile(map_tile(1)+i-1) = rhokh_surft(1, i)
       chr1p5m_tile(map_tile(1)+i-1) = chr1p5m(1, i)
       resfs_tile(map_tile(1)+i-1) = resfs(1, i)
+      gc_tile(map_tile(1)+i-1) = gc_surft(1, i)
       canhc_tile(map_tile(1)+i-1) = canhc_surft(1, i)
     end do
 
@@ -1663,6 +1764,7 @@ contains
     ashtf_prime_tile(map_tile(1)+first_sea_tile-1) = ashtf_prime_sea(1,1)
     dtstar_tile(map_tile(1)+first_sea_tile-1) = dtstar_sea(1,1)
     rhokh_tile(map_tile(1)+first_sea_tile-1) = rhokh_sea(1,1)
+    z0m_tile(map_tile(1)+first_sea_tile-1) = z0msea(1,1)
 
     i_sice = 0
     do i = first_sea_ice_tile, first_sea_ice_tile + n_sea_ice_tile - 1
@@ -1732,6 +1834,15 @@ contains
       tile_heat_flux(map_tile(1)+i-1) = real(fluxes%ftl_sicat(1,1,i_sice), r_def)
       ! sea-ice moisture flux
       tile_moisture_flux(map_tile(1)+i-1) = real(fluxes%fqw_sicat(1,1,i_sice), r_def)
+    end do
+
+
+    ! Cell roughness length for momentum
+    z0m_2d(map_2d(1)) = real(sf_diag%z0m_gb(1,1), r_def)
+
+    ! Dust fluxes
+    do i = 1, ndiv
+      dust_div_flux(map_dust(1) + i - 1) = real(dust_flux(1,1,i), r_def)
     end do
 
     ! update blended Smagorinsky diffusion coefficients only if using Smagorinsky scheme

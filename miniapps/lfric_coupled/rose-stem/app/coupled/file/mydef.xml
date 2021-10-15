@@ -17,6 +17,8 @@
       <axis id="plant_func_types" name="plant_func_types" n_glo="5"/>
       <axis id="monthly_axis" name="monthly_axis" n_glo="12"/>
       <axis id="bl_types" name="bl_types" n_glo="7"/>
+      <axis id="entrainment_levels" name="entrainment_levels" n_glo="3"/>
+      <axis id="dust_divisions" name="dust_divisions" n_glo="6"/>
     </axis_definition>
 
     <domain_definition>
@@ -238,7 +240,7 @@
 	<field id="exner" name="exner" long_name="exner_pressure" unit="1" grid_ref="half_level_face_grid" />
 	<field id="dmv_methox" name="dmv_methox" long_name="Methane oxidation vapour increment" unit="kg/kg" grid_ref="full_level_face_grid" />
         <field id="trop_level" name="trop_level" long_name="Tropopause level" unit="1" domain_ref="face" />
-        <!-- Aerosol fields -->
+        <!-- aerosol fields -->
         <!-- The following dust fields will need adding here when available from UKCA: acc_sol_du, cor_sol_du, n_acc_ins, acc_ins_du, n_cor_ins, cor_ins_du -->
         <field id="n_nuc_sol" name="n_nuc_sol" long_name="nucleation_mode_soluble_number" unit="particle molecule-1" grid_ref="full_level_face_grid" />
         <field id="nuc_sol_su" name="nuc_sol_su" long_name="nucleation_mode_soluble_h2so4_mmr" unit="kg kg-1" grid_ref="full_level_face_grid" />
@@ -261,6 +263,7 @@
         <field id="ait_ins_bc" name="ait_ins_bc" long_name="aitken_mode_insoluble_black_carbon_mmr" unit="kg kg-1" grid_ref="full_level_face_grid" />
         <field id="ait_ins_om" name="ait_ins_om" long_name="aitken_mode_insoluble_organic_matter_mmr" unit="kg kg-1" grid_ref="full_level_face_grid" />
         <field id="cloud_drop_no_conc" name="cloud_drop_no_conc" long_name="cloud_droplet_number_concentration" unit="m-3" grid_ref="full_level_face_grid" />
+        <field id="dust_flux" name="dust_flux" long_name="dust_emissions_flux_in_size_bins" unit="kg m-2 s-1" domain_ref="face" axis_ref="dust_divisions" />
         <!-- cloud fields -->
 	<field id="area_fraction" name="area_fraction" long_name="area_fraction" unit="1" grid_ref="full_level_face_grid" />
 	<field id="ice_fraction" name="ice_fraction" long_name="ice_fraction" unit="1" grid_ref="full_level_face_grid" />
@@ -300,6 +303,8 @@
 	<field id="mid_dt" name="mid_dt" long_name="temperature_increment_from_mid_convection" unit="K s-1" grid_ref="full_level_face_grid" />
 	<field id="mid_dq" name="mid_dq" long_name="vapour_increment_from_mid_convection" unit="kg kg-1 s-1" grid_ref="full_level_face_grid" />
 	<field id="mid_massflux" name="mid_massflux" long_name="massflux_for_mid_convection" unit="Pa s-1" grid_ref="full_level_face_grid" />
+	<field id="conv_rain_3d" name="conv_rain_3d" long_name="convective_rainfall_rate" unit="kg m-2 s-1" grid_ref="full_level_face_grid" />
+	<field id="conv_snow_3d" name="conv_snow_3d" long_name="convective_snowfall_rate" unit="kg m-2 s-1" grid_ref="full_level_face_grid" />
 	<field id="conv_rain" name="conv_rain" long_name="surface_convective_rainfall_rate" unit="kg m-2 s-1" domain_ref="face" />
 	<field id="conv_snow" name="conv_snow" long_name="surface_convective_snowfall_rate" unit="kg m-2 s-1" domain_ref="face" />
 	<field id="cca_2d" name="cca_2d" long_name="convective_cloud_amount_(2d)_with_no_anvil" unit="1" domain_ref="face" />
@@ -321,6 +326,12 @@
 	<field id="ls_rain" name="ls_rain" long_name="surface_microphysical_rainfall_rate" unit="kg m-2 s-1" domain_ref="face" />
 	<field id="ls_snow" name="ls_snow" long_name="surface_microphysical_snowfall_rate" unit="kg m-2 s-1" domain_ref="face" />
 	<field id="lsca_2d" name="lsca_2d" long_name="large_scale_cloud_amount_(2d)" unit="1" domain_ref="face" />
+	<field id="ls_rain_3d" name="ls_rain_3d" long_name="microphysical_rainfall_rate" unit="kg m-2 s-1" grid_ref="full_level_face_grid" />
+	<field id="ls_snow_3d" name="ls_snow_3d" long_name="microphysical_snowfall_rate" unit="kg m-2 s-1" grid_ref="full_level_face_grid" />
+	<field id="autoconv" name="autoconv" long_name="rain_autoconversion_rate" unit="kg kg-1 s-1" grid_ref="full_level_face_grid" />
+	<field id="accretion" name="accretion" long_name="rain_accretion_rate" unit="kg kg-1 s-1" grid_ref="full_level_face_grid" />
+	<field id="rim_cry" name="rim_cry" long_name="riming_rate_for_ice_crystals" unit="kg kg-1 s-1" grid_ref="full_level_face_grid" />
+	<field id="rim_agg" name="rim_agg" long_name="riming rate_for_ice aggregates" unit="kg kg-1 s-1" grid_ref="full_level_face_grid" />
 	<!-- spectral GWD fields -->
 	<field id="dtheta_spectral_gwd" name="dtheta_spectral_gwd" long_name="spectral_gravity_wave_drag_theta_increment" unit="K" grid_ref="full_level_face_grid" />
 	<field id="du_spectral_gwd" name="du_spectral_gwd" long_name="spectral_gravity_wave_drag_U_wind_increment" unit="m s-1" grid_ref="half_level_face_grid" />
@@ -339,6 +350,7 @@
 	<field id="dtemp_orog_gwd" name="dtemp_orog_gwd" long_name="orographic_gravity_wave_drag_T_increment" unit="K" grid_ref="full_level_face_grid" />
 	<!-- surface fields -->
 	<field id="z0msea" name="z0msea" long_name="sea_surface_roughness_length" unit="m" domain_ref="face" />
+	<field id="z0m" name="z0m" long_name="surface_roughness_length" unit="m" domain_ref="face" />
 	<field id="u10m" name="u10m" long_name="eastward_wind_at_10m" unit="m s-1" domain_ref="face" />
 	<field id="v10m" name="v10m" long_name="northward_wind_10m" unit="m s-1" domain_ref="face" />
 	<field id="wspd10m" name="wspd10m" long_name="wind_speed_at_10m" unit="m s-1" domain_ref="face" />
@@ -351,6 +363,8 @@
 	<field id="tile_fraction" name="tile_fraction" long_name="surface_tile_fraction" unit="1" domain_ref="face" axis_ref="surface_tiles"/>
 	<field id="tile_temperature" name="tile_temperature" long_name="surface_tile_temperature" unit="K" domain_ref="face" axis_ref="surface_tiles"/>
 	<field id="canopy_evap" name="canopy_evap" long_name="canopy_evaporation" unit="kg m-2 s-1" domain_ref="face" axis_ref="surface_tiles"/>
+	<field id="gc_tile" name="gc_tile" long_name="stomatal_conductance_on_tiles" unit="m s-1" domain_ref="face" axis_ref="surface_tiles"/>
+	<field id="ustar" name="ustar" long_name="surface_friction_velocity" unit="m s-1" domain_ref="face" />
 	<!-- snow fields -->
 	<field id="total_snowmelt" name="total_snowmelt" long_name="total_snowmelt" unit="kg m-2 s-1" domain_ref="face" axis_ref="surface_tiles"/>
 	<field id="snow_sublimation" name="snow_sublimation" long_name="snow_sublimation" unit="kg m-2 s-1" domain_ref="face" axis_ref="surface_tiles"/>
@@ -372,6 +386,7 @@
 	<field id="ntml" name="ntml" long_name="number_of_turbulent_mixing_levels" unit="1" domain_ref="face" />
 	<field id="cumulus" name="cumulus" long_name="cumulus_convection_indicator" unit="1" domain_ref="face" />
 	<field id="bl_type_ind" name="bl_type_ind" long_name="boundary_layer_type_indicator" unit="1" domain_ref="face" axis_ref="bl_types"/>
+	<field id="tke_bl" name="tke_bl" long_name="turbulent_kinetic_energy" unit="m2 s-2" grid_ref="full_level_face_grid" />
 	<field id="dt_bl" name="dt_bl" long_name="temperature_increment_from_bl_scheme" unit="K" grid_ref="full_level_face_grid" />
 	<field id="dmv_bl" name="dmv_bl" long_name="vapour_increment_from_bl_scheme" unit="kg kg-1" grid_ref="full_level_face_grid" />
 	<field id="du_bl1" name="du_bl1" long_name="eastward_wind_increment_from_bl_scheme" unit="m s-1" grid_ref="half_level_edge_grid" />
@@ -381,6 +396,18 @@
         <field id="dsldzm" name="dsldzm" long_name="liquid_temperature_gradient" unit="kg m-1" grid_ref="full_level_face_grid" />
         <field id="wvar" name="wvar" long_name="vertical_velocity_variance" unit="m2 s-2" grid_ref="full_level_face_grid" />
         <field id="gradrinr" name="gradrinr" long_name="gradient_richardson_number" unit="1" grid_ref="full_level_face_grid" />
+	<field id="rhokh_bl" name="rhokh_bl" long_name="scalar_eddy_diffusivity_times_density" unit="kg m-1 s-1" grid_ref="half_level_face_grid" />
+	<field id="rdz_tq_bl" name="rdz_tq_bl" long_name="reciprocal_delta_z" unit="m-1" grid_ref="half_level_face_grid" />
+	<field id="dtrdz_tq_bl" name="dtrdz_tq_bl" long_name="dt_dz_times_reciprocal_density_radius_squared" unit="s kg-1" grid_ref="full_level_face_grid" />
+	<field id="zhsc" name="zhsc" long_name="height_at_top_of_decoupled_stratocumulus_layer" unit="m" domain_ref="face" />
+	<field id="level_ent" name="level_ent" long_name="level_of_surface_mixed_layer_inversion" unit="1" domain_ref="face" />
+	<field id="level_ent_dsc" name="level_ent_dsc" long_name="level_of_decoupled_stratocumulus_inversion" unit="1" domain_ref="face" />
+	<field id="ent_we_lim" name="ent_we_lim" long_name="rho_times_entrainment_rate_at_surface_mixed_layer_inversion" unit="kg m-2 s-1" domain_ref="face" axis_ref="entrainment_levels" />
+	<field id="ent_t_frac" name="ent_t_frac" long_name="fraction_of_time_surface_mixed_layer_inversion_is_above_level" unit="1" domain_ref="face" axis_ref="entrainment_levels" />
+	<field id="ent_zrzi" name="ent_zrzi" long_name="level_height_as_fraction_of_sml_inversion_height_above_mixed_layer_base" unit="1" domain_ref="face" axis_ref="entrainment_levels" />
+	<field id="ent_we_lim_dsc" name="ent_we_lim_dsc" long_name="rho_times_entrainment_rate_at_decoupled_stratocumulus_inversion" unit="kg m-2 s-1" domain_ref="face" axis_ref="entrainment_levels" />
+	<field id="ent_t_frac_dsc" name="ent_t_frac_dsc" long_name="fraction_of_time_decoupled_stratocumulus_inversion_is_above_level" unit="1" domain_ref="face" axis_ref="entrainment_levels" />
+	<field id="ent_zrzi_dsc" name="ent_zrzi_dsc" long_name="level_height_as_fraction_of_dsc_inversion_height_above_mixed_layer_base" unit="1" domain_ref="face" axis_ref="entrainment_levels" />
 	<!-- radiation fields -->
 	<field id="lw_down_surf" name="lw_down_surf" long_name="surface_downward_longwave_flux" unit="W m-2" domain_ref="face" />
 	<field id="sw_down_surf" name="sw_down_surf" long_name="surface_downward_shortwave_flux" unit="W m-2" domain_ref="face" />
@@ -408,7 +435,9 @@
         <field id="cloud_droplet_re_rts" name="cloud_droplet_re_rts" long_name="Cloud droplet effective radius" unit="m" grid_ref="full_level_face_grid" />
         <field id="sw_aer_optical_depth_rts" name="sw_aer_optical_depth_rts" long_name="Aerosol optical depth in the visible" unit="1" grid_ref="full_level_face_grid" />
         <field id="lw_aer_optical_depth_rts" name="lw_aer_optical_depth_rts" long_name="Aerosol optical depth in the infra-red" unit="1" grid_ref="full_level_face_grid" />
-	<!-- Stochastic Physics fields -->
+	<field id="sin_stellar_declination_rts" name="sin_stellar_declination_rts" long_name="sin_stellar_declination" unit="1" domain_ref="face" />
+	<field id="stellar_eqn_of_time_rts" name="stellar_eqn_of_time_rts" long_name="stellar_equation_of_time" unit="1" domain_ref="face" />
+	<!-- stochastic physics fields -->
 	<field id="fp_spt" name="fp_spt" long_name="SPT forcing pattern" unit="1" grid_ref="full_level_face_grid" />
 	<field id="dtheta_spt" name="dtheta_spt" long_name="SPT potential temperature forcing" unit="K" grid_ref="full_level_face_grid" />
 	<field id="dmv_spt" name="dmv_spt" long_name="SPT water vapour increment" unit="kg/kg" grid_ref="full_level_face_grid" />

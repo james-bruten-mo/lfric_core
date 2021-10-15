@@ -278,6 +278,7 @@ contains
   !> @param[in,out] surface_fields         Fields for surface scheme
   !> @param[in,out] soil_fields            Fields for soil hydrology scheme
   !> @param[in,out] snow_fields            Fields for snow scheme
+  !> @param[in,out] chemistry_fields       Fields for chemistry scheme
   !> @param[in,out] aerosol_fields         Fields for aerosol scheme
   !> @param[in,out] lbc_fields             Fields for lateral boundaries
   !> @param[in]     clock                  Model time
@@ -289,7 +290,8 @@ contains
                                     microphysics_fields, orography_fields,     &
                                     turbulence_fields, convection_fields,      &
                                     cloud_fields, surface_fields, soil_fields, &
-                                    snow_fields, aerosol_fields, lbc_fields,   &
+                                    snow_fields, chemistry_fields,             &
+                                    aerosol_fields, lbc_fields,                &
                                     clock, dt, mesh_id, twod_mesh_id)
 
     implicit none
@@ -309,6 +311,7 @@ contains
     type( field_collection_type ), intent( inout ) :: surface_fields
     type( field_collection_type ), intent( inout ) :: soil_fields
     type( field_collection_type ), intent( inout ) :: snow_fields
+    type( field_collection_type ), intent( inout ) :: chemistry_fields
     type( field_collection_type ), intent( inout ) :: aerosol_fields
     type( field_collection_type ), intent( inout ) :: lbc_fields
 
@@ -403,11 +406,12 @@ contains
                                   moist_dyn, derived_fields)
       call slow_physics(du, dtheta, mr_after_slow, visc_m, visc_h,             &
                         state_n(igh_t), state_n(igh_d), state_n(igh_p),        &
-                        mr_n,  derived_fields, radiation_fields,               &
+                        mr_n, derived_fields, radiation_fields,                &
                         microphysics_fields, orography_fields,                 &
                         turbulence_fields, convection_fields, cloud_fields,    &
                         surface_fields, soil_fields, snow_fields,              &
-                        aerosol_fields, clock, dt, mesh_id, twod_mesh_id )
+                        chemistry_fields, aerosol_fields, clock, dt, mesh_id,  &
+                        twod_mesh_id )
       call invoke(name="update_from_slow_physics",                             &
                   inc_X_plus_Y(state_after_slow(igh_t), dtheta),               &
                   inc_X_plus_Y(state_after_slow(igh_u), du)                    &

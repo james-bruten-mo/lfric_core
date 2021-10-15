@@ -30,6 +30,15 @@ FFLAGS_FASTD_INIT         = $(FFLAGS_INIT)
 FFLAGS_FASTD_RUNTIME      = $(FFLAGS_RUNTIME)
 endif
 
-$(info LFRic compile options required for files with OpenMP - see Ticket 1490)
-%psy.o %psy.mod:   export FFLAGS += $(FFLAGS_INTEL_FIX_ARG)
-psy/%.o psy/%.mod: export FFLAGS += $(FFLAGS_INTEL_FIX_ARG)
+# NOTE: The -qoverride-limits option contained in $(FFLAGS_INTEL_FIX_ARG) is
+# not currently applied here. This is a temporary workaround for #2340 in
+# which it was found to be inadvertently applied to UM code preventing
+# compilation of a UKCA module
+# $(info LFRic compile options required for files with OpenMP - see Ticket 1490)
+# %psy.o %psy.mod:   export FFLAGS += $(FFLAGS_INTEL_FIX_ARG)
+# psy/%.o psy/%.mod: export FFLAGS += $(FFLAGS_INTEL_FIX_ARG)
+
+
+
+
+

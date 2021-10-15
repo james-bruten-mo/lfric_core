@@ -120,6 +120,8 @@ module gungho_model_data_mod
     type( field_collection_type ), public   :: soil_fields
     !> Fields owned by the snow scheme
     type( field_collection_type ), public   :: snow_fields
+    !> Fields owned by the chemistry schemes
+    type( field_collection_type ), public   :: chemistry_fields
     !> Fields owned by the aerosol schemes
     type( field_collection_type ), public   :: aerosol_fields
     !> Array of fields containing the moisture mixing ratios
@@ -392,6 +394,7 @@ contains
                                        model_data%surface_fields,      &
                                        model_data%soil_fields,         &
                                        model_data%snow_fields,         &
+                                       model_data%chemistry_fields,    &
                                        model_data%aerosol_fields )
 
 #ifdef UM_PHYSICS
@@ -438,6 +441,7 @@ contains
                                              model_data%surface_fields,      &
                                              model_data%soil_fields,         &
                                              model_data%snow_fields,         &
+                                             model_data%chemistry_fields,    &
                                              model_data%aerosol_fields )
 
     end if
@@ -622,6 +626,7 @@ contains
       call model_data%surface_fields%clear()
       call model_data%soil_fields%clear()
       call model_data%snow_fields%clear()
+      call model_data%chemistry_fields%clear()
       call model_data%aerosol_fields%clear()
       call model_data%fd_fields%clear()
 #ifdef COUPLED

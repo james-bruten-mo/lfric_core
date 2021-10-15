@@ -4,7 +4,10 @@
 # under which the code may be used.
 ##############################################################################
 
-include $(LFRIC_BUILD)/compile_options.mk
+# NOTE: Import of compile options from LFRic infrastructure is temporarily
+# suspended here as a workaround for #2340 in which application of the
+# -qoverride-limits option was preventing compilation of a UKCA module.
+# include $(LFRIC_BUILD)/compile_options.mk
 
 $(info UM physics specific compile options)
 

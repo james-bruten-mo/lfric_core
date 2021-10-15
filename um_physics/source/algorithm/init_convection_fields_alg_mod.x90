@@ -29,7 +29,7 @@ contains
     implicit none
 
     ! Arguments
-    type(field_collection_type), intent(inout) :: convection_fields
+    type(field_collection_type), intent(in) :: convection_fields
 
     ! Convection increments
     type( field_type ), pointer :: dt_conv   => null()
@@ -46,6 +46,8 @@ contains
     type( field_type ), pointer :: conv_rain => null()
     type( field_type ), pointer :: conv_snow => null()
     type( field_type ), pointer :: cca_2d    => null()
+    type( field_type ), pointer :: conv_rain_3d => null()
+    type( field_type ), pointer :: conv_snow_3d => null()
     type( field_type ), pointer :: dd_mf_cb  => null()
     type( field_type ), pointer :: cca       => null()
     type( field_type ), pointer :: ccw       => null()
@@ -63,27 +65,31 @@ contains
     conv_rain => convection_fields%get_field('conv_rain')
     conv_snow => convection_fields%get_field('conv_snow')
     cca_2d    => convection_fields%get_field('cca_2d')
+    conv_rain_3d => convection_fields%get_field('conv_rain_3d')
+    conv_snow_3d => convection_fields%get_field('conv_snow_3d')
     dd_mf_cb  => convection_fields%get_field('dd_mf_cb')
     cca       => convection_fields%get_field('cca')
     ccw       => convection_fields%get_field('ccw')
 
     ! Initialise increment fields to zero for use when the scheme is off
-    call invoke( setval_c(dt_conv,   0.0_r_def), &
-                 setval_c(dmv_conv,  0.0_r_def), &
-                 setval_c(dmcl_conv, 0.0_r_def), &
-                 setval_c(dmcf_conv, 0.0_r_def), &
-                 setval_c(dcfl_conv, 0.0_r_def), &
-                 setval_c(dcff_conv, 0.0_r_def), &
-                 setval_c(dbcf_conv, 0.0_r_def), &
-                 setval_c(du_conv,   0.0_r_def), &
-                 setval_c(dv_conv,   0.0_r_def), &
+    call invoke( setval_c(dt_conv,      0.0_r_def), &
+                 setval_c(dmv_conv,     0.0_r_def), &
+                 setval_c(dmcl_conv,    0.0_r_def), &
+                 setval_c(dmcf_conv,    0.0_r_def), &
+                 setval_c(dcfl_conv,    0.0_r_def), &
+                 setval_c(dcff_conv,    0.0_r_def), &
+                 setval_c(dbcf_conv,    0.0_r_def), &
+                 setval_c(du_conv,      0.0_r_def), &
+                 setval_c(dv_conv,      0.0_r_def), &
                  ! Set prognostic fields to zero for use without restart file
-                 setval_c(conv_rain, 0.0_r_def), &
-                 setval_c(conv_snow, 0.0_r_def), &
-                 setval_c(cca_2d,    0.0_r_def), &
-                 setval_c(dd_mf_cb,  0.0_r_def), &
-                 setval_c(ccw,       0.0_r_def), &
-                 setval_c(cca,       0.0_r_def) )
+                 setval_c(conv_rain,    0.0_r_def), &
+                 setval_c(conv_snow,    0.0_r_def), &
+                 setval_c(conv_rain_3d, 0.0_r_def), &
+                 setval_c(conv_snow_3d, 0.0_r_def), &
+                 setval_c(cca_2d,       0.0_r_def), &
+                 setval_c(dd_mf_cb,     0.0_r_def), &
+                 setval_c(ccw,          0.0_r_def), &
+                 setval_c(cca,          0.0_r_def) )
 
   end subroutine init_convection_fields_alg
 

@@ -17,6 +17,7 @@ module init_physics_prognostics_alg_mod
   use init_surface_fields_alg_mod,      only : init_surface_fields_alg
   use init_soil_fields_alg_mod,         only : init_soil_fields_alg
   use init_snow_fields_alg_mod,         only : init_snow_fields_alg
+  use init_chemistry_fields_alg_mod,    only : init_chemistry_fields_alg
   use init_aerosol_fields_alg_mod,      only : init_aerosol_fields_alg
 
   use section_choice_config_mod, only: surface, surface_jules
@@ -41,6 +42,7 @@ contains
   !> @param[in,out] surface_fields Collection of fields for surface scheme
   !> @param[in,out] soil_fields Collection of fields for soil hydrology scheme
   !> @param[in,out] snow_fields Collection of fields for snow scheme
+  !> @param[in,out] chemistry_fields Collection of fields for chemistry scheme
   !> @param[in,out] aerosol_fields Collection of fields for aerosol scheme
   subroutine init_physics_prognostics_alg( radiation_fields,                   &
                                            microphysics_fields,                &
@@ -51,6 +53,7 @@ contains
                                            surface_fields,                     &
                                            soil_fields,                        &
                                            snow_fields,                        &
+                                           chemistry_fields,                   &
                                            aerosol_fields )
 
     implicit none
@@ -65,6 +68,7 @@ contains
     type(field_collection_type), intent(inout) :: surface_fields
     type(field_collection_type), intent(inout) :: soil_fields
     type(field_collection_type), intent(inout) :: snow_fields
+    type(field_collection_type), intent(inout) :: chemistry_fields
     type(field_collection_type), intent(inout) :: aerosol_fields
 
 #ifdef UM_PHYSICS
@@ -86,6 +90,7 @@ contains
       call init_soil_fields_alg(soil_fields)
       call init_snow_fields_alg(snow_fields)
     end if
+    call init_chemistry_fields_alg(chemistry_fields)
     call init_aerosol_fields_alg(aerosol_fields)
 
     call log_event( 'Physics field collections initialised', LOG_LEVEL_INFO )

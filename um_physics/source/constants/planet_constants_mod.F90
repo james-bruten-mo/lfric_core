@@ -12,6 +12,7 @@ module planet_constants_mod
   ! Universal constants
   use constants_mod, only: l_def, i_def, r_def, i_um, r_um, pi, rmdi, imdi
   use driver_water_constants_mod, only: gas_constant_h2o
+  use conversions_mod, only: rsec_per_day
 
   implicit none
 
@@ -20,7 +21,7 @@ module planet_constants_mod
   public :: c_virtual, cp, cv, etar, g, grcp, kappa, lcrcp, lfrcp, ls, lsrcp, &
             one_minus_epsilon, one_minus_epsilon_32b, p_zero, planet_radius,  &
             pref, r, recip_a2, recip_kappa, repsilon, repsilon_32b, rv, vkman,&
-            recip_epsilon, omega, two_omega
+            recip_epsilon, omega, two_omega, s2r
 
   ! The following variables have been hidden as they are not currently
   ! required to build the extracted UM code. They have been left in
@@ -64,6 +65,9 @@ module planet_constants_mod
   ! Gas constant for water vapour
   real(r_um), parameter :: rv = real(gas_constant_h2o, r_um )
 
+  ! Increment to Earth's hour angle per day number from epoch
+  real(r_um), parameter :: earth_dha = 2.0*pi
+
   ! Von Karman's constant
   real(r_um), parameter :: vkman = 0.4_r_um
 
@@ -73,6 +77,9 @@ module planet_constants_mod
 
   ! Angular speed of planet rotation x2
   real(r_um), protected :: two_omega
+
+  ! Seconds-to-radians converter
+  real(r_um), protected :: s2r                 ! planet_dha/rsec_per_day
 
   ! Ratio of molecular weights of water and dry air
   real(r_um), protected :: repsilon            ! r/rv
@@ -108,6 +115,8 @@ subroutine set_planet_constants()
                                lfric_cp => cp,                       &
                                lfric_p_zero => p_zero
 
+  use orbit_config_mod, only: spin, spin_user, hour_angle_inc
+
   use driver_water_constants_mod, only: latent_heat_h2o_condensation, &
                                         latent_heat_h2o_fusion,       &
                                         gas_constant_h2o
@@ -129,9 +138,16 @@ subroutine set_planet_constants()
   sclht          = 6.8e+03_r_um
   lapse          = 0.0065_r_um
 
-
   ! Set derived constants
   two_omega         = 2.0_r_um * omega
+
+  select case (spin) 
+  case (spin_user)
+    s2r = hour_angle_inc/rsec_per_day
+  case default 
+    s2r = earth_dha/rsec_per_day
+  end select
+
   p_zero            = pref
   recip_p_zero      = 1.0_r_um / pref
   recip_kappa       = 1.0_r_um / kappa

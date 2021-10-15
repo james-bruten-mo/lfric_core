@@ -44,6 +44,9 @@ contains
     type( field_type ), pointer :: sw_down_surf      => null()
     type( field_type ), pointer :: sw_down_blue_surf => null()
 
+    type( field_type ), pointer :: sin_stellar_declination_rts => null()
+    type( field_type ), pointer :: stellar_eqn_of_time_rts     => null()
+
     dtheta_rad        => radiation_fields%get_field('dtheta_rad')
     dmv_pc2_rad       => radiation_fields%get_field('dmv_pc2_rad')
     sw_heating_rate   => radiation_fields%get_field('sw_heating_rate')
@@ -55,6 +58,11 @@ contains
     lw_down_surf      => radiation_fields%get_field('lw_down_surf')
     sw_down_surf      => radiation_fields%get_field('sw_down_surf')
     sw_down_blue_surf => radiation_fields%get_field('sw_down_blue_surf')
+
+    sin_stellar_declination_rts =>                                             &
+                      radiation_fields%get_field('sin_stellar_declination_rts')
+    stellar_eqn_of_time_rts     =>                                             &
+                      radiation_fields%get_field('stellar_eqn_of_time_rts')
 
     ! Initialise the increments to 0 for use when the scheme isn't called
     call invoke( setval_c(dtheta_rad,        0.0_r_def),   &
@@ -68,7 +76,9 @@ contains
                  setval_c(cos_zenith_angle,  1.0_r_def),   &
                  setval_c(lw_down_surf,      380.0_r_def), &
                  setval_c(sw_down_surf,      640.0_r_def), &
-                 setval_c(sw_down_blue_surf, 400.0_r_def) )
+                 setval_c(sw_down_blue_surf, 400.0_r_def), &
+                 setval_c(sin_stellar_declination_rts, 0.0_r_def), &
+                 setval_c(stellar_eqn_of_time_rts, 0.0_r_def) )
 
   end subroutine init_radiation_fields_alg
 
