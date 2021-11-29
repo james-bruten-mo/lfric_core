@@ -106,6 +106,7 @@ module gungho_model_mod
   use jules_physics_init_mod,     only : jules_physics_init
   use planet_constants_mod,       only : set_planet_constants
   use socrates_init_mod,          only : socrates_init
+  use um_clock_init_mod,          only : um_clock_init
   use um_control_init_mod,        only : um_control_init
   use um_physics_init_mod,        only : um_physics_init
   use um_ukca_init_mod,           only : um_ukca_init
@@ -398,7 +399,10 @@ contains
         call socrates_init()
       end if
       ! Initialisation of UM high-level variables
-      call um_control_init(mesh_id, clock, ncells)
+      call um_control_init(mesh_id, ncells)
+
+      ! Initialisation of UM clock
+      call um_clock_init(clock)
 
       ! Initialisation of UM physics variables
       call um_physics_init(ncells)

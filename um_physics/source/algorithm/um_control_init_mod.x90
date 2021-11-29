@@ -16,7 +16,6 @@ module um_control_init_mod
   use constants_mod,               only : i_um, r_um, rmdi, i_def, r_def
   use physical_op_constants_mod,   only : get_delta_at_wtheta
   use field_mod,                   only : field_type
-  use clock_mod,                   only : clock_type
   use planet_config_mod,           only : radius
 
   implicit none
@@ -35,10 +34,9 @@ contains
   !>          to be variable in the UM and therefore declared as such in the
   !>          UM modules which contains it).
   !> @param[in] mesh_id        Mesh_id
-  !> @param[in] clock          The model clock object
   !> @param[in] ncells  The number of cells in the horizontal domain that
   !>                    the UM code should loop over (i.e. not including halos)
-  subroutine um_control_init(mesh_id, clock, ncells)
+  subroutine um_control_init(mesh_id, ncells)
 
     ! UM modules containing things that need setting
     use atm_fields_bounds_mod, only: atm_fields_bounds_init
@@ -59,7 +57,6 @@ contains
     implicit none
 
     integer(i_def),   intent(in)    :: mesh_id
-    type(clock_type), intent(in)    :: clock
     integer(i_def),   intent(in)    :: ncells
 
     ! Local variables
@@ -107,10 +104,6 @@ contains
     ! but may change if we ever do.
     call atm_fields_bounds_init( 0_i_um, 0_i_um, 0_i_um, &
                                  0_i_um, row_length, rows, rows)
-
-    ! Timestep used in UM code - contained in UM timestep_mod.
-    ! Set from LFRic input timestep.
-    timestep = real(clock%get_seconds_per_step(), r_um)
 
     ! Number of outer iterations of the dynamics - contained in UM
     ! dynamics_input_mod.
