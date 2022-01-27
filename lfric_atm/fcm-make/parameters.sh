@@ -16,13 +16,13 @@
 # changes were committed to the project's trunk
 export casim_rev=um12.1
 export casim_sources=
-export jules_rev=um12.1
+export jules_rev=22119
 export jules_sources=
 export shumlib_rev=um12.1
 export shumlib_sources=
 export socrates_rev=1146
 export socrates_sources=
-export um_rev=105526
+export um_rev=106209
 export um_sources=
 
 #### Do not edit the definitions below this line without

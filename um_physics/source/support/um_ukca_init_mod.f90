@@ -283,6 +283,7 @@ contains
            mode_activation_dryr=37.5_r_um,                                     &
            mode_incld_so2_rfrac=0.25_r_um,                                     &
            l_cv_rainout=.true.,                                                &
+           l_dust_slinn_impc_scav=.false.,                                     &
            ! GLOMAP emissions configuration options
            l_ukca_primsu=.true.,                                               &
            l_ukca_primss=.true.,                                               &
