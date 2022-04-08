@@ -1128,7 +1128,6 @@ contains
       call glue_conv_6a                                                     &
         ( rows*row_length, segments, n_conv_levels, bl_levels, call_number, &
          seg_num, theta_conv, q_conv, qcl_conv, qcf_conv                    &
-        , qrain_conv, qgraup_conv, qcf2_conv                                &
         , cf_liquid_conv, cf_frozen_conv, bulk_cf_conv                      &
         , p_star, land_sea_mask                                             &
         , u_conv, v_conv, w(1,1,1)                                          &
@@ -1157,8 +1156,8 @@ contains
         , conv_type, l_shallow                                              &
         , l_congestus, l_mid, cumulus                                       &
         , wstar, wthvs, delthvu, ql_ad, qsat_lcl, ftl, fqw                  &
-        , l_tracer, ntra_fld, ntra_lev, n_cca_lev, l_mcr_qrain              &
-        , l_mcr_qgraup, l_mcr_qcf2, l_calc_dxek , l_q_interact              &
+        , l_tracer, ntra_fld, ntra_lev, n_cca_lev                           &
+        , l_calc_dxek , l_q_interact                                        &
         , it_up_flux_half, it_up_flux,      it_dwn_flux                     &
         , it_entrain_up,   it_detrain_up, it_entrain_dwn,  it_detrain_dwn   &
         , it_uw_dp,        it_vw_dp                                         &
