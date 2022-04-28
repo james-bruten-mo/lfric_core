@@ -5,10 +5,10 @@
 @startuml
 
 !include look.iuml
-!include field/fieldspec_mod.iuml
-!include field/fieldspec_collection_mod.iuml
-!include field/fieldspec_xml_parser_mod.iuml
-!include field/fieldspec_factory_mod.iuml
+!include fieldspec_mod.iuml
+!include fieldspec_collection_mod.iuml
+!include fieldspec_xml_parser_mod.iuml
+!include fieldspec_factory_mod.iuml
 
 fieldspec_collection_mod::fieldspec_collection_type o-> "*" fieldspec_mod::fieldspec_type
 linked_list_data_mod::linked_list_data_type ^-- fieldspec_mod::fieldspec_type

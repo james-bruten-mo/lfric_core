@@ -286,10 +286,6 @@ contains
 
   !> Converts a number of timesteps to a number of seconds.
   !>
-  !> @todo Leaking time information like this is perhaps not ideal and
-  !>       hopefully will not be necessary with further development.
-  !>       In particular the integration of XIOS into the clock.
-  !>
   !> @return Seconds will be positive or negative depending on period.
   !>
   function seconds_from_steps( this, period )

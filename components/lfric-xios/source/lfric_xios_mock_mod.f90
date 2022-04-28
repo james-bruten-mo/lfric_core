@@ -9,7 +9,8 @@
 !>
 module lfric_xios_mock_mod
 
-  use constants_mod,            only: i_def, str_def, dp_xios
+  use constants_mod,            only: i_def, str_def
+  use lfric_xios_constants_mod, only: dp_xios
   use lfric_xios_mock_data_mod, only: xios_mock_data_type
 
   implicit none

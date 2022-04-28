@@ -10,8 +10,9 @@
 module lfric_xios_write_mod
 
   use clock_mod,            only: clock_type
-  use constants_mod,        only: i_def, dp_xios, str_def, &
-                                  str_max_filename, xios_max_int
+  use constants_mod,        only: i_def, str_def, str_max_filename
+  use lfric_xios_constants_mod, &
+                            only: dp_xios, xios_max_int
   use field_r32_mod,        only: field_r32_type, field_r32_proxy_type
   use field_r64_mod,        only: field_r64_type, field_r64_proxy_type
   use field_parent_mod,     only: field_parent_proxy_type

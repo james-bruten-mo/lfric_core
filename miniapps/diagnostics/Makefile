@@ -135,6 +135,11 @@ build: ALWAYS
 	$Q$(MAKE) $(QUIET_ARG) -f $(LFRIC_BUILD)/extract.mk \
 	          SOURCE_DIR=$(ROOT_DIR)/components/lfric-xios/source
 	$(call MESSAGE,========================================)
+	$(call MESSAGE,Extracting diagnostics infrastructure)
+	$(call MESSAGE,========================================)
+	$Q$(MAKE) $(QUIET_ARG) -f $(LFRIC_BUILD)/extract.mk \
+	          SOURCE_DIR=$(ROOT_DIR)/components/diagnostics_infrastructure/source
+	$(call MESSAGE,========================================)
 	$(call MESSAGE,Extracting Gungho dynamical core)
 	$(call MESSAGE,========================================)
 	$Q$(MAKE) $(QUIET_ARG) -f $(LFRIC_BUILD)/extract.mk \
@@ -199,12 +204,13 @@ build: ALWAYS
 # Unit tests
 #
 .PHONY: unit-tests
-unit-tests: export ADDITIONAL_EXTRACTION = $(ROOT_DIR)/infrastructure/source        \
-                                           $(ROOT_DIR)/components/driver/source     \
-                                           $(ROOT_DIR)/components/science/source    \
-                                           $(ROOT_DIR)/gungho/source                \
-                                           $(ROOT_DIR)/gungho/unit-test/support     \
-                                           $(ROOT_DIR)/components/lfric-xios/source \
+unit-tests: export ADDITIONAL_EXTRACTION = $(ROOT_DIR)/infrastructure/source                        \
+                                           $(ROOT_DIR)/components/driver/source                     \
+                                           $(ROOT_DIR)/components/science/source                    \
+                                           $(ROOT_DIR)/components/diagnostics_infrastructure/source \
+                                           $(ROOT_DIR)/gungho/source                                \
+                                           $(ROOT_DIR)/gungho/unit-test/support                     \
+                                           $(ROOT_DIR)/components/lfric-xios/source                 \
                                            $(ROOT_DIR)/um_physics/source/diagnostics_meta/meta_types
 
 unit-tests: export BIN_DIR ?= $(PROJECT_DIR)/test

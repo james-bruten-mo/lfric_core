@@ -7,7 +7,7 @@
 !> @brief Support for setting up reading fields using a time-axis.
 module init_time_axis_mod
 
-  use constants_mod,              only : i_def, r_def, l_def, dp_xios
+  use constants_mod,              only : i_def, r_def, l_def
   use field_mod,                  only : field_type
   use field_collection_mod,       only : field_collection_type
   use finite_element_config_mod,  only : element_order

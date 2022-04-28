@@ -7,7 +7,8 @@
 !>
 module lfric_xios_write_mod_test
 
-  use constants_mod,                  only : i_def, dp_xios
+  use constants_mod,                  only : i_def
+  use lfric_xios_constants_mod,       only : dp_xios
   use halo_routing_collection_mod,    only : halo_routing_collection_type, &
                                              halo_routing_collection
   use halo_routing_mod,               only : halo_routing_type

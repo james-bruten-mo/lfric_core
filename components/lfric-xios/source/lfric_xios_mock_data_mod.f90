@@ -10,7 +10,7 @@
 !>
 module lfric_xios_mock_data_mod
 
-  use constants_mod,        only: dp_xios
+  use lfric_xios_constants_mod, only: dp_xios
 
   implicit none
 

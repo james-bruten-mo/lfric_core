@@ -18,7 +18,7 @@ module constants_mod
   private
 
   public :: c_def, c_native,                                             &
-            dp_native, dp_xios,                                          &
+            dp_native,                                                   &
             i_byte, i_def, i_halo_index, i_long, i_medium, i_native,     &
             i_timestep, i_um, i_ncdf,                                    &
             l_def, l_native,                                             &
@@ -31,7 +31,7 @@ module constants_mod
             str_def, str_long, str_max_filename, str_short,              &
             str_longlong,                                                &
             LARGE_REAL_NEGATIVE, LARGE_REAL_POSITIVE,                    &
-            xios_max_int, PI, degrees_to_radians, radians_to_degrees,    &
+            PI, degrees_to_radians, radians_to_degrees,                  &
             cache_block, PRECISION_REAL, PRECISION_R_SOLVER,             &
             PRECISION_R_TRAN
 
@@ -93,8 +93,6 @@ module constants_mod
   integer, parameter :: r_um     = real64 !< Default real kind used by the UM.
 
   integer, parameter :: dp_native = kind(dp_val) !< Native kind for double precision.
-  ! Define kinds specifically for IO
-  integer, parameter :: dp_xios   = kind(dp_val) !< XIOS kind for double precision fields
 
   !> @}
 
@@ -150,8 +148,6 @@ module constants_mod
   real(kind=r_def), parameter    :: LARGE_REAL_NEGATIVE = -LARGE_REAL_POSITIVE !< The largest
   !<                                negative number of kind r_def that is not an infinity.
 
-  integer(kind=i_def), parameter :: xios_max_int = huge(0_i_short) !< The largest
-  !<                                integer that can be output by XIOS
   integer, parameter :: cache_block = 256 !< Size of a cache block, for padding
   !<                                arrays to ensure access to different cache lines
 

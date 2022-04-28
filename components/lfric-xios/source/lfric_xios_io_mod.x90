@@ -9,11 +9,11 @@
 module lfric_xios_io_mod
 
   use clock_mod,                     only: clock_type
-  use constants_mod,                 only: dp_xios,                       &
-                                           i_def, i_halo_index, i_native, &
+  use constants_mod,                 only: i_def, i_halo_index, i_native, &
                                            r_def, r_second, l_def,        &
                                            radians_to_degrees,            &
                                            str_def
+  use lfric_xios_constants_mod,      only: dp_xios
   use coord_transform_mod,           only: xyz2llr
   use mesh_constructor_helper_functions_mod, &
                                      only: domain_size_type

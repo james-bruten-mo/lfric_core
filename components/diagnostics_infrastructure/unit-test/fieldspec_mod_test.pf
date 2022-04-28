@@ -113,7 +113,7 @@ contains
         @assertEqual(W3,test_fieldspec1%get_function_space())
         @assertEqual(2,test_fieldspec1%get_order())
         @assertEqual(1,test_fieldspec1%get_kind())
-        @assertEqual(1,test_fieldspec1%get_type())
+        @assertEqual(integer_type,test_fieldspec1%get_type())
         @assertEqual(WRITE_FIELD_FACE,test_fieldspec1%get_io_driver())
         @assertEqual(.true.,test_fieldspec1%get_checksum())
 

@@ -4,8 +4,8 @@
 # under which the code may be used.
 ##############################################################################
 #
-# As XIOS is written in C++ we have to concern ourselves with
-# compilers for that as well.
+# We have to concern ourselves with C++ compilers as well, due to external
+# dependencies
 #
 # These environment variables are set up:
 #

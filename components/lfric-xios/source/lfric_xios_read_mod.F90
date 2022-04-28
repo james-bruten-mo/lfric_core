@@ -12,33 +12,34 @@ module lfric_xios_read_mod
 
   use, intrinsic :: iso_fortran_env, only : real32, real64
 
-  use constants_mod,        only: i_def, dp_xios, str_def, r_def
-  use field_mod,            only: field_type, field_proxy_type
-  use field_r32_mod,        only: field_r32_type, field_r32_proxy_type
-  use field_r64_mod,        only: field_r64_type, field_r64_proxy_type
+  use constants_mod,            only: i_def, str_def, r_def
+  use lfric_xios_constants_mod, only: dp_xios
+  use field_mod,                only: field_type, field_proxy_type
+  use field_r32_mod,            only: field_r32_type, field_r32_proxy_type
+  use field_r64_mod,            only: field_r64_type, field_r64_proxy_type
   use field_collection_iterator_mod, &
-                            only: field_collection_iterator_type
-  use field_collection_mod, only: field_collection_type
-  use field_parent_mod,     only: field_parent_type, &
-                                  field_parent_proxy_type
-  use fs_continuity_mod,    only: W3, WTheta, W2H
-  use integer_field_mod,    only: integer_field_type, &
-                                  integer_field_proxy_type
-  use io_mod,               only: ts_fname
-  use log_mod,              only: log_event,         &
-                                  log_scratch_space, &
-                                  LOG_LEVEL_INFO,    &
-                                  LOG_LEVEL_ERROR
+                                only: field_collection_iterator_type
+  use field_collection_mod,     only: field_collection_type
+  use field_parent_mod,         only: field_parent_type, &
+                                      field_parent_proxy_type
+  use fs_continuity_mod,        only: W3, WTheta, W2H
+  use integer_field_mod,        only: integer_field_type, &
+                                      integer_field_proxy_type
+  use io_mod,                   only: ts_fname
+  use log_mod,                  only: log_event,         &
+                                      log_scratch_space, &
+                                      LOG_LEVEL_INFO,    &
+                                      LOG_LEVEL_ERROR
 #ifdef UNIT_TEST
-  use lfric_xios_mock_mod,  only: xios_recv_field,      &
-                                  xios_get_domain_attr, &
-                                  xios_get_axis_attr,   &
-                                  xios_get_field_attr
+  use lfric_xios_mock_mod,      only: xios_recv_field,      &
+                                      xios_get_domain_attr, &
+                                      xios_get_axis_attr,   &
+                                      xios_get_field_attr
 #else
-  use xios,                 only: xios_recv_field,      &
-                                  xios_get_domain_attr, &
-                                  xios_get_axis_attr,   &
-                                  xios_get_field_attr
+  use xios,                     only: xios_recv_field,      &
+                                      xios_get_domain_attr, &
+                                      xios_get_axis_attr,   &
+                                      xios_get_field_attr
 #endif
 
   implicit none

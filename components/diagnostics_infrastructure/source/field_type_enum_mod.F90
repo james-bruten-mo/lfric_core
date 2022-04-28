@@ -23,8 +23,8 @@ module field_type_enum_mod
   !-------------------------------------------------------------------------------
   ! Module parameters
   !-------------------------------------------------------------------------------
-  integer(i_native), public, parameter :: integer_type = 1
-  integer(i_native), public, parameter :: real_type = 2
+  integer(i_native), public, parameter :: integer_type = 475
+  integer(i_native), public, parameter :: real_type = 721
   integer(i_native), public, parameter :: field_type_enumerator(2) &
           = [ integer_type, real_type ]
   character(str_short), public, parameter :: field_type_name(2) &
@@ -42,13 +42,13 @@ contains
     implicit none
 
     integer(i_native), intent(in) :: field_type
-    character(str_short)          :: name_from_field_type
+    character(:), allocatable     :: name_from_field_type
     integer(i_native)             :: field_type_index
 
     field_type_index = 1
     do
       if (field_type_enumerator(field_type_index) == field_type) then
-        name_from_field_type = field_type_name(field_type_index)
+        name_from_field_type = trim(field_type_name(field_type_index))
         return
       end if
       field_type_index = field_type_index + 1
