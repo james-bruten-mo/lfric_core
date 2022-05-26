@@ -463,6 +463,7 @@ INTEGER(KIND=int64), PUBLIC, PARAMETER :: stashcode_bl_pert_flag      = 596
 ! INFERNO Ignition Ancillaries
 INTEGER(KIND=int64), PUBLIC, PARAMETER :: stashcode_flash_rate_ancil  = 626
 INTEGER(KIND=int64), PUBLIC, PARAMETER :: stashcode_pop_den_ancil     = 627
+INTEGER(KIND=int64), PUBLIC, PARAMETER :: stashcode_wealth_index_ancil= 628
 
 ! Irrigation
 INTEGER(KIND=int64), PUBLIC, PARAMETER :: stashcode_sthu_irr          = 630

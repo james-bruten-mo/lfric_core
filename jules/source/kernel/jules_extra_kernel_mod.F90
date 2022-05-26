@@ -461,7 +461,7 @@ contains
     ! Driving data
     real(r_um), dimension(row_length, rows) :: ls_graup_ij, &
          u_1_ij, v_1_ij, cca_2d_ij, soil_clay_ij,                             &
-         flash_rate_ancil, pop_den_ancil, flandg, rho_star
+         flash_rate_ancil, pop_den_ancil, wealth_index_ancil, flandg, rho_star
 
     ! State
     real(r_um), dimension(land_pts, ntiles) ::                                &
@@ -847,8 +847,8 @@ contains
     ls_graup_ij, cca_2d_ij, nsurft, surft_pts,                                &
     lice_pts, soil_pts, stf_sub_surf_roff,fexp_soilt,                         &
     gamtot_soilt, ti_mean_soilt, ti_sig_soilt, flash_rate_ancil,              &
-    pop_den_ancil, a_fsat_soilt, c_fsat_soilt, a_fwet_soilt, c_fwet_soilt,    &
-    ntype, delta_lambda, delta_phi,                                           &
+    pop_den_ancil, wealth_index_ancil, a_fsat_soilt, c_fsat_soilt,            &
+    a_fwet_soilt, c_fwet_soilt, ntype, delta_lambda, delta_phi,               &
     cos_theta_latitude, aocpl_row_length, aocpl_p_rows, xpa, xua, xva, ypa,   &
     yua, yva, g_p_field, g_r_field, nproc, global_row_length, global_rows,    &
     global_river_row_length, global_river_rows, flandg, trivdir, trivseq,     &
