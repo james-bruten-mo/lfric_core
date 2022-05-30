@@ -344,7 +344,7 @@ subroutine poly2d_advective_coeffs_code(nlayers,                    &
 
     ! Initialise polynomial coefficients to zero
     do df = 0, ndata-1
-      coeff(map_c(1) + k*ndata + df) = 0.0_r_def
+      coeff(map_c(1) + k + df*(nlayers+1)) = 0.0_r_def
     end do
 
     ! Now compute the coefficients of each cell in the stencil for
@@ -387,7 +387,7 @@ subroutine poly2d_advective_coeffs_code(nlayers,                    &
           end do
           !coeff(stencil,edge,smap_wt(1,1)+k) = &
           !  coeff(stencil,edge,smap_wt(1,1)+k) + wqp_e(qp,edge)*poly*area(stencil)
-          ijkp = stencil - 1 + (edge-1)*stencil_size + k*ndata + map_c(1)
+          ijkp = (stencil - 1 + (edge-1)*stencil_size)*(nlayers+1) + k + map_c(1)
           coeff(ijkp) = coeff(ijkp) + wqp_e(qp,edge)*poly*area(stencil)
 
         end do

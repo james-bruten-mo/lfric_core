@@ -244,7 +244,7 @@ contains
         ! Create multi-data space and field for the vertical flux coefficients
         ndata_h = nfaces_re_h*flux_stencil_size
         multidata_fs => function_space_collection%get_fs( mesh, element_order, W3, ndata_h )
-        call flux_coeffs_list(mesh_index)%initialise( vector_space = multidata_fs, ndata_first = .true. )
+        call flux_coeffs_list(mesh_index)%initialise( vector_space = multidata_fs, ndata_first = .false. )
 
         if ( oned_reconstruction ) then
           call invoke(poly1d_flux_coeffs_kernel_type(                          &

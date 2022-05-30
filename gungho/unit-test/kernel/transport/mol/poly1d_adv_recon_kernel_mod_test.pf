@@ -96,12 +96,12 @@ contains
 
     ! Set up coeff field for quadratic fit in x direction
     map_c(1) = 1
-    map_c(2) = 1 + ndata
+    map_c(2) = 2
     coeff(:) = 0.0_r_def
     do i = 0,nlayers
-      coeff(0 + 2*(order+1) + i*ndata + map_c(1)) =  5.0_r_def/6.0_r_def
-      coeff(1 + 2*(order+1) + i*ndata + map_c(1)) = -1.0_r_def/6.0_r_def
-      coeff(2 + 2*(order+1) + i*ndata + map_c(1)) =  2.0_r_def/6.0_r_def
+      coeff((0 + 2*(order+1))*(nlayers+1) + i + map_c(1)) =  5.0_r_def/6.0_r_def
+      coeff((1 + 2*(order+1))*(nlayers+1) + i + map_c(1)) = -1.0_r_def/6.0_r_def
+      coeff((2 + 2*(order+1))*(nlayers+1) + i + map_c(1)) =  2.0_r_def/6.0_r_def
     end do
 
     ! Set up tracer field so that d(tracer)/dx = 10
@@ -110,8 +110,8 @@ contains
       tracer(stencil_map(1,1)+i) = 300.0_r_def
       tracer(stencil_map(1,2)+i) = 290.0_r_def
       tracer(stencil_map(1,4)+i) = 310.0_r_def
-   end do
-
+    end do
+    reconstruction(:) = 0.0_r_def
     call poly1d_adv_recon_code( nlayers,              &
                                 reconstruction,       &
                                 wind,                 &

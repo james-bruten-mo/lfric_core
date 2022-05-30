@@ -278,7 +278,7 @@ subroutine poly1d_flux_coeffs_code(nlayers,                    &
 
     ! Initialise polynomial coefficients to zero
     do df = 0, ndata-1
-      coeff(map_c(1) + k*ndata + df) = 0.0_r_def
+      coeff(map_c(1) + df*nlayers + k) = 0.0_r_def
     end do
 
     ! Compute the coefficients of each cell in the stencil for
@@ -368,7 +368,7 @@ subroutine poly1d_flux_coeffs_code(nlayers,                    &
           delta(:) = 0.0_r_def
           delta(stencil) = 1.0_r_def
           beta = matmul(inv_int_monomial,delta)
-          ijkp = stencil - 1 + (face-1)*(order+1) + k*ndata + map_c(1)
+          ijkp = (stencil - 1 + (face-1)*(order+1))*nlayers + k + map_c(1)
           coeff(ijkp) = dot_product(monomial,beta)*area(stencil)
         end do
       end do face_quadrature_loop

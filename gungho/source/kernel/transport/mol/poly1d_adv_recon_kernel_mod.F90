@@ -143,8 +143,6 @@ subroutine poly1d_adv_recon_code( nlayers,              &
   real(kind=r_def), dimension(undf_w1), intent(inout) :: reconstruction
   real(kind=r_def), dimension(undf_w2), intent(in)    :: wind
   real(kind=r_def), dimension(undf_wt), intent(in)    :: tracer
-  ! ndata = (order+1*nfaces_re_h)
-  ! (i, j, map(df) + k ) => i - 1 + (j-1)*(order+1) + k*ndata + map_c(df)
   real(kind=r_def), dimension(undf_c),  intent(in)    :: coeff
 
   real(kind=r_def), dimension(3,ndf_w2,ndf_w1), intent(in) :: basis_w2
@@ -154,12 +152,11 @@ subroutine poly1d_adv_recon_code( nlayers,              &
   real(kind=r_def), intent(in) :: outward_normals_to_horizontal_faces(:,:)
 
   ! Internal variables
-  integer(kind=i_def)                   :: k, df, p, face, stencil,        &
-                                           stencil_depth, depth, face_mod, &
-                                           ijkp
-  real(kind=r_def)                      :: direction
-  real(kind=r_def), dimension(nfaces_re_h) :: v_dot_n
-  real(kind=r_def)                      :: polynomial_tracer
+  integer(kind=i_def)                      :: k, df, p, face, stencil,        &
+                                              stencil_depth, depth, face_mod, &
+                                              ijp, kp, km
+  real(kind=r_def)                         :: direction, v_dot_n
+  real(kind=r_def), dimension(0:nlayers)   :: polynomial_tracer
 
   integer(kind=i_def), dimension(order+1,nfaces_re_h) :: map1d
 
@@ -187,58 +184,22 @@ subroutine poly1d_adv_recon_code( nlayers,              &
   end do
 
   do df = 1,nfaces_re_h
-    v_dot_n(df) = dot_product(basis_w2(:,df,df),outward_normals_to_horizontal_faces(:,df))
-  end do
-
-  ! Horizontal tracer reconstruction
-  ! Bottom point
-  k = 0
-  do df = 1,nfaces_re_h
-    ! Check if this is the upwind cell
-    direction = wind(map_w2(df) + k )*v_dot_n(df)
-    if ( direction > 0.0_r_def ) then
-      polynomial_tracer = 0.0_r_def
-      do p = 1,order+1
-        stencil = map1d(p,df)
-        ijkp = p - 1 + (df-1)*(order+1) + k*ndata + map_c(1)
-        polynomial_tracer = polynomial_tracer &
-                          + tracer( stencil_map(1,stencil) + k )*coeff( ijkp )
+    polynomial_tracer(:) = 0.0_r_def
+    do p = 1, order+1
+      ijp = (p - 1 + (df-1)*(order+1))*(nlayers+1) + map_c(1)
+      stencil = map1d(p,df)
+      do k = 0, nlayers
+        polynomial_tracer(k) = polynomial_tracer(k) &
+                             + tracer( stencil_map(1,stencil) + k )*coeff( ijp + k )
       end do
-      reconstruction(map_w1(df) + k ) = polynomial_tracer
-    end if
-  end do
-
-  do k = 1, nlayers - 1
-    do df = 1,nfaces_re_h
-      ! Check if this is the upwind cell
-      direction = (wind(map_w2(df) + k ) + wind(map_w2(df) + k-1 ))*v_dot_n(df)
-      if ( direction > 0.0_r_def ) then
-        polynomial_tracer = 0.0_r_def
-        do p = 1,order+1
-          stencil = map1d(p,df)
-          ijkp = p - 1 + (df-1)*(order+1) + k*ndata + map_c(1)
-          polynomial_tracer = polynomial_tracer &
-                            + tracer( stencil_map(1,stencil) + k )*coeff( ijkp )
-        end do
-        reconstruction(map_w1(df) + k ) = polynomial_tracer
-      end if
     end do
-  end do
-  ! Final point
-  k = nlayers - 1
-  do df = 1,nfaces_re_h
-    ! Check if this is the upwind cell
-    direction = wind(map_w2(df) + k )*v_dot_n(df)
-    if ( direction > 0.0_r_def ) then
-      polynomial_tracer = 0.0_r_def
-      do p = 1,order+1
-        stencil = map1d(p,df)
-        ijkp = p - 1 + (df-1)*(order+1) + (k+1)*ndata + map_c(1)
-        polynomial_tracer = polynomial_tracer &
-                          + tracer( stencil_map(2,stencil) + k )*coeff( ijkp )
-      end do
-      reconstruction(map_w1(df) + k + 1 ) = polynomial_tracer
-    end if
+    v_dot_n = dot_product(basis_w2(:,df,df),outward_normals_to_horizontal_faces(:,df))
+    do k = 0, nlayers
+      km = max(0,k-1)
+      kp = min(k,nlayers-1)
+      direction = (wind(map_w2(df) + kp ) + wind(map_w2(df) + km ))*v_dot_n
+      if ( direction >  0.0_r_def ) reconstruction(map_w1(df) + k ) = polynomial_tracer(k)
+    end do
   end do
 
 end subroutine poly1d_adv_recon_code

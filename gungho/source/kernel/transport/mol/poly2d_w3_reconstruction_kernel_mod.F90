@@ -26,7 +26,7 @@ use argument_mod,      only : arg_type, func_type,         &
                               CELL_COLUMN, GH_EVALUATOR,   &
                               ANY_DISCONTINUOUS_SPACE_1,   &
                               outward_normals_to_horizontal_faces
-use constants_mod,     only : r_def, i_def
+use constants_mod,     only : r_def, i_def, l_def
 use fs_continuity_mod, only : W2, W3
 use kernel_mod,        only : kernel_type
 
@@ -146,32 +146,31 @@ subroutine poly2d_w3_reconstruction_code( nlayers,              &
   real(kind=r_def), intent(in) :: outward_normals_to_horizontal_faces(:,:)
 
   ! Internal variables
-  integer(kind=i_def)                      :: k, df, p, ijkp
+  integer(kind=i_def)                      :: k, df, p, ijp
   real(kind=r_def)                         :: direction
   real(kind=r_def), dimension(nfaces_re_h) :: v_dot_n
-  real(kind=r_def)                         :: polynomial_tracer
+  real(kind=r_def), dimension(0:nlayers-1) :: polynomial_tracer
 
   do df = 1,nfaces_re_h
-    v_dot_n(df) =  dot_product(basis_w2(:,df,df),outward_normals_to_horizontal_faces(:,df))
+    v_dot_n(df) = dot_product(basis_w2(:,df,df),outward_normals_to_horizontal_faces(:,df))
   end do
 
   ! Horizontal reconstruction computation
-  do k = 0, nlayers - 1
-    do df = 1,nfaces_re_h
+  do df = 1, nfaces_re_h
+    polynomial_tracer(:) = 0.0_r_def
+    do p = 1,cells_in_stencil
+      ijp = (p - 1 + (df-1)*stencil_size)*nlayers + map_c(1)
+      do k = 0, nlayers - 1
+        polynomial_tracer(k) = polynomial_tracer(k) &
+                             + tracer( stencil_map(1,p) + k )*coeff( ijp+k )
+      end do
+    end do
+    do k = 0, nlayers - 1
       ! Check if this is the upwind cell
       direction = wind(map_w2(df) + k )*v_dot_n(df)
-      if ( direction > 0.0_r_def ) then
-        polynomial_tracer = 0.0_r_def
-        do p = 1,cells_in_stencil
-          ijkp = p - 1 + (df-1)*stencil_size + k*ndata + map_c(1)
-          polynomial_tracer = polynomial_tracer &
-                            + tracer( stencil_map(1,p) + k )*coeff( ijkp )
-        end do
-        reconstruction(map_w2(df) + k ) = polynomial_tracer
-      end if
+      if ( direction > 0.0_r_def ) reconstruction(map_w2(df) + k ) = polynomial_tracer(k)
     end do
   end do
-
 end subroutine poly2d_w3_reconstruction_code
 
 end module poly2d_w3_reconstruction_kernel_mod

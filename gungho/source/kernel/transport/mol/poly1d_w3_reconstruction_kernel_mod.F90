@@ -145,10 +145,9 @@ subroutine poly1d_w3_reconstruction_code( nlayers,              &
   ! Internal variables
   integer(kind=i_def)                      :: k, df, p, face, stencil, &
                                               stencil_depth, depth, face_mod, &
-                                              ijkp
-  real(kind=r_def)                         :: direction
-  real(kind=r_def), dimension(nfaces_re_h) :: v_dot_n
-  real(kind=r_def)                         :: polynomial_tracer
+                                              ijp
+  real(kind=r_def)                         :: direction, v_dot_n
+  real(kind=r_def), dimension(0:nlayers-1) :: polynomial_tracer
 
   integer(kind=i_def), dimension(order+1,nfaces_re_h) :: map1d
 
@@ -175,25 +174,22 @@ subroutine poly1d_w3_reconstruction_code( nlayers,              &
     end do
   end do
 
-  do df = 1,nfaces_re_h
-    v_dot_n(df) =  dot_product(basis_w2(:,df,df),outward_normals_to_horizontal_faces(:,df))
-  end do
-
   ! Horizontal reconstruction computation
-  do k = 0, nlayers - 1
-    do df = 1,nfaces_re_h
+  do df = 1,nfaces_re_h
+    polynomial_tracer(:) = 0.0_r_def
+    do p = 1,order+1
+      ijp = (p - 1 + (df-1)*(order+1))*nlayers + map_c(1)
+      stencil = map1d(p,df)
+      do k = 0, nlayers - 1
+        polynomial_tracer(k) = polynomial_tracer(k) &
+                             + tracer( stencil_map(1,stencil) + k )*coeff( ijp + k )
+      end do
+    end do
+    v_dot_n =  dot_product(basis_w2(:,df,df),outward_normals_to_horizontal_faces(:,df))
+    do k = 0, nlayers - 1
       ! Check if this is the upwind cell
-      direction = wind(map_w2(df) + k )*v_dot_n(df)
-      if ( direction > 0.0_r_def ) then
-        polynomial_tracer = 0.0_r_def
-        do p = 1,order+1
-          stencil = map1d(p,df)
-          ijkp = p - 1 + (df-1)*(order+1) + k*ndata + map_c(1)
-          polynomial_tracer = polynomial_tracer &
-                            + tracer( stencil_map(1,stencil) + k )*coeff( ijkp )
-        end do
-        reconstruction(map_w2(df) + k ) = polynomial_tracer
-      end if
+      direction = wind(map_w2(df) + k )*v_dot_n
+      if ( direction > 0.0_r_def ) reconstruction(map_w2(df) + k ) = polynomial_tracer(k)
     end do
   end do
 

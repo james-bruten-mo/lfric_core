@@ -66,7 +66,6 @@ module wt_advective_update_alg_mod
                                                 direction_3d
   use polyh_wtheta_koren_kernel_mod,      only: polyh_wtheta_koren_kernel_type
   use polyv_wtheta_koren_kernel_mod,      only: polyv_wtheta_koren_kernel_type
-
   implicit none
 
   private
@@ -219,7 +218,7 @@ contains
         ! Create multi-data space and field for the horizontal advective coefficients
         ndata_h = nfaces_re_h*adv_stencil_size
         multidata_fs => function_space_collection%get_fs( mesh, element_order, Wtheta, ndata_h )
-        call adv_coeffs_list(mesh_index)%initialise( vector_space = multidata_fs, ndata_first = .true. )
+        call adv_coeffs_list(mesh_index)%initialise( vector_space = multidata_fs, ndata_first = .false. )
 
         chi => get_coordinates(mesh%get_id())
         panel_id => get_panel_id(mesh%get_id())
@@ -332,8 +331,8 @@ contains
   !> @param[in]     wind              Advecting wind field
   !> @param[in]     field             Wtheta field to advect
   subroutine horizontal_wt_reconstruct_alg(h_reconstruction, wind, field)
-
     use sample_field_kernel_mod, only: sample_field_kernel_type
+
     implicit none
 
     type(field_type),              intent(in)    :: field, wind
@@ -369,6 +368,7 @@ contains
                    sample_field_kernel_type(h_reconstruction, &
                                             w1_rmultiplicity, &
                                             field) )
+
       if ( oned_reconstruction ) then
         ! Use 1d reconstruction
         call invoke( poly1d_adv_recon_kernel_type(                &
@@ -407,6 +407,7 @@ contains
   !> @param[in]     wind              Advecting wind field
   !> @param[in]     field             Wtheta field to advect
   subroutine horizontal_wt_reconstruct_koren_alg(h_reconstruction, wind, field)
+    use sample_field_kernel_mod, only: sample_field_kernel_type
 
     implicit none
 

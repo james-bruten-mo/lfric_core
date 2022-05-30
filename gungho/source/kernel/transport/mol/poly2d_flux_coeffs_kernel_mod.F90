@@ -271,7 +271,7 @@ subroutine poly2d_flux_coeffs_code(nlayers,                    &
 
     ! Initialise polynomial coefficients to zero
     do df = 0, ndata-1
-      coeff(map_c(1) + k*ndata + df) = 0.0_r_def
+      coeff(map_c(1) + k + df*nlayers) = 0.0_r_def
     end do
 
     ! Loop over all cells in stencils
@@ -355,7 +355,7 @@ subroutine poly2d_flux_coeffs_code(nlayers,                    &
               py = 0
             end if
           end do
-          ijkp = stencil - 1 + (face-1)*stencil_size + k*ndata + map_c(1)
+          ijkp = (stencil - 1 + (face-1)*stencil_size)*nlayers + k + map_c(1)
           coeff(ijkp) = coeff(ijkp) + wqp_f(qp,face)*poly*area(stencil)
         end do
       end do face_quadrature_loop

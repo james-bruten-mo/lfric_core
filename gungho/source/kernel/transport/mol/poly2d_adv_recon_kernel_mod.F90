@@ -25,7 +25,7 @@ use argument_mod,      only : arg_type, func_type,         &
                               CELL_COLUMN, GH_EVALUATOR,   &
                               ANY_DISCONTINUOUS_SPACE_1,   &
                               outward_normals_to_horizontal_faces
-use constants_mod,     only : r_def, i_def
+use constants_mod,     only : r_def, i_def, l_def
 use fs_continuity_mod, only : W1, W2, Wtheta
 use kernel_mod,        only : kernel_type
 
@@ -153,61 +153,30 @@ subroutine poly2d_adv_recon_code( nlayers,              &
   real(kind=r_def), intent(in)  :: outward_normals_to_horizontal_faces(:,:)
 
   ! Internal variables
-  integer(kind=i_def)                      :: k, df, ijkp, p
+  integer(kind=i_def)                      :: k, df, ijp, p, km, kp
   real(kind=r_def)                         :: direction
   real(kind=r_def), dimension(nfaces_re_h) :: v_dot_n
-  real(kind=r_def)                         :: polynomial_tracer
+  real(kind=r_def), dimension(0:nlayers)   :: polynomial_tracer
 
   do df = 1,nfaces_re_h
     v_dot_n(df) = dot_product(basis_w2(:,df,df),outward_normals_to_horizontal_faces(:,df))
   end do
 
-  ! Horizontal tracer reconstruction
-  ! Bottom point
-  k = 0
   do df = 1,nfaces_re_h
-    ! Check if this is the upwind cell
-    direction = wind(map_w2(df) + k )*v_dot_n(df)
-    if ( direction > 0.0_r_def ) then
-      polynomial_tracer = 0.0_r_def
-      do p = 1,cells_in_stencil
-        ijkp = p - 1 + (df-1)*stencil_size + k*ndata + map_c(1)
-        polynomial_tracer = polynomial_tracer &
-                          + tracer( stencil_map(1,p) + k )*coeff( ijkp )
+    polynomial_tracer(:) = 0.0_r_def
+    do p = 1,cells_in_stencil
+      ijp = (p - 1 + (df-1)*stencil_size)*(nlayers+1) + map_c(1)
+      do k = 0, nlayers
+        polynomial_tracer(k) = polynomial_tracer(k) &
+                             + tracer( stencil_map(1,p) + k )*coeff( ijp +k)
       end do
-      reconstruction(map_w1(df) + k ) = polynomial_tracer
-    end if
-  end do
-
-  do k = 1, nlayers - 1
-    do df = 1,nfaces_re_h
-      ! Check if this is the upwind cell
-      direction = (wind(map_w2(df) + k ) + wind(map_w2(df) + k-1 ))*v_dot_n(df)
-      if ( direction > 0.0_r_def ) then
-        polynomial_tracer = 0.0_r_def
-        do p = 1,cells_in_stencil
-          ijkp = p - 1 + (df-1)*stencil_size + k*ndata + map_c(1)
-          polynomial_tracer = polynomial_tracer &
-                            + tracer( stencil_map(1,p) + k )*coeff( ijkp )
-        end do
-        reconstruction(map_w1(df) + k ) = polynomial_tracer
-      end if
     end do
-  end do
-  ! Final point
-  k = nlayers - 1
-  do df = 1,nfaces_re_h
-    ! Check if this is the upwind cell
-    direction = wind(map_w2(df) + k )*v_dot_n(df)
-    if ( direction > 0.0_r_def ) then
-      polynomial_tracer = 0.0_r_def
-      do p = 1,cells_in_stencil
-        ijkp = p - 1 + (df-1)*stencil_size + (k+1)*ndata + map_c(1)
-        polynomial_tracer = polynomial_tracer &
-                          + tracer( stencil_map(2,p) + k )*coeff( ijkp )
-      end do
-      reconstruction(map_w1(df) + k + 1 ) = polynomial_tracer
-    end if
+    do k = 0, nlayers
+      km = max(0,k-1)
+      kp = min(k,nlayers-1)
+      direction = (wind(map_w2(df) + kp ) + wind(map_w2(df) + km ))*v_dot_n(df)
+      if ( direction > 0.0_r_def ) reconstruction(map_w1(df) + k ) = polynomial_tracer(k)
+    end do
   end do
 
 end subroutine poly2d_adv_recon_code

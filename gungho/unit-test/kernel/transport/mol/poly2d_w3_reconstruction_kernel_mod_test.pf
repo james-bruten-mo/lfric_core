@@ -79,10 +79,11 @@ contains
 
     density(:) = (/ 3.0_r_def, 1.0_r_def, 1.0_r_def, 5.0_r_def, 5.0_r_def /)
 
+    coeff(:) = 0.0_r_def
     coeff(6:10) = (/ 5.0_r_def/6.0_r_def, 0.0_r_def, 2.0_r_def/6.0_r_def, 0.0_r_def, -1.0_r_def/6.0_r_def /)
     coeff(11:15) = (/ 5.0_r_def/6.0_r_def, -1.0_r_def/6.0_r_def, 0.0_r_def, 2.0_r_def/6.0_r_def, 0.0_r_def /)
 
-    reconstruction = -1.0_r_def
+    reconstruction = 0.0_r_def
 
     call poly2d_w3_reconstruction_code( nlayers,        &
                                         reconstruction, &
@@ -118,7 +119,7 @@ contains
     @assertEqual(answer, reconstruction(3), use_tol)
     ! These reconstruction points should not have been computed so check
     ! they are unchanged
-    answer = -1.0_r_def
+    answer = 0.0_r_def
     @assertEqual(answer, reconstruction(1), use_tol)
     @assertEqual(answer, reconstruction(4), use_tol)
 

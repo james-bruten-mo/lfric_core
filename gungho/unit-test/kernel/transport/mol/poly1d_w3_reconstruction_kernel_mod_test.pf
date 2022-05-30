@@ -92,7 +92,7 @@ contains
     coeff(2 + 2*(mol_order+1)) = -1.0_r_def/6.0_r_def
     coeff(3 + 2*(mol_order+1)) =  2.0_r_def/6.0_r_def
 
-    reconstruction = -1.0_r_def
+    reconstruction = 0.0_r_def
 
     call poly1d_w3_reconstruction_code( nlayers,              &
                                         reconstruction,       &
@@ -128,7 +128,7 @@ contains
     @assertEqual(answer, reconstruction(3), use_tol)
     ! These reconstruction points should not have been computed so check
     ! they are unchanged
-    answer = -1.0_r_def
+    answer = 0.0_r_def
     @assertEqual(answer, reconstruction(1), use_tol)
     @assertEqual(answer, reconstruction(4), use_tol)
 

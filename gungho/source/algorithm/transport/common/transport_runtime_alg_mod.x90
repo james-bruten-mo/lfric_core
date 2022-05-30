@@ -304,6 +304,13 @@ contains
       call vertical_cfl%field_minmax(cfl_min, cfl_max)
       self%vertical_cfl_max(mesh_idx) = max(abs(cfl_max), abs(cfl_min))
 
+      write( log_scratch_space, '(A, E16.8)') &
+          'Transport: maximum horizontal CFL ', self%horizontal_cfl_max(mesh_idx)
+      call log_event( log_scratch_space, LOG_LEVEL_INFO )
+      write( log_scratch_space, '(A, E16.8)') &
+          'Transport: maximum vertical CFL ', self%vertical_cfl_max(mesh_idx)
+      call log_event( log_scratch_space, LOG_LEVEL_INFO )
+
       !========================================================================!
       ! Compute the divergence factor for use in density advection
       ! div_factor = 1 - beta*dt*m3_inv*div*wind_n
@@ -637,15 +644,19 @@ contains
                          + 1_i_def
         ! Strang_vhv splitting uses half timestep for the vertical stage
         if ( splitting  == splitting_strang_vhv ) then
-          number_substeps = max(1_i_def, number_substeps/2_i_def)
+          number_substeps = int( self%vertical_cfl_max(idx)        &
+                              /(2.0_r_def*cfl_mol_1d_stab+tiny_eps),i_def) &
+                          + 1_i_def
         end if
       case (direction_h)
         number_substeps = int( self%horizontal_cfl_max(idx)      &
                               /(cfl_mol_2d_stab+tiny_eps),i_def) &
-                         + 1_i_def
+                        + 1_i_def
         ! Strang_hvh splitting uses half timestep for the horizontal stage
         if ( splitting  == splitting_strang_hvh ) then
-          number_substeps = max(1_i_def, number_substeps/2_i_def)
+          number_substeps = int( self%horizontal_cfl_max(idx)        &
+                              /(2.0_r_def*cfl_mol_2d_stab+tiny_eps),i_def) &
+                          + 1_i_def
         end if
 
       case (direction_3d)

@@ -236,12 +236,12 @@ contains
     answer = (/  5.0_r_def/6.0_r_def, 2.0_r_def/6.0_r_def, -1.0_r_def/6.0_r_def /)
     if ( r_def == real64 ) then
       use_tol = tol
-      @assertEqual(answer, coeff(1:mol_order+1), use_tol)
     else
-      tst = coeff(1:mol_order+1)
-      use_tol = 10.0_r_def * spacing( maxval(tst) )
-      @assertEqual(answer, tst, use_tol)
+      use_tol = 10.0_r_def * spacing( maxval(answer) )
     endif
+    do df = 1,3
+      @assertEqual(answer(df), coeff(1 + (df-1)*nlayers), use_tol)
+    end do
   end subroutine test_all
 
   subroutine tearDown( this )

@@ -179,8 +179,7 @@ subroutine poly1d_advective_coeffs_code(nlayers,                   &
 
   real(kind=r_def), dimension(undf_wt),                    intent(in)  :: mdwt
   real(kind=r_def), dimension(undf_wx),                    intent(in)  :: chi1, chi2, chi3
-  ! ndata = (order+1 * nfaces_h)
-  ! (i, j, map(df) + k ) => i - 1 + (j-1)*(order+1) + k*ndata + map_c(df)
+
   real(kind=r_def), dimension(undf_c),   intent(inout) :: coeff
   real(kind=r_def), dimension(undf_pid), intent(in)    :: panel_id
 
@@ -293,7 +292,7 @@ subroutine poly1d_advective_coeffs_code(nlayers,                   &
                   ipanel, x0(1), x0(2), x0(3))
     ! Initialise polynomial coefficients to zero
     do df = 0, ndata-1
-      coeff(map_c(1) + k*ndata + df) = 0.0_r_def
+      coeff(map_c(1) + k + df*(nlayers+1)) = 0.0_r_def
     end do
 
     ! Compute the coefficients of each cell in the stencil for
@@ -391,7 +390,7 @@ subroutine poly1d_advective_coeffs_code(nlayers,                   &
           delta(:) = 0.0_r_def
           delta(stencil) = 1.0_r_def
           beta = matmul(inv_int_monomial,delta)
-          ijkp = stencil - 1 + (edge-1)*(order+1) + k*ndata + map_c(1)
+          ijkp = (stencil - 1 + (edge-1)*(order+1))*(nlayers+1) + k + map_c(1)
           coeff(ijkp) = dot_product(monomial,beta)*area(stencil)
         end do
       end do edge_quadrature_loop

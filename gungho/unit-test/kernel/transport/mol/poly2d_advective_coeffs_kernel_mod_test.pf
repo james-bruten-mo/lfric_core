@@ -74,7 +74,7 @@ contains
     class(poly2d_advective_coeffs_test_type), intent(inout) :: this
 
     real(r_def), parameter    :: tol = 1.0e-12_r_def   ! r_def 64bit tolerance
-    real(r_def), dimension(9) :: answer, tstv
+    real(r_def), dimension(9) :: answer
     real(r_def)               :: tst, use_tol
 
     integer(i_def), parameter :: nlayers = 1
@@ -247,33 +247,39 @@ contains
                -7.5E-002_r_def, -7.5E-002_r_def, 9.166666666666659E-002_r_def /)
     if ( r_def == real64 ) then
       use_tol = tol
-      @assertEqual(answer, coeff(1:9), use_tol)
     else
-      tstv = coeff(1:9)
-      use_tol = 10.0_r_def*spacing( maxval(tstv) )
-      @assertEqual(answer, tstv, use_tol)
-    endif
+      use_tol = 10.0_r_def*spacing( maxval(coeff) )
+    end if
+    @assertEqual(answer(1), coeff(1), use_tol)
+    @assertEqual(answer(2), coeff(3), use_tol)
+    @assertEqual(answer(3), coeff(5), use_tol)
+    @assertEqual(answer(4), coeff(7), use_tol)
+    @assertEqual(answer(5), coeff(9), use_tol)
+    @assertEqual(answer(6), coeff(11), use_tol)
+    @assertEqual(answer(7), coeff(13), use_tol)
+    @assertEqual(answer(8), coeff(15), use_tol)
+    @assertEqual(answer(9), coeff(17), use_tol)
 
     ! Check summation over y direction equals known quadratic in x intepolation
     ! weights
     if ( r_def == real64 ) then
       use_tol = tol
-      @assertEqual( 2.0_r_def/6.0_r_def, coeff(2)+coeff(6)+coeff(9), use_tol)
-      @assertEqual( 5.0_r_def/6.0_r_def, coeff(1)+coeff(3)+coeff(5), use_tol)
-      @assertEqual( -1.0_r_def/6.0_r_def, coeff(4)+coeff(7)+coeff(8), use_tol)
+      @assertEqual( 2.0_r_def/6.0_r_def, coeff(3)+coeff(11)+coeff(17), use_tol)
+      @assertEqual( 5.0_r_def/6.0_r_def, coeff(1)+coeff(5)+coeff(9), use_tol)
+      @assertEqual( -1.0_r_def/6.0_r_def, coeff(7)+coeff(13)+coeff(15), use_tol)
     else
-      tst = coeff(2)+coeff(6)+coeff(9)
+      tst = coeff(3)+coeff(11)+coeff(17)
       use_tol = 10.0_r_def*spacing(tst)
       @assertEqual( 2.0_r_def/6.0_r_def, tst, use_tol)
 
-      tst = coeff(1)+coeff(3)+coeff(5)
+      tst = coeff(1)+coeff(5)+coeff(9)
       use_tol = 10.0_r_def*spacing(tst)
       @assertEqual( 5.0_r_def/6.0_r_def, tst, use_tol)
 
-      tst = coeff(4)+coeff(7)+coeff(8)
+      tst = coeff(7)+coeff(13)+coeff(15)
       use_tol = 10.0_r_def*spacing(tst)
       @assertEqual( -1.0_r_def/6.0_r_def, tst, use_tol)
-    endif
+    end if
   end subroutine test_all
 
   subroutine tearDown( this )
