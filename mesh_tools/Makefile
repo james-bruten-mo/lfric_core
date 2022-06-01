@@ -38,8 +38,8 @@ PROFILE ?= fast-debug
 #
 .NOTPARALLEL:
 
-PROJECT_DIR       := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
-export ROOT_DIR   ?= ..
+export PROJECT_DIR := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
+export ROOT_DIR    ?= ..
 
 export INTERNAL_DEPENDENCIES = $(ROOT_DIR)/infrastructure
 
@@ -128,13 +128,13 @@ build: ALWAYS
 # Unit tests
 #
 unit-tests/%: export ADDITIONAL_EXTRACTION = $(ROOT_DIR)/infrastructure/source
-unit-tests/%: export BIN_DIR ?= test
-unit-tests/%: export META_FILE_DIR = rose-meta/lfric-mesh_tools/HEAD
-unit-tests/%: export PROGRAMS = mesh_tools_unit_tests
-unit-tests/%: export PROJECT = mesh_tools
-unit-tests/%: export SOURCE_DIR = source
-unit-tests/%: export TEST_DIR = unit-test
-unit-tests/%: export WORKING_DIR := $(WORKING_DIR)/unit-test
+unit-tests/%: export BIN_DIR       ?= $(PROJECT_DIR)/test
+unit-tests/%: export META_FILE_DIR  = rose-meta/lfric-mesh_tools/HEAD
+unit-tests/%: export PROGRAMS       = mesh_tools_unit_tests
+unit-tests/%: export PROJECT        = mesh_tools
+unit-tests/%: export SOURCE_DIR     = source
+unit-tests/%: export TEST_DIR       = unit-test
+unit-tests/%: export WORKING_DIR   := $(WORKING_DIR)/unit-test
 unit-tests: unit-tests/run
 
 
