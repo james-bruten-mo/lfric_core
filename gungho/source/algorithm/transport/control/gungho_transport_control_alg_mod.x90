@@ -36,10 +36,6 @@ module gungho_transport_control_alg_mod
 
   private
 
-  ! Set number of mixing ratio species to transport
-  ! Only transport first four species of moisture (and not graupel or snow)
-  integer(kind=i_def), parameter :: nummr_to_transport = 4
-
   ! Contained suroutines
   public :: gungho_transport_control_alg_init
   public :: gungho_transport_control_alg
@@ -177,7 +173,7 @@ contains
     use moist_dyn_mod,                   only: num_moist_factors
     use moist_dyn_factors_alg_mod,       only: moist_dyn_factors_alg
     use moist_mr_transport_alg_mod,      only: moist_mr_transport_alg
-    use mr_indices_mod,                  only: nummr
+    use mr_indices_mod,                  only: nummr, nummr_to_transport
     use operator_mod,                    only: operator_type
     use timestepping_config_mod,         only: outer_iterations,      &
                                                time_method => method, &

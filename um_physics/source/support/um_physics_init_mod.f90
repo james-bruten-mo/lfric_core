@@ -77,12 +77,14 @@ module um_physics_init_mod
   use formulation_config_mod,    only : moisture_formulation,    &
                                         moisture_formulation_dry
 
-  use microphysics_config_mod,   only : a_ratio_exp_in => a_ratio_exp, &
-                                        a_ratio_fac_in => a_ratio_fac, &
-                                        droplet_tpr, shape_rime,       &
-                                        qcl_rime,                      &
-                                        ndrop_surf_in => ndrop_surf,   &
-                                        z_surf_in => z_surf,           &
+  use microphysics_config_mod,   only : a_ratio_exp_in => a_ratio_exp,       &
+                                        a_ratio_fac_in => a_ratio_fac,       &
+                                        graupel_scheme, graupel_scheme_none, &
+                                        graupel_scheme_modified,             &
+                                        droplet_tpr, shape_rime,             &
+                                        qcl_rime,                            &
+                                        ndrop_surf_in => ndrop_surf,         &
+                                        z_surf_in => z_surf,                 &
                                         turb_gen_mixph
 
   use mixing_config_mod,         only : smagorinsky,                 &
@@ -132,6 +134,8 @@ module um_physics_init_mod
                                    LOG_LEVEL_ERROR,   &
                                    LOG_LEVEL_INFO
   use conversions_mod,      only : pi_over_180
+
+  use mr_indices_mod,       only : nummr_to_transport
 
   ! UM modules used
   use cderived_mod,         only : delta_lambda, delta_phi
@@ -233,7 +237,7 @@ contains
         di_input, dic_input, i_mcr_iter, l_diff_icevt,                       &
         l_mcr_qrain, l_psd, l_rain, l_warm_new, timestep_mp_in, x1r, x2r,    &
         sediment_loc, i_mcr_iter_tstep, all_sed_start,                       &
-        check_run_precip, graupel_option, no_graupel, a_ratio_exp,           &
+        check_run_precip, graupel_option, no_graupel, gr_srcols, a_ratio_exp,&
         a_ratio_fac, l_droplet_tpr, qclrime, l_shape_rime, ndrop_surf,       &
         z_surf, l_fsd_generator, mp_dz_scal, l_subgrid_qcl_mp, aut_qc,       &
         l_mphys_nonshallow
@@ -679,7 +683,7 @@ contains
       case(scheme_bimodal)
         i_cld_vn   = i_cld_bimodal
         forced_cu  = off
-        i_cld_area = acf_off 
+        i_cld_area = acf_off
         i_eacf     = not_mixph
 
       case default
@@ -735,7 +739,7 @@ contains
     cx(84)         = 1.0_r_um
     constp(35)     = 1.0_r_um
     ! The following are needed for the visibility diagnostic, hence we
-    ! initialise them even when microphysics isn't used.  They are used in 
+    ! initialise them even when microphysics isn't used.  They are used in
     ! beta_precip which can still have convective rain/snow.
     x1r            = 2.2000e-1_r_um
     x2r            = 2.2000_r_um
@@ -751,6 +755,14 @@ contains
       ! Electric namelist options
       electric_method = no_lightning
 
+      select case (graupel_scheme)
+        case (graupel_scheme_none)
+          graupel_option = no_graupel
+        case (graupel_scheme_modified)
+          graupel_option = gr_srcols
+          nummr_to_transport = 5_i_def
+      end select
+
       a_ratio_exp    = real(a_ratio_exp_in, r_um)
       a_ratio_fac    = real(a_ratio_fac_in, r_um)
       ar             = 1.00_r_um
@@ -759,7 +771,6 @@ contains
       cic_input      = 1024.0_r_um
       di_input       = 0.416_r_um
       dic_input      = 1.0_r_um
-      graupel_option = no_graupel
       i_mcr_iter     = i_mcr_iter_tstep
       l_diff_icevt   = .true.
       l_droplet_tpr  = droplet_tpr

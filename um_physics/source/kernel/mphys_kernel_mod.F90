@@ -655,7 +655,7 @@ end if
     j = 1
     do i = 1, seg_len
       do k = 1, nlayers
-        dmg_wth( map_wth(1,i) + k) = qgraup_work(i,i,k) - mg_wth( map_wth(1,i) + k )
+        dmg_wth( map_wth(1,i) + k) = qgraup_work(i,j,k) - mg_wth( map_wth(1,i) + k )
       end do
       ! Update level 0 to be the same as level 1 (as per UM)
       dmg_wth(map_wth(1,i) + 0) = qgraup_work(i,j,1) - mg_wth(map_wth(1,i) + 0)
