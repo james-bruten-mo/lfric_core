@@ -12,6 +12,7 @@ module gungho_model_mod
   use base_mesh_config_mod,       only : prime_mesh_name
   use checksum_alg_mod,           only : checksum_alg
   use clock_mod,                  only : clock_type
+  use driver_comm_mod,            only : init_comm, final_comm
   use driver_fem_mod,             only : init_fem, final_fem
   use driver_io_mod,              only : init_io, final_io, get_clock, &
                                          filelist_populator
@@ -38,9 +39,6 @@ module gungho_model_mod
   use gungho_setup_io_mod,        only : init_gungho_files
   use gungho_transport_control_alg_mod, &
                                   only : gungho_transport_control_alg_final
-  use halo_comms_mod,             only : initialise_halo_comms, &
-                                         finalise_halo_comms
-  use init_altitude_mod,          only : init_altitude
   use init_altitude_mod,          only : init_altitude
   use io_config_mod,              only : subroutine_timers,       &
                                          subroutine_counters,     &
@@ -73,8 +71,7 @@ module gungho_model_mod
   use mesh_mod,                   only : mesh_type
   use moisture_conservation_alg_mod, &
                                   only : moisture_conservation_alg
-  use mpi_mod,                    only : store_comm,    &
-                                         get_comm_size, &
+  use mpi_mod,                    only : get_comm_size, &
                                          get_comm_rank
   use mr_indices_mod,             only : nummr
   use rk_alg_timestep_mod,        only : rk_alg_init, &
@@ -130,8 +127,6 @@ contains
   !> @brief Initialises the infrastructure and sets up constants used by the
   !>        model.
   !>
-  !> @param [in]     communicator The MPI communicator for use within the model
-  !>                              (not XIOS' communicator)
   !> @param [in]     filename     The name of the configuration namelist file
   !> @param [in]     program_name An identifier given to the model begin run
   !> @param [in,out] mesh         The current 3d mesh
@@ -139,8 +134,7 @@ contains
   !> @param [in,out] shifted_mesh The vertically shifted 3d mesh
   !> @param [in,out] double_level_mesh The double-level 3d mesh
   !> @param [in,out] model_data   The working data set for the model run
-  subroutine initialise_infrastructure( communicator,         &
-                                        filename,             &
+  subroutine initialise_infrastructure( filename,             &
                                         program_name,         &
                                         mesh,                 &
                                         twod_mesh,            &
@@ -158,9 +152,8 @@ contains
 
     implicit none
 
-    integer(i_native),      intent(in)               :: communicator
-    character(*),           intent(in)               :: filename
-    character(*),           intent(in)               :: program_name
+    character(*), intent(in) :: filename
+    character(*), intent(in) :: program_name
 
     type(mesh_type), intent(inout), pointer :: mesh
     type(mesh_type), intent(inout), pointer :: shifted_mesh
@@ -173,8 +166,8 @@ contains
 
     procedure(filelist_populator), pointer :: files_init_ptr => null()
 
-    integer(i_def)    :: total_ranks, local_rank, stencil_depth
-    integer(i_native) :: log_level
+    integer(i_def)    :: stencil_depth
+    integer(i_native) :: log_level, communicator
 
     class(clock_type), pointer :: clock
     real(r_def)                :: dt_model
@@ -187,7 +180,6 @@ contains
     type(field_type), target :: panel_id
     type(field_type), target :: shifted_chi(3)
     type(field_type), target :: double_level_chi(3)
-
 
     integer(i_def),   allocatable :: multigrid_mesh_ids(:)
     integer(i_def),   allocatable :: multigrid_2d_mesh_ids(:)
@@ -202,18 +194,9 @@ contains
     ! Initialise aspects of the infrastructure
     !-------------------------------------------------------------------------
 
-    !Store the MPI communicator for later use
-    call store_comm( communicator )
+    call init_comm(program_name, communicator)
 
-    ! Initialise halo functionality
-    call initialise_halo_comms( communicator )
-
-    ! Get the rank information
-    total_ranks = get_comm_size()
-    local_rank  = get_comm_rank()
-
-    call initialise_logging(local_rank, total_ranks, program_name)
-
+    call initialise_logging(get_comm_rank(), get_comm_size(), program_name)
     call load_configuration( filename )
 
     select case (run_log_level)
@@ -271,7 +254,7 @@ contains
     allocate( extrusion, source=create_extrusion() )
 
     ! Create the mesh
-    call init_mesh( local_rank, total_ranks, stencil_depth, mesh,  &
+    call init_mesh( get_comm_rank(), get_comm_size(), stencil_depth, mesh,  &
                     twod_mesh             = twod_mesh,             &
                     shifted_mesh          = shifted_mesh,          &
                     double_level_mesh     = double_level_mesh,     &
@@ -535,8 +518,8 @@ contains
     ! Finalise namelist configurations
     call final_configuration()
 
-    ! Finalise halo functionality
-    call finalise_halo_comms()
+    ! Finalise communicator
+    call final_comm()
 
     ! Finalise the logging system
     call finalise_logging()

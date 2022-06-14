@@ -13,7 +13,7 @@ USE log_mod,                    ONLY: log_event, log_scratch_space,            &
 
 ! LFRic Modules
 USE driver_mesh_mod,            ONLY: init_mesh
-use driver_fem_mod,             ONLY: init_fem
+USE driver_fem_mod,             ONLY: init_fem
 USE derived_config_mod,         ONLY: set_derived_config
 USE extrusion_mod,              ONLY: extrusion_type
 USE field_collection_mod,       ONLY: field_collection_type

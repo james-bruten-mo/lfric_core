@@ -6,7 +6,6 @@
 MODULE lfricinp_setup_io_mod
 
 USE constants_mod,                 ONLY: i_def, str_max_filename
-USE driver_io_mod,                 ONLY: append_file_to_list
 USE file_mod,                      ONLY: file_type
 USE log_mod,                       ONLY: log_event, log_scratch_space,         &
                                          LOG_LEVEL_INFO, LOG_LEVEL_ERROR
@@ -109,5 +108,58 @@ IF (checkpoint_read) THEN
 END IF
 
 END SUBROUTINE init_lfricinp_files
+
+
+  !> @brief  Appends a file to the end of a list of files. We can't bring this
+  !>         in from the driver component because lfricinputs is not handling
+  !>         preprocessor macros properly
+  !>
+  !> @param[in]      file      File to be added
+  !> @param[in,out]  filelist  List of files to be added to
+SUBROUTINE append_file_to_list(file, filelist)
+
+  IMPLICIT NONE
+
+  CLASS(file_type),              INTENT(IN)    :: file
+  CLASS(file_type), ALLOCATABLE, INTENT(INOUT) :: filelist(:)
+
+  CLASS(file_type), ALLOCATABLE :: new_filelist(:)
+
+  IF (.NOT. allocated(filelist)) THEN
+    SELECT TYPE(file)
+    TYPE IS (lfric_xios_file_type)
+      ALLOCATE(lfric_xios_file_type::new_filelist(1))
+
+      ! We just allocated this but it is still polymorphic, so we need to cast
+      SELECT TYPE(new_filelist)
+      TYPE IS (lfric_xios_file_type)
+        new_filelist(1) = file
+      END SELECT ! TYPE(new_filelist)
+    END SELECT ! TYPE(file)
+
+  ELSE
+    SELECT TYPE(filelist)
+    TYPE IS (lfric_xios_file_type)
+      ALLOCATE(lfric_xios_file_type::new_filelist(size(filelist)+1))
+
+      ! We just allocated this but it is still polymorphic, so we need to cast
+      SELECT TYPE(new_filelist)
+      TYPE IS (lfric_xios_file_type)
+        new_filelist(1:size(filelist)) = filelist
+
+        SELECT TYPE(file)
+        TYPE IS (lfric_xios_file_type)
+          new_filelist(size(filelist)+1) = file
+        END SELECT ! TYPE(file)
+
+      END SELECT ! TYPE(new_filelist)
+
+    END SELECT ! TYPE(filelist)
+
+  END IF
+
+  CALL move_alloc(new_filelist, filelist)
+
+END SUBROUTINE append_file_to_list
 
 END MODULE lfricinp_setup_io_mod

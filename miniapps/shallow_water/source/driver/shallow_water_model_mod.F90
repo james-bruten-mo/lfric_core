@@ -9,6 +9,7 @@ module shallow_water_model_mod
 
   use assign_orography_field_mod,     only: assign_orography_field
   use checksum_alg_mod,               only: checksum_alg
+  use cli_mod,                        only: get_initial_filename
   use clock_mod,                      only: clock_type
   use configuration_mod,              only: final_configuration
   use conservation_algorithm_mod,     only: conservation_algorithm
@@ -17,6 +18,7 @@ module shallow_water_model_mod
   use convert_to_upper_mod,           only: convert_to_upper
   use count_mod,                      only: count_type, halo_calls
   use derived_config_mod,             only: set_derived_config
+  use driver_comm_mod,                only: init_comm, final_comm
   use driver_fem_mod,                 only: init_fem, final_fem
   use driver_io_mod,                  only: init_io, final_io, get_clock, &
                                             filelist_populator
@@ -27,8 +29,6 @@ module shallow_water_model_mod
   use function_space_mod,             only: function_space_type
   use global_mesh_collection_mod,     only: global_mesh_collection, &
                                             global_mesh_collection_type
-  use halo_comms_mod,                 only: initialise_halo_comms, &
-                                            finalise_halo_comms
   use io_config_mod,                  only: subroutine_timers,       &
                                             subroutine_counters,     &
                                             use_xios_io,             &
@@ -55,8 +55,7 @@ module shallow_water_model_mod
   use minmax_tseries_mod,             only: minmax_tseries,      &
                                             minmax_tseries_init, &
                                             minmax_tseries_final
-  use mpi_mod,                        only: store_comm,    &
-                                            get_comm_size, &
+  use mpi_mod,                        only: get_comm_size, &
                                             get_comm_rank
   use runtime_constants_mod,          only: create_runtime_constants, &
                                             final_runtime_constants
@@ -80,15 +79,10 @@ module shallow_water_model_mod
 
   !=============================================================================
   !> @brief Initialises the infrastructure and sets up constants used by the model.
-  !> @param[in,out] communicator The MPI communicator for use within the model
-  !!                             (not XIOS' communicator)
-  !> @param[in]     filename     The name of the configuration namelist file
   !> @param[in]     program_name An identifier given to the model begin run
   !> @param[in,out] mesh         The 3D mesh
   !> @param[in,out] chi          A size 3 array of fields holding the coordinates of the mesh
-  subroutine initialise_infrastructure(communicator, &
-                                       filename,     &
-                                       program_name, &
+  subroutine initialise_infrastructure(program_name, &
                                        mesh,         &
                                        chi           )
 
@@ -102,8 +96,6 @@ module shallow_water_model_mod
 
     implicit none
 
-    integer(i_native), intent(in)                    :: communicator
-    character(*),      intent(in)                    :: filename
     character(*),      intent(in)                    :: program_name
     type(mesh_type), intent(inout), pointer          :: mesh
     type(field_type),  intent(inout)                 :: chi(3)
@@ -116,11 +108,11 @@ module shallow_water_model_mod
     integer(i_def) :: stencil_depth
 
     character(len=*), parameter :: io_context_name = "shallow_water"
+    character(:),   allocatable :: filename
 
     class(clock_type), pointer :: clock
 
-    integer(i_def)    :: total_ranks, local_rank
-    integer(i_native) :: log_level
+    integer(i_native) :: log_level, communicator
 
     type(function_space_type), pointer       :: function_space
 
@@ -128,18 +120,12 @@ module shallow_water_model_mod
     ! Initialise aspects of the infrastructure
     !-------------------------------------------------------------------------
 
-    ! Store the MPI communicator for later use
-    call store_comm( communicator )
+    ! Set up the MPI communicator for later use
+    call init_comm( program_name, communicator )
 
-    ! Initialise halo functionality
-    call initialise_halo_comms( communicator )
+    call initialise_logging( get_comm_rank(), get_comm_size(), program_name )
 
-    ! Get the rank information
-    total_ranks = get_comm_size()
-    local_rank  = get_comm_rank()
-
-    call initialise_logging(local_rank, total_ranks, program_name)
-
+    call get_initial_filename( filename )
     call load_configuration( filename )
 
     select case (run_log_level)
@@ -198,7 +184,7 @@ module shallow_water_model_mod
     stencil_depth = 2_i_def
 
     ! Create the mesh
-    call init_mesh(local_rank, total_ranks, stencil_depth, mesh, twod_mesh)
+    call init_mesh(get_comm_rank(), get_comm_size(), stencil_depth, mesh, twod_mesh)
 
     ! Create FEM specifics (function spaces and chi field)
     call init_fem(mesh, chi, panel_id)
@@ -320,8 +306,7 @@ module shallow_water_model_mod
     ! Finalise namelist configurations
     call final_configuration()
 
-    ! Finalise halo functionality
-    call finalise_halo_comms()
+    call final_comm()
 
     ! Finalise the logging system
     call finalise_logging()

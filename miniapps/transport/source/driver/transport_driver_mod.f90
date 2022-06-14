@@ -10,10 +10,12 @@ module transport_driver_mod
 
   use checksum_alg_mod,                 only: checksum_alg
   use check_configuration_mod,          only: get_required_stencil_depth
+  use cli_mod,                          only: get_initial_filename
   use clock_mod,                        only: clock_type
   use configuration_mod,                only: final_configuration
   use constants_mod,                    only: i_def, i_native, r_def
   use convert_to_upper_mod,             only: convert_to_upper
+  use driver_comm_mod,                  only: init_comm, final_comm
   use driver_fem_mod,                   only: init_fem
   use driver_io_mod,                    only: init_io, final_io, get_clock
   use driver_mesh_mod,                  only: init_mesh
@@ -23,8 +25,6 @@ module transport_driver_mod
   use divergence_alg_mod,               only: divergence_alg
   use field_mod,                        only: field_type
   use formulation_config_mod,           only: l_multigrid
-  use halo_comms_mod,                   only: initialise_halo_comms, &
-                                              finalise_halo_comms
   use idealised_config_mod,             only: test, &
                                               test_hadley_like_dcmip
   use io_context_mod,                   only: io_context_type
@@ -53,8 +53,7 @@ module transport_driver_mod
   use mesh_collection_mod,              only: mesh_collection, &
                                               mesh_collection_type
   use mesh_mod,                         only: mesh_type
-  use mpi_mod,                          only: store_comm,    &
-                                              get_comm_size, &
+  use mpi_mod,                          only: get_comm_size, &
                                               get_comm_rank
   use mr_indices_mod,                   only: nummr
   use runtime_constants_mod,            only: create_runtime_constants
@@ -111,7 +110,7 @@ contains
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !> @brief Sets up required state in preparation for run.
   !! @param[in] filename Configuration namelist file
-  subroutine initialise_transport( filename, model_communicator )
+  subroutine initialise_transport()
 
     use logging_config_mod, only: run_log_level,          &
                                   key_from_run_log_level, &
@@ -123,16 +122,14 @@ contains
 
     implicit none
 
-    character(len=*),       intent(in) :: filename
-    integer(kind=i_native), intent(in) :: model_communicator
-
     character(len=*), parameter :: xios_ctx  = "transport"
+    character(:),   allocatable :: filename
 
     class(clock_type), pointer :: clock => null()
     real(kind=r_def)           :: dt_model
 
-    integer(i_def)    :: total_ranks, local_rank, stencil_depth
-    integer(i_native) :: log_level
+    integer(i_def)    :: stencil_depth
+    integer(i_native) :: log_level, model_communicator
 
     integer(kind=i_def), allocatable :: multigrid_mesh_ids(:)
     integer(kind=i_def), allocatable :: multigrid_2d_mesh_ids(:)
@@ -141,19 +138,12 @@ contains
 
     dt_model = real(dt, r_def)
 
-    ! Store the MPI communicator for later use
-    call store_comm( model_communicator )
+    call init_comm( program_name, model_communicator )
 
+    call get_initial_filename( filename )
     call transport_load_configuration( filename )
 
-    ! Initialise halo functionality
-    call initialise_halo_comms( model_communicator )
-
-    ! Get the rank information
-    total_ranks = get_comm_size()
-    local_rank  = get_comm_rank()
-
-    call initialise_logging( local_rank, total_ranks, program_name )
+    call initialise_logging( get_comm_rank(), get_comm_size(), program_name )
 
     select case (run_log_level)
     case( RUN_LOG_LEVEL_ERROR )
@@ -201,7 +191,7 @@ contains
     stencil_depth = get_required_stencil_depth()
 
     ! Create the mesh
-    call init_mesh( local_rank, total_ranks, stencil_depth,      &
+    call init_mesh( get_comm_rank(), get_comm_size(), stencil_depth,      &
                     mesh,                                        &
                     twod_mesh=twod_mesh,                         &
                     shifted_mesh=shifted_mesh,                   &
@@ -399,8 +389,7 @@ contains
     !----------------------------------------------------------------------------
     ! Driver layer finalise
     !----------------------------------------------------------------------------
-    ! Finalise halo functionality
-    call finalise_halo_comms()
+    call final_comm()
 
     call log_event( program_name//' completed.', LOG_LEVEL_ALWAYS )
 

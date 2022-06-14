@@ -72,19 +72,14 @@ contains
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !> Sets up required state in preparation for run.
   !>
-  subroutine initialise( filename, model_communicator )
+  subroutine initialise()
 
   implicit none
-
-  character(*),      intent(in) :: filename
-  integer(i_native), intent(in) :: model_communicator
 
   class(clock_type), pointer :: clock
 
   ! Initialise aspects of the infrastructure
-  call initialise_infrastructure( model_communicator, &
-                                  filename,           &
-                                  program_name,       &
+  call initialise_infrastructure( program_name,       &
                                   mesh,               &
                                   twod_mesh)
 

@@ -64,20 +64,15 @@ contains
   !!          model_data, then sets the initial conditions for the run.
   !> @param[in] filename Configuration namelist file
   !!
-  subroutine initialise( filename, model_communicator  )
+  subroutine initialise()
 
     implicit none
-
-    character(*),      intent(in) :: filename
-    integer(i_native), intent(in) :: model_communicator
 
     class(clock_type), pointer :: clock => null()
 
     call log_event( 'Initialising Infrastructure ...', LOG_LEVEL_INFO )
     ! Initialise infrastructure (from shallow_water_model_mod.F90) and setup constants
-    call initialise_infrastructure( model_communicator, &
-                                    filename,           &
-                                    program_name,       &
+    call initialise_infrastructure( program_name,       &
                                     mesh,               &
                                     chi )
 

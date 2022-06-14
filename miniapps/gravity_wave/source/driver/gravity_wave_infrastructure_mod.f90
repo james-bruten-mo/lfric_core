@@ -9,14 +9,13 @@
 module gravity_wave_infrastructure_mod
 
   use check_configuration_mod,    only : get_required_stencil_depth
+  use cli_mod,                    only : get_initial_filename
   use clock_mod,                  only : clock_type
   use configuration_mod,          only : final_configuration
   use constants_mod,              only : i_def, i_native, PRECISION_REAL, r_def
   use convert_to_upper_mod,       only : convert_to_upper
   use derived_config_mod,         only : set_derived_config
   use gravity_wave_mod,           only : load_configuration
-  use halo_comms_mod,             only : initialise_halo_comms, &
-                                         finalise_halo_comms
   use log_mod,                    only : log_event,          &
                                          log_set_level,      &
                                          log_scratch_space,  &
@@ -29,14 +28,14 @@ module gravity_wave_infrastructure_mod
                                          LOG_LEVEL_DEBUG,    &
                                          LOG_LEVEL_TRACE
   use mesh_mod,                   only : mesh_type
-  use mpi_mod,                    only : store_comm, &
-                                         get_comm_size, get_comm_rank
+  use mpi_mod,                    only : get_comm_size, get_comm_rank
   use io_context_mod,             only : io_context_type
   use field_mod,                  only : field_type
   use mesh_collection_mod,        only : mesh_collection, &
                                          mesh_collection_type
   use local_mesh_collection_mod,  only : local_mesh_collection, &
                                          local_mesh_collection_type
+  use driver_comm_mod,            only : init_comm, final_comm
   use driver_fem_mod,             only : init_fem
   use driver_io_mod,              only : init_io, final_io, get_clock
   use driver_mesh_mod,            only : init_mesh
@@ -53,14 +52,10 @@ module gravity_wave_infrastructure_mod
 contains
 
   !> @brief Initialises the infrastructure used by the model
-  !> @param [inout] comm The MPI communicator for use within the model
-  !>                     (not XIOS' communicator)
-  !> @param [in] filename The name of the configuration namelist file
-  !> @param [in] program_name An identifier given to the model begin run
-  !> @param [in] xios_id XIOS client identifier
-  subroutine initialise_infrastructure(comm,         &
-                                       filename,     &
-                                       program_name, &
+  !> @param [in]     program_name  An identifier given to the model begin run
+  !> @param [in,out] mesh          The model prime mesh
+  !> @param [in,out] twod_mesh     The model prime 2D mesh
+  subroutine initialise_infrastructure(program_name, &
                                        mesh,         &
                                        twod_mesh)
 
@@ -73,8 +68,6 @@ contains
                                   RUN_LOG_LEVEL_WARNING
     implicit none
 
-    integer(i_native), intent(in) :: comm
-    character(*),      intent(in) :: filename
     character(*),      intent(in) :: program_name
     type(mesh_type),   intent(inout), pointer :: mesh
     type(mesh_type),   intent(inout), pointer :: twod_mesh
@@ -87,26 +80,21 @@ contains
     type(field_type), allocatable :: chi_mg(:,:)
     type(field_type), allocatable :: panel_id_mg(:)
 
-    integer(i_def) :: total_ranks, local_rank, stencil_depth
-
-    integer(i_native) :: log_level
+    integer(i_def)    :: stencil_depth
+    integer(i_native) :: log_level, comm
 
     class(clock_type), pointer :: clock
     real(r_def)                :: dt_model
 
-    !Store the MPI communicator for later use
-    call store_comm(comm)
+    character(:), allocatable :: filename
 
-    ! Initialise halo functionality
-    call initialise_halo_comms( comm )
+    ! Set up the communicator for later use
+    call init_comm(program_name, comm)
 
-    ! Get the rank information
-    total_ranks = get_comm_size()
-    local_rank  = get_comm_rank()
-
-    call initialise_logging(local_rank, total_ranks, program_name)
-
+    call get_initial_filename( filename )
     call load_configuration( filename )
+
+    call initialise_logging(get_comm_rank(), get_comm_size(), program_name)
 
     select case (run_log_level)
     case( RUN_LOG_LEVEL_ERROR )
@@ -144,14 +132,10 @@ contains
     allocate( local_mesh_collection, &
               source = local_mesh_collection_type() )
 
-    ! Get the rank information from the virtual machine
-    total_ranks = get_comm_size()
-    local_rank  = get_comm_rank()
-
     stencil_depth = get_required_stencil_depth()
 
     ! Create the mesh
-    call init_mesh( local_rank, total_ranks, stencil_depth, mesh,  &
+    call init_mesh( get_comm_rank(), get_comm_size(), stencil_depth, mesh,  &
                     twod_mesh             = twod_mesh,             &
                     multigrid_mesh_ids    = multigrid_mesh_ids,    &
                     multigrid_2D_mesh_ids = multigrid_2D_mesh_ids, &
@@ -201,8 +185,8 @@ contains
     ! Finalise namelist configurations
     call final_configuration()
 
-    ! Finalise halo functionality
-    call finalise_halo_comms()
+    ! Finalise communicator
+    call final_comm()
 
     ! Finalise the logging system
     call finalise_logging()

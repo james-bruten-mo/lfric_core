@@ -147,7 +147,6 @@ build: ALWAYS
 	$(call MESSAGE,=========================================================)
 	$(call MESSAGE,Compiling $(PROJECT))
 	$(call MESSAGE,=========================================================)
-	echo $(PRE_PROCESS_MACROS)
 	$Q$(MAKE) -C $(WORKING_DIR) -f $(LFRIC_BUILD)/compile.mk \
 	         BIN_DIR=$(BIN_DIR) PROGRAMS="$(PROGRAMS)"
 

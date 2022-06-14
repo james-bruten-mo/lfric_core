@@ -10,10 +10,6 @@
 !!         corresponding nonlinear code.
 program semi_implicit
 
-  use mod_wait,           only : init_wait
-  use mpi_mod,            only : initialise_comm, &
-                                 finalise_comm
-  use xios,               only : xios_initialize
   use log_mod,            only : log_event,       &
                                  LOG_LEVEL_ERROR, &
                                  LOG_LEVEL_INFO
@@ -28,11 +24,7 @@ program semi_implicit
 
   implicit none
 
-  character(*), parameter :: xios_id = "linear"
-
   character(:), allocatable :: filename
-  integer                   :: world_communicator = -999
-  integer                   :: model_communicator = -999
 
   ! Variables used for parsing command line arguments
   integer :: length, status, nargs
@@ -49,14 +41,6 @@ program semi_implicit
 
   ! Usage message to print
   character(len=256) :: usage_message
-
-  ! Initialse mpi and create the default communicator: mpi_comm_world
-  call initialise_comm( world_communicator )
-
-  ! Initialise XIOS and get back the split mpi communicator. This requires
-  ! an iodef.xml file to be available (even if use_xios_io is .false.).
-  call init_wait()
-  call xios_initialize(xios_id, return_comm = model_communicator)
 
   call log_event( 'TL testing running ...', LOG_LEVEL_INFO )
 
@@ -108,7 +92,7 @@ program semi_implicit
      call log_event( "Unknown test", LOG_LEVEL_ERROR )
   end select
 
-  call initialise( filename, model_communicator )
+  call initialise( filename )
   deallocate( filename )
 
   if (do_test_timesteps) then
@@ -131,8 +115,5 @@ program semi_implicit
   endif
 
   call finalise()
-
-  ! Finalise mpi and release the communicator
-  call finalise_comm()
 
 end program semi_implicit

@@ -14,17 +14,18 @@ module driver_io_mod
   use constants_mod,           only: i_native
   use field_mod,               only: field_type
   use file_mod,                only: file_type
-  use lfric_xios_file_mod,     only: lfric_xios_file_type
   use io_context_mod,          only: io_context_type
   use io_config_mod,           only: use_xios_io
-  use lfric_xios_context_mod,  only: lfric_xios_context_type
   use log_mod,                 only: log_event, log_level_error
   use time_config_mod,         only: timestep_end, timestep_start,  &
                                      calendar_start, calendar_type, &
                                      key_from_calendar_type
   use timestepping_config_mod, only: dt, spinup_period
   use simple_io_context_mod,   only: simple_io_context_type
-  use xios,                    only: xios_finalize
+#ifdef USE_XIOS
+  use lfric_xios_context_mod,  only: lfric_xios_context_type
+  use lfric_xios_file_mod,     only: lfric_xios_file_type
+#endif
 
   implicit none
 
@@ -73,11 +74,13 @@ contains
 
     ! Allocate IO context type based on model configuration
     if ( use_xios_io ) then
+#ifdef USE_XIOS
       allocate( lfric_xios_context_type::context, stat=rc )
       if (rc /= 0) then
         call log_event( "Unable to allocate LFRic-XIOS context object", &
                         log_level_error )
       end if
+#endif
 
     else
       allocate( simple_io_context_type::context, stat=rc )
@@ -120,8 +123,6 @@ contains
 
     deallocate(context)
 
-    if (use_xios_io) call xios_finalize()
-
   end subroutine final_io
 
   !> @brief  Returns the model io context.
@@ -161,6 +162,7 @@ contains
 
     if (.not. allocated(filelist)) then
       select type(file)
+#ifdef USE_XIOS
       type is (lfric_xios_file_type)
         allocate(lfric_xios_file_type::new_filelist(1))
 
@@ -169,11 +171,12 @@ contains
         type is (lfric_xios_file_type)
           new_filelist(1) = file
         end select ! type(new_filelist)
-
+#endif
       end select ! type(file)
 
     else
       select type(filelist)
+#ifdef USE_XIOS
       type is (lfric_xios_file_type)
         allocate(lfric_xios_file_type::new_filelist(size(filelist)+1))
 
@@ -185,10 +188,10 @@ contains
           select type(file)
           type is (lfric_xios_file_type)
             new_filelist(size(filelist)+1) = file
-
           end select ! type(file)
 
         end select ! type(new_filelist)
+#endif
 
       end select ! type(filelist)
 

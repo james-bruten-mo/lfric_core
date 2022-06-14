@@ -10,36 +10,50 @@
 !>
 module io_dev_driver_mod
 
-  ! Infrastructure
-  use clock_mod,            only: clock_type
-  use constants_mod,        only: i_def, i_native, imdi, &
-                                  i_timestep
-  use field_mod,            only: field_type
-  use io_context_mod,       only: io_context_type
-  use lfric_xios_clock_mod, only: lfric_xios_clock_type
-  use log_mod,              only: log_event,         &
-                                  log_scratch_space, &
-                                  LOG_LEVEL_ALWAYS,  &
-                                  LOG_LEVEL_INFO
-  use mesh_mod,             only: mesh_type
-
-
-  ! Configuration
-  use io_config_mod,              only: use_xios_io,               &
-                                        write_diag,                &
-                                        write_dump,                &
-                                        diagnostic_frequency
-  ! IO_Dev driver modules
-  use driver_io_mod,              only: get_clock
-  use io_dev_mod,                 only: program_name
+  use checksum_alg_mod,           only: checksum_alg
+  use cli_mod,                    only: get_initial_filename
+  use clock_mod,                  only: clock_type
+  use configuration_mod,          only: final_configuration
+  use constants_mod,              only: i_def, i_native, &
+                                        PRECISION_REAL, r_def
+  use convert_to_upper_mod,       only: convert_to_upper
+  use driver_comm_mod,            only: init_comm, final_comm
+  use driver_mesh_mod,            only: init_mesh, final_mesh
+  use driver_fem_mod,             only: init_fem, final_fem
+  use driver_io_mod,              only: init_io, final_io, &
+                                        get_clock, filelist_populator
+  use field_mod,                  only: field_type
+  use io_config_mod,              only: write_diag, diagnostic_frequency, &
+                                        subroutine_timers, timer_output_path
+  use local_mesh_collection_mod,  only: local_mesh_collection, &
+                                        local_mesh_collection_type
+  use log_mod,                    only: log_event,          &
+                                        log_set_level,      &
+                                        log_scratch_space,  &
+                                        initialise_logging, &
+                                        finalise_logging,   &
+                                        LOG_LEVEL_ALWAYS,   &
+                                        LOG_LEVEL_ERROR,    &
+                                        LOG_LEVEL_WARNING,  &
+                                        LOG_LEVEL_INFO,     &
+                                        LOG_LEVEL_DEBUG,    &
+                                        LOG_LEVEL_TRACE
+  use mesh_collection_mod,        only: mesh_collection, &
+                                        mesh_collection_type
+  use mesh_mod,                   only: mesh_type
+  use mpi_mod,                    only: get_comm_size, &
+                                        get_comm_rank
+  use timer_mod,                  only: timer, output_timer, init_timer
+  use io_dev_mod,                 only: load_configuration
+  use io_dev_init_files_mod,      only: init_io_dev_files
   use io_dev_data_mod,            only: io_dev_data_type,          &
                                         create_model_data,         &
                                         initialise_model_data,     &
                                         update_model_data,         &
                                         output_model_data,         &
                                         finalise_model_data
-  use io_dev_model_mod,           only: initialise_infrastructure, &
-                                        finalise_infrastructure
+
+  use lfric_xios_clock_mod, only: lfric_xios_clock_type
 
   implicit none
 
@@ -47,37 +61,98 @@ module io_dev_driver_mod
 
   public initialise, run, finalise
 
-  ! Model working data set
+  character(*), parameter :: program_name = "io_dev"
   type (io_dev_data_type) :: model_data
-  ! Coordinate field
+
   type(field_type), target, dimension(3) :: chi
   type(field_type), target               :: panel_id
-
-  ! Meshes
-  type( mesh_type ), pointer :: mesh      => null()
-  type( mesh_type ), pointer :: twod_mesh => null()
+  type( mesh_type ), pointer             :: mesh      => null()
+  type( mesh_type ), pointer             :: twod_mesh => null()
 
   contains
 
   !> @brief Sets up required state in preparation for run.
-  !> @param[in] filename     Name of the file containing the desired model
-  !>                         configuration
-  !> @param[in] communicator The MPI communicator for use within the model
-  subroutine initialise( filename, communicator )
+  subroutine initialise()
+
+    use logging_config_mod, only: run_log_level,          &
+                                  key_from_run_log_level, &
+                                  RUN_LOG_LEVEL_ERROR,    &
+                                  RUN_LOG_LEVEL_INFO,     &
+                                  RUN_LOG_LEVEL_DEBUG,    &
+                                  RUN_LOG_LEVEL_TRACE,    &
+                                  RUN_LOG_LEVEL_WARNING
 
     implicit none
 
-    character(*),      intent(in) :: filename
-    integer(i_native), intent(in) :: communicator
+    character(:), allocatable :: filename
 
-    ! Initialise infrastructure and setup constants
-    call initialise_infrastructure( filename,     &
-                                    program_name, &
-                                    communicator, &
-                                    mesh,         &
-                                    twod_mesh,    &
-                                    chi,          &
-                                    panel_id )
+    integer(i_def)    :: stencil_depth
+    integer(i_native) :: communicator, log_level
+
+    procedure(filelist_populator), pointer :: files_init_ptr => null()
+
+    call init_comm(program_name, communicator)
+
+    call get_initial_filename( filename )
+    call load_configuration( filename )
+
+    call initialise_logging(get_comm_rank(), get_comm_size(), program_name)
+
+    select case (run_log_level)
+    case( RUN_LOG_LEVEL_ERROR )
+      log_level = LOG_LEVEL_ERROR
+    case( RUN_LOG_LEVEL_WARNING )
+      log_level = LOG_LEVEL_WARNING
+    case( RUN_LOG_LEVEL_INFO )
+      log_level = LOG_LEVEL_INFO
+    case( RUN_LOG_LEVEL_DEBUG )
+      log_level = LOG_LEVEL_DEBUG
+    case( RUN_LOG_LEVEL_TRACE )
+      log_level = LOG_LEVEL_TRACE
+    end select
+
+    call log_set_level( log_level )
+
+    write(log_scratch_space,'(A)')                              &
+        'Runtime message logging severity set to log level: '// &
+        convert_to_upper(key_from_run_log_level(run_log_level))
+    call log_event( log_scratch_space, LOG_LEVEL_ALWAYS )
+
+    write(log_scratch_space,'(A)')                        &
+        'Application built with '//trim(PRECISION_REAL)// &
+        '-bit real numbers'
+    call log_event( log_scratch_space, LOG_LEVEL_ALWAYS )
+
+    if ( subroutine_timers ) then
+      call init_timer(timer_output_path)
+      call timer(program_name)
+    end if
+
+    !-------------------------------------------------------------------------
+    ! Model init
+    !-------------------------------------------------------------------------
+    call log_event( 'Initialising '//program_name//' ...', LOG_LEVEL_ALWAYS )
+
+    allocate( local_mesh_collection, &
+              source = local_mesh_collection_type() )
+
+    allocate( mesh_collection, &
+              source = mesh_collection_type() )
+
+    ! Hard-code stencil depth to 1
+    stencil_depth = 1
+
+    ! Create the mesh
+    call init_mesh( get_comm_rank(), get_comm_size(), stencil_depth, &
+                    mesh, twod_mesh = twod_mesh )
+
+    ! Create FEM specifics (function spaces and chi field)
+    call init_fem( mesh, chi, panel_id )
+
+    ! Set up IO
+    files_init_ptr => init_io_dev_files
+    call init_io( program_name, communicator, chi, panel_id, &
+                  populate_filelist=files_init_ptr )
 
     ! Instantiate the fields stored in model_data
     call create_model_data( model_data, &
@@ -118,7 +193,7 @@ module io_dev_driver_mod
 
       ! Write out the fields
       if ( (mod( clock%get_step(), diagnostic_frequency ) == 0) ) then
-        call log_event( program_name//': Writing XIOS output', LOG_LEVEL_INFO)
+        call log_event( program_name//': Writing output', LOG_LEVEL_INFO)
         call output_model_data( model_data )
       end if
 
@@ -136,8 +211,28 @@ module io_dev_driver_mod
     ! Destroy the fields stored in model_data
     call finalise_model_data( model_data )
 
-    ! Finalise infrastructure and constants
-    call finalise_infrastructure( program_name )
+    ! Finalise IO context
+    call final_io()
+
+    ! Finalise timer
+    if ( subroutine_timers ) then
+      call timer( program_name )
+      call output_timer()
+    end if
+
+    ! Finalise aspects of the grid
+    call final_mesh()
+    call final_fem()
+
+    ! Final logging before infrastructure is destroyed
+    call log_event( program_name//' completed.', LOG_LEVEL_ALWAYS )
+    call finalise_logging()
+
+    ! Finalise namelist configurations
+    call final_configuration()
+
+    ! Finalise communication interface
+    call final_comm()
 
   end subroutine finalise
 

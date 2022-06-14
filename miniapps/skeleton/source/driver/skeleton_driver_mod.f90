@@ -9,27 +9,23 @@
 !>
 module skeleton_driver_mod
 
-  use base_mesh_config_mod,       only : prime_mesh_name
   use checksum_alg_mod,           only : checksum_alg
+  use cli_mod,                    only : get_initial_filename
   use clock_mod,                  only : clock_type
   use configuration_mod,          only : final_configuration
   use constants_mod,              only : i_def, i_native, &
                                          PRECISION_REAL, r_def
   use convert_to_upper_mod,       only : convert_to_upper
+  use driver_comm_mod,            only : init_comm, final_comm
   use driver_mesh_mod,            only : init_mesh
   use driver_fem_mod,             only : init_fem
   use driver_io_mod,              only : init_io, final_io, &
                                          get_clock
   use field_mod,                  only : field_type
-  use halo_comms_mod,             only : initialise_halo_comms, &
-                                         finalise_halo_comms
   use init_skeleton_mod,          only : init_skeleton
   use io_config_mod,              only : write_diag
-  use lfric_xios_clock_mod,       only : lfric_xios_clock_type
-  use lfric_xios_context_mod,     only : lfric_xios_context_type
   use local_mesh_collection_mod,  only : local_mesh_collection, &
                                          local_mesh_collection_type
-  use linked_list_mod,            only : linked_list_type
   use log_mod,                    only : log_event,          &
                                          log_set_level,      &
                                          log_scratch_space,  &
@@ -44,18 +40,17 @@ module skeleton_driver_mod
   use mesh_collection_mod,        only : mesh_collection, &
                                          mesh_collection_type
   use mesh_mod,                   only : mesh_type
-  use mpi_mod,                    only : store_comm,    &
-                                         get_comm_size, &
+  use mpi_mod,                    only : get_comm_size, &
                                          get_comm_rank
-  use planet_config_mod,          only : scaled_radius
-  use skeleton_mod,               only : load_configuration, program_name
+  use skeleton_mod,               only : load_configuration
   use skeleton_alg_mod,           only : skeleton_alg
-  use xios,                       only : xios_context_finalize
 
   implicit none
 
   private
   public initialise, run, finalise
+
+  character(*), parameter :: program_name = "skeleton"
 
   ! Prognostic fields
   type( field_type ) :: field_1
@@ -71,7 +66,7 @@ contains
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !> Sets up required state in preparation for run.
   !>
-  subroutine initialise( filename, model_communicator )
+  subroutine initialise()
 
     use logging_config_mod, only: run_log_level,          &
                                   key_from_run_log_level, &
@@ -83,28 +78,21 @@ contains
 
     implicit none
 
-    character(:),      intent(in), allocatable :: filename
-    integer(i_native), intent(in)              :: model_communicator
+    character(:), allocatable :: filename
+    integer(i_native) :: model_communicator
 
-    integer(i_def)    :: total_ranks, local_rank, stencil_depth
+    integer(i_def)    :: stencil_depth
     integer(i_native) :: log_level
 
     class(clock_type),      pointer :: clock => null()
     real(r_def)                     :: dt_model
 
-    !Store the MPI communicator for later use
-    call store_comm( model_communicator )
+    call init_comm("skeleton", model_communicator)
 
-    ! Initialise halo functionality
-    call initialise_halo_comms( model_communicator )
+    call get_initial_filename( filename )
+    call load_configuration( filename, program_name )
 
-    ! and get the rank information from the virtual machine
-    total_ranks = get_comm_size()
-    local_rank  = get_comm_rank()
-
-    call initialise_logging(local_rank, total_ranks, program_name)
-
-    call load_configuration( filename )
+    call initialise_logging(get_comm_rank(), get_comm_size(), program_name)
 
     select case (run_log_level)
     case( RUN_LOG_LEVEL_ERROR )
@@ -146,7 +134,7 @@ contains
     stencil_depth = 1
 
     ! Create the mesh
-    call init_mesh( local_rank, total_ranks, stencil_depth, &
+    call init_mesh( get_comm_rank(), get_comm_size(), stencil_depth, &
                     mesh, twod_mesh = twod_mesh )
 
     ! Create FEM specifics (function spaces and chi field)
@@ -217,8 +205,8 @@ contains
     ! Finalise namelist configurations
     call final_configuration()
 
-    ! Finalise halo functionality
-    call finalise_halo_comms()
+    ! Finalise communication interface
+    call final_comm()
 
     call log_event( program_name//' completed.', LOG_LEVEL_ALWAYS )
 

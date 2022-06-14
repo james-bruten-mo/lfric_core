@@ -20,15 +20,13 @@ module skeleton_mod
   implicit none
 
   private
-  public :: load_configuration, program_name
+  public :: load_configuration
 
-  character(*), parameter :: program_name = "skeleton"
-
-contains
+  contains
 
   !> Loads run-time configuration and ensures everything is ship-shape.
   !>
-  subroutine load_configuration( filename )
+  subroutine load_configuration( filename, model_name )
 
     use configuration_mod, only : read_configuration, &
                                   ensure_configuration
@@ -36,6 +34,7 @@ contains
     implicit none
 
     character(*), intent(in) :: filename
+    character(*), intent(in) :: model_name
 
     character(*), parameter ::                           &
         required_configuration(5) =  [ 'base_mesh     ', &
@@ -50,7 +49,7 @@ contains
 
     allocate( success_map(size(required_configuration)) )
 
-    call log_event( 'Loading '//program_name//' configuration ...', &
+    call log_event( 'Loading '//model_name//' configuration ...', &
                     LOG_LEVEL_ALWAYS )
 
     call read_configuration( filename )

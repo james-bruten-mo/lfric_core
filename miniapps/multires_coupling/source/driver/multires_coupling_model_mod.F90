@@ -10,7 +10,9 @@ module multires_coupling_model_mod
 
   use assign_orography_field_mod, only : assign_orography_field
   use checksum_alg_mod,           only : checksum_alg
+  use cli_mod,                    only : get_initial_filename
   use clock_mod,                  only : clock_type
+  use driver_comm_mod,            only : init_comm, final_comm
   use driver_fem_mod,             only : init_fem, final_fem
   use driver_mesh_mod,            only : init_mesh, final_mesh
   use driver_io_mod,              only : init_io, final_io, get_clock, &
@@ -41,8 +43,6 @@ module multires_coupling_model_mod
   use gungho_mod,                 only : load_configuration
   use gungho_model_data_mod,      only : model_data_type
   use gungho_setup_io_mod,        only : init_gungho_files
-  use halo_comms_mod,             only : initialise_halo_comms, &
-                                         finalise_halo_comms
   use init_altitude_mod,          only : init_altitude
   use io_config_mod,              only : subroutine_timers,       &
                                          subroutine_counters,     &
@@ -71,8 +71,7 @@ module multires_coupling_model_mod
                                          minmax_tseries_final
   use moisture_conservation_alg_mod, &
                                   only : moisture_conservation_alg
-  use mpi_mod,                    only : store_comm,    &
-                                         get_comm_size, &
+  use mpi_mod,                    only : get_comm_size, &
                                          get_comm_rank
   use rk_alg_timestep_mod,        only : rk_alg_init, &
                                          rk_alg_final
@@ -124,9 +123,7 @@ contains
   !> @param [in,out] shifted_mesh The vertically shifted 3d mesh
   !> @param [in,out] double_level_mesh The double-level 3d mesh
   !>
-  subroutine initialise_infrastructure( communicator,         &
-                                        filename,             &
-                                        program_name,         &
+  subroutine initialise_infrastructure( program_name,         &
                                         mesh,                 &
                                         twod_mesh,            &
                                         shifted_mesh,         &
@@ -143,20 +140,16 @@ contains
 
     implicit none
 
-    integer(i_native),      intent(in)               :: communicator
-    character(*),           intent(in)               :: filename
     character(*),           intent(in)               :: program_name
     type(mesh_type),        intent(inout), pointer   :: mesh
     type(mesh_type),        intent(inout), pointer   :: twod_mesh
     type(mesh_type),        intent(inout), pointer   :: double_level_mesh
     type(mesh_type),        intent(inout), pointer   :: shifted_mesh
 
-    character(len=*), parameter :: io_context_name = "multires_coupling"
-
     procedure(filelist_populator), pointer :: files_init_ptr
 
-    integer(i_def)    :: total_ranks, local_rank, stencil_depth, i
-    integer(i_native) :: log_level
+    integer(i_def)    :: stencil_depth, i
+    integer(i_native) :: log_level, communicator
 
     class(clock_type), pointer :: clock
     real(r_def)                :: dt_model
@@ -176,6 +169,7 @@ contains
 
     logical(l_def)                :: found_dynamics_chi
     character(str_def)            :: dynamics_2D_mesh_name
+    character(:), allocatable     :: filename
 
     type(mesh_type), pointer      :: dynamics_mesh    => null()
     type(mesh_type), pointer      :: physics_mesh     => null()
@@ -198,19 +192,13 @@ contains
     ! Initialise aspects of the infrastructure
     !-------------------------------------------------------------------------
 
-    !Store the MPI communicator for later use
-    call store_comm( communicator )
+    ! Set up the MPI communicator for later use
+    call init_comm( program_name, communicator )
 
-    ! Initialise halo functionality
-    call initialise_halo_comms( communicator )
-
-    ! Get the rank information
-    total_ranks = get_comm_size()
-    local_rank  = get_comm_rank()
-
-    call initialise_logging(local_rank, total_ranks, program_name)
-
+    call get_initial_filename( filename )
     call load_configuration( filename )
+
+    call initialise_logging(get_comm_rank(), get_comm_size(), program_name)
 
     select case (run_log_level)
     case( RUN_LOG_LEVEL_ERROR )
@@ -267,7 +255,7 @@ contains
     stencil_depth = get_required_stencil_depth()
 
     ! Create the mesh
-    call init_mesh( local_rank, total_ranks, stencil_depth, mesh,                  &
+    call init_mesh( get_comm_rank(), get_comm_size(), stencil_depth, mesh,                  &
                     twod_mesh                     = twod_mesh,                     &
                     shifted_mesh                  = shifted_mesh,                  &
                     double_level_mesh             = double_level_mesh,             &
@@ -326,7 +314,7 @@ contains
     end if
 
     files_init_ptr => init_gungho_files
-    call init_io( io_context_name,                 &
+    call init_io( program_name,                    &
                   communicator,                    &
                   dynamics_chi,                    &
                   dynamics_panel_id,               &
@@ -554,8 +542,8 @@ contains
     ! Finalise namelist configurations
     call final_configuration()
 
-    ! Finalise halo functionality
-    call finalise_halo_comms()
+    ! Finalise communication interface
+    call final_comm()
 
     ! Finalise the logging system
     call finalise_logging()

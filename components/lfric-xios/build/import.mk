@@ -6,6 +6,7 @@
 export PROJECT_SOURCE = $(ROOT_DIR)/components/lfric-xios/source
 export IGNORE_DEPENDENCIES += xios mod_wait
 export EXTERNAL_STATIC_LIBRARIES += xios
+export PRE_PROCESS_MACROS += USE_XIOS
 
 .PHONY: import-lfric-xios
 import-lfric-xios:

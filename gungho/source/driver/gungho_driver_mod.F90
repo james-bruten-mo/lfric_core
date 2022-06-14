@@ -9,6 +9,7 @@
 !>
 module gungho_driver_mod
 
+  use cli_mod,                    only : get_initial_filename
   use clock_mod,                  only : clock_type
   use constants_mod,              only : i_def, i_native, imdi
   use driver_io_mod,              only : get_clock, get_io_context
@@ -71,23 +72,18 @@ contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !> @brief Sets up required state in preparation for run.
-  !>
-  !> @param[in] filename            Name of the file containing the desired
-  !>                                configuration.
-  !> @param[in] model_communicator  MPI communicator the model is to use.
-  !>
-  subroutine initialise( filename, model_communicator )
+  subroutine initialise()
 
     implicit none
 
-    character(*),      intent(in) :: filename
-    integer(i_native), intent(in) :: model_communicator
-
     class(io_context_type), pointer :: io_context => null()
 
+    character(:), allocatable :: filename
+
+    call get_initial_filename( filename )
+
     ! Initialise infrastructure and setup constants
-    call initialise_infrastructure( model_communicator,   &
-                                    filename,             &
+    call initialise_infrastructure( filename,             &
                                     program_name,         &
                                     mesh,                 &
                                     twod_mesh,            &

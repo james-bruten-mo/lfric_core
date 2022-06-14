@@ -9,9 +9,11 @@
 !>
 module diagnostics_driver_mod
 
+  use cli_mod,                       only : get_initial_filename
   use clock_mod,                     only : clock_type
   use constants_mod,                 only : i_def, i_native, str_def, r_def
   use diagnostics_configuration_mod, only : load_configuration, program_name
+  use driver_comm_mod,               only : init_comm, final_comm
   use driver_fem_mod,                only : init_fem
   use driver_io_mod,                 only : init_io, final_io, get_clock
   use driver_mesh_mod,               only : init_mesh
@@ -20,8 +22,6 @@ module diagnostics_driver_mod
   use field_collection_mod,          only : field_collection_type
   use fieldspec_collection_mod,      only : fieldspec_collection
   use driver_model_data_mod,         only : model_data_type
-  use halo_comms_mod,                only : initialise_halo_comms, &
-                                            finalise_halo_comms
   use io_config_mod,                 only : write_diag, &
                                             use_xios_io
   use io_context_mod,                only : io_context_type
@@ -41,8 +41,7 @@ module diagnostics_driver_mod
   use mesh_collection_mod,           only : mesh_collection, &
                                             mesh_collection_type
   use mesh_mod,                      only : mesh_type
-  use mpi_mod,                       only : store_comm,    &
-                                            get_comm_size, &
+  use mpi_mod,                       only : get_comm_size, &
                                             get_comm_rank
 
   implicit none
@@ -71,7 +70,7 @@ contains
   !> mostly boiler plate - note the init and seeding of the fields at the end
   !> of the function.
   !>
-  subroutine initialise( filename, model_communicator )
+  subroutine initialise()
 
     use convert_to_upper_mod,       only : convert_to_upper
     use fieldspec_xml_parser_mod,   only : populate_fieldspec_collection
@@ -91,31 +90,23 @@ contains
 
     implicit none
 
-    character(:),      intent(in), allocatable :: filename
-    integer(i_native), intent(in) :: model_communicator
 
-    character(len = *), parameter :: xios_ctx = "diagnostics"
+    character(len = *), parameter :: program_name = "diagnostics"
+    character(:), allocatable     :: filename
 
     class(clock_type), pointer :: clock
     real(r_def)                :: dt_model
 
-    integer(i_def)     :: total_ranks, local_rank, stencil_depth
+    integer(i_def)    :: stencil_depth
 
-    integer(i_native) :: log_level
+    integer(i_native) :: log_level, model_communicator
 
-    ! Store the MPI communicator for later use
-    call store_comm( model_communicator )
+    call init_comm( program_name, model_communicator )
 
-    ! Initialise halo functionality
-    call initialise_halo_comms( model_communicator )
+    call initialise_logging(get_comm_rank(), get_comm_size(), program_name)
 
-    ! and get the rank information from the virtual machine
-    total_ranks = get_comm_size()
-    local_rank = get_comm_rank()
-
-    call initialise_logging(local_rank, total_ranks, program_name)
-
-    call load_configuration(filename)
+    call get_initial_filename( filename )
+    call load_configuration( filename )
 
     select case (run_log_level)
     case(RUN_LOG_LEVEL_ERROR)
@@ -151,7 +142,7 @@ contains
     stencil_depth = 1_i_def
 
     ! Create the mesh
-    call init_mesh( local_rank, total_ranks, stencil_depth, &
+    call init_mesh( get_comm_rank(), get_comm_size(), stencil_depth, &
                     mesh, twod_mesh=twod_mesh )
 
 
@@ -264,8 +255,7 @@ contains
     ! Finalise namelist configurations
     call final_configuration()
 
-    ! Finalise halo functionality
-    call finalise_halo_comms()
+    call final_comm()
 
     call log_event(program_name // ' completed.', LOG_LEVEL_ALWAYS)
 

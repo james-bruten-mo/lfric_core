@@ -16,50 +16,14 @@
 
 program lfric_coupled
 
-  use cli_mod,            only : get_initial_filename
   use gungho_driver_mod,  only : initialise, run, finalise
-  use mod_wait,           only : init_wait
-  use mpi_mod,            only : initialise_comm, &
-                                 finalise_comm
-  use xios,               only : xios_initialize
-  use derived_config_mod, only : l_esm_couple
-  use coupler_mod,        only : cpl_initialize, cpl_finalize
 
   implicit none
 
-  character(*), parameter :: xios_id   = "lfric_atmosphere"
-
-  character(:), allocatable :: filename
-  integer                   :: world_communicator = -999
-  integer                   :: model_communicator = -999
-
-  call get_initial_filename( filename )
-
-  ! Initialse MPI and create the default communicator: mpi_comm_world
-  call initialise_comm( world_communicator )
-
-  ! Initialise XIOS and get back the split mpi communicator
-  if (l_esm_couple) then
-    ! MPI already initialized
-    call cpl_initialize( model_communicator )
-    call xios_initialize(xios_id, local_comm = model_communicator)
-  else
-    call init_wait()
-    call xios_initialize(xios_id, return_comm = model_communicator)
-  endif
-
-  call initialise( filename, model_communicator )
-  deallocate( filename )
+  call initialise()
 
   call run()
 
   call finalise()
-
-  if (l_esm_couple) then
-    call cpl_finalize()
-  endif
-
-  ! Finalise MPI and release the communicator
-  call finalise_comm()
 
 end program lfric_coupled

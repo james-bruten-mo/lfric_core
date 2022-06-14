@@ -71,7 +71,6 @@ module gungho_setup_io_mod
                                        checkpoint_write,          &
                                        checkpoint_read,           &
                                        write_diag, write_dump
-  use io_context_mod,            only: io_context_type
   use orography_config_mod,      only: orog_init_option,          &
                                        orog_init_option_ancil
   use time_config_mod,           only: timestep_start,            &
