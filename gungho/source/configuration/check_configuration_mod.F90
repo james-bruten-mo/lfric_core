@@ -12,15 +12,17 @@ module check_configuration_mod
                                   viscosity_mu
   use subgrid_config_mod,   only: dep_pt_stencil_extent,  &
                                   rho_approximation_stencil_extent
-  use transport_config_mod, only: operators,              &
-                                  operators_fv,           &
-                                  consistent_metric,      &
-                                  fv_horizontal_order,    &
-                                  fv_vertical_order,      &
-                                  profile_size,           &
-                                  scheme,                 &
-                                  horizontal_method,      &
-                                  vertical_method
+  use transport_config_mod, only: operators,                   &
+                                  operators_fv,                &
+                                  consistent_metric,           &
+                                  fv_horizontal_order,         &
+                                  fv_vertical_order,           &
+                                  profile_size,                &
+                                  scheme,                      &
+                                  horizontal_method,           &
+                                  vertical_method,             &
+                                  max_vert_cfl_calc,           &
+                                  max_vert_cfl_calc_dep_point
   use transport_enumerated_types_mod,                     &
                             only: scheme_mol_3d,          &
                                   scheme_ffsl_3d,         &
@@ -445,7 +447,8 @@ contains
     do i = 1, profile_size
       if ( ( scheme(i) == scheme_ffsl_3d ) .or.                     &
            ( scheme(i) == scheme_split .and.                        &
-             vertical_method(i) /= split_method_mol ) ) then
+             vertical_method(i) /= split_method_mol ) .or.          &
+           ( max_vert_cfl_calc == max_vert_cfl_calc_dep_point ) ) then
         any_vert_dep_pts = .true.
         exit
       end if

@@ -205,9 +205,11 @@ stretching_method='linear',
 /
 
 &departure_points
-  method             = 'euler'
-  n_dep_pt_iterations     = 1
-  vertical_method    = 'euler'
+  departure_grid      = 'uniform'
+  method              = 'euler'
+  n_dep_pt_iterations = 1
+  vertical_limit      = 'exponential'
+  vertical_method     = 'euler'
 /
 
 &transport
@@ -221,6 +223,7 @@ stretching_method='linear',
   monotone = 1,2,1
   log_space = .false., .false., .false.
   enforce_min_value=.false.,.false.,.false.
+  max_vert_cfl_calc='dep_point'
   min_value=0.0,0.0,-99999999.0,0.0
   cfl_mol_1d_stab = 2.0
   cfl_mol_2d_stab = 2.0

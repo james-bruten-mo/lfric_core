@@ -6,8 +6,10 @@ prime_mesh_name='C12',
 topology='fully_periodic',
 /
 &departure_points
+departure_grid='uniform',
 method='euler',
 n_dep_pt_iterations=1,
+vertical_limit='exponential',
 vertical_method='trapezoidal',
 /
 &boundaries
@@ -221,6 +223,7 @@ fv_horizontal_order=2
 fv_vertical_order=2
 horizontal_method=1,1,1,1,1
 log_space=.false.,.false.,.false.,.false.,.false.
+max_vert_cfl_calc='uniform'
 min_value=0.0,0.0,-99999999.0,0.0,0.0
 moisture_eqn='advective'
 monotone=1,1,1,1,1

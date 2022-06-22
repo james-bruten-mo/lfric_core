@@ -21,13 +21,17 @@ module calc_dep_pts_alg_mod
   use field_mod,                         only: field_type
   use calc_upwind_detj_at_w2_kernel_mod, only: calc_upwind_detj_at_w2_kernel_type
   use vertical_deppt_kernel_mod,         only: vertical_deppt_kernel_type
+  use vertical_uniform_deppt_kernel_mod, only: vertical_uniform_deppt_kernel_type
   use function_space_mod,                only: function_space_type
   use function_space_collection_mod,     only: function_space_collection
-  use fs_continuity_mod,                 only: W3
+  use fs_continuity_mod,                 only: W3, W2
   use finite_element_config_mod,         only: element_order
   use flux_direction_mod,                only: x_direction, y_direction, z_direction
   use departure_points_config_mod,       only: method, n_dep_pt_iterations, &
-                                               vertical_method
+                                               vertical_method,             &
+                                               departure_grid_physical,     &
+                                               departure_grid_uniform,      &
+                                               departure_grid
   use subgrid_config_mod,                only: dep_pt_stencil_extent,        &
                                                calculate_detj,               &
                                                calculate_detj_averaged,      &
@@ -40,7 +44,8 @@ module calc_dep_pts_alg_mod
                                                get_detj_at_w2_above,         &
                                                get_detj_at_w2_below
   use geometric_constants_mod,           only: get_coordinates,              &
-                                               get_panel_id
+                                               get_panel_id,                 &
+                                               get_height
   use log_mod,                           only: log_event,                    &
                                                LOG_LEVEL_INFO,               &
                                                LOG_LEVEL_ERROR
@@ -67,6 +72,7 @@ contains
   !> @param[in,out] dep_pts_x         Departure points in x direction
   !> @param[in,out] dep_pts_y         Departure points in y direction
   !> @param[in,out] dep_pts_z         Departure points in z direction
+  !> @param[in,out] cfl               Vertical CFL
   !> @param[in,out] wind_divergence   Divergence of wind field
   !> @param[in]     wind_n            Wind field at timestep n
   !> @param[in]     wind_np1          Wind field at timestep n+1
@@ -76,6 +82,7 @@ contains
   subroutine calc_dep_pts( dep_pts_x,        &
                            dep_pts_y,        &
                            dep_pts_z,        &
+                           cfl,              &
                            wind_divergence,  &
                            wind_n,           &
                            wind_np1,         &
@@ -88,6 +95,7 @@ contains
     type( field_type ), intent(inout) :: dep_pts_x
     type( field_type ), intent(inout) :: dep_pts_y
     type( field_type ), intent(inout) :: dep_pts_z
+    type( field_type ), intent(inout) :: cfl
     type( field_type ), intent(inout) :: wind_divergence
     type( field_type ), intent(in)    :: wind_n
     type( field_type ), intent(in)    :: wind_np1
@@ -105,6 +113,7 @@ contains
 
     type( field_type ), pointer :: chi(:) => null()
     type( field_type ), pointer :: panel_id => null()
+    type( field_type ), pointer :: height_w2 => null()
 
     type( function_space_type ), pointer :: w2_fs => null()
     type( function_space_type ), pointer :: w3_fs => null()
@@ -117,6 +126,7 @@ contains
 
     chi => get_coordinates(mesh%get_id())
     panel_id => get_panel_id(mesh%get_id())
+    height_w2 => get_height(W2, mesh%get_id())
 
     call u_x_fem_n%initialise( vector_space = w2_fs )
     call u_y_fem_n%initialise( vector_space = w2_fs )
@@ -144,9 +154,10 @@ contains
     ! points in the vertical.
     ! *_n and *_np1 denotes fields at timestep n and timestep n+1 with density known
     ! at timestep n.
-    call invoke( setval_c( dep_pts_x, LARGE_REAL_NEGATIVE ),              &
-                 setval_c( dep_pts_y, LARGE_REAL_NEGATIVE ),              &
-                 setval_c( dep_pts_z, LARGE_REAL_NEGATIVE ),              &
+    call invoke( setval_c( dep_pts_x, 0.0_r_def ),                        &
+                 setval_c( dep_pts_y, 0.0_r_def ),                        &
+                 setval_c( dep_pts_z, 0.0_r_def ),                        &
+                 setval_c( cfl, 0.0_r_def ),                              &
                  setval_c( departure_wind_n, LARGE_REAL_NEGATIVE ),       &
                  setval_c( departure_wind_np1, LARGE_REAL_NEGATIVE ),     &
                  setval_c( u_x_fem_n, LARGE_REAL_NEGATIVE ),              &
@@ -156,8 +167,10 @@ contains
                  X_divideby_Y(departure_wind_n, wind_n, detj_at_w2),      &
                  X_divideby_Y(departure_wind_np1, wind_np1, detj_at_w2),  &
                  vertical_deppt_kernel_type( dep_pts_z,                   &
+                                             cfl,                         &
                                              departure_wind_n,            &
                                              departure_wind_np1,          &
+                                             height_w2,                   &
                                              n_dep_pt_iterations,         &
                                              vertical_method, dt )  )
 
@@ -293,10 +306,10 @@ contains
 
     if ( subroutine_timers ) call timer( 'calc_hori_dep_pts' )
 
-    ! Initialise variables as LARGE_REAL_NEGATIVE
+    ! Initialise departure points as zero and other variables as LARGE_REAL_NEGATIVE
 
-    call invoke( setval_c( dep_pts_x, LARGE_REAL_NEGATIVE ),   &
-                 setval_c( dep_pts_y, LARGE_REAL_NEGATIVE ),   &
+    call invoke( setval_c( dep_pts_x, 0.0_r_def ),             &
+                 setval_c( dep_pts_y, 0.0_r_def ),             &
                  setval_c( u_x_fem_n, LARGE_REAL_NEGATIVE ),   &
                  setval_c( u_y_fem_n, LARGE_REAL_NEGATIVE ),   &
                  setval_c( u_x_fem_np1, LARGE_REAL_NEGATIVE ), &
@@ -356,11 +369,13 @@ contains
   !!          vertical semi-Lagrangian and SLICE schemes.
   !!
   !> @param[in,out] dep_pts_z         Departure points in z direction
+  !> @param[in,out] cfl               Vertical CFL from departure points
   !> @param[in]     wind_n            Wind field at timestep n
   !> @param[in]     wind_np1          Wind field at timestep n+1
   !> @param[in]     detj_at_w2        Det(J) at W2 dofs
   !> @param[in]     dt                The model timestep length
   subroutine calc_vert_dep_pts( dep_pts_z,        &
+                                cfl,              &
                                 wind_n,           &
                                 wind_np1,         &
                                 detj_at_w2,       &
@@ -369,6 +384,7 @@ contains
     implicit none
 
     type( field_type ), intent(inout) :: dep_pts_z
+    type( field_type ), intent(inout) :: cfl
     type( field_type ), intent(in)    :: wind_n
     type( field_type ), intent(in)    :: wind_np1
     type( field_type ), intent(in)    :: detj_at_w2
@@ -378,6 +394,7 @@ contains
 
     type( field_type ), pointer :: chi(:) => null()
     type( field_type ), pointer :: panel_id => null()
+    type( field_type ), pointer :: height_w2 => null()
 
     type( function_space_type ), pointer :: w2_fs => null()
     type( function_space_type ), pointer :: w3_fs => null()
@@ -390,6 +407,7 @@ contains
 
     chi => get_coordinates( mesh%get_id() )
     panel_id => get_panel_id( mesh%get_id() )
+    height_w2 => get_height(W2, mesh%get_id())
 
     call departure_wind_n%initialise( vector_space = w2_fs )
     call departure_wind_np1%initialise( vector_space = w2_fs )
@@ -401,16 +419,35 @@ contains
     ! points in the vertical.
     ! *_n and *_np1 denotes fields at timestep n and timestep n+1 with density known
     ! at timestep n.
-    call invoke( setval_c( dep_pts_z, LARGE_REAL_NEGATIVE ),             &
+    call invoke( setval_c( dep_pts_z, 0.0_r_def ),                       &
+                 setval_c( cfl, 0.0_r_def ),                             &
                  setval_c( departure_wind_n, LARGE_REAL_NEGATIVE ),      &
                  setval_c( departure_wind_np1, LARGE_REAL_NEGATIVE ),    &
                  X_divideby_Y(departure_wind_n, wind_n, detj_at_w2),     &
-                 X_divideby_Y(departure_wind_np1, wind_np1, detj_at_w2), &
-                 vertical_deppt_kernel_type( dep_pts_z,                  &
-                                             departure_wind_n,           &
-                                             departure_wind_np1,         &
-                                             n_dep_pt_iterations,        &
-                                             vertical_method, dt )  )
+                 X_divideby_Y(departure_wind_np1, wind_np1, detj_at_w2) )
+
+    select case(departure_grid)
+
+    case(departure_grid_uniform)
+      ! Assume uniform grid for departure point calculation
+      call invoke( vertical_uniform_deppt_kernel_type( dep_pts_z,                  &
+                                                       cfl,                        &
+                                                       departure_wind_n,           &
+                                                       departure_wind_np1,         &
+                                                       n_dep_pt_iterations,        &
+                                                       vertical_method, dt )  )
+
+    case default
+      ! Use physical grid
+      call invoke( vertical_deppt_kernel_type( dep_pts_z,                  &
+                                               cfl,                        &
+                                               departure_wind_n,           &
+                                               departure_wind_np1,         &
+                                               height_w2,                  &
+                                               n_dep_pt_iterations,        &
+                                               vertical_method, dt )  )
+    end select
+
     call dep_pts_z%log_minmax( LOG_LEVEL_INFO, 'dep_pts_z' )
 
     nullify( w2_fs, mesh )

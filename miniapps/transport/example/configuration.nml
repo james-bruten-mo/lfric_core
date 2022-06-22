@@ -93,6 +93,7 @@ field_names='rho','theta','tracer','mr',
 fv_horizontal_order = 2,
 fv_vertical_order = 2,
 horizontal_method=1,1,1,1,
+max_vert_cfl_calc='dep_point'
 min_value=0.0,0.0,0.0,0.0,
 moisture_eqn='consistent',
 log_space=.false.,.false.,.false.,.false.,
@@ -125,8 +126,10 @@ test='cosine_hill',
 l_multigrid=.false.
 /
 &departure_points
+departure_grid='uniform',
 method='euler',
 vertical_method='trapezoidal',
+vertical_limit='exponential',
 n_dep_pt_iterations=1,
 /
 &solver

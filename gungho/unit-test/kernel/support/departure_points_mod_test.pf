@@ -127,7 +127,7 @@ contains
   subroutine calc_u_in_vertical_test()
     use pFUnit_Mod
     use constants_mod,        only: r_def, i_def
-    use departure_points_mod, only: calc_u_in_vertical
+    use departure_points_mod, only: calc_u_in_vertical_comp
 
     implicit none
 
@@ -142,17 +142,17 @@ contains
 
     wind_values=(/ 0.0_r_def,0.2_r_def,0.4_r_def,0.4_r_def,0.2_r_def,0.0_r_def /)
     x_in = 0.5_r_def
-    u_at_x = calc_u_in_vertical(x_in,nCellEdges,wind_values)
+    u_at_x = calc_u_in_vertical_comp(x_in,nCellEdges,wind_values)
     @assertEqual(0.1_r_def, u_at_x, tol)
 
     wind_values=(/ 0.0_r_def,0.2_r_def,0.4_r_def,0.4_r_def,0.2_r_def,0.0_r_def /)
     x_in = 1.0_r_def
-    u_at_x = calc_u_in_vertical(x_in,nCellEdges,wind_values)
+    u_at_x = calc_u_in_vertical_comp(x_in,nCellEdges,wind_values)
     @assertEqual(0.2_r_def, u_at_x, tol)
 
     wind_values=(/ 0.0_r_def,0.2_r_def,0.4_r_def,0.4_r_def,0.2_r_def,0.0_r_def /)
     x_in = 5.0_r_def
-    u_at_x = calc_u_in_vertical(x_in,nCellEdges,wind_values)
+    u_at_x = calc_u_in_vertical_comp(x_in,nCellEdges,wind_values)
     @assertEqual(0.0_r_def, u_at_x, tol)
 
     deallocate(wind_values)
@@ -160,13 +160,52 @@ contains
   end subroutine calc_u_in_vertical_test
 
   @test
+  subroutine calc_u_in_vertical_phys_test()
+    use pFUnit_Mod
+    use constants_mod,        only: r_def, i_def
+    use departure_points_mod, only: calc_u_in_vertical_phys
+
+    implicit none
+
+    real(kind=r_def), parameter   :: tol = 10.0e-8_r_def  ! r_def 64bit
+    real(kind=r_def)              :: x_in, u_at_x
+    real(kind=r_def), allocatable :: wind_values(:)
+    real(kind=r_def), allocatable :: height(:)
+    integer(kind=i_def)           :: nCellEdges
+
+    nCellEdges = 6
+
+    allocate(wind_values(1:nCellEdges))
+    allocate(height(1:nCellEdges))
+    height=(/ 0.0_r_def,1.0_r_def,2.0_r_def,3.0_r_def,4.0_r_def,5.0_r_def /)
+
+    wind_values=(/ 0.0_r_def,0.2_r_def,0.4_r_def,0.4_r_def,0.2_r_def,0.0_r_def /)
+    x_in = 0.5_r_def
+    u_at_x = calc_u_in_vertical_phys(x_in,nCellEdges,wind_values,height)
+    @assertEqual(0.1_r_def, u_at_x, tol)
+
+    wind_values=(/ 0.0_r_def,0.2_r_def,0.4_r_def,0.4_r_def,0.2_r_def,0.0_r_def /)
+    x_in = 1.0_r_def
+    u_at_x = calc_u_in_vertical_phys(x_in,nCellEdges,wind_values,height)
+    @assertEqual(0.2_r_def, u_at_x, tol)
+
+    wind_values=(/ 0.0_r_def,0.2_r_def,0.4_r_def,0.4_r_def,0.2_r_def,0.0_r_def /)
+    x_in = 5.0_r_def
+    u_at_x = calc_u_in_vertical_phys(x_in,nCellEdges,wind_values,height)
+    @assertEqual(0.0_r_def, u_at_x, tol)
+
+    deallocate(wind_values)
+
+  end subroutine calc_u_in_vertical_phys_test
+
+  @test
   subroutine calc_dep_point_test()
 
     use pFUnit_Mod
     use constants_mod,               only: r_def, i_def
     use departure_points_mod,        only: calc_dep_point
-    use departure_points_config_mod, only: method_euler,    &
-                                           method_midpoint, &
+    use departure_points_config_mod, only: method_euler,       &
+                                           method_midpoint,    &
                                            method_trapezoidal, &
                                            method_timeaverage
 
@@ -210,53 +249,82 @@ contains
 
     use pFUnit_Mod
     use constants_mod,               only: r_def, i_def
-    use departure_points_mod,        only: calc_vertical_trapezoidal
-    use departure_points_config_mod, only: vertical_method_euler,    &
-                                           vertical_method_midpoint, &
+    use departure_points_mod,        only: calc_vertical_dep_cfl, &
+                                           calc_uniform_vertical_dep_cfl
+    use departure_points_config_mod, only: vertical_method_euler,       &
+                                           vertical_method_midpoint,    &
                                            vertical_method_trapezoidal, &
-                                           vertical_method_timeaverage
+                                           vertical_method_timeaverage, &
+                                           vertical_limit,              &
+                                           vertical_limit_boundary,     &
+                                           vertical_limit_exponential
 
     implicit none
 
     real(kind=r_def), parameter :: tol = 10.0e-8_r_def  ! r_def 64bit
-    real(kind=r_def)    :: x_arrival, deltaT, departure_dist
+    real(kind=r_def)    :: x_arrival_comp, x_arrival_phys
+    real(kind=r_def)    :: deltaT, departure_point, cfl
     integer(kind=i_def) :: n_dep_pt_iterations, nCellEdges
-    real(kind=r_def), allocatable :: u_n(:),u_np1(:)
+    real(kind=r_def), allocatable :: u_n(:), u_np1(:), height(:)
 
     nCellEdges = 4
 
     allocate(u_n(1:nCellEdges))
     allocate(u_np1(1:nCellEdges))
+    allocate(height(1:nCellEdges))
     u_n   = (/ 0.0_r_def,0.6_r_def,0.6_r_def,0.0_r_def /)
     u_np1 = (/ 0.0_r_def,0.6_r_def,0.6_r_def,0.0_r_def /)
+    height = (/ 0.0_r_def,1.0_r_def,2.0_r_def,3.0_r_def /)
 
-    x_arrival = 1.0_r_def
+    x_arrival_comp = 1.0_r_def
+    x_arrival_phys = 1.0_r_def
     deltaT = 1.0_r_def
     n_dep_pt_iterations = 1
 
-    departure_dist =  calc_vertical_trapezoidal( x_arrival,nCellEdges,u_n,u_np1,deltaT,     &
-                                    vertical_method_trapezoidal, n_dep_pt_iterations )
-    @assertEqual(0.42_r_def, departure_dist, tol)
+    call calc_vertical_dep_cfl( x_arrival_comp, x_arrival_phys, nCellEdges,                   &
+                                u_n, u_np1, u_n, height, deltaT, vertical_method_trapezoidal, &
+                                n_dep_pt_iterations, vertical_limit_boundary, departure_point, cfl )
+    @assertEqual(0.58_r_def, departure_point, tol)
+    @assertEqual(0.42_r_def, cfl, tol)
+
+    call calc_uniform_vertical_dep_cfl( x_arrival_comp, nCellEdges, u_n, u_np1, deltaT,   &
+                                        vertical_method_trapezoidal, n_dep_pt_iterations, &
+                                        vertical_limit_boundary, departure_point, cfl )
+    @assertEqual(0.58_r_def, departure_point, tol)
+    @assertEqual(0.42_r_def, cfl, tol)
 
     deallocate(u_n)
     deallocate(u_np1)
+    deallocate(height)
 
     nCellEdges = 6
 
     allocate(u_n(1:nCellEdges))
     allocate(u_np1(1:nCellEdges))
+    allocate(height(1:nCellEdges))
 
     u_n   = (/ 0.0_r_def,-1.2_r_def,-1.2_r_def,-1.2_r_def,-0.8_r_def,0.0_r_def /)
     u_np1 = (/ 0.0_r_def,-1.2_r_def,-1.2_r_def,-1.2_r_def,-0.8_r_def,0.0_r_def /)
+    height = (/ 0.0_r_def,1.0_r_def,2.0_r_def,3.0_r_def,4.0_r_def,5.0_r_def /)
 
-    x_arrival = 3.0_r_def
+    x_arrival_comp = 3.0_r_def
+    x_arrival_phys = 3.0_r_def
 
-    departure_dist =  calc_vertical_trapezoidal( x_arrival,nCellEdges,u_n,u_np1,deltaT,     &
-                                    vertical_method_trapezoidal, n_dep_pt_iterations )
-    @assertEqual(-0.92_r_def, departure_dist, tol)
+    call calc_vertical_dep_cfl( x_arrival_comp, x_arrival_phys, nCellEdges,                   &
+                                u_n, u_np1, u_n, height, deltaT, vertical_method_trapezoidal, &
+                                n_dep_pt_iterations, vertical_limit_boundary, departure_point, cfl )
+    @assertEqual(3.92_r_def, departure_point, tol)
+    @assertEqual(-0.92_r_def, cfl, tol)
+
+    call calc_uniform_vertical_dep_cfl( x_arrival_comp, nCellEdges, u_n, u_np1, deltaT,   &
+                                        vertical_method_trapezoidal, n_dep_pt_iterations, &
+                                        vertical_limit_boundary, departure_point, cfl )
+    @assertEqual(3.92_r_def, departure_point, tol)
+    @assertEqual(-0.92_r_def, cfl, tol)
 
     deallocate(u_n)
     deallocate(u_np1)
+    deallocate(height)
 
   end subroutine calc_vertical_departure_dist_test
 

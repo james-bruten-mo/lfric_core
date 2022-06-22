@@ -1,28 +1,29 @@
 !-----------------------------------------------------------------------------
-! (C) Crown copyright 2018 Met Office. All rights reserved.
+! (C) Crown copyright 2022 Met Office. All rights reserved.
 ! The file LICENCE, distributed with this code, contains details of the terms
 ! under which the code may be used.
 !-----------------------------------------------------------------------------
 
-module vertical_deppt_kernel_mod_test
+module vertical_uniform_deppt_kernel_mod_test
 
   use pFUnit_Mod
   use constants_mod,      only : i_def, r_def, r_second
+  use yaxt,               only : xt_initialize, xt_finalize
   use mpi_mod,            only : store_comm, clear_comm
 
   implicit none
 
   private
-  public :: vertical_deppt_test_type , test_all
+  public :: vertical_uniform_deppt_test_type , test_all
 
   @TestCase
-  type, extends(MPITestCase) :: vertical_deppt_test_type
+  type, extends(MPITestCase) :: vertical_uniform_deppt_test_type
     private
   contains
     procedure setUp
     procedure test_all
     procedure tearDown
-  end type vertical_deppt_test_type
+  end type vertical_uniform_deppt_test_type
 
   integer(i_def), parameter :: n_dep_pt_iterations = 3
 
@@ -46,21 +47,23 @@ contains
                                              feign_timestepping_config
     use timestepping_config_mod,      only : method_semi_implicit, &
                                              runge_kutta_method_ssp3
-    use departure_points_config_mod,  only : method_euler,            &
-                                             method_trapezoidal,      &
-                                             method_midpoint,         &
-                                             vertical_method_euler,   &
-                                             departure_grid_physical, &
+    use departure_points_config_mod,  only : method_euler,           &
+                                             method_trapezoidal,     &
+                                             method_midpoint,        &
+                                             vertical_method_euler,  &
+                                             departure_grid_uniform, &
                                              vertical_limit_boundary
 
     implicit none
 
-    class(vertical_deppt_test_type), intent(inout) :: this
+    class(vertical_uniform_deppt_test_type), intent(inout) :: this
 
+    ! Initialise YAXT
+    call xt_initialize(this%getMpiCommunicator())
     ! Store the MPI communicator for later use
     call store_comm(this%getMpiCommunicator())
 
-    call feign_departure_points_config( departure_grid = departure_grid_physical, &
+    call feign_departure_points_config( departure_grid = departure_grid_uniform,  &
                                         method = method_euler,                    &
                                         vertical_limit = vertical_limit_boundary, &
                                         vertical_method = vertical_method_euler,  &
@@ -89,10 +92,12 @@ contains
 
     implicit none
 
-    class(vertical_deppt_test_type), intent(inout) :: this
+    class(vertical_uniform_deppt_test_type), intent(inout) :: this
 
     call final_configuration()
 
+    ! Finalise YAXT
+    call xt_finalize()
     ! Clear the stored MPI communicator
     call clear_comm()
 
@@ -102,17 +107,17 @@ contains
   @Test( npes=[1] )
   subroutine test_all( this )
 
-    use calc_departure_point_kernel_mod, only : calc_departure_point_code
-    use flux_direction_mod,              only : x_direction
-    use departure_points_config_mod,     only : vertical_method
-    use vertical_deppt_kernel_mod, only : vertical_deppt_code
+    use calc_departure_point_kernel_mod,   only : calc_departure_point_code
+    use flux_direction_mod,                only : x_direction
+    use departure_points_config_mod,       only : vertical_method
+    use vertical_uniform_deppt_kernel_mod, only : vertical_uniform_deppt_code
 
     implicit none
 
-    class(vertical_deppt_test_type), intent(inout) :: this
+    class(vertical_uniform_deppt_test_type), intent(inout) :: this
 
     real(kind=r_def), parameter   :: tol    = 1.0e-6_r_def
-    real(kind=r_def), allocatable :: u_field(:), dep_pts(:), heights(:), cfl(:)
+    real(kind=r_def), allocatable :: u_field(:), dep_pts(:), cfl(:)
     integer(kind=i_def)           :: nlayers
     integer(kind=i_def)           :: ndf_w2
     integer(kind=i_def)           :: undf_w2
@@ -125,16 +130,7 @@ contains
 
     allocate(u_field(1:undf_w2))
     allocate(dep_pts(1:undf_w2))
-    allocate(heights(1:undf_w2))
     allocate(cfl(1:undf_w2))
-
-    ! Set up uniform vertical grid
-    heights(:) = 0.0_r_def
-    heights(22) = 1.0_r_def
-    heights(23) = 2.0_r_def
-    heights(24) = 3.0_r_def
-    heights(25) = 4.0_r_def
-    heights(26) = 5.0_r_def
 
     ! Assume a constant wind field with departure distances less than one.
     u_field(:)  = 0.0_r_def
@@ -149,18 +145,17 @@ contains
     dep_pts(:)  = 0.0_r_def
     cfl(:)  = 0.0_r_def
 
-    call vertical_deppt_code(  nlayers,              &
-                               dep_pts,              &
-                               cfl,                  &
-                               u_field,              &
-                               u_field,              &
-                               heights,              &
-                               n_dep_pt_iterations,  &
-                               vertical_method,      &
-                               real(dt, r_def),      &
-                               ndf_w2,               &
-                               undf_w2,              &
-                               map_w2 )
+    call vertical_uniform_deppt_code(  nlayers,              &
+                                       dep_pts,              &
+                                       cfl,                  &
+                                       u_field,              &
+                                       u_field,              &
+                                       n_dep_pt_iterations,  &
+                                       vertical_method,      &
+                                       real(dt, r_def),      &
+                                       ndf_w2,               &
+                                       undf_w2,              &
+                                       map_w2 )
 
     @assertEqual( 0.0_r_def, dep_pts(21), tol)
     @assertEqual( 0.8_r_def, dep_pts(22), tol)
@@ -185,18 +180,17 @@ contains
     u_field(25) = 0.8_r_def
     u_field(26) = 0.0_r_def
 
-    call vertical_deppt_code( nlayers,              &
-                              dep_pts,              &
-                              cfl,                  &
-                              u_field,              &
-                              u_field,              &
-                              heights,              &
-                              n_dep_pt_iterations,  &
-                              vertical_method,      &
-                              real(dt, r_def),      &
-                              ndf_w2,               &
-                              undf_w2,              &
-                              map_w2 )
+    call vertical_uniform_deppt_code( nlayers,              &
+                                      dep_pts,              &
+                                      cfl,                  &
+                                      u_field,              &
+                                      u_field,              &
+                                      n_dep_pt_iterations,  &
+                                      vertical_method,      &
+                                      real(dt, r_def),      &
+                                      ndf_w2,               &
+                                      undf_w2,              &
+                                      map_w2 )
 
     @assertEqual( 0.0_r_def, dep_pts(21), tol)
     @assertEqual( 0.8_r_def, dep_pts(22), tol)
@@ -214,9 +208,8 @@ contains
 
     deallocate(u_field)
     deallocate(dep_pts)
-    deallocate(heights)
     deallocate(cfl)
 
   end subroutine test_all
 
-end module vertical_deppt_kernel_mod_test
+end module vertical_uniform_deppt_kernel_mod_test

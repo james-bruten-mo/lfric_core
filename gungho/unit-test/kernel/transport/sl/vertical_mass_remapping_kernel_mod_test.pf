@@ -39,6 +39,7 @@ contains
                                     vertical_sl_order_quintic,     &
                                     ffsl_flux_splitting_full,      &
                                     ffsl_advective_splitting_full, &
+                                    max_vert_cfl_calc_uniform,     &
                                     moisture_eqn_advective,        &
                                     ffsl_scheme_three_dim
 
@@ -74,6 +75,7 @@ contains
                                  log_space = (/.false./),                                  &
                                  enforce_min_value = (/.false./),                          &
                                  min_value = (/0.0_r_def/),                                &
+                                 max_vert_cfl_calc = max_vert_cfl_calc_uniform,            &
                                  ffsl_scheme = ffsl_scheme_three_dim,                      &
                                  reversible = (/.false./)                                  &
                                  )

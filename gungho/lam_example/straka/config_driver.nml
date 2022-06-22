@@ -14,8 +14,10 @@ limited_area=.false.,
 limit_cfl=.false.,
 /
 &departure_points
+departure_grid='uniform',
 method='euler',
 n_dep_pt_iterations=1,
+vertical_limit='exponential',
 vertical_method='trapezoidal',
 /
 &section_choice
@@ -210,6 +212,7 @@ vertical_method = 1, 1, 1
 monotone = 1,1,1
 log_space = .true., .false., .false.
 enforce_min_value=.false.,.false.,.false.
+max_vert_cfl_calc='uniform'
 min_value=0.0,0.0,-99999999.0,0.0
 cfl_mol_1d_stab = 2.0
 cfl_mol_2d_stab = 2.0

@@ -120,6 +120,9 @@ contains
     use function_space_collection_mod, only: function_space_collection
     use fs_continuity_mod,             only: W2, W2v, W2h, W3
     use timestepping_config_mod,       only: beta
+    use transport_config_mod,          only: max_vert_cfl_calc, &
+                                             max_vert_cfl_calc_dep_point, &
+                                             max_vert_cfl_calc_uniform
     use map_w2_to_sh_w2_alg_mod,       only: sample_w2_to_sh_w2_alg
     use dg_matrix_vector_kernel_mod,   only: dg_matrix_vector_kernel_type
     use fem_constants_mod,             only: get_div, &
@@ -135,7 +138,7 @@ contains
     type(mesh_type),  pointer, intent(in), optional :: shifted_mesh
 
     type(transport_runtime_type)   :: self
-    type(field_type)               :: cfl, vertical_cfl, horizontal_cfl
+    type(field_type)               :: cfl, vertical_cfl, horizontal_cfl, cfl_dep
     integer(kind=i_def)            :: element_order, mesh_idx, i
     type(mesh_type),       pointer :: mesh => null()
     type(local_mesh_type), pointer :: local_mesh => null()
@@ -261,9 +264,12 @@ contains
       ! If any vertical scheme is ffsl/sl compute vertical departure points
       call self%departure_points_z_w2(mesh_idx)%initialise( vector_space = &
                 function_space_collection%get_fs(tmp_mesh, element_order, W2) )
+      call cfl_dep%initialise( vector_space = &
+                function_space_collection%get_fs(tmp_mesh, element_order, W2) )
 
       if (any_vert_dep_pts) then
         call calc_vert_dep_pts( self%departure_points_z_w2(mesh_idx), &
+                                cfl_dep,                              &
                                 wind_n,                               &
                                 wind_np1,                             &
                                 self%detj_at_w2_transport(mesh_idx),  &
@@ -301,7 +307,18 @@ contains
                                               cfl) )
       call horizontal_cfl%field_minmax(cfl_min, cfl_max)
       self%horizontal_cfl_max(mesh_idx) = max(abs(cfl_max), abs(cfl_min))
-      call vertical_cfl%field_minmax(cfl_min, cfl_max)
+
+      select case(max_vert_cfl_calc)
+        ! Calculate the maximum vertical cfl for substepping
+      case(max_vert_cfl_calc_uniform)
+        call vertical_cfl%field_minmax(cfl_min, cfl_max)
+      case(max_vert_cfl_calc_dep_point)
+        call cfl_dep%field_minmax(cfl_min, cfl_max)
+      case default
+        write(log_scratch_space, '(A)') &
+          'transport_runtime: maximum vertical CFL method not defined '
+        call log_event(log_scratch_space, LOG_LEVEL_ERROR)
+      end select
       self%vertical_cfl_max(mesh_idx) = max(abs(cfl_max), abs(cfl_min))
 
       write( log_scratch_space, '(A, E16.8)') &
