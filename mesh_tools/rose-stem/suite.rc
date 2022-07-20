@@ -327,7 +327,7 @@ echo $CYLC_TASK_LOG_ROOT > $DESTINATION_DIRECTORY/lfric.mesher."+compiler+".log
     [[[environment]]]
       OUTPUT_FILE = $DESTINATION_DIRECTORY/meshes/{{mesh}}.nc
 
-{{            directives(PRIMARY_TARGET, 'run') }}
+{{            directives(PRIMARY_TARGET, 'tech') }}
 {%-         endif %} {#- 'generate_' + mesh + '_' + label in scheduledTasks #}
 
 
