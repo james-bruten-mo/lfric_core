@@ -8,7 +8,6 @@
 module assign_coordinate_lonlatz_mod_test
 
   use constants_mod, only : r_def, i_def, PI
-  use mpi_mod,       only : store_comm, clear_comm
   use pFUnit_Mod
 
   implicit none
@@ -17,7 +16,7 @@ module assign_coordinate_lonlatz_mod_test
   public :: assign_coordinate_lonlatz_test_type, test_all
 
   @TestCase
-  type, extends(MPITestCase) :: assign_coordinate_lonlatz_test_type
+  type, extends(TestCase) :: assign_coordinate_lonlatz_test_type
     private
   contains
     procedure setUp
@@ -39,9 +38,6 @@ contains
 
     class(assign_coordinate_lonlatz_test_type), intent(inout) :: this
 
-    ! Store the MPI communicator for later use
-    call store_comm(this%getMpiCommunicator())
-
     call feign_planet_config( radius=radius, scaling_factor=scaling )
 
   end subroutine setUp
@@ -57,13 +53,10 @@ contains
 
     call final_configuration()
 
-    ! Clear the stored MPI communicator
-    call clear_comm()
-
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @Test( npes=[1] )
+  @Test
   subroutine test_all( this )
 
     use, intrinsic :: iso_fortran_env, only: real64

@@ -9,7 +9,6 @@
 module initial_buoyancy_kernel_mod_test
 
   use constants_mod,              only : i_def, r_def
-  use mpi_mod,                    only : store_comm, clear_comm
   use pFUnit_Mod
 
   implicit none
@@ -18,7 +17,7 @@ module initial_buoyancy_kernel_mod_test
   public :: initial_buoyancy_kernel_test_type, test_all
 
   @TestCase
-  type, extends(MPITestCase) :: initial_buoyancy_kernel_test_type
+  type, extends(TestCase) :: initial_buoyancy_kernel_test_type
     private
   contains
     procedure setUp
@@ -58,9 +57,6 @@ contains
 
     integer :: i
 
-    !Store the MPI communicator for later use
-    call store_comm(this%getMpiCommunicator())
-
     call feign_base_mesh_config( filename='foo',                      &
                                  prime_mesh_name='unit_test',         &
                                  geometry=geometry_planar,            &
@@ -99,13 +95,10 @@ contains
     call final_configuration()
     call final_chi_transforms()
 
-    ! Clear the stored MPI communicator
-    call clear_comm()
-
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @Test( npes=[1] )
+  @Test
   subroutine test_all( this )
 
     use initial_buoyancy_kernel_mod,         only: initial_buoyancy_code

@@ -30,15 +30,13 @@ module initial_geopot_kernel_mod_test
   use get_unit_test_3x3x3_chi_mod,         only : get_w0_3x3x3_field
   use pFUnit_Mod
 
-  use mpi_mod,                             only : store_comm, clear_comm
-
   implicit none
 
   private
   public :: initial_geopot_test_type, test_all
 
   @TestCase
-  type, extends(MPITestCase) :: initial_geopot_test_type
+  type, extends(TestCase) :: initial_geopot_test_type
     private
   contains
     procedure setUp
@@ -67,9 +65,6 @@ contains
     implicit none
 
     class(initial_geopot_test_type), intent(inout) :: this
-
-    ! Store the MPI communicator for later use
-    call store_comm(this%getMpiCommunicator())
 
     call feign_base_mesh_config( filename='foo',                      &
                                  prime_mesh_name='unit_test',         &
@@ -110,13 +105,10 @@ contains
 
     class(initial_geopot_test_type), intent(inout) :: this
 
-    ! Clear the stored MPI communicator
-    call clear_comm()
-
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @Test( npes=[1] )
+  @Test
   subroutine test_all( this )
 
     use initial_geopot_kernel_mod, only : initial_geopot_code

@@ -9,7 +9,6 @@ module methox_kernel_mod_test
 
   use pFUnit_Mod
   use constants_mod,                 only : r_def, i_def
-  use mpi_mod,                       only : store_comm, clear_comm
 
   implicit none
 
@@ -17,7 +16,7 @@ module methox_kernel_mod_test
   public :: test_methox
 
   @TestCase
-  type, extends(MPITestCase), public  :: methox_test_type
+  type, extends(TestCase), public  :: methox_test_type
     private
     real(kind=r_def), allocatable :: answer_dmv(:), dmv(:),  &
                                      m_v(:)
@@ -39,9 +38,6 @@ contains
 
   integer(kind=i_def) :: undf_wth
 
-  ! Store the MPI communicator for later use
-  call store_comm(this%getMpiCommunicator())
-
   undf_wth = 2_i_def
 
   allocate( this%answer_dmv(undf_wth) )
@@ -59,13 +55,10 @@ contains
 
   deallocate ( this%answer_dmv, this%dmv, this%m_v)
 
-  ! Clear the stored MPI communicator
-  call clear_comm()
-
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @test( npes=[1] )
+  @test
   subroutine test_methox( this )
 
   use methox_kernel_mod, only : methox_code, methox_coeff, photol_coeff

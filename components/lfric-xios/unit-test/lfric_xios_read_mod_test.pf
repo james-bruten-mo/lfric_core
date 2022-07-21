@@ -11,8 +11,6 @@ module lfric_xios_read_mod_test
   use lfric_xios_constants_mod,       only : dp_xios
   use halo_routing_collection_mod,    only : halo_routing_collection_type, &
                                              halo_routing_collection
-  use halo_comms_mod,                 only : initialise_halo_comms, &
-                                             finalise_halo_comms
   use function_space_collection_mod,  only : function_space_collection_type, &
                                              function_space_collection
   use local_mesh_mod,                 only : local_mesh_type
@@ -22,7 +20,6 @@ module lfric_xios_read_mod_test
   use field_mod,                      only : field_type, field_proxy_type
   use function_space_mod,             only : function_space_type
   use fs_continuity_mod,              only : W0, W2H, WTheta, W3
-  use mpi_mod,                        only : store_comm, clear_comm
 
   use pfunit_mod
 
@@ -33,7 +30,7 @@ module lfric_xios_read_mod_test
 
 
   @TestCase
-  type, extends(MPITestCase), public :: read_test_type
+  type, extends(TestCase), public :: read_test_type
     private
     type(function_space_type), pointer :: w0_fs  => null()
     type(function_space_type), pointer :: w2h_fs => null()
@@ -61,12 +58,6 @@ contains
     type(local_mesh_type), pointer :: unit_test_local_mesh_ptr
     type(mesh_type) :: unit_test_mesh
     integer(i_def)  :: mesh_id
-
-    !Store the MPI communicator for later use
-    call store_comm(this%getMpiCommunicator())
-
-    ! Initialise halo functionality
-    call initialise_halo_comms( this%getMpiCommunicator() )
 
     ! Create top level mesh collection
     mesh_collection = mesh_collection_type()
@@ -107,11 +98,6 @@ contains
     call mesh_collection%clear()
     call halo_routing_collection%clear()
 
-    ! Finalise halo functionality
-    call finalise_halo_comms()
-    ! Clear the stored MPI communicator
-    call clear_comm()
-
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -125,7 +111,7 @@ contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  @Test( npes=[1] )
+  @Test
   subroutine test_lfric_xios_read( this )
 
     use lfric_xios_read_mod,      only: checkpoint_read_xios,    &

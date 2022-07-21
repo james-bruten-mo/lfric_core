@@ -8,7 +8,6 @@ module chi_transform_mod_test
 
   use pFUnit_Mod
   use, intrinsic :: iso_fortran_env, only : real64
-  use mpi_mod,                   only : store_comm, clear_comm
   use constants_mod,             only : r_def, i_def, i_native, PI, str_long
 
 
@@ -18,7 +17,7 @@ module chi_transform_mod_test
             test_chi_constructor
 
   @testParameter
-  type, public, extends(MPITestParameter) :: chi_parameters_type
+  type, public, extends(AbstractTestParameter) :: chi_parameters_type
     integer(i_native) :: source_coord_system
     integer(i_native) :: target_coord_system
     integer(i_def)    :: panel_id
@@ -32,8 +31,8 @@ module chi_transform_mod_test
     procedure :: toString
   end type chi_parameters_type
 
-  @TestCase(npes=[1], testParameters={get_chi_parameters()}, constructor=test_chi_constructor)
-  type, extends(MPITestCase) :: chi_transform_mod_test_type
+  @TestCase(testParameters={get_chi_parameters()}, constructor=test_chi_constructor)
+  type, extends(ParameterizedTestCase) :: chi_transform_mod_test_type
     private
     integer(i_native) :: source_coord_system
     integer(i_native) :: target_coord_system
@@ -151,45 +150,41 @@ contains
     lon = 2.0_r_def * PI / 3.0_r_def
     lat = -atan(sqrt(3.0_r_def) * (2.0_r_def - sqrt(3.0_r_def)) / 2.0_r_def)
 
-    ! chi_parameters_type extends MPITestParameter
-    ! This requires an extra argument to be passed to chi_parameters_type,
-    ! which sets the numProcessesRequested property for MPITestParameter,
-    ! (here set to 1 for all cases). This is the first argument.
-    ! The other arguments are the parameters defined in chi_parameters_type
+    ! The arguments below are the parameters defined in chi_parameters_type
 
-    chi_parameters =  [ chi_parameters_type(1, ABH, ABH, panel_id,   &
-                                            alpha, beta, height,     &
-                                            alpha, beta, radius),    &
-                        chi_parameters_type(1, ABH, LLH, panel_id,   &
-                                            alpha, beta, height,     &
-                                            lon, lat, radius),       &
-                        chi_parameters_type(1, ABH, XYZ, panel_id,   &
-                                            alpha, beta, height,     &
-                                            X, Y, Z),                &
-                        chi_parameters_type(1, LLH, ABH, panel_id,   &
-                                            lon, lat, height,        &
-                                            alpha, beta, radius),    &
-                        chi_parameters_type(1, LLH, LLH, panel_id,   &
-                                            lon, lat, height,        &
-                                            lon, lat, radius),       &
-                        chi_parameters_type(1, LLH, XYZ, panel_id,   &
-                                            lon, lat, height,        &
-                                            X, Y, Z),                &
-                        chi_parameters_type(1, XYZ, ABH, panel_id,   &
-                                            X, Y, Z,                 &
-                                            alpha, beta, radius),    &
-                        chi_parameters_type(1, XYZ, LLH, panel_id,   &
-                                            X, Y, Z,                 &
-                                            lon, lat, radius),       &
-                        chi_parameters_type(1, XYZ, XYZ, panel_id,   &
-                                            X, Y, Z, X, Y, Z),       &
-                        chi_parameters_type(1, ABH, R2XYZ, panel_id, &
-                                            alpha, beta, radius,     &
-                                            X, Y, Z),                &
-                        chi_parameters_type(1, LLH, R2XYZ, panel_id, &
-                                            lon, lat, radius,        &
-                                            X, Y, Z),                &
-                        chi_parameters_type(1, XYZ, R2XYZ, panel_id, &
+    chi_parameters =  [ chi_parameters_type(ABH, ABH, panel_id,   &
+                                            alpha, beta, height,  &
+                                            alpha, beta, radius), &
+                        chi_parameters_type(ABH, LLH, panel_id,   &
+                                            alpha, beta, height,  &
+                                            lon, lat, radius),    &
+                        chi_parameters_type(ABH, XYZ, panel_id,   &
+                                            alpha, beta, height,  &
+                                            X, Y, Z),             &
+                        chi_parameters_type(LLH, ABH, panel_id,   &
+                                            lon, lat, height,     &
+                                            alpha, beta, radius), &
+                        chi_parameters_type(LLH, LLH, panel_id,   &
+                                            lon, lat, height,     &
+                                            lon, lat, radius),    &
+                        chi_parameters_type(LLH, XYZ, panel_id,   &
+                                            lon, lat, height,     &
+                                            X, Y, Z),             &
+                        chi_parameters_type(XYZ, ABH, panel_id,   &
+                                            X, Y, Z,              &
+                                            alpha, beta, radius), &
+                        chi_parameters_type(XYZ, LLH, panel_id,   &
+                                            X, Y, Z,              &
+                                            lon, lat, radius),    &
+                        chi_parameters_type(XYZ, XYZ, panel_id,   &
+                                            X, Y, Z, X, Y, Z),    &
+                        chi_parameters_type(ABH, R2XYZ, panel_id, &
+                                            alpha, beta, radius,  &
+                                            X, Y, Z),             &
+                        chi_parameters_type(LLH, R2XYZ, panel_id, &
+                                            lon, lat, radius,     &
+                                            X, Y, Z),             &
+                        chi_parameters_type(XYZ, R2XYZ, panel_id, &
                                             X, Y, Z, X, Y, Z)  ]
 
   end function get_chi_parameters
@@ -220,9 +215,6 @@ contains
       coord_system = coord_system_alphabetaz
     end select
 
-    ! Store the MPI communicator for later use
-    call store_comm(this%getMpiCommunicator())
-
     call feign_finite_element_config(           &
              cellshape=cellshape_quadrilateral, &
              element_order=0_i_def,             &
@@ -249,13 +241,10 @@ contains
     call final_configuration()
     call final_chi_transforms()
 
-    ! Clear the stored MPI communicator
-    call clear_comm()
-
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @Test( npes=[1] )
+  @Test
   subroutine test_all( this )
 
     use chi_transform_mod,         only : chi2abr, chi2llr, chi2xyz, chir2xyz

@@ -11,9 +11,6 @@ module swe_buoyancy_gradient_facet_kernel_mod_test
 
   use constants_mod,                 only : i_def, r_def
   use pFUnit_Mod
-  use halo_comms_mod,                only: initialise_halo_comms, &
-                                           finalise_halo_comms
-  use mpi_mod,                       only: store_comm, clear_comm
 
   implicit none
 
@@ -21,7 +18,7 @@ module swe_buoyancy_gradient_facet_kernel_mod_test
   public :: test_all
 
   @TestCase
-  type, extends(MPITestCase), public :: swe_buoyancy_gradient_facet_kernel_test_type
+  type, extends(TestCase), public :: swe_buoyancy_gradient_facet_kernel_test_type
     private
   contains
     procedure setUp
@@ -41,11 +38,6 @@ contains
 
     class(swe_buoyancy_gradient_facet_kernel_test_type), intent(inout) :: this
 
-    !Store the MPI communicator for later use
-    call store_comm(this%getMpiCommunicator())
-    ! Initialise halo functionality
-    call initialise_halo_comms(this%getMpiCommunicator())
-
     call feign_planet_config( gravity=10.0_r_def,      &
                               radius=6000000.0_r_def,  &
                               omega=8.0E-5_r_def,      &
@@ -63,16 +55,11 @@ contains
 
     class(swe_buoyancy_gradient_facet_kernel_test_type), intent(inout) :: this
 
-    ! Finalise halo functionality
-    call finalise_halo_comms()
-    ! Clear the stored MPI communicator
-    call clear_comm()
-
   end subroutine tearDown
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  @Test( npes=[1] )
+  @Test
   subroutine test_all( this )
 
     use swe_buoyancy_gradient_facet_kernel_mod, only: swe_buoyancy_gradient_facet_code

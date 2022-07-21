@@ -10,9 +10,6 @@
 module analytic_swe_buoyancy_profiles_mod_test
 
   use constants_mod,  only : r_def, i_def
-  use halo_comms_mod, only : initialise_halo_comms, &
-                             finalise_halo_comms
-  use mpi_mod,        only : store_comm, clear_comm
   use pFUnit_Mod
 
   implicit none
@@ -21,7 +18,7 @@ module analytic_swe_buoyancy_profiles_mod_test
   public :: analytic_swe_buoyancy_profiles_test_type, test_all
 
   @TestCase
-  type, extends(MPITestCase) :: analytic_swe_buoyancy_profiles_test_type
+  type, extends(TestCase) :: analytic_swe_buoyancy_profiles_test_type
     private
   contains
     procedure setUp
@@ -52,11 +49,6 @@ contains
     implicit none
 
     class(analytic_swe_buoyancy_profiles_test_type), intent(inout) :: this
-
-    !Store the MPI communicator for later use
-    call store_comm(this%getMpiCommunicator())
-    ! Initialise halo functionality
-    call initialise_halo_comms(this%getMpiCommunicator())
 
     call feign_planet_config( gravity=10.0_r_def,      &
                               radius=6000000.0_r_def,  &
@@ -107,15 +99,10 @@ contains
 
     class(analytic_swe_buoyancy_profiles_test_type), intent(inout) :: this
 
-    ! Finalise halo functionality
-    call finalise_halo_comms()
-    ! Clear the stored MPI communicator
-    call clear_comm()
-
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @Test( npes=[1] )
+  @Test
   subroutine test_all( this )
 
     use analytic_swe_buoyancy_profiles_mod, only: analytic_swe_buoyancy

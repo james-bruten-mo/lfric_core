@@ -12,8 +12,6 @@ module driver_model_data_mod_test
   use function_space_mod,            only : function_space_type
   use function_space_collection_mod, only : function_space_collection_type, &
                                             function_space_collection
-  use halo_comms_mod,                only : initialise_halo_comms, &
-                                            finalise_halo_comms
   use mesh_collection_mod,           only : mesh_collection_type, &
                                             mesh_collection
   use halo_routing_collection_mod,   only : halo_routing_collection_type, &
@@ -24,7 +22,6 @@ module driver_model_data_mod_test
   use fs_continuity_mod,             only : W3
   use local_mesh_mod,                only : local_mesh_type
   use pure_abstract_field_mod,       only : pure_abstract_field_type
-  use mpi_mod,                       only : store_comm, clear_comm
   use driver_model_data_mod,         only : model_data_type
   use pFUnit_Mod
 
@@ -35,7 +32,7 @@ module driver_model_data_mod_test
   public :: test_assignment
 
   @TestCase
-  type, extends(MPITestCase), public :: driver_model_data_test_type
+  type, extends(TestCase), public :: driver_model_data_test_type
     private
     type(local_mesh_type)              :: unit_test_local_mesh
     type(function_space_type), pointer :: w3_fs => null()
@@ -64,11 +61,6 @@ contains
     integer(i_def)  :: mesh_id
 
     type(mesh_type), pointer :: mesh => null()
-
-    !Store the MPI communicator for later use
-    call store_comm(this%getMpiCommunicator())
-    ! Initialise halo functionality
-    call initialise_halo_comms( this%getMpiCommunicator() )
 
     ! Create top level mesh collection
     mesh_collection = mesh_collection_type()
@@ -102,11 +94,6 @@ contains
     call function_space_collection%clear()
     call mesh_collection%clear()
 
-    ! Finalise halo functionality
-    call finalise_halo_comms()
-    ! Clear the stored MPI communicator
-    call clear_comm()
-
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -127,7 +114,7 @@ contains
   !> Test that field collection objects are correctly added to the model data
   !> and are retrievable
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @Test( npes=[1] )
+  @Test
   subroutine test_assignment( this )
 
     implicit none

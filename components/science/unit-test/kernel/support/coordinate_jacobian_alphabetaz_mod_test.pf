@@ -8,7 +8,6 @@
 module coordinate_jacobian_alphabetaz_mod_test
 
   use pFUnit_Mod
-  use mpi_mod,       only : store_comm, clear_comm
   use constants_mod, only : r_def, i_def
 
   implicit none
@@ -16,7 +15,7 @@ module coordinate_jacobian_alphabetaz_mod_test
   public :: jacobian_alphabetaz_test_type, test_all
 
   @TestCase
-  type, extends(MPITestCase) :: jacobian_alphabetaz_test_type
+  type, extends(TestCase) :: jacobian_alphabetaz_test_type
     private
   contains
     procedure setUp
@@ -41,9 +40,6 @@ contains
 
     class(jacobian_alphabetaz_test_type), intent(inout) :: this
 
-    ! Store the MPI communicator for later use
-    call store_comm(this%getMpiCommunicator())
-
     call feign_finite_element_config(              &
              cellshape=cellshape_quadrilateral,    &
              coord_order=0_i_def,                  &
@@ -66,13 +62,10 @@ contains
 
     call final_configuration()
 
-    ! Clear the stored MPI communicator
-    call clear_comm()
-
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @Test( npes=[1] )
+  @Test
   subroutine test_all( this )
 
     use, intrinsic :: iso_fortran_env, only: real64

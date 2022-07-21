@@ -8,7 +8,6 @@
 module assign_coordinate_xyz_mod_test
 
   use constants_mod, only : r_def, i_def
-  use mpi_mod,       only : store_comm, clear_comm
   use pFUnit_Mod
 
   implicit none
@@ -17,7 +16,7 @@ module assign_coordinate_xyz_mod_test
   public :: assign_coordinate_xyz_test_type, test_all
 
   @TestCase
-  type, extends(MPITestCase) :: assign_coordinate_xyz_test_type
+  type, extends(TestCase) :: assign_coordinate_xyz_test_type
     private
   contains
     procedure setUp
@@ -41,9 +40,6 @@ contains
     implicit none
 
     class(assign_coordinate_xyz_test_type), intent(inout) :: this
-
-    ! Store the MPI communicator for later use
-    call store_comm(this%getMpiCommunicator())
 
     call feign_base_mesh_config( filename='foo',                   &
                                  prime_mesh_name='unit_test',      &
@@ -76,13 +72,10 @@ contains
 
     call final_configuration()
 
-    ! Clear the stored MPI communicator
-    call clear_comm()
-
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @Test( npes=[1] )
+  @Test
   subroutine test_all( this )
 
     use driver_coordinates_mod, only : assign_coordinate_xyz
@@ -111,7 +104,6 @@ contains
     ndf_pid = 1
     undf_pid = 1
     map_pid = (/ 1 /)
-
 
     vertices_phys(1,:,1) = (/ 0.0_r_def, 2.0_r_def, 2.0_r_def, 0.0_r_def, 0.0_r_def, 2.0_r_def, 2.0_r_def, 0.0_r_def /)
     vertices_phys(2,:,1) = (/ 0.0_r_def, 0.0_r_def, 2.0_r_def, 2.0_r_def, 0.0_r_def, 0.0_r_def, 2.0_r_def, 2.0_r_def /)

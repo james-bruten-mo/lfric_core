@@ -9,7 +9,6 @@ module tl_vorticity_advection_kernel_mod_test
 
   use constants_mod, only: i_def, r_def
   use pFUnit_Mod
-  use mpi_mod,       only : store_comm, clear_comm
 
   use finite_element_config_mod, only : cellshape_quadrilateral, &
                                         coord_system_xyz
@@ -46,7 +45,7 @@ module tl_vorticity_advection_kernel_mod_test
             test_computed_output
 
   @TestCase
-  type, extends(MPITestCase) :: tl_vorticity_advection_test_type
+  type, extends(TestCase) :: tl_vorticity_advection_test_type
     private
 
     real(r_def) :: answer
@@ -117,9 +116,6 @@ contains
     implicit none
 
     class(tl_vorticity_advection_test_type), intent(inout) :: this
-
-    ! Store the MPI communicator for later use
-    call store_comm(this%getMpiCommunicator())
 
     call feign_finite_element_config(           &
              cellshape=cellshape_quadrilateral, &
@@ -257,13 +253,10 @@ contains
 
     call final_configuration()
 
-    ! Clear the stored MPI communicator
-    call clear_comm()
-
   end subroutine tearDown
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  @Test( npes=[1] )
+  @Test
   subroutine test_analytical( this )
 
     implicit none
@@ -319,7 +312,7 @@ contains
 
   end subroutine test_analytical
 
-  @Test( npes=[1] )
+  @Test
   subroutine test_computed_output( this )
 
     implicit none
