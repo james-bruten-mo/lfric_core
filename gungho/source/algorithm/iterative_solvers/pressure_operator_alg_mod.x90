@@ -24,17 +24,16 @@ module pressure_operator_alg_mod
 
   use hierarchical_linear_operator_mod,   only: abstract_hierarchical_linear_operator_type
   use vector_mod,                         only: abstract_vector_type
-  use field_mod,                          only: field_type
-  use field_vector_mod,                   only: field_vector_type
-  use constants_mod,                      only: i_def, r_def, l_def
+  use r_solver_field_mod,                 only: r_solver_field_type
+  use r_solver_field_vector_mod,          only: r_solver_field_vector_type
+  use constants_mod,                      only: i_def, l_def, r_solver
   use log_mod,                            only: log_event,       &
                                                 LOG_LEVEL_ERROR, &
                                                 LOG_LEVEL_INFO,  &
                                                 log_scratch_space
-  use mesh_mod,                           only: mesh_type
-  use fem_constants_mod,                  only: get_inverse_w3_mass_matrix, &
-                                                get_normalisation
-  use limited_area_constants_mod,         only: get_mask
+  use fem_constants_mod,                  only: get_inverse_w3_mass_matrix_r_solver, &
+                                                get_normalisation_r_solver
+  use limited_area_constants_mod,         only: get_mask_r_solver
   use fs_continuity_mod,                  only: W2, W3, Wtheta
   use si_operators_alg_mod,               only: get_m3_exner_star, &
                                                 get_compound_div, &
@@ -53,27 +52,23 @@ module pressure_operator_alg_mod
   type, public, extends(abstract_hierarchical_linear_operator_type) :: &
                         pressure_operator_type
   private
-    !> Temporary fields used in operator application
-    type(field_type) :: grad_p
-    !> Level of the operator (used for multigrid)
-    integer(kind=i_def) :: level
-    !> Id of function space
-    integer(kind=i_def) :: fs_id
-    contains
-    !> Over-ride the abstract interface
-    !> param[in,out] self A linear operator
-    !> param[in] x A field vector the linear operator is applied to
-    !> param[in,out] y A field vector, the result
-    procedure, public  :: apply => apply_pressure_operator
-    procedure, private :: apply_pressure_operator
-    !> performs a deep copy (for overriding the "=" operator)
-    !> @param[out] dest   pressure_operator_type lhs
-    !> @param[in]  source pressure_operator_type rhs
-    procedure, public  :: pressure_operator_assign
-    !> Returns a version of the operator on the next-coarser space
-    procedure, public  :: coarsen => coarsen_pressure_operator
-    procedure, private :: coarsen_pressure_operator
-    final              :: destroy_pressure_operator
+     !> Level of the operator (used for multigrid)
+     integer(kind=i_def) :: level
+     contains
+     !> Over-ride the abstract interface
+     !> param[in]     self A linear operator
+     !> param[in]     x    A fieldvector the linear operator is applied to
+     !> param[in,out] y    A fieldvector, the result.
+     procedure, public  :: apply => apply_pressure_operator
+     procedure, private :: apply_pressure_operator
+     !> performs a deep copy (for overriding the "=" operator)
+     !> @param[out] dest   pressure_operator_type lhs
+     !> @param[in]  source pressure_operator_type rhs
+     procedure, public  :: pressure_operator_assign
+     !> Returns a version of the operator on the next-coarser space
+     procedure, public  :: coarsen => coarsen_pressure_operator
+     procedure, private :: coarsen_pressure_operator
+     final              :: destroy_pressure_operator
 
     !> Override default assignment for pressure_operator_type pairs.
     generic            :: assignment(=) => pressure_operator_assign
@@ -92,38 +87,18 @@ contains
   !!          inverse \f$ \tilde{H}_b^{-1} \f$ as well as other operators
   !!          such as div and grad for the Helmholtz operator application.
   !>
-  !> @param[in] wp Function space for the pressure on this level
   !> @param[in] level The mesh level the space is on
   !> @return Instance of the Helmholtz operator
-  function pressure_operator_constructor(wp, level) result(self)
-    use function_space_mod,            only: function_space_type
-    use fs_continuity_mod,             only: W2
-    use function_space_collection_mod, only: function_space_collection
+  function pressure_operator_constructor(level) result(self)
     implicit none
 
-    type(pressure_operator_type)                   :: self
-    type(function_space_type), pointer, intent(in) :: wp
-    integer(kind=i_def),                intent(in) :: level
-
-    type(function_space_type), pointer  :: wu => null()
-
-    type(mesh_type), pointer :: mesh => null()
-    integer(kind=i_def) :: p
-
+    type(pressure_operator_type)    :: self
+    integer(kind=i_def), intent(in) :: level
 
     call log_event( 'Constructing pressure operator...', LOG_LEVEL_INFO )
 
-    ! Get needed function spaces
-    p = wp%get_element_order()
-    mesh => wp%get_mesh()
-    wu => function_space_collection%get_fs( mesh, p, W2 )
-
     ! Temporaries required in operator application
-    call self%grad_p%initialise(vector_space = wu, name='grad_p')
     self%level = level
-
-    ! ID of pressure function space
-    self%fs_id = wp%get_id()
 
     call log_event( 'done', LOG_LEVEL_INFO )
 
@@ -141,10 +116,7 @@ contains
     class(pressure_operator_type), intent(out) :: dest
 
     ! Deep copy of the contents of the pressure_operator_type
-
-    call source%grad_p%copy_field(dest%grad_p)
     dest%level = source%level
-    dest%fs_id = source%fs_id
   end subroutine pressure_operator_assign
 
   !> @brief Apply Helmholtz operator to a pressure field to obtain \f$y=Hx\f$.
@@ -155,7 +127,7 @@ contains
   subroutine apply_pressure_operator(self, x, y)
 
     use scaled_matrix_vector_kernel_mod, only: scaled_matrix_vector_kernel_type
-    use operator_mod,                    only: operator_type
+    use operator_mod,                    only: r_solver_operator_type
     use enforce_bc_kernel_mod,           only: enforce_bc_kernel_type
     use apply_variable_hx_kernel_mod,    only: apply_variable_hx_kernel_type
     use finite_element_config_mod,       only: element_order
@@ -172,42 +144,38 @@ contains
     class(abstract_vector_type),   intent(in)    :: x
     class(abstract_vector_type),   intent(inout) :: y
 
-    type(operator_type),   pointer :: m3_exner_star => null(),   &
-                                      div_star => null(),        &
-                                      compound_div => null(),    &
-                                      ptheta2 => null(),         &
-                                      p3theta => null()
-    type(field_type),      pointer :: mt_lumped_inv => null(),   &
-                                      u_normalisation => null(), &
-                                      h_diag => null(),          &
-                                      hb_lumped_inv => null()
-    type(field_type),      pointer :: Helmholtz_operator(:) => null()
-    type(field_type),      pointer :: w3_mask => null(), &
-                                      w2_mask => null()
-    real(kind=r_def),    parameter :: one = 1.0_r_def
-    integer(kind=i_def), parameter :: one_int = 1_i_def
-    integer(kind=i_def)            :: mesh_id
-    logical(kind=l_def)            :: lam_mesh
+    type(r_solver_operator_type),   pointer :: m3_exner_star => null(),   &
+                                               div_star => null(),        &
+                                               compound_div => null(),    &
+                                               ptheta2 => null(),         &
+                                               p3theta => null()
+    type(r_solver_field_type),      pointer :: mt_lumped_inv => null(),   &
+                                               u_normalisation => null(), &
+                                               h_diag => null(),          &
+                                               hb_lumped_inv => null()
+    type(r_solver_field_type),      pointer :: Helmholtz_operator(:) => null()
+    type(r_solver_field_type),      pointer :: w3_mask => null(), &
+                                               w2_mask => null()
+    type(r_solver_field_type)               :: grad_p
+    type(r_solver_field_type),      pointer :: x_vec => null(), &
+                                               y_vec => null()
 
-    ! Workaround for PSyclone to get pointers of the correct type for x and y
-    type(field_type), pointer :: x_vec => null(), &
-                                 y_vec => null()
+    real(kind=r_solver), parameter     :: one = 1.0_r_solver
+    integer(kind=i_def), parameter     :: one_int = 1_i_def
+    integer(kind=i_def)                :: mesh_id
+    logical(kind=l_def)                :: lam_mesh
 
     if ( subroutine_timers ) call timer('helmholtz lhs')
 
     select type (x)
-
-    type is (field_vector_type)
+    type is (r_solver_field_vector_type)
       mesh_id = x%vector(1)%get_mesh_id()
 
       select type (y)
-
-      type is (field_vector_type)
-        ! Get pointers to x and y abstract types
+      type is (r_solver_field_vector_type)
+        ! Compute M3*p + H[ D{\theta*}*p ]
         x_vec => x%get_field(1)
         y_vec => y%get_field(1)
-
-        ! Compute M3*p + H[ D{\theta*}*p ]
         if ( element_order == 0 ) then
           Helmholtz_operator => get_helmholtz_operator(self%level)
 
@@ -215,9 +183,9 @@ contains
           if (limited_area .and. topology==topology_non_periodic) lam_mesh=.true.
 
           call invoke( name="apply_H",&
-                       apply_helmholtz_operator_kernel_type(y_vec,   &
-                                                            x_vec,   &
-                                                            one_int, &
+                       apply_helmholtz_operator_kernel_type(y_vec, &
+                                                            x_vec, &
+                                                            one_int,     &
                                                             Helmholtz_operator, &
                                                             lam_mesh) )
           nullify( Helmholtz_operator )
@@ -226,31 +194,32 @@ contains
           div_star        => get_div_star(self%level)
           compound_div    => get_compound_div(self%level)
           ptheta2         => get_ptheta2v(self%level)
-          mt_lumped_inv   => get_normalisation(Wtheta, mesh_id)
+          mt_lumped_inv   => get_normalisation_r_solver(Wtheta, mesh_id)
           p3theta         => get_p3theta(self%level)
-          u_normalisation => get_normalisation(W2, mesh_id)
+          u_normalisation => get_normalisation_r_solver(W2, mesh_id)
           hb_lumped_inv   => get_hb_lumped_inv(self%level)
+          call grad_p%initialise( hb_lumped_inv%get_function_space() )
           if ( limited_area ) then
-            w2_mask => get_mask(W2, mesh_id)
-            call invoke( setval_c( self%grad_p, 0.0_r_def ),                           &
-                         setval_c( y_vec, 0.0_r_def ),                                 &
-                         scaled_matrix_vector_kernel_type(self%grad_p, x_vec,          &
+            w2_mask => get_mask_r_solver(W2, mesh_id)
+            call invoke( setval_c( grad_p, 0.0_r_solver ),                             &
+                         setval_c( y_vec,  0.0_r_solver ),                             &
+                         scaled_matrix_vector_kernel_type(grad_p, x_vec,               &
                                                           div_star, hb_lumped_inv,     &
                                                           u_normalisation),            &
-                         enforce_bc_kernel_type( self%grad_p ),                        &
-                         inc_X_times_Y( self%grad_p, w2_mask ),                        &
-                         apply_variable_hx_kernel_type(y_vec, self%grad_p,             &
+                         enforce_bc_kernel_type( grad_p ),                             &
+                         inc_X_times_Y( grad_p, w2_mask ),                             &
+                         apply_variable_hx_kernel_type(y_vec, grad_p,                  &
                                                        mt_lumped_inv, x_vec,           &
                                                        compound_div, p3theta, ptheta2, &
                                                        m3_exner_star, one) )
           else
-            call invoke( setval_c( self%grad_p, 0.0_r_def ),                           &
-                         setval_c( y_vec, 0.0_r_def ),                                 &
-                         scaled_matrix_vector_kernel_type(self%grad_p, x_vec,          &
+            call invoke( setval_c( grad_p, 0.0_r_solver ),                             &
+                         setval_c( y_vec, 0.0_r_solver ),                              &
+                         scaled_matrix_vector_kernel_type(grad_p, x_vec,               &
                                                           div_star, hb_lumped_inv,     &
                                                           u_normalisation),            &
-                         enforce_bc_kernel_type( self%grad_p ),                        &
-                         apply_variable_hx_kernel_type(y_vec, self%grad_p,             &
+                         enforce_bc_kernel_type( grad_p ),                             &
+                         apply_variable_hx_kernel_type(y_vec, grad_p,                  &
                                                        mt_lumped_inv, x_vec,           &
                                                        compound_div, p3theta, ptheta2, &
                                                        m3_exner_star, one) )
@@ -265,11 +234,11 @@ contains
                    h_diag )
         end if
         if ( limited_area ) then
-          w3_mask => get_mask(W3, mesh_id)
+          w3_mask => get_mask_r_solver(W3, mesh_id)
           call invoke( inc_X_times_Y( y_vec, w3_mask ) )
           nullify( w3_mask, w2_mask )
         end if
-
+    nullify( x_vec, y_vec )
     if ( subroutine_timers ) call timer('helmholtz lhs')
 
       class default
@@ -287,25 +256,21 @@ contains
 
     end select
 
-    nullify( x_vec, y_vec )
-
   end subroutine apply_pressure_operator
 
   !> @brief Return a coarsened version of the operator on the
   !!        next level of the multigrid hierarchy.
   !>
-  !> @param[in] self Instance of pressure_operator_type
-  !> @param[in] fs_coarse Coarse level function space
-  !> @param[in,out] coarse_operator Coarsened version of the operator on
-  !!                                the next multigrid level
-  subroutine coarsen_pressure_operator(self,fs_coarse,coarse_operator)
+  !>@param[in]     self            Instance of pressure_operator_type
+  !>@param[in]     fs_coarse       Coarse level function space
+  !>@param[in,out] coarse_operator Coarsened version of the operator on the next multigrid level
+  subroutine coarsen_pressure_operator(self,coarse_operator)
     implicit none
     class(pressure_operator_type), intent(in) :: self
-    type(function_space_type), pointer, intent(in) :: fs_coarse
     class(abstract_hierarchical_linear_operator_type), allocatable, intent(inout) :: coarse_operator
 
     allocate(coarse_operator, &
-             source=pressure_operator_type(fs_coarse,self%level+1))
+             source=pressure_operator_type(self%level+1))
   end subroutine coarsen_pressure_operator
 
   !> @brief Finalizer for the Helmholtz operator.

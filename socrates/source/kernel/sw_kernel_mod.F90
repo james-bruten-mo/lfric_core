@@ -20,7 +20,7 @@ use argument_mod,      only : arg_type,                  &
                               ANY_DISCONTINUOUS_SPACE_6, &
                               ANY_DISCONTINUOUS_SPACE_7
 use fs_continuity_mod, only : W3, Wtheta
-use constants_mod,     only : r_def, i_def
+use constants_mod,     only : r_def, i_def, l_def
 use kernel_mod,        only : kernel_type
 
 implicit none
@@ -369,7 +369,7 @@ subroutine sw_code(nlayers,                                                    &
     aer_sw_absorption, aer_sw_scattering, aer_sw_asymmetry
   real(r_def), dimension(undf_2d), intent(in) :: latitude, longitude
 
-  logical, intent(in) :: rad_this_tstep, rad_inc_this_tstep
+  logical(l_def), intent(in) :: rad_this_tstep, rad_inc_this_tstep
 
   ! Conditional Diagnostics
   real(r_def), pointer, dimension(:), intent(inout) :: & ! 2d

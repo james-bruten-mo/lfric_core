@@ -10,7 +10,7 @@ module scaled_matrix_vector_kernel_mod
                                 GH_FIELD, GH_OPERATOR, &
                                 GH_READ, GH_INC,       &
                                 GH_REAL, CELL_COLUMN
-  use constants_mod,     only : r_def, i_def
+  use constants_mod,     only : r_solver, i_def
   use fs_continuity_mod, only : W2, W3
   use kernel_mod,        only : kernel_type
 
@@ -43,8 +43,8 @@ module scaled_matrix_vector_kernel_mod
 
 contains
 
-!> @brief Computes lhs = y*matrix*x where matrix maps from x space to lhs space
-!>        and y is a field in the same space as lhs
+!> @brief Computes lhs = y*z*matrix*x where matrix maps from x space to lhs space
+!>        and y and z are fields in the same space as lhs
 !> @param[in] cell Horizontal cell index
 !! @param[in] nlayers Number of layers
 !> @param[in,out] lhs Output lhs (A*x)
@@ -78,16 +78,16 @@ subroutine scaled_matrix_vector_code(cell,              &
   integer(kind=i_def), dimension(ndf1),  intent(in) :: map1
   integer(kind=i_def), dimension(ndf2),  intent(in) :: map2
 
-  real(kind=r_def), dimension(undf2),              intent(in)    :: x
-  real(kind=r_def), dimension(undf1),              intent(inout) :: lhs
-  real(kind=r_def), dimension(ndf1,ndf2,ncell_3d), intent(in)    :: matrix
-  real(kind=r_def), dimension(undf1),              intent(in)    :: y
-  real(kind=r_def), dimension(undf1),              intent(in)    :: z
+  real(kind=r_solver), dimension(undf2),              intent(in)    :: x
+  real(kind=r_solver), dimension(undf1),              intent(inout) :: lhs
+  real(kind=r_solver), dimension(ndf1,ndf2,ncell_3d), intent(in)    :: matrix
+  real(kind=r_solver), dimension(undf1),              intent(in)    :: y
+  real(kind=r_solver), dimension(undf1),              intent(in)    :: z
 
   ! Internal variables
-  integer(kind=i_def)               :: df, k, ik
-  real(kind=r_def), dimension(ndf2) :: x_e
-  real(kind=r_def), dimension(ndf1) :: lhs_e
+  integer(kind=i_def)                  :: df, k, ik
+  real(kind=r_solver), dimension(ndf2) :: x_e
+  real(kind=r_solver), dimension(ndf1) :: lhs_e
 
   do k = 0, nlayers-1
     do df = 1, ndf2

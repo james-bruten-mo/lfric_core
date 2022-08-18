@@ -10,7 +10,7 @@
 !!        PSyclone and documented in issue 1099.
 module operator_algebra_kernel_mod
 
-use constants_mod, only: r_def, i_def
+use constants_mod, only: r_def, i_def, r_single, r_double, r_solver
 use kernel_mod,    only: kernel_type
 use argument_mod,  only: arg_type, func_type,        &
                          GH_OPERATOR, GH_SCALAR,     &
@@ -57,8 +57,6 @@ type, public, extends(kernel_type) :: operator_setval_x_kernel_type
        arg_type(GH_OPERATOR, GH_REAL, GH_READ,  ANY_SPACE_1, ANY_SPACE_2)  &
        /)
   integer :: operates_on = CELL_COLUMN
-contains
-  procedure, nopass :: operator_setval_x_kernel_code
 end type
 
 type, public, extends(kernel_type) :: operator_x_times_y_kernel_type
@@ -80,6 +78,15 @@ public :: operator_x_plus_ay_kernel_code
 public :: operator_setval_c_kernel_code
 public :: operator_setval_x_kernel_code
 public :: operator_x_times_y_kernel_code
+
+  ! Generic interface for real32 and real64 types
+  interface operator_setval_x_kernel_code
+    module procedure  &
+      operator_setval_x_kernel_code_r_single, &
+      operator_setval_x_kernel_code_r_double, &
+      operator_setval_x_kernel_code_r_single_to_r_double, &
+      operator_setval_x_kernel_code_r_double_to_r_single
+  end interface
 
 contains
 
@@ -166,10 +173,13 @@ end subroutine operator_setval_c_kernel_code
 !! @param[in]     y          Operator to copy
 !! @param[in]     ndf1       Number of dofs per cell for space 1
 !! @param[in]     ndf2       Number of dofs per cell for space 2
-subroutine operator_setval_x_kernel_code(cell, nlayers, &
-                                         ncell_3d_1, x, &
-                                         ncell_3d_2, y, &
-                                         ndf1, ndf2)
+
+! R_SINGLE PRECISION
+! ==================
+subroutine operator_setval_x_kernel_code_r_single(cell, nlayers, &
+                                                  ncell_3d_1, x, &
+                                                  ncell_3d_2, y, &
+                                                  ndf1, ndf2)
   implicit none
 
   ! Arguments
@@ -178,8 +188,8 @@ subroutine operator_setval_x_kernel_code(cell, nlayers, &
   integer(kind=i_def), intent(in) :: ncell_3d_1, ncell_3d_2
   integer(kind=i_def), intent(in) :: ndf1, ndf2
 
-  real(kind=r_def), dimension(ndf1, ndf2, ncell_3d_1), intent(inout) :: x
-  real(kind=r_def), dimension(ndf1, ndf2, ncell_3d_2), intent(in)    :: y
+  real(kind=r_single), dimension(ndf1, ndf2, ncell_3d_1), intent(inout) :: x
+  real(kind=r_single), dimension(ndf1, ndf2, ncell_3d_2), intent(in)    :: y
 
   ! Internal variables
   integer(kind=i_def) :: k, ik
@@ -189,7 +199,88 @@ subroutine operator_setval_x_kernel_code(cell, nlayers, &
     x(:,:,ik) = y(:,:,ik)
   end do
 
-end subroutine operator_setval_x_kernel_code
+end subroutine operator_setval_x_kernel_code_r_single
+
+! R_DOUBLE PRECISION
+! ==================
+subroutine operator_setval_x_kernel_code_r_double(cell, nlayers, &
+                                                  ncell_3d_1, x, &
+                                                  ncell_3d_2, y, &
+                                                  ndf1, ndf2)
+  implicit none
+
+  ! Arguments
+  integer(kind=i_def), intent(in) :: cell
+  integer(kind=i_def), intent(in) :: nlayers
+  integer(kind=i_def), intent(in) :: ncell_3d_1, ncell_3d_2
+  integer(kind=i_def), intent(in) :: ndf1, ndf2
+
+  real(kind=r_double), dimension(ndf1, ndf2, ncell_3d_1), intent(inout) :: x
+  real(kind=r_double), dimension(ndf1, ndf2, ncell_3d_2), intent(in)    :: y
+
+  ! Internal variables
+  integer(kind=i_def) :: k, ik
+
+  do k = 0, nlayers - 1
+    ik = k + 1 + (cell-1)*nlayers
+    x(:,:,ik) = y(:,:,ik)
+  end do
+
+end subroutine operator_setval_x_kernel_code_r_double
+
+! R_SINGLE PRECISION to R_DOUBLE
+! ==============================
+subroutine operator_setval_x_kernel_code_r_single_to_r_double(cell, nlayers, &
+                                                              ncell_3d_1, x, &
+                                                              ncell_3d_2, y, &
+                                                              ndf1, ndf2)
+  implicit none
+
+  ! Arguments
+  integer(kind=i_def), intent(in) :: cell
+  integer(kind=i_def), intent(in) :: nlayers
+  integer(kind=i_def), intent(in) :: ncell_3d_1, ncell_3d_2
+  integer(kind=i_def), intent(in) :: ndf1, ndf2
+
+  real(kind=r_double), dimension(ndf1, ndf2, ncell_3d_1), intent(inout) :: x
+  real(kind=r_single), dimension(ndf1, ndf2, ncell_3d_2), intent(in)    :: y
+
+  ! Internal variables
+  integer(kind=i_def) :: k, ik
+
+  do k = 0, nlayers - 1
+    ik = k + 1 + (cell-1)*nlayers
+    x(:,:,ik) = real(y(:,:,ik), r_double)
+  end do
+
+end subroutine operator_setval_x_kernel_code_r_single_to_r_double
+
+! R_DOUBLE PRECISION to R_SINGLE
+! ==============================
+subroutine operator_setval_x_kernel_code_r_double_to_r_single(cell, nlayers, &
+                                                              ncell_3d_1, x, &
+                                                              ncell_3d_2, y, &
+                                                              ndf1, ndf2)
+  implicit none
+
+  ! Arguments
+  integer(kind=i_def), intent(in) :: cell
+  integer(kind=i_def), intent(in) :: nlayers
+  integer(kind=i_def), intent(in) :: ncell_3d_1, ncell_3d_2
+  integer(kind=i_def), intent(in) :: ndf1, ndf2
+
+  real(kind=r_single), dimension(ndf1, ndf2, ncell_3d_1), intent(inout) :: x
+  real(kind=r_double), dimension(ndf1, ndf2, ncell_3d_2), intent(in)    :: y
+
+  ! Internal variables
+  integer(kind=i_def) :: k, ik
+
+  do k = 0, nlayers - 1
+    ik = k + 1 + (cell-1)*nlayers
+    x(:,:,ik) = real(y(:,:,ik), r_single)
+  end do
+
+end subroutine operator_setval_x_kernel_code_r_double_to_r_single
 
 !> @brief Computes x*y, where x & y are operators.
 !! @param[in] cell Cell number

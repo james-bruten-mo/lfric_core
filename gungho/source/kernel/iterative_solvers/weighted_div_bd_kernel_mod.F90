@@ -29,7 +29,7 @@ module weighted_div_bd_kernel_mod
                                 GH_QUADRATURE_face,          &
                                 CELL_COLUMN, adjacent_face,  &
                                 outward_normals_to_horizontal_faces
-  use constants_mod,     only : r_def, i_def
+  use constants_mod,     only : r_def, i_def, r_solver
   use fs_continuity_mod, only : W2, W3, Wtheta
   use kernel_mod,        only : kernel_type
 
@@ -97,9 +97,9 @@ contains
   !!                       Wtheta
   !> @param[in] wtheta_basis_face Wtheta basis functions evaluated at Gaussian
   !!                              quadrature points on horizontal faces
-  !> @param[in] outward_normals_to_horizontal_faces Vector of normals to the
-  !!                                                reference element horizontal
-  !!                                                "outward faces"
+  !> @param[in] outward_normals Vector of normals to the
+  !!                            reference element horizontal
+  !!                            "outward faces"
   !> @param[in] nfaces_re_h Number of reference element faces bisected by a
   !!                        horizontal plane
   !> @param[in] adjacent_face Vector containing information on neighbouring
@@ -118,7 +118,7 @@ contains
                                    ndf_wtheta, undf_wtheta, map_wtheta, &
                                    wtheta_basis_face,                   &
                                    nfaces_re_h,                         &
-                                   outward_normals_to_horizontal_faces, &
+                                   outward_normals,                     &
                                    adjacent_face,                       &
                                    nfaces_qr, nqp_f, wqp_f )
 
@@ -142,28 +142,48 @@ contains
     real(kind=r_def), dimension(1,ndf_wtheta,nqp_f,nfaces_qr), intent(in) :: wtheta_basis_face
     real(kind=r_def), dimension(nqp_f,nfaces_qr),              intent(in) :: wqp_f
 
-    real(kind=r_def), dimension(ndf_w2,ndf_w3,ncell_3d), intent(inout) :: div
-    real(kind=r_def), dimension(undf_wtheta),            intent(in)    :: theta
-    real(kind=r_def),                                    intent(in)    :: scalar
+    real(kind=r_solver), dimension(ndf_w2,ndf_w3,ncell_3d), intent(inout) :: div
+    real(kind=r_solver), dimension(undf_wtheta),            intent(in)    :: theta
+    real(kind=r_solver),                                    intent(in)    :: scalar
 
     integer(kind=i_def), intent(in) :: adjacent_face(nfaces_re_h)
 
-    real(kind=r_def),    intent(in) :: outward_normals_to_horizontal_faces(:,:)
+    real(kind=r_def),    intent(in) :: outward_normals(:,:)
 
     ! Internal variables
     integer(kind=i_def) :: df, df2, df3, k, ik, face, face_next
     integer(kind=i_def) :: qp
 
-    real(kind=r_def), dimension(ndf_wtheta) :: theta_e, theta_next_e
+    real(kind=r_solver), dimension(ndf_wtheta) :: theta_e, theta_next_e
 
-    real(kind=r_def) :: v_dot_n, integrand
-    real(kind=r_def) :: theta_at_fquad, theta_next_at_fquad
-    real(kind=r_def) :: this_bd_term, next_bd_term
+    real(kind=r_solver) :: integrand
+    real(kind=r_solver) :: theta_at_fquad, theta_next_at_fquad
+    real(kind=r_solver) :: this_bd_term, next_bd_term
+    real(kind=r_def)    :: v_dot_n_rdef
+
+    real(kind=r_solver), dimension(ndf_w2,nqp_f,nfaces_qr)       :: v_dot_n
+    real(kind=r_solver), dimension(1,ndf_w3,nqp_f,nfaces_qr)     :: rsol_w3_basis_face
+    real(kind=r_solver), dimension(1,ndf_wtheta,nqp_f,nfaces_qr) :: rsol_wtheta_basis_face
+    real(kind=r_solver), dimension(nqp_f,nfaces_qr)              :: rsol_wqp_f
 
     ! If we're near the edge of the regional domain then the
     ! stencil size will be less that 5 so don't do anything here
     ! This should be removed with lfric ticket #2958
     if (stencil_wtheta_size < 5)return
+
+    rsol_w3_basis_face     = real(w3_basis_face, r_solver)
+    rsol_wtheta_basis_face = real(wtheta_basis_face, r_solver)
+    rsol_wqp_f             = real(wqp_f, r_solver)
+
+    do face = 1, nfaces_re_h
+      do qp = 1, nqp_f
+        do df = 1, ndf_w2
+          v_dot_n_rdef = dot_product(w2_basis_face(:,df,qp,face), &
+                                     outward_normals(:,face) )
+          v_dot_n(df, qp, face) = real( v_dot_n_rdef, r_solver)
+        end do
+      end do
+    end do
 
     do k = 0, nlayers - 1
       ik = k + 1 + (cell-1)*nlayers
@@ -178,24 +198,22 @@ contains
         end do
 
         do qp = 1, nqp_f
-          theta_at_fquad      = 0.0_r_def
-          theta_next_at_fquad = 0.0_r_def
+          theta_at_fquad      = 0.0_r_solver
+          theta_next_at_fquad = 0.0_r_solver
 
           do df = 1, ndf_wtheta
-            theta_at_fquad       = theta_at_fquad      + theta_e(df)     * &
-                                   wtheta_basis_face(1,df,qp,face)
-            theta_next_at_fquad  = theta_next_at_fquad + theta_next_e(df)* &
-                                   wtheta_basis_face(1,df,qp,face_next)
+            theta_at_fquad      = theta_at_fquad      + theta_e(df)     * &
+                                  rsol_wtheta_basis_face(1,df,qp,face)
+            theta_next_at_fquad = theta_next_at_fquad + theta_next_e(df)* &
+                                  rsol_wtheta_basis_face(1,df,qp,face_next)
           end do
 
           do df3 = 1, ndf_w3
             do df2 = 1, ndf_w2
-              v_dot_n  = dot_product(w2_basis_face(:,df2,qp,face), &
-                                     outward_normals_to_horizontal_faces(:,face))
-              this_bd_term =  v_dot_n*theta_at_fquad
-              next_bd_term = -v_dot_n*theta_next_at_fquad
-              integrand = wqp_f(qp,face)*w3_basis_face(1,df3,qp,face) &
-                           * 0.5_r_def*(this_bd_term + next_bd_term)
+              this_bd_term =  v_dot_n(df2,qp,face)*theta_at_fquad
+              next_bd_term = -v_dot_n(df2,qp,face)*theta_next_at_fquad
+              integrand = rsol_wqp_f(qp,face)*rsol_w3_basis_face(1,df3,qp,face) &
+                           * 0.5_r_solver*(this_bd_term + next_bd_term)
               div(df2,df3,ik) = div(df2,df3,ik) - scalar*integrand
             end do ! df2
           end do ! df3

@@ -9,7 +9,7 @@
 !>
 module sample_eos_operators_kernel_mod_test
 
-  use constants_mod,                 only : i_def, r_def
+  use constants_mod,                 only : i_def, r_def, r_solver
   use pFUnit_Mod
 
   implicit none
@@ -119,22 +119,24 @@ contains
                                               get_wtheta_q3x3x3_basis
 
     use get_unit_test_w3nodal_basis_mod, only: get_wtheta_w3nodal_basis
+    use, intrinsic :: iso_fortran_env, only: real64
 
     implicit none
 
     class(sample_eos_operators_test_type), intent(inout) :: this
 
-    real(r_def), parameter :: tol = 1.0e-7_r_def
-    real(r_def)            :: answer_exner, answer_rho, answer_theta
+    real(r_solver), parameter :: tol = 1.0e-12_r_solver
+    real(r_solver)            :: use_tol
+    real(r_solver)            :: answer_exner, answer_rho, answer_theta
 
     ! Required for calling kernel
-    real(r_def),allocatable :: exner_data(:)
-    real(r_def),allocatable :: rho_data(:)
-    real(r_def),allocatable :: theta_data(:)
+    real(r_solver),allocatable :: exner_data(:)
+    real(r_solver),allocatable :: rho_data(:)
+    real(r_solver),allocatable :: theta_data(:)
 
-    real(r_def), allocatable :: m3exner(:,:,:)
-    real(r_def), allocatable :: m3rho(:,:,:)
-    real(r_def), allocatable :: p3theta(:,:,:)
+    real(r_solver), allocatable :: m3exner(:,:,:)
+    real(r_solver), allocatable :: m3rho(:,:,:)
+    real(r_solver), allocatable :: p3theta(:,:,:)
 
     integer(i_def)            :: nlayers, ncells, ncell_3d
     integer(i_def)            :: ndf_wtheta, ndf_w3
@@ -187,12 +189,12 @@ contains
     cell = 1_i_def
 
     ! Initialise the data
-    exner_data(:) = 1.0_r_def
-    rho_data(:)   = 1.0_r_def
-    theta_data(:) = 300.0_r_def
-    m3exner(:,:,:) = 0.0_r_def
-    m3rho(:,:,:) = 0.0_r_def
-    p3theta(:,:,:) = 0.0_r_def
+    exner_data(:) = 1.0_r_solver
+    rho_data(:)   = 1.0_r_solver
+    theta_data(:) = 300.0_r_solver
+    m3exner(:,:,:) = 0.0_r_solver
+    m3rho(:,:,:) = 0.0_r_solver
+    p3theta(:,:,:) = 0.0_r_solver
 
 
     call sample_eos_operators_code( cell,               &
@@ -215,14 +217,18 @@ contains
                                     map_wtheta(:,cell), &
                                     basis_wtheta        &
                                     )
-    answer_exner = (1.0_r_def-kappa)/kappa*(p_zero/(rd*300_r_def))
-    answer_rho = 1.0_r_def
-    answer_theta = 0.5_r_def * 1.0_r_def/300_r_def
+    answer_exner = real((1.0_r_def-kappa)/kappa*(p_zero/(rd*300_r_def)),r_solver)
+    answer_rho = 1.0_r_solver
+    answer_theta = 0.5_r_solver * 1.0_r_solver/300_r_solver
     k = 1
-
-    @assertEqual(answer_exner, m3exner(map_w3(1,cell)+k, map_w3(1,cell)+k, k), tol)
-    @assertEqual(answer_rho, m3rho(map_w3(1,cell)+k, map_w3(1,cell)+k, k), tol)
-    @assertEqual(answer_theta, p3theta(map_wtheta(1,cell)+k, map_w3(1,cell)+k, k), tol)
+    if ( r_solver == real64 ) then
+      use_tol = tol
+    else
+      use_tol = 10.0_r_solver*spacing( maxval(m3exner) )
+    endif
+    @assertEqual(answer_exner, m3exner(map_w3(1,cell)+k, map_w3(1,cell)+k, k), use_tol)
+    @assertEqual(answer_rho, m3rho(map_w3(1,cell)+k, map_w3(1,cell)+k, k), use_tol)
+    @assertEqual(answer_theta, p3theta(map_wtheta(1,cell)+k, map_w3(1,cell)+k, k), use_tol)
 
 
     deallocate(m3exner)

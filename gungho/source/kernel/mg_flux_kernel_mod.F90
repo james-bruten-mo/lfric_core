@@ -17,7 +17,7 @@ module mg_flux_kernel_mod
                                 GH_READ, GH_INC,       &
                                 ANY_SPACE_1, GH_BASIS, &
                                 CELL_COLUMN, GH_EVALUATOR
-  use constants_mod,     only : r_def, i_def
+  use constants_mod,     only : r_def, r_solver, i_def
   use fs_continuity_mod, only : W2
   use kernel_mod,        only : kernel_type
 
@@ -66,39 +66,41 @@ contains
 !! @param[in] map_q Dofmap for the cell at the base of the column for the field to be advected
 !! @param[in] basis_q Basis functions evaluated at gaussian quadrature points
 !! @param[in] q Advected field
-subroutine mg_flux_code(nlayers,                                           &
-                            flux, q ,                                      &
-                            ndf_f, undf_f, map_f,                          &
-                            ndf_q, undf_q, map_q, basis_q                  &
-                            )
+subroutine mg_flux_code(nlayers,                      &
+                        flux, q ,                     &
+                        ndf_f, undf_f, map_f,         &
+                        ndf_q, undf_q, map_q, basis_q &
+                        )
   implicit none
 
   ! Arguments
   integer(kind=i_def), intent(in) :: nlayers
   integer(kind=i_def), intent(in) :: ndf_f, ndf_q, undf_f, undf_q
+
   integer(kind=i_def), dimension(ndf_f), intent(in) :: map_f
   integer(kind=i_def), dimension(ndf_q), intent(in) :: map_q
-  real(kind=r_def), dimension(1,ndf_q,ndf_f), intent(in)    :: basis_q
-  real(kind=r_def), dimension(undf_f),        intent(inout) :: flux
-  real(kind=r_def), dimension(undf_q),        intent(in)    :: q
+
+  real(kind=r_def),    dimension(1,ndf_q,ndf_f), intent(in)    :: basis_q
+  real(kind=r_solver), dimension(undf_f),        intent(inout) :: flux
+  real(kind=r_solver), dimension(undf_q),        intent(in)    :: q
 
   ! Internal variables
   integer(kind=i_def)                :: df, df_q, k
 
-  real(kind=r_def), dimension(ndf_q) :: q_cell
-  real(kind=r_def)                   :: q_at_node
+  real(kind=r_solver), dimension(ndf_q) :: q_cell
+  real(kind=r_solver)                   :: q_at_node
 
   do k = 0, nlayers-1
     do df_q = 1, ndf_q
       q_cell(df_q) = q( map_q(df_q) + k )
     end do
     do df = 1, ndf_f
-      q_at_node = 0.0_r_def
+      q_at_node = 0.0_r_solver
       do df_q = 1,ndf_q
-        q_at_node = q_at_node + q_cell(df_q)*basis_q(1,df_q,df)
+        q_at_node = q_at_node + q_cell(df_q)*real(basis_q(1,df_q,df),r_solver)
       end do
       ! base and lid would have factor of 1 not 0.5 but field is zero there anyway!
-      flux( map_f(df) + k ) = flux( map_f(df) + k ) + 0.5_r_def*q_at_node
+      flux( map_f(df) + k ) = flux( map_f(df) + k ) + 0.5_r_solver*q_at_node
     end do
   end do
 

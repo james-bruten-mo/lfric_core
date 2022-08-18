@@ -18,7 +18,7 @@ module weighted_proj_theta2_vert_kernel_mod
                                 GH_READ, GH_WRITE,       &
                                 GH_BASIS, GH_DIFF_BASIS, &
                                 CELL_COLUMN, GH_QUADRATURE_XYoZ
-  use constants_mod,     only : r_def, i_def
+  use constants_mod,     only : r_def, i_def, r_solver
   use fs_continuity_mod, only : W2, Wtheta
   use kernel_mod,        only : kernel_type
 
@@ -96,9 +96,9 @@ subroutine weighted_proj_theta2_vert_code(cell, nlayers, ncell_3d,              
   real(kind=r_def), dimension(3,ndf_wtheta,nqp_h,nqp_v), intent(in) :: wtheta_diff_basis
   real(kind=r_def), dimension(3,ndf_w2,nqp_h,nqp_v),     intent(in) :: w2_basis
 
-  real(kind=r_def), dimension(ndf_wtheta,ndf_w2,ncell_3d), intent(inout) :: projection
-  real(kind=r_def), dimension(undf_wtheta),                intent(in)    :: theta
-  real(kind=r_def),                                        intent(in)    :: scalar
+  real(kind=r_solver), dimension(ndf_wtheta,ndf_w2,ncell_3d), intent(inout) :: projection
+  real(kind=r_solver), dimension(undf_wtheta),                intent(in)    :: theta
+  real(kind=r_solver),                                        intent(in)    :: scalar
 
   real(kind=r_def), dimension(nqp_h), intent(in) ::  wqp_h
   real(kind=r_def), dimension(nqp_v), intent(in) ::  wqp_v
@@ -107,9 +107,17 @@ subroutine weighted_proj_theta2_vert_code(cell, nlayers, ncell_3d,              
   integer(kind=i_def) :: df, k, ik, dft, df2, ndf_w2h
   integer(kind=i_def) :: qp1, qp2
 
-  real(kind=r_def), dimension(ndf_wtheta) :: theta_e
-  real(kind=r_def) :: grad_theta_at_quad(3)
-  real(kind=r_def) :: integrand, i1(3), i2
+  real(kind=r_solver), dimension(ndf_wtheta) :: theta_e
+  real(kind=r_solver) :: grad_theta_at_quad(3)
+  real(kind=r_solver) :: integrand, i1(3), i2, wt
+
+  real(kind=r_solver), dimension(1,ndf_wtheta,nqp_h,nqp_v) :: rsol_wtheta_basis
+  real(kind=r_solver), dimension(3,ndf_wtheta,nqp_h,nqp_v) :: rsol_wtheta_diff_basis
+  real(kind=r_solver), dimension(3,ndf_w2,nqp_h,nqp_v)     :: rsol_w2_basis
+
+  rsol_wtheta_basis      = real(wtheta_basis, r_solver)
+  rsol_wtheta_diff_basis = real(wtheta_diff_basis, r_solver)
+  rsol_w2_basis          = real(w2_basis, r_solver)
 
   ! Last index of horizontal component of W2 space
   ! Assumes dofs in W2 are ordered (uv,w)
@@ -120,13 +128,13 @@ subroutine weighted_proj_theta2_vert_code(cell, nlayers, ncell_3d,              
     do df = 1, ndf_wtheta
       theta_e(df)  = theta( map_wtheta(df) + k )
     end do
-    projection(:,:,ik) = 0.0_r_def
+    projection(:,:,ik) = 0.0_r_solver
     do qp2 = 1, nqp_v
       do qp1 = 1, nqp_h
-        grad_theta_at_quad = 0.0_r_def
+        grad_theta_at_quad = 0.0_r_solver
         do df = 1, ndf_wtheta
           grad_theta_at_quad(:) = grad_theta_at_quad(:) &
-                                + theta_e(df)*wtheta_diff_basis(:,df,qp1,qp2)
+                                + theta_e(df)*rsol_wtheta_diff_basis(:,df,qp1,qp2)
         end do
         ! Avoid issues when theta gradient is zero or negative:
         ! The helmholtz equation is (vastly simplified)
@@ -134,12 +142,13 @@ subroutine weighted_proj_theta2_vert_code(cell, nlayers, ncell_3d,              
         ! and so if dtheta/dz =< 0 then the characteristic of this
         ! equation changes and this can cause issues for iterative solvers
         ! so the pragmatic solution is to enfoce dtheta/dz > 0 here
-        grad_theta_at_quad(3) = max(1.0_r_def, grad_theta_at_quad(3))
-        i1 = scalar*grad_theta_at_quad*wqp_h(qp1)*wqp_v(qp2)
+        grad_theta_at_quad(3) = max(1.0_r_solver, grad_theta_at_quad(3))
+        wt = real(wqp_h(qp1)*wqp_v(qp2), r_solver)
+        i1 = scalar*grad_theta_at_quad*wt
         do df2 = ndf_w2h+1,ndf_w2
-          i2 = dot_product(i1,w2_basis(:,df2,qp1,qp2))
+          i2 = dot_product(i1, rsol_w2_basis(:,df2,qp1,qp2))
           do dft = 1,ndf_wtheta
-            integrand = wtheta_basis(1,dft,qp1,qp2)*i2
+            integrand = rsol_wtheta_basis(1,dft,qp1,qp2)*i2
             projection(dft,df2,ik) = projection(dft,df2,ik) + integrand
           end do
         end do

@@ -31,7 +31,7 @@ program cma_test
                                              test_cma_add,                   &
                                              test_cma_apply_inv,             &
                                              test_cma_diag_DhMDhT
-  use constants_mod,                  only : i_def, r_def, pi
+  use constants_mod,                  only : i_def, r_def, r_solver, pi
   use derived_config_mod,             only : set_derived_config
   use mpi_mod,                        only : initialise_comm, store_comm, &
                                              finalise_comm, &
@@ -110,11 +110,11 @@ program cma_test
   logical :: do_test_diag_dhmdht = .false.
 
   ! Error tolerance for tests
-  ! Note: tolerance is for r_def = real64
-  !       Tolerance at r_def = real32: generated using spacing() in
+  ! Note: tolerance is for r_solver = real64
+  !       Tolerance at r_solver = real32: generated using spacing() in
   !           ./gungho/source/algorithm/cma_test_algorithm_mod.x90
-  real(kind=r_def) :: tolerance
-  tolerance = 1.0E-12_r_def
+  real(kind=r_solver) :: tolerance
+  tolerance = 1.0E-12_r_solver
 
   ! Initialise MPI communicatios and get a valid communicator
   call initialise_comm(comm)

@@ -9,7 +9,7 @@
 !>
 module project_eos_operators_kernel_mod_test
 
-  use constants_mod,                 only : i_def, r_def
+  use constants_mod,                 only : i_def, r_def, r_solver
   use pFUnit_Mod
 
   implicit none
@@ -135,22 +135,22 @@ contains
 
     class(project_eos_operators_test_type), intent(inout) :: this
 
-    real(r_def), parameter :: tol = 1.0e-6_r_def
+    real(r_solver), parameter :: tol = 1.0e-6_r_solver
     real(r_def), parameter :: dx = 1.0_r_def, &
                               dy = 2.0_r_def, &
                               dz = 1.0_r_def
-    real(r_def)            :: answer_exner, answer_rho, answer_theta
+    real(r_solver)            :: answer_exner, answer_rho, answer_theta
 
     ! Required for calling kernel
-    real(r_def), allocatable :: exner_data(:)
-    real(r_def), allocatable :: rho_data(:)
-    real(r_def), allocatable :: theta_data(:)
+    real(r_solver), allocatable :: exner_data(:)
+    real(r_solver), allocatable :: rho_data(:)
+    real(r_solver), allocatable :: theta_data(:)
 
-    real(r_def), allocatable :: m3exner(:,:,:)
-    real(r_def), allocatable :: m3rho(:,:,:)
-    real(r_def), allocatable :: p3theta(:,:,:)
+    real(r_solver), allocatable :: m3exner(:,:,:)
+    real(r_solver), allocatable :: m3rho(:,:,:)
+    real(r_solver), allocatable :: p3theta(:,:,:)
 
-    real(r_def), allocatable :: m3_inv(:,:,:)
+    real(r_solver), allocatable :: m3_inv(:,:,:)
 
     integer(i_def)            :: nlayers, ncells, ncell_3d
     integer(i_def)            :: ndf_wtheta, undf_wtheta
@@ -241,15 +241,15 @@ contains
     cell = 1_i_def
 
     ! Initialise the data
-    exner_data(:) = 1.0_r_def
-    rho_data(:)   = 1.0_r_def
-    theta_data(:) = 300.0_r_def
-    m3exner(:,:,:) = 0.0_r_def
-    m3rho(:,:,:) = 0.0_r_def
-    p3theta(:,:,:) = 0.0_r_def
+    exner_data(:) = 1.0_r_solver
+    rho_data(:)   = 1.0_r_solver
+    theta_data(:) = 300.0_r_solver
+    m3exner(:,:,:) = 0.0_r_solver
+    m3rho(:,:,:) = 0.0_r_solver
+    p3theta(:,:,:) = 0.0_r_solver
 
     do i = 1,ndf_w3
-      m3_inv(i,i,:) = 1.0_r_def/(dx*dy*dz)
+      m3_inv(i,i,:) = 1.0_r_solver/real(dx*dy*dz,r_solver)
     end do
 
     call project_eos_operators_code( cell,               &
@@ -289,9 +289,9 @@ contains
                                      wh,                 &
                                      wv )
 
-    answer_exner = (1.0_r_def-kappa)/kappa*(p_zero/(rd*300_r_def))
-    answer_rho = 1.0_r_def
-    answer_theta = 0.5_r_def * 1.0_r_def/300_r_def
+    answer_exner = real((1.0_r_def-kappa)/kappa*(p_zero/(rd*300_r_def)),r_solver)
+    answer_rho = 1.0_r_solver
+    answer_theta = 0.5_r_solver * 1.0_r_solver/300_r_solver
     k = 1
 
     @assertEqual(answer_exner, m3exner(map_w3(1,cell)+k, map_w3(1,cell)+k,k), tol)

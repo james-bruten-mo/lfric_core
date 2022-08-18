@@ -27,7 +27,7 @@ module weighted_proj_theta2_bd_kernel_mod
                                 GH_QUADRATURE_face,          &
                                 CELL_COLUMN, adjacent_face,  &
                                 outward_normals_to_horizontal_faces
-  use constants_mod,     only : r_def, i_def, l_def
+  use constants_mod,     only : r_def, i_def, l_def, r_solver
   use cross_product_mod, only : cross_product
   use fs_continuity_mod, only : W2, Wtheta
   use kernel_mod,        only : kernel_type
@@ -93,9 +93,9 @@ contains
   !!                          quadrature points on horizontal faces
   !> @param[in] nfaces_re_h Number of reference element faces bisected by a
   !!                        horizontal plane
-  !> @param[in] outward_normals_to_horizontal_faces Vector of normals to the
-  !!                                                reference element horizontal
-  !!                                                "outward faces"
+  !> @param[in] outward_normals Vector of normals to the
+  !!                            reference element horizontal
+  !!                            "outward faces"
   !> @param[in] adjacent_face Vector containing information on neighbouring face
   !!                          index for the current cell
   !> @param[in] nfaces_qr Number of faces in the quadrature rule
@@ -111,7 +111,7 @@ contains
                                            wtheta_basis_face,                   &
                                            ndf_w2, w2_basis_face,               &
                                            nfaces_re_h,                         &
-                                           outward_normals_to_horizontal_faces, &
+                                           outward_normals,                     &
                                            adjacent_face,                       &
                                            nfaces_qr, nqp_f, wqp_f )
 
@@ -129,9 +129,9 @@ contains
 
     integer(kind=i_def), dimension(ndf_wtheta), intent(in) :: map_wtheta
 
-    real(kind=r_def), dimension(ndf_wtheta,ndf_w2,ncell_3d), intent(inout) :: projection
-    real(kind=r_def), dimension(undf_wtheta),                intent(in)    :: theta
-    real(kind=r_def),                                        intent(in)    :: scalar
+    real(kind=r_solver), dimension(ndf_wtheta,ndf_w2,ncell_3d), intent(inout) :: projection
+    real(kind=r_solver), dimension(undf_wtheta),                intent(in)    :: theta
+    real(kind=r_solver),                                        intent(in)    :: scalar
 
     real(kind=r_def), dimension(3,ndf_w2,nqp_f,nfaces_qr),     intent(in) :: w2_basis_face
     real(kind=r_def), dimension(1,ndf_wtheta,nqp_f,nfaces_qr), intent(in) :: wtheta_basis_face
@@ -139,22 +139,30 @@ contains
 
     integer(kind=i_def), intent(in) :: adjacent_face(:)
 
-    real(kind=r_def),    intent(in) :: outward_normals_to_horizontal_faces(:,:)
+    real(kind=r_def),    intent(in) :: outward_normals(:,:)
 
     ! Internal variables
     integer(kind=i_def) :: df, k, ik, face, face_next, dft, df2
     integer(kind=i_def) :: qp
 
-    real(kind=r_def), dimension(ndf_wtheta) :: theta_e, theta_next_e
-    real(kind=r_def) :: theta_at_fquad, theta_next_at_fquad, v_dot_n
-    real(kind=r_def) :: flux_term, theta_av
+    real(kind=r_solver), dimension(ndf_wtheta) :: theta_e, theta_next_e
+    real(kind=r_solver) :: theta_at_fquad, theta_next_at_fquad, v_dot_n
+    real(kind=r_solver) :: flux_term, theta_av
 
     logical(kind=l_def), parameter :: upwind = .false.
+
+    real(kind=r_solver), dimension(3,ndf_w2,nqp_f,nfaces_qr)     :: rsol_w2_basis_face
+    real(kind=r_solver), dimension(1,ndf_wtheta,nqp_f,nfaces_qr) :: rsol_wtheta_basis_face
+    real(kind=r_solver), dimension(nqp_f,nfaces_qr)              :: rsol_wqp_f
 
     ! If we're near the edge of the regional domain then the
     ! stencil size will be less that 5 so don't do anything here
     ! This should be removed with lfric ticket #2958
     if (stencil_wtheta_size < 5)return
+
+    rsol_w2_basis_face     = real(w2_basis_face, r_solver)
+    rsol_wtheta_basis_face = real(wtheta_basis_face, r_solver)
+    rsol_wqp_f             = real(wqp_f, r_solver)
 
     ! Assumes same number of horizontal qp in x and y
     do k = 0, nlayers-1
@@ -172,27 +180,27 @@ contains
 
         do qp = 1, nqp_f
 
-          theta_at_fquad = 0.0_r_def
-          theta_next_at_fquad = 0.0_r_def
+          theta_at_fquad = 0.0_r_solver
+          theta_next_at_fquad = 0.0_r_solver
           do df = 1, ndf_wtheta
             theta_at_fquad       = theta_at_fquad      + theta_e(df)     * &
-                                   wtheta_basis_face(1,df,qp,face)
+                                   rsol_wtheta_basis_face(1,df,qp,face)
             theta_next_at_fquad  = theta_next_at_fquad + theta_next_e(df)* &
-                                   wtheta_basis_face(1,df,qp,face_next)
+                                   rsol_wtheta_basis_face(1,df,qp,face_next)
           end do
-          theta_av = 0.5_r_def * (theta_at_fquad + theta_next_at_fquad)
+          theta_av = 0.5_r_solver * (theta_at_fquad + theta_next_at_fquad)
 
           do df2 = 1,ndf_w2
-            v_dot_n = dot_product(w2_basis_face(:,df2,qp,face), &
-                                  outward_normals_to_horizontal_faces(:, face))
-            flux_term = wqp_f(qp,face) * theta_av * v_dot_n
+            v_dot_n = dot_product(rsol_w2_basis_face(:,df2,qp,face), &
+                                  real(outward_normals(:, face), r_solver))
+            flux_term = rsol_wqp_f(qp,face) * theta_av * v_dot_n
             if (upwind) then
-              flux_term = flux_term + 0.5_r_def * abs(v_dot_n) * &
+              flux_term = flux_term + 0.5_r_solver * abs(v_dot_n) * &
                           (theta_at_fquad - theta_next_at_fquad)
             end if
             do dft = 1,ndf_wtheta
               projection(dft,df2,ik) = projection(dft,df2,ik) &
-                                     + wtheta_basis_face(1,dft,qp,face) &
+                                     + rsol_wtheta_basis_face(1,dft,qp,face) &
                                      * flux_term * scalar
 
             end do ! dft

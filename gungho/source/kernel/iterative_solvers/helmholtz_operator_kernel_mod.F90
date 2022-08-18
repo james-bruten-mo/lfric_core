@@ -22,7 +22,7 @@ module helmholtz_operator_kernel_mod
                                 GH_FIELD, GH_OPERATOR,      &
                                 GH_REAL, GH_READ, GH_WRITE, &
                                 STENCIL, CROSS, CELL_COLUMN
-  use constants_mod,     only : r_def, i_def
+  use constants_mod,     only : i_def, r_solver
   use fs_continuity_mod, only : W2, W3, Wtheta, W2v
   use kernel_mod,        only : kernel_type
 
@@ -154,20 +154,20 @@ subroutine helmholtz_operator_code(stencil_size,                     &
   integer(kind=i_def), dimension(ndf_w2, smap_size_w2), intent(in) :: smap_w2
 
   ! Fields
-  real(kind=r_def), dimension(undf_w3), intent(inout) :: helm_c,                         &
-                                                         helm_n, helm_e, helm_s, helm_w, &
-                                                         helm_u, helm_uu, helm_d, helm_dd
-  real(kind=r_def), dimension(undf_w2), intent(in)    :: hb_lumped_inv,   &
-                                                         u_normalisation, &
-                                                         w2_mask
-  real(kind=r_def), dimension(undf_wt), intent(in)    :: mt_lumped_inv
+  real(kind=r_solver), dimension(undf_w3), intent(inout) :: helm_c,                         &
+                                                            helm_n, helm_e, helm_s, helm_w, &
+                                                            helm_u, helm_uu, helm_d, helm_dd
+  real(kind=r_solver), dimension(undf_w2), intent(in)    :: hb_lumped_inv,   &
+                                                            u_normalisation, &
+                                                            w2_mask
+  real(kind=r_solver), dimension(undf_wt), intent(in)    :: mt_lumped_inv
 
   ! Operators
-  real(kind=r_def), dimension(ndf_w2, ndf_w3, ncell_3d_1), intent(in) :: div_star
-  real(kind=r_def), dimension(ndf_w3, ndf_w2, ncell_3d_2), intent(in) :: compound_div
-  real(kind=r_def), dimension(ndf_w3, ndf_wt, ncell_3d_3), intent(in) :: p3theta
-  real(kind=r_def), dimension(ndf_wt, ndf_w2, ncell_3d_4), intent(in) :: ptheta2v
-  real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell_3d_5), intent(in) :: m3_exner_star
+  real(kind=r_solver), dimension(ndf_w2, ndf_w3, ncell_3d_1), intent(in) :: div_star
+  real(kind=r_solver), dimension(ndf_w3, ndf_w2, ncell_3d_2), intent(in) :: compound_div
+  real(kind=r_solver), dimension(ndf_w3, ndf_wt, ncell_3d_3), intent(in) :: p3theta
+  real(kind=r_solver), dimension(ndf_wt, ndf_w2, ncell_3d_4), intent(in) :: ptheta2v
+  real(kind=r_solver), dimension(ndf_w3, ndf_w3, ncell_3d_5), intent(in) :: m3_exner_star
 
   ! Internal variables
   integer(kind=i_def) :: k, ik, kk, df, e, stencil_ik
@@ -231,11 +231,11 @@ subroutine helmholtz_operator_code(stencil_size,                     &
   integer(kind=i_def), parameter :: t_d = 1
   integer(kind=i_def), parameter :: ndf_w2v = 2
 
-  real(kind=r_def), dimension(ndf_w2, ndf_w3,   centre:upup) :: a_op
-  real(kind=r_def), dimension(ndf_wt, ndf_w2v,         -1:1) :: b_op
-  real(kind=r_def), dimension(ndf_w3, ndf_w2)                :: ec_op
-  real(kind=r_def), dimension(ndf_w3, ndf_wt)                :: d_op
-  real(kind=r_def), dimension(ndf_w3, ndf_w3)                :: f_op
+  real(kind=r_solver), dimension(ndf_w2, ndf_w3,   centre:upup) :: a_op
+  real(kind=r_solver), dimension(ndf_wt, ndf_w2v,         -1:1) :: b_op
+  real(kind=r_solver), dimension(ndf_w3, ndf_w2)                :: ec_op
+  real(kind=r_solver), dimension(ndf_w3, ndf_wt)                :: d_op
+  real(kind=r_solver), dimension(ndf_w3, ndf_w3)                :: f_op
 
   ! The mixed system used by the approximate Schur complement is:
   !   (u                    theta        rho           Exner)
@@ -390,38 +390,38 @@ subroutine helmholtz_operator_code(stencil_size,                     &
         a_op(df,:,downdown) = -u_normalisation(map_w2(df)+k+kk)*w2_mask(map_w2(df)+k+kk) &
                               *hb_lumped_inv(map_w2(df)+k+kk)*div_star(df,:,ik+kk)
       else
-        a_op(df,:,downdown) = 0.0_r_def
+        a_op(df,:,downdown) = 0.0_r_solver
       end if
       kk = -1
       if ( k > 0 ) then
         a_op(df,:,down) = -u_normalisation(map_w2(df)+k+kk)*w2_mask(map_w2(df)+k+kk) &
                           *hb_lumped_inv(map_w2(df)+k+kk)*div_star(df,:,ik+kk)
       else
-        a_op(df,:,down) = 0.0_r_def
+        a_op(df,:,down) = 0.0_r_solver
       end if
       kk = 1
       if ( k < nlayers-1 ) then
         a_op(df,:,up) = -u_normalisation(map_w2(df)+k+kk)*w2_mask(map_w2(df)+k+kk) &
                         *hb_lumped_inv(map_w2(df)+k+kk)*div_star(df,:,ik+kk)
       else
-        a_op(df,:,up) = 0.0_r_def
+        a_op(df,:,up) = 0.0_r_solver
       end if
       kk = 2
       if ( k < nlayers-2 ) then
         a_op(df,:,upup) = -u_normalisation(map_w2(df)+k+kk)*w2_mask(map_w2(df)+k+kk) &
                           *hb_lumped_inv(map_w2(df)+k+kk)*div_star(df,:,ik+kk)
       else
-        a_op(df,:,upup) = 0.0_r_def
+        a_op(df,:,upup) = 0.0_r_solver
       end if
     end do
     ! Apply boundary conditions to A, these are terms that would multiply DoFs on
     ! the boundaries.
-    if ( k == 0 )           a_op(down,:,centre:north) = 0.0_r_def
-    if ( k == 1 )           a_op(down,:,down)         = 0.0_r_def
-    if ( k == 2 )           a_op(down,:,downdown)     = 0.0_r_def
-    if ( k == nlayers - 3 ) a_op(up,:,upup)           = 0.0_r_def
-    if ( k == nlayers - 2 ) a_op(up,:,up)             = 0.0_r_def
-    if ( k == nlayers - 1 ) a_op(up,:,centre:north)   = 0.0_r_def
+    if ( k == 0 )           a_op(down,:,centre:north) = 0.0_r_solver
+    if ( k == 1 )           a_op(down,:,down)         = 0.0_r_solver
+    if ( k == 2 )           a_op(down,:,downdown)     = 0.0_r_solver
+    if ( k == nlayers - 3 ) a_op(up,:,upup)           = 0.0_r_solver
+    if ( k == nlayers - 2 ) a_op(up,:,up)             = 0.0_r_solver
+    if ( k == nlayers - 1 ) a_op(up,:,centre:north)   = 0.0_r_solver
 
     ! Compute B for all cells in the stencil
     ! B maps from W2v -> Wtheta points
@@ -446,13 +446,13 @@ subroutine helmholtz_operator_code(stencil_size,                     &
       if ( k > 0 ) then
         b_op(df,:,-1) = mt_lumped_inv(map_wt(df)+k-1)*ptheta2v(df,5:6,ik-1)
       else
-        b_op(df,:,-1) = 0.0_r_def
+        b_op(df,:,-1) = 0.0_r_solver
       end if
       b_op(df,:, 0) = mt_lumped_inv(map_wt(df)+k  )*ptheta2v(df,5:6,ik)
       if ( k < nlayers-1 ) then
         b_op(df,:, 1) = mt_lumped_inv(map_wt(df)+k+1)*ptheta2v(df,5:6,ik+1)
       else
-        b_op(df,:, 1) = 0.0_r_def
+        b_op(df,:, 1) = 0.0_r_solver
       end if
     end do
     ! Compute E*C for all cells in the stencil,
@@ -487,8 +487,8 @@ subroutine helmholtz_operator_code(stencil_size,                     &
     helm_s(map_w3(1)+k)  = ec_op(1,south)*a_op(adjacent_face(south),1,south)
     helm_u(map_w3(1)+k)  = ec_op(1,up)   *a_op(down,1,up)
     helm_d(map_w3(1)+k)  = ec_op(1,down) *a_op(up,1,down)
-    helm_uu(map_w3(1)+k) = 0.0_r_def
-    helm_dd(map_w3(1)+k) = 0.0_r_def
+    helm_uu(map_w3(1)+k) = 0.0_r_solver
+    helm_dd(map_w3(1)+k) = 0.0_r_solver
     helm_c(map_w3(1)+k)  = ec_op(1,east) *a_op(east,1,centre)  &
                          + ec_op(1,west) *a_op(west,1,centre)  &
                          + ec_op(1,north)*a_op(north,1,centre) &

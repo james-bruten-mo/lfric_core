@@ -8,7 +8,7 @@
 !>
 module apply_mixed_lr_operator_kernel_mod_test
 
-  use constants_mod, only : i_def, r_def
+  use constants_mod, only : i_def, r_solver
   use pFUnit_Mod
 
   implicit none
@@ -56,7 +56,7 @@ contains
 
     class(apply_mixed_lr_operator_test_type), intent(inout) :: this
 
-    real(r_def), parameter :: tol = 1.0e-12_r_def
+    real(r_solver), parameter :: tol = 1.0e-12_r_solver
 
     ! Mesh
     integer(i_def), parameter :: nlayers = 1
@@ -74,34 +74,34 @@ contains
     integer(i_def), dimension(ndf_w3) :: map_w3
 
     ! Operators
-    real(r_def), dimension(ndf_w3, ndf_w3, ncell) :: iM3
-    real(r_def), dimension(ndf_w3, ndf_w2, ncell) :: Div
+    real(r_solver), dimension(ndf_w3, ndf_w3, ncell) :: iM3
+    real(r_solver), dimension(ndf_w3, ndf_w2, ncell) :: Div
 
     ! Fields
-    real(r_def), dimension(undf_w3) :: Lr, r
-    real(r_def), dimension(undf_w2) :: f
+    real(r_solver), dimension(undf_w3) :: Lr, r
+    real(r_solver), dimension(undf_w2) :: f
 
     ! Constants
-    real(r_def) :: tau_dt
+    real(r_solver) :: tau_dt
 
     integer(i_def) :: df
-    real(r_def)    :: answer
+    real(r_solver)    :: answer
 
     map_w2 = (/ 1_i_def, 2_i_def, 3_i_def, 4_i_def /)
     map_w3 = (/ 1_i_def /)
 
     ! Set up operators
-    iM3(1,1,1) = 0.1_r_def
+    iM3(1,1,1) = 0.1_r_solver
     do df = 1,ndf_w2
-      Div(1,df,1) = (-1.0_r_def)**df
+      Div(1,df,1) = (-1.0_r_solver)**df
     end do
 
     ! Set up the fields
-    f = (/ 0.0_r_def, 1.0_r_def, 3.0_r_def, -2.0_r_def /)
-    r = (/ 1.2_r_def /)
+    f = (/ 0.0_r_solver, 1.0_r_solver, 3.0_r_solver, -2.0_r_solver /)
+    r = (/ 1.2_r_solver /)
 
     ! Set up constants
-    tau_dt = 600.0_r_def
+    tau_dt = 600.0_r_solver
 
     ! Compute r + tau_dt*iM3*D*f
     call apply_mixed_lr_operator_code(cell,                    &

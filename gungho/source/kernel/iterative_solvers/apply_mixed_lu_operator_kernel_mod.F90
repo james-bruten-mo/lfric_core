@@ -11,7 +11,7 @@ use argument_mod,      only : arg_type,              &
                               GH_FIELD, GH_OPERATOR, &
                               GH_READ, GH_INC,       &
                               GH_REAL, CELL_COLUMN
-use constants_mod,     only : r_def, i_def
+use constants_mod,     only : r_solver, i_def
 use kernel_mod,        only : kernel_type
 use fs_continuity_mod, only : W2, W3, Wtheta
 
@@ -35,7 +35,7 @@ type, public, extends(kernel_type) :: apply_mixed_lu_operator_kernel_type
        arg_type(GH_FIELD,    GH_REAL, GH_READ, W2)          & ! norm_u
        /)
   integer :: operates_on = CELL_COLUMN
-contains
+  contains
   procedure, nopass :: apply_mixed_lu_operator_code
 end type
 
@@ -72,6 +72,7 @@ contains
 !! @param[in] ndf_w3 norm_umber of degrees of freedom per cell for the pressure space
 !! @param[in] undf_w3 Unique number of degrees of freedom for the pressure space
 !! @param[in] map_w3 Dofmap for the cell at the base of the column for the pressure space
+
 subroutine apply_mixed_lu_operator_code(cell,                    &
                                         nlayers,                 &
                                         lhs_u,                   &
@@ -97,21 +98,21 @@ subroutine apply_mixed_lu_operator_code(cell,                    &
   integer(kind=i_def), dimension(ndf_w3), intent(in) :: map_w3
 
   ! Fields
-  real(kind=r_def), dimension(undf_w2), intent(inout) :: lhs_u
-  real(kind=r_def), dimension(undf_w2), intent(in)    :: wind, norm_u
-  real(kind=r_def), dimension(undf_wt), intent(in)    :: theta
-  real(kind=r_def), dimension(undf_w3), intent(in)    :: exner
+  real(kind=r_solver), dimension(undf_w2), intent(inout) :: lhs_u
+  real(kind=r_solver), dimension(undf_w2), intent(in)    :: wind, norm_u
+  real(kind=r_solver), dimension(undf_wt), intent(in)    :: theta
+  real(kind=r_solver), dimension(undf_w3), intent(in)    :: exner
 
   ! Operators
-  real(kind=r_def), dimension(ndf_w2, ndf_w2, ncell1), intent(in) :: mu_cd
-  real(kind=r_def), dimension(ndf_w2, ndf_wt, ncell2), intent(in) :: p2theta
-  real(kind=r_def), dimension(ndf_w2, ndf_w3, ncell3), intent(in) :: grad
+  real(kind=r_solver), dimension(ndf_w2, ndf_w2, ncell1), intent(in) :: mu_cd
+  real(kind=r_solver), dimension(ndf_w2, ndf_wt, ncell2), intent(in) :: p2theta
+  real(kind=r_solver), dimension(ndf_w2, ndf_w3, ncell3), intent(in) :: grad
 
   ! Internal variables
-  integer(kind=i_def)                 :: df, k, ik
-  real(kind=r_def), dimension(ndf_w2) :: u_e, lhs_e
-  real(kind=r_def), dimension(ndf_wt) :: t_e
-  real(kind=r_def), dimension(ndf_w3) :: p_e
+  integer(kind=i_def)                    :: df, k, ik
+  real(kind=r_solver), dimension(ndf_w2) :: u_e, lhs_e
+  real(kind=r_solver), dimension(ndf_wt) :: t_e
+  real(kind=r_solver), dimension(ndf_w3) :: p_e
 
   do k = 0, nlayers-1
     do df = 1, ndf_w2

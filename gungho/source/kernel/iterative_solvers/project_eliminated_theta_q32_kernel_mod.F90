@@ -21,7 +21,7 @@ module project_eliminated_theta_q32_kernel_mod
                                GH_READ, GH_WRITE,       &
                                GH_BASIS, GH_DIFF_BASIS, &
                                CELL_COLUMN, GH_QUADRATURE_XYoZ
-  use constants_mod,     only: i_def, r_def
+  use constants_mod,     only: i_def, r_def, r_solver
   use fs_continuity_mod, only: W3, W2, Wtheta
   use kernel_mod,        only: kernel_type
 
@@ -112,11 +112,11 @@ subroutine project_eliminated_theta_q32_code(cell, nlayers, ncell_3d, &
   real(kind=r_def), dimension(1, ndf_wt, nqp_h, nqp_v), intent(in) :: basis_wt
   real(kind=r_def), dimension(3, ndf_wt, nqp_h, nqp_v), intent(in) :: diff_basis_wt
 
-  real(kind=r_def), dimension(ndf_w3, ndf_w2, ncell_3d),  intent(inout) :: q32_op
-  real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell_3d1), intent(in)    :: inv_m3
+  real(kind=r_solver), dimension(ndf_w3, ndf_w2, ncell_3d),  intent(inout) :: q32_op
+  real(kind=r_solver), dimension(ndf_w3, ndf_w3, ncell_3d1), intent(in)    :: inv_m3
 
-  real(kind=r_def), dimension(undf_wt), intent(in) :: theta
-  real(kind=r_def),                     intent(in) :: const
+  real(kind=r_solver), dimension(undf_wt), intent(in) :: theta
+  real(kind=r_solver),                     intent(in) :: const
   real(kind=r_def), dimension(nqp_h),   intent(in) :: wqp_h
   real(kind=r_def), dimension(nqp_v),   intent(in) :: wqp_v
 
@@ -124,30 +124,40 @@ subroutine project_eliminated_theta_q32_code(cell, nlayers, ncell_3d, &
   integer(kind=i_def) :: df, df2, k, ik
   integer(kind=i_def) :: qp1, qp2
 
-  real(kind=r_def)                            :: dthetadz_q, theta_q, integrand
-  real(kind=r_def), dimension(ndf_w3, ndf_w2) :: proj
+  real(kind=r_solver)                                     :: dthetadz_q, theta_q, integrand, wt
+  real(kind=r_solver), dimension(ndf_w3, ndf_w2)          :: proj
+  real(kind=r_solver), dimension(3, ndf_w2, nqp_h, nqp_v) :: rsol_basis_w2
+  real(kind=r_solver), dimension(1, ndf_w3, nqp_h, nqp_v) :: rsol_basis_w3
+  real(kind=r_solver), dimension(1, ndf_wt, nqp_h, nqp_v) :: rsol_basis_wt
+  real(kind=r_solver), dimension(3, ndf_wt, nqp_h, nqp_v) :: rsol_diff_basis_wt
+
+  rsol_basis_w2      = real(basis_w2, r_solver)
+  rsol_basis_w3      = real(basis_w3, r_solver)
+  rsol_basis_wt      = real(basis_wt, r_solver)
+  rsol_diff_basis_wt = real(diff_basis_wt, r_solver)
 
   do k = 0, nlayers-1
      ik = 1 + k + (cell-1)*nlayers
 
-    proj(:, :) = 0.0_r_def
+    proj(:, :) = 0.0_r_solver
     do qp2 = 1, nqp_v
       do qp1 = 1, nqp_h
 
-        theta_q = 0.0_r_def
-        dthetadz_q = 0.0_r_def
+        theta_q = 0.0_r_solver
+        dthetadz_q = 0.0_r_solver
         do df = 1, ndf_wt
-          dthetadz_q = dthetadz_q + theta(map_wt(df)+k)*diff_basis_wt(3, df, qp1, qp2)
-          theta_q    = theta_q    + theta(map_wt(df)+k)*basis_wt(1, df, qp1, qp2)
+          dthetadz_q = dthetadz_q + theta(map_wt(df)+k)*rsol_diff_basis_wt(3, df, qp1, qp2)
+          theta_q    = theta_q    + theta(map_wt(df)+k)*rsol_basis_wt(1, df, qp1, qp2)
         end do
         ! Ensure that dtheta/dz (and hence the static stability, N^2 =
         ! g/theta*dtheta/dz) is positive
-        dthetadz_q = max(1.0_r_def, dthetadz_q)
+        dthetadz_q = max(1.0_r_solver, dthetadz_q)
+        wt = real( wqp_h(qp1) * wqp_v(qp2), r_solver)
         do df2 = 1, ndf_w2
-          integrand = wqp_h(qp1) * wqp_v(qp2) * const &
-                    * dthetadz_q/theta_q * basis_w2(3,df2,qp1,qp2)
+          integrand = wt * const &
+                    * dthetadz_q/theta_q * rsol_basis_w2(3,df2,qp1,qp2)
           do df = 1, ndf_w3
-            proj(df,df2) = proj(df,df2) + basis_w3(1,df,qp1,qp2)*integrand
+            proj(df,df2) = proj(df,df2) + rsol_basis_w3(1,df,qp1,qp2)*integrand
           end do
         end do
        end do

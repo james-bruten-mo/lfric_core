@@ -13,7 +13,7 @@ use argument_mod,            only : arg_type,             &
                                     GH_OPERATOR, GH_REAL, &
                                     GH_READ, GH_WRITE,    &
                                     CELL_COLUMN
-use constants_mod,           only : r_def, i_def
+use constants_mod,           only : r_solver, i_def
 use kernel_mod,              only : kernel_type
 use fs_continuity_mod,       only : W2, W3
 
@@ -35,7 +35,7 @@ type, public, extends(kernel_type) :: apply_mixed_lr_operator_kernel_type
        arg_type(GH_FIELD,    GH_REAL, GH_READ,  W2)      & ! u'*rho^ref
        /)
   integer :: operates_on = CELL_COLUMN
-contains
+  contains
   procedure, nopass :: apply_mixed_lr_operator_code
 end type
 
@@ -88,21 +88,21 @@ subroutine apply_mixed_lr_operator_code(cell,                    &
   integer(kind=i_def), dimension(ndf_w3), intent(in) :: map_w3
 
   ! Fields
-  real(kind=r_def), dimension(undf_w3), intent(inout) :: lhs_rho
-  real(kind=r_def), dimension(undf_w2), intent(in)    :: f_star
-  real(kind=r_def), dimension(undf_w3), intent(in)    :: rho
+  real(kind=r_solver), dimension(undf_w3), intent(inout) :: lhs_rho
+  real(kind=r_solver), dimension(undf_w2), intent(in)    :: f_star
+  real(kind=r_solver), dimension(undf_w3), intent(in)    :: rho
 
   ! Operators
-  real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell1), intent(in) :: inv_m3
-  real(kind=r_def), dimension(ndf_w3, ndf_w2, ncell2), intent(in) :: div
+  real(kind=r_solver), dimension(ndf_w3, ndf_w3, ncell1), intent(in) :: inv_m3
+  real(kind=r_solver), dimension(ndf_w3, ndf_w2, ncell2), intent(in) :: div
 
   ! Constants
-  real(kind=r_def), intent(in) :: tau_dt
+  real(kind=r_solver), intent(in) :: tau_dt
 
   ! Internal variables
-  integer(kind=i_def)                 :: df, k, ik
-  real(kind=r_def), dimension(ndf_w2) :: f_e
-  real(kind=r_def), dimension(ndf_w3) :: r_e, lhs_e
+  integer(kind=i_def)                    :: df, k, ik
+  real(kind=r_solver), dimension(ndf_w2) :: f_e
+  real(kind=r_solver), dimension(ndf_w3) :: r_e, lhs_e
 
   do k = 0, nlayers-1
     do df = 1, ndf_w2

@@ -16,7 +16,7 @@ use argument_mod,            only : arg_type, func_type,      &
                                     ANY_SPACE_1, ANY_SPACE_2, &
                                     GH_BASIS, CELL_COLUMN,    &
                                     GH_EVALUATOR
-use constants_mod,           only : r_def, i_def
+use constants_mod,           only : r_single, r_double, i_def, r_def
 
 implicit none
 
@@ -38,14 +38,20 @@ type, public, extends(kernel_type) :: sample_field_kernel_type
        /)
   integer :: operates_on = CELL_COLUMN
   integer :: gh_shape = GH_EVALUATOR
-contains
-  procedure, nopass :: sample_field_code
 end type
 
 !-------------------------------------------------------------------------------
 ! Contained functions/subroutines
 !-------------------------------------------------------------------------------
 public :: sample_field_code
+
+  ! Generic interface for real32 and real64 types
+  interface sample_field_code
+    module procedure  &
+      sample_field_code_r_single, &
+      sample_field_code_r_double
+  end interface
+
 contains
 
 !> @brief Sample a field at nodal points of another field
@@ -60,11 +66,14 @@ contains
 !! @param[in]     undf_2        Number of unique degrees of freedom for the advected field
 !! @param[in]     map_2         Dofmap for the cell at the base of the column for the field to be advected
 !! @param[in]     basis_2       Basis functions evaluated at Gaussian quadrature points
-subroutine sample_field_code(nlayers,                         &
-                             field_1, rmultiplicity, field_2, &
-                             ndf_1, undf_1, map_1,            &
-                             ndf_2, undf_2, map_2, basis_2    &
-                            )
+
+! R_SINGLE PRECISION
+! ==================
+subroutine sample_field_code_r_single(nlayers,                         &
+                                      field_1, rmultiplicity, field_2, &
+                                      ndf_1, undf_1, map_1,            &
+                                      ndf_2, undf_2, map_2, basis_2    &
+                                     )
 
   implicit none
 
@@ -74,26 +83,71 @@ subroutine sample_field_code(nlayers,                         &
   integer(kind=i_def), dimension(ndf_1), intent(in) :: map_1
   integer(kind=i_def), dimension(ndf_2), intent(in) :: map_2
 
-  real(kind=r_def), dimension(1,ndf_2,ndf_1), intent(in)    :: basis_2
-  real(kind=r_def), dimension(undf_1),        intent(inout) :: field_1
-  real(kind=r_def), dimension(undf_1),        intent(in)    :: rmultiplicity
-  real(kind=r_def), dimension(undf_2),        intent(in)    :: field_2
+  real(kind=r_def),    dimension(1,ndf_2,ndf_1), intent(in)    :: basis_2
+  real(kind=r_single), dimension(undf_1),        intent(inout) :: field_1
+  real(kind=r_single), dimension(undf_1),        intent(in)    :: rmultiplicity
+  real(kind=r_single), dimension(undf_2),        intent(in)    :: field_2
+
 
   ! Internal variables
   integer(kind=i_def) :: df, df_2, k, ijk
-  real(kind=r_def)    :: f_at_node
+  real(kind=r_single) :: f_at_node
+  real(kind=r_single), dimension(1,ndf_2,ndf_1) :: r_single_basis_2
+
+  r_single_basis_2 = real(basis_2, r_single)
 
   do k = 0, nlayers-1
     do df = 1, ndf_1
-      f_at_node = 0.0_r_def
+      f_at_node = 0.0_r_single
       do df_2 = 1,ndf_2
-        f_at_node = f_at_node + field_2(map_2(df_2)+k)*basis_2(1,df_2,df)
+        f_at_node = f_at_node + field_2(map_2(df_2)+k)*r_single_basis_2(1,df_2,df)
       end do
       ijk = map_1(df) + k
       field_1( ijk ) = field_1( ijk ) + f_at_node*rmultiplicity( ijk )
     end do
   end do
 
-end subroutine sample_field_code
+end subroutine sample_field_code_r_single
+
+! R_DOUBLE PRECISION
+! ==================
+subroutine sample_field_code_r_double(nlayers,                         &
+                                      field_1, rmultiplicity, field_2, &
+                                      ndf_1, undf_1, map_1,            &
+                                      ndf_2, undf_2, map_2, basis_2    &
+                                     )
+
+  implicit none
+
+  ! Arguments
+  integer(kind=i_def),                   intent(in) :: nlayers
+  integer(kind=i_def),                   intent(in) :: ndf_1, ndf_2, undf_1, undf_2
+  integer(kind=i_def), dimension(ndf_1), intent(in) :: map_1
+  integer(kind=i_def), dimension(ndf_2), intent(in) :: map_2
+
+  real(kind=r_def),    dimension(1,ndf_2,ndf_1), intent(in)    :: basis_2
+  real(kind=r_double), dimension(undf_1),        intent(inout) :: field_1
+  real(kind=r_double), dimension(undf_1),        intent(in)    :: rmultiplicity
+  real(kind=r_double), dimension(undf_2),        intent(in)    :: field_2
+
+  ! Internal variables
+  integer(kind=i_def) :: df, df_2, k, ijk
+  real(kind=r_double) :: f_at_node
+  real(kind=r_double), dimension(1,ndf_2,ndf_1) :: r_double_basis_2
+
+  r_double_basis_2 = real(basis_2, r_double)
+
+  do k = 0, nlayers-1
+    do df = 1, ndf_1
+      f_at_node = 0.0_r_double
+      do df_2 = 1,ndf_2
+        f_at_node = f_at_node + field_2(map_2(df_2)+k)*r_double_basis_2(1,df_2,df)
+      end do
+      ijk = map_1(df) + k
+      field_1( ijk ) = field_1( ijk ) + f_at_node*rmultiplicity( ijk )
+    end do
+  end do
+
+end subroutine sample_field_code_r_double
 
 end module sample_field_kernel_mod

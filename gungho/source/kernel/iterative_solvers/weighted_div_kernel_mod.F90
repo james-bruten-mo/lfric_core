@@ -19,7 +19,7 @@ module weighted_div_kernel_mod
                                GH_READ, GH_WRITE,       &
                                GH_BASIS, GH_DIFF_BASIS, &
                                CELL_COLUMN, GH_QUADRATURE_XYoZ
-  use constants_mod,     only: r_def, i_def
+  use constants_mod,     only: r_def, i_def, r_solver
   use fs_continuity_mod, only: W2, W3, Wtheta
   use kernel_mod,        only: kernel_type
 
@@ -105,41 +105,55 @@ subroutine weighted_div_code(cell, nlayers, ncell_3d,             &
   real(kind=r_def), dimension(1,ndf_wtheta,nqp_h,nqp_v),   intent(in) :: basis_wtheta
   real(kind=r_def), dimension(3,ndf_wtheta,nqp_h,nqp_v),   intent(in) :: diff_basis_wtheta
 
-  real(kind=r_def), dimension(ndf_w2,ndf_w3,ncell_3d), intent(inout) :: div
-  real(kind=r_def), dimension(undf_wtheta),            intent(in)    :: theta
-  real(kind=r_def),                                    intent(in)    :: scalar
-  real(kind=r_def), dimension(nqp_h),                  intent(in)    :: wqp_h
-  real(kind=r_def), dimension(nqp_v),                  intent(in)    :: wqp_v
+  real(kind=r_solver), dimension(ndf_w2,ndf_w3,ncell_3d), intent(inout) :: div
+  real(kind=r_solver), dimension(undf_wtheta),            intent(in)    :: theta
+  real(kind=r_solver),                                    intent(in)    :: scalar
+  real(kind=r_def), dimension(nqp_h),                     intent(in)    :: wqp_h
+  real(kind=r_def), dimension(nqp_v),                     intent(in)    :: wqp_v
 
   ! Internal variables
-  integer(kind=i_def)                          :: df, df2, df3, k, ik
-  integer(kind=i_def)                          :: qp1, qp2
-  real(kind=r_def), dimension(ndf_wtheta)      :: theta_e
-  real(kind=r_def)                             :: integrand
-  real(kind=r_def)                             :: div_theta_v
-  real(kind=r_def)                             :: theta_quad, grad_theta_quad(3)
+  integer(kind=i_def)                        :: df, df2, df3, k, ik
+  integer(kind=i_def)                        :: qp1, qp2
+  real(kind=r_solver), dimension(ndf_wtheta) :: theta_e
+  real(kind=r_solver)                        :: integrand
+  real(kind=r_solver)                        :: div_theta_v
+  real(kind=r_solver)                        :: theta_quad, grad_theta_quad(3)
+  real(kind=r_solver)                        :: wt
+
+  real(kind=r_solver), dimension(1,ndf_w3,nqp_h,nqp_v)     :: rsol_basis_w3
+  real(kind=r_solver), dimension(1,ndf_w2,nqp_h,nqp_v)     :: rsol_diff_basis_w2
+  real(kind=r_solver), dimension(3,ndf_w2,nqp_h,nqp_v)     :: rsol_basis_w2
+  real(kind=r_solver), dimension(1,ndf_wtheta,nqp_h,nqp_v) :: rsol_basis_wtheta
+  real(kind=r_solver), dimension(3,ndf_wtheta,nqp_h,nqp_v) :: rsol_diff_basis_wtheta
+
+  rsol_basis_w3          = real(basis_w3, r_solver)
+  rsol_diff_basis_w2     = real(diff_basis_w2, r_solver)
+  rsol_basis_w2          = real(basis_w2, r_solver)
+  rsol_basis_wtheta      = real(basis_wtheta, r_solver)
+  rsol_diff_basis_wtheta = real(diff_basis_wtheta, r_solver)
 
   do k = 0, nlayers - 1
     ik = k + 1 + (cell-1)*nlayers
     do df = 1,ndf_wtheta
       theta_e(df) = theta(map_wtheta(df) + k)
     end do
-    div(:,:,ik) = 0.0_r_def
+    div(:,:,ik) = 0.0_r_solver
     do qp2 = 1, nqp_v
       do qp1 = 1, nqp_h
-        theta_quad      = 0.0_r_def
-        grad_theta_quad = 0.0_r_def
+        theta_quad      = 0.0_r_solver
+        grad_theta_quad = 0.0_r_solver
         do df = 1, ndf_wtheta
           theta_quad = theta_quad                                      &
-                     + theta_e(df)*basis_wtheta(1,df,qp1,qp2)
+                     + theta_e(df)*rsol_basis_wtheta(1,df,qp1,qp2)
           grad_theta_quad(:) = grad_theta_quad(:) &
-                             + theta_e(df)*diff_basis_wtheta(:,df,qp1,qp2)
+                             + theta_e(df)*rsol_diff_basis_wtheta(:,df,qp1,qp2)
         end do
+        wt = real(wqp_h(qp1)*wqp_v(qp2), r_solver)
         do df3 = 1, ndf_w3
-          integrand = scalar*wqp_h(qp1)*wqp_v(qp2)*basis_w3(1,df3,qp1,qp2)
+          integrand = scalar*wt*rsol_basis_w3(1,df3,qp1,qp2)
           do df2 = 1, ndf_w2
-            div_theta_v = diff_basis_w2(1,df2,qp1,qp2)*theta_quad &
-                        + dot_product(basis_w2(:,df2,qp1,qp2),grad_theta_quad)
+            div_theta_v = rsol_diff_basis_w2(1,df2,qp1,qp2)*theta_quad &
+                        + dot_product(rsol_basis_w2(:,df2,qp1,qp2),grad_theta_quad)
             div(df2,df3,ik) = div(df2,df3,ik) + integrand*div_theta_v
           end do
         end do

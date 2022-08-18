@@ -21,7 +21,7 @@ module apply_helmholtz_operator_kernel_mod
                                GH_READ, GH_WRITE,     &
                                STENCIL, CROSS2D,      &
                                CELL_COLUMN
-  use constants_mod,     only: r_def, i_def, l_def
+  use constants_mod,     only: r_solver, i_def, l_def
   use fs_continuity_mod, only: W3
   use kernel_mod,        only: kernel_type
 
@@ -94,20 +94,20 @@ subroutine apply_helmholtz_operator_code(nlayers, &
   integer(kind=i_def), dimension(ndf),                intent(in) :: map
   integer(kind=i_def), dimension(ndf, max_length, 4), intent(in) :: smap
 
-  real(kind=r_def), dimension(undf), intent(inout) :: y
-  real(kind=r_def), dimension(undf), intent(in)    :: x
-  real(kind=r_def), dimension(undf), intent(in)    :: Helm_C,                           &
-                                                      Helm_N, Helm_E, Helm_S, Helm_W,   &
-                                                      Helm_U, Helm_UU, Helm_D, Helm_DD
+  real(kind=r_solver), dimension(undf), intent(inout) :: y
+  real(kind=r_solver), dimension(undf), intent(in)    :: x
+  real(kind=r_solver), dimension(undf), intent(in)    :: Helm_C,                           &
+                                                         Helm_N, Helm_E, Helm_S, Helm_W,   &
+                                                         Helm_U, Helm_UU, Helm_D, Helm_DD
 
   integer(kind=i_def) :: k, branch, cell
-  real(kind=r_def), dimension(max_length,4) :: coeff
+  real(kind=r_solver), dimension(max_length,4) :: coeff
 
   ! Coefficients on this layer
 
   if (limited_area) then
     ! Use a method that accounts for stencils at the edges of the mesh
-    coeff(1,:) = 0.0_r_def
+    coeff(1,:) = 0.0_r_solver
     do k = 0, nlayers-1
       coeff(2,1) = Helm_W(map(1)+k)
       coeff(2,2) = Helm_S(map(1)+k)

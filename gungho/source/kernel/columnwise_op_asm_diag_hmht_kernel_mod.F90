@@ -23,7 +23,7 @@ use argument_mod,            only : arg_type,                 &
                                     ANY_SPACE_1, ANY_SPACE_2, &
                                     CELL_COLUMN
 
-use constants_mod,           only : r_def, r_solver, i_def
+use constants_mod,           only : r_solver, i_def
 
 implicit none
 
@@ -110,8 +110,8 @@ subroutine columnwise_op_asm_diag_hmht_kernel_code(cell,                 &
   integer(kind=i_def),                                        intent(in)  :: ndf_w3
   integer(kind=i_def),                                        intent(in)  :: ndf_w2h
   integer(kind=i_def), dimension(ndf_w3,nlayers),             intent(in)  :: column_banded_dofmap
-  real   (kind=r_def), dimension(ndf_w3,ndf_w2h,ncell_3d),    intent(in)  :: local_stencil_Dh
-  real   (kind=r_def), dimension(ndf_w2h,ndf_w2h,ncell_3d),   intent(in)  :: local_stencil_M2h
+  real   (kind=r_solver), dimension(ndf_w3,ndf_w2h,ncell_3d), intent(in)  :: local_stencil_Dh
+  real   (kind=r_solver), dimension(ndf_w2h,ndf_w2h,ncell_3d),intent(in)  :: local_stencil_M2h
   real   (kind=r_solver), dimension(bandwidth,nrow,ncell_2d), intent(inout) :: columnwise_matrix
 
 
@@ -121,7 +121,7 @@ subroutine columnwise_op_asm_diag_hmht_kernel_code(cell,                 &
   integer(kind=i_def) :: j_minus        ! First column in a row
   integer(kind=i_def) :: ik             ! ncell3d counter
   integer(kind=i_def) :: k              ! nlayers counter
-  real   (kind=r_def) :: tmp            ! Local contribution
+  real   (kind=r_solver) :: tmp            ! Local contribution
 
   k = gamma_m
 
@@ -134,7 +134,7 @@ subroutine columnwise_op_asm_diag_hmht_kernel_code(cell,                 &
       i = column_banded_dofmap( df1, k )
       j_minus = ceiling((alpha*i-gamma_p)/(1.0_r_solver*beta), i_def)
       do df2 = 1, ndf_w3
-        tmp = 0.0_r_def
+        tmp = 0.0_r_solver
         do df3 = 1, ndf_w2h
           tmp = tmp                               &
               + local_stencil_Dh ( df1 ,df3, ik ) &

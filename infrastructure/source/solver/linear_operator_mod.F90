@@ -9,7 +9,6 @@
 !! defines an interface for the linear operator application y = A.x
 
 module linear_operator_mod
-  use constants_mod, only : i_def, r_def
   use vector_mod,    only : abstract_vector_type
   use function_space_mod, only : function_space_type
   implicit none

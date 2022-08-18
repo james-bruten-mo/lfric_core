@@ -25,7 +25,7 @@ module weighted_proj_2theta_bd_kernel_mod
                                GH_QUADRATURE_face,          &
                                CELL_COLUMN, adjacent_face,  &
                                outward_normals_to_horizontal_faces
-  use constants_mod,     only: r_def, i_def
+  use constants_mod,     only: r_def, i_def, r_solver
   use fs_continuity_mod, only: W2, W3, Wtheta
   use kernel_mod,        only: kernel_type
 
@@ -93,26 +93,26 @@ contains
   !!                          quadrature points on horizontal faces
   !> @param[in] nfaces_re_h Number of reference element faces bisected by a
   !!                        horizontal plane
-  !> @param[in] outward_normals_to_horizontal_faces Vector of normals to the
-  !!                                                reference element horizontal
-  !!                                                "outward faces"
+  !> @param[in] outward_normals Vector of normals to the
+  !!                            reference element horizontal
+  !!                            "outward faces"
   !> @param[in] adjacent_face Vector containing information on neighbouring
   !!                          face index for the current cell
   !> @param[in] nfaces_qr Number of faces in the quadrature rule
   !> @param[in] nqp_f Number of quadrature points on horizontal faces
   !> @param[in] wqp_f Quadrature weights on horizontal faces
   !>
-  subroutine weighted_proj_2theta_bd_code( cell, nlayers, ncell_3d,             &
-                                           projection, exner,                   &
-                                           stencil_w3_size, stencil_w3_map,     &
-                                           scalar,                              &
-                                           ndf_w2, w2_basis_face,               &
-                                           ndf_wtheta, wtheta_basis_face,       &
-                                           ndf_w3, undf_w3, map_w3,             &
-                                           w3_basis_face,                       &
-                                           nfaces_re_h,                         &
-                                           outward_normals_to_horizontal_faces, &
-                                           adjacent_face,                       &
+  subroutine weighted_proj_2theta_bd_code( cell, nlayers, ncell_3d,         &
+                                           projection, exner,               &
+                                           stencil_w3_size, stencil_w3_map, &
+                                           scalar,                          &
+                                           ndf_w2, w2_basis_face,           &
+                                           ndf_wtheta, wtheta_basis_face,   &
+                                           ndf_w3, undf_w3, map_w3,         &
+                                           w3_basis_face,                   &
+                                           nfaces_re_h,                     &
+                                           outward_normals,                 &
+                                           adjacent_face,                   &
                                            nfaces_qr, nqp_f, wqp_f )
 
     use calc_exner_pointwise_mod, only: calc_exner_pointwise
@@ -137,28 +137,39 @@ contains
     real(kind=r_def), dimension(1,ndf_wtheta,nqp_f,nfaces_qr), intent(in) :: wtheta_basis_face
     real(kind=r_def), dimension(nqp_f,nfaces_qr),              intent(in) :: wqp_f
 
-    real(kind=r_def), dimension(ndf_w2,ndf_wtheta,ncell_3d), intent(inout) :: projection
-    real(kind=r_def), dimension(undf_w3),                    intent(in)    :: exner
-    real(kind=r_def),                                        intent(in)    :: scalar
+    real(kind=r_solver), dimension(ndf_w2,ndf_wtheta,ncell_3d), intent(inout) :: projection
+    real(kind=r_solver), dimension(undf_w3),                    intent(in)    :: exner
+    real(kind=r_solver),                                        intent(in)    :: scalar
 
     integer(kind=i_def), intent(in) :: adjacent_face(:)
 
-    real(kind=r_def),    intent(in) :: outward_normals_to_horizontal_faces(:,:)
+    real(kind=r_def),    intent(in) :: outward_normals(:,:)
 
     ! Internal variables
-    integer(kind=i_def)                 :: df, df0, df2, k, ik, face, face_next
-    integer(kind=i_def)                 :: qp
-    real(kind=r_def), dimension(ndf_w3) :: exner_e, exner_next_e
+    integer(kind=i_def) :: df, df0, df2, k, ik, face, face_next
+    integer(kind=i_def) :: qp
 
-    real(kind=r_def)                    :: v(3), normal(3), integrand
-    real(kind=r_def)                    :: exner_at_fquad, &
-                                           exner_next_at_fquad, &
-                                           exner_av
+    real(kind=r_solver), dimension(ndf_w3) :: exner_e, exner_next_e
+    real(kind=r_solver)                    :: v(3), normal(3), integrand
+    real(kind=r_solver)                    :: exner_at_fquad, &
+                                              exner_next_at_fquad, &
+                                              exner_av
+
+    real(kind=r_solver), dimension(3,ndf_w2,nqp_f,nfaces_qr)     :: rsol_w2_basis_face
+    real(kind=r_solver), dimension(1,ndf_w3,nqp_f,nfaces_qr)     :: rsol_w3_basis_face
+    real(kind=r_solver), dimension(1,ndf_wtheta,nqp_f,nfaces_qr) :: rsol_wtheta_basis_face
+    real(kind=r_solver), dimension(nqp_f,nfaces_qr)              :: rsol_wqp_f
 
     ! If we're near the edge of the regional domain then the
     ! stencil size will be less that 5 so don't do anything here
     ! This should be removed with lfric ticket #2958
     if (stencil_w3_size < 5)return
+
+    rsol_w2_basis_face = real(w2_basis_face, r_solver)
+    rsol_w3_basis_face = real(w3_basis_face, r_solver)
+    rsol_wtheta_basis_face = real(wtheta_basis_face, r_solver)
+    rsol_wqp_f = real(wqp_f, r_solver)
+
 
     do k = 0, nlayers - 1
       ik = k + 1 + (cell-1)*nlayers
@@ -173,20 +184,21 @@ contains
         end do
 
         do qp = 1, nqp_f
-          exner_at_fquad      = 0.0_r_def
-          exner_next_at_fquad = 0.0_r_def
+          exner_at_fquad      = 0.0_r_solver
+          exner_next_at_fquad = 0.0_r_solver
           do df = 1, ndf_w3
-            exner_at_fquad      = exner_at_fquad + exner_e(df)*w3_basis_face(1,df,qp,face)
-            exner_next_at_fquad = exner_next_at_fquad + exner_next_e(df)*w3_basis_face(1,df,qp,face_next)
+            exner_at_fquad      = exner_at_fquad + exner_e(df)*rsol_w3_basis_face(1,df,qp,face)
+            exner_next_at_fquad = exner_next_at_fquad + exner_next_e(df)*rsol_w3_basis_face(1,df,qp,face_next)
           end do
-          exner_av = 0.5_r_def*(exner_at_fquad + exner_next_at_fquad)
+          exner_av = 0.5_r_solver*(exner_at_fquad + exner_next_at_fquad)
 
           do df0 = 1, ndf_wtheta
-            normal =  outward_normals_to_horizontal_faces(:,face)*wtheta_basis_face(1,df0,qp,face)
+            normal = real(outward_normals(:,face), r_solver) &
+                    *rsol_wtheta_basis_face(1,df0,qp,face)
             do df2 = 1, ndf_w2
-              v  = w2_basis_face(:,df2,qp,face)
+              v  = rsol_w2_basis_face(:,df2,qp,face)
 
-              integrand = wqp_f(qp,face)*exner_av*dot_product(v, normal)
+              integrand = rsol_wqp_f(qp,face)*exner_av*dot_product(v, normal)
               projection(df2,df0,ik) = projection(df2,df0,ik) - scalar*integrand
             end do ! df2
           end do ! df0

@@ -27,7 +27,7 @@ use argument_mod,            only : arg_type,                         &
                                     ANY_SPACE_1,                      &
                                     CELL_COLUMN
 
-use constants_mod,           only : r_def, r_solver, i_def
+use constants_mod,           only : r_solver, i_def
 
 implicit none
 
@@ -93,8 +93,8 @@ contains
     integer(kind=i_def), intent(in) :: cell, ncell_2d
     integer(kind=i_def), intent(in) :: nrow, bandwidth
     integer(kind=i_def), intent(in) :: undf, ndf
-    real(kind=r_def), dimension(undf), intent(inout) :: lhs
-    real(kind=r_def), dimension(undf), intent(in) :: x
+    real(kind=r_solver), dimension(undf), intent(inout) :: lhs
+    real(kind=r_solver), dimension(undf), intent(in) :: x
     real(kind=r_solver), dimension(bandwidth,nrow,ncell_2d), intent(in) :: columnwise_matrix
     integer(kind=i_def), dimension(ndf), intent(in) :: map
 
@@ -105,9 +105,9 @@ contains
     integer(kind=i_def) :: i, mu_i ! Row and column index
 
     ! Arrays c' and d' used in Thomas algorithm
-    real(kind=r_def), dimension(nrow) :: c_prime, d_prime
+    real(kind=r_solver), dimension(nrow) :: c_prime, d_prime
     ! inverse denominator
-    real(kind=r_def) :: inv_denom
+    real(kind=r_solver) :: inv_denom
 
     ! Spurious instructions to avoid 'unused variable' warnings
     i = alpha + beta + gamma_m + gamma_p
@@ -117,19 +117,19 @@ contains
        mu_i = map(1) + indirection_dofmap(i) - 1
        if (i == 1) then
           ! First row
-          inv_denom = 1.0_r_def / real(columnwise_matrix(2,i,cell), r_def)
-          c_prime(i) = inv_denom * real(columnwise_matrix(3,i,cell), r_def)
+          inv_denom = 1.0_r_solver / real(columnwise_matrix(2,i,cell), r_solver)
+          c_prime(i) = inv_denom * real(columnwise_matrix(3,i,cell), r_solver)
           d_prime(i) = inv_denom * x(mu_i)
        else
           ! Subsequent rows 2,...,nrow-1
-          inv_denom = 1.0_r_def / ( real(columnwise_matrix(2,i,cell), r_def) &
-                    - real(columnwise_matrix(1,i,cell), r_def) * c_prime(i-1) )
+          inv_denom = 1.0_r_solver / ( real(columnwise_matrix(2,i,cell), r_solver) &
+                    - real(columnwise_matrix(1,i,cell), r_solver) * c_prime(i-1) )
           if (i < nrow) then
              ! We don't need c' in the last row
-             c_prime(i) = inv_denom * real(columnwise_matrix(3,i,cell), r_def)
+             c_prime(i) = inv_denom * real(columnwise_matrix(3,i,cell), r_solver)
           end if
           d_prime(i) = inv_denom * ( x(mu_i) &
-                     - real(columnwise_matrix(1,i,cell), r_def) * d_prime(i-1) )
+                     - real(columnwise_matrix(1,i,cell), r_solver) * d_prime(i-1) )
        end if
     end do
     ! Step 2: Backward sweep (substitution), loop over all rows backwards

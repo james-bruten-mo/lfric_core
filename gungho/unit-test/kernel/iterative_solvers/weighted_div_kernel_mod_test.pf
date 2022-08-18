@@ -8,7 +8,7 @@
 !>
 module weighted_div_kernel_mod_test
 
-  use constants_mod,                       only : i_def, r_def
+  use constants_mod,                       only : i_def, r_def, r_solver
   use get_unit_test_m3x3_q3x3x3_sizes_mod, only : get_w0_m3x3_q3x3x3_size,  &
                                                   get_w2_m3x3_q3x3x3_size,  &
                                                   get_w3_m3x3_q3x3x3_size
@@ -82,9 +82,9 @@ contains
 
     class(weighted_div_test_type), intent(inout) :: this
 
-    real(kind=r_def), dimension(1,6) :: answer
-    real(kind=r_def), parameter :: tol = 1.0e-6_r_def   ! r_def 64bit tolerance
-    real(kind=r_def)            :: use_tol
+    real(kind=r_solver), dimension(1,6) :: answer
+    real(kind=r_solver), parameter :: tol = 1.0e-6_r_solver   ! r_solver 64bit tolerance
+    real(kind=r_solver)            :: use_tol
 
     integer(i_def) :: nlayers, ncells, ncell_3d, cell
     integer(i_def) :: ndf_w0, undf_w0, ndf_w2, undf_w2, ndf_w3, undf_w3
@@ -96,8 +96,8 @@ contains
                                 basis_w2(:,:,:,:), diff_basis_w2(:,:,:,:), &
                                 basis_w3(:,:,:,:)
     real(r_def), allocatable :: wh(:), wv(:)
-    real(r_def), allocatable :: local_stencil(:,:,: )
-    real(r_def), allocatable :: theta_p_data(:)
+    real(r_solver), allocatable :: local_stencil(:,:,: )
+    real(r_solver), allocatable :: theta_p_data(:)
 
     nlayers = 3
     call get_w0_m3x3_q3x3x3_size( ndf_w0, undf_w0, ncells, &
@@ -126,9 +126,9 @@ contains
 
     ncell_3d = ncells*nlayers
     allocate(local_stencil(ndf_w2, ndf_w3, ncell_3d))
-    local_stencil(:,:,:) = 0.0_r_def
+    local_stencil(:,:,:) = 0.0_r_solver
     allocate(theta_p_data(undf_w0))
-    theta_p_data(:) = 300.0_r_def
+    theta_p_data(:) = 300.0_r_solver
 
     cell = 1
     call weighted_div_code( cell,                              &
@@ -136,7 +136,7 @@ contains
                             ncell_3d,                          &
                             local_stencil,                     &
                             theta_p_data,                      &
-                            1.0_r_def,                         &
+                            1.0_r_solver,                         &
                             ndf_w2,                            &
                             basis_w2,                          &
                             diff_basis_w2,                     &
@@ -154,10 +154,10 @@ contains
                             )
 
     call div_operator(answer)
-    if ( r_def == real64 ) then
+    if ( r_solver == real64 ) then
       use_tol = tol
     else
-      use_tol = 10.0_r_def*spacing( maxval(local_stencil(:, :, 1 )) )
+      use_tol = 10.0_r_solver*spacing( maxval(local_stencil(:, :, 1 )) )
     endif
     @assertEqual(answer, transpose(local_stencil(:, :, 1 )), use_tol)
 
@@ -175,22 +175,22 @@ contains
   end subroutine test_all
 
   subroutine div_operator( div )
-    use constants_mod, only: r_def
+    use constants_mod, only: r_solver
     implicit none
 
-    real(kind=r_def), dimension(1,6), intent(inout) :: div
-    real(kind=r_def), dimension(1,1) :: m3
-    real(kind=r_def), dimension(1,6) :: d32
+    real(kind=r_solver), dimension(1,6), intent(inout) :: div
+    real(kind=r_solver), dimension(1,1) :: m3
+    real(kind=r_solver), dimension(1,6) :: d32
 
     m3 = reshape( [ &
-  1.0000000000000000E+00_r_def &
+  1.0000000000000000E+00_r_solver &
     ], shape(m3) )
 
   d32 = real(reshape( [ &
   -1, 1, 1, -1, -1, 1 &
- ], shape(d32) ),r_def)
+ ], shape(d32) ),r_solver)
 
-  div = 300_r_def*matmul(m3,d32)
+  div = 300_r_solver*matmul(m3,d32)
 
     return
   end subroutine div_operator

@@ -12,7 +12,7 @@ module split_w2_field_kernel_mod
                                 GH_INC, GH_READWRITE, &
                                 GH_READ, ANY_SPACE_1, &
                                 CELL_COLUMN
-  use constants_mod,     only : r_def, i_def
+  use constants_mod,     only : r_double, r_single, i_def
   use fs_continuity_mod, only : W2, W2h, W2v
   use kernel_mod,        only : kernel_type
 
@@ -34,13 +34,18 @@ module split_w2_field_kernel_mod
          arg_type(GH_FIELD, GH_REAL, GH_READ,      W2)   &
          /)
     integer :: operates_on = CELL_COLUMN
-  contains
-    procedure, nopass :: split_w2_field_code
   end type
   !---------------------------------------------------------------------------
   ! Contained functions/subroutines
   !---------------------------------------------------------------------------
   public :: split_w2_field_code
+
+  ! Generic interface for real32 and real64 types
+  interface split_w2_field_code
+    module procedure  &
+      split_w2_field_code_r_single, &
+      split_w2_field_code_r_double
+  end interface
 
 contains
 
@@ -58,11 +63,13 @@ contains
 !> @param[in]     undf_w2  Number of unique degrees of freedom for W2
 !> @param[in]     map_w2   Dofmap for the cell at the base of the column for W2
 
-subroutine split_w2_field_code(nlayers,                    &
-                               uv, w, uvw,                 &
-                               ndf_w2h, undf_w2h, map_w2h, &
-                               ndf_w2v, undf_w2v, map_w2v, &
-                               ndf_w2,  undf_w2,  map_w2 )
+! R_DOUBLE PRECISION
+! ==================
+subroutine split_w2_field_code_r_double(nlayers,                    &
+                                        uv, w, uvw,                 &
+                                        ndf_w2h, undf_w2h, map_w2h, &
+                                        ndf_w2v, undf_w2v, map_w2v, &
+                                        ndf_w2,  undf_w2,  map_w2 )
   implicit none
 
   ! Arguments
@@ -72,9 +79,9 @@ subroutine split_w2_field_code(nlayers,                    &
   integer(kind=i_def), dimension(ndf_w2),  intent(in) :: map_w2
   integer(kind=i_def), dimension(ndf_w2h), intent(in) :: map_w2h
   integer(kind=i_def), dimension(ndf_w2v), intent(in) :: map_w2v
-  real(kind=r_def), dimension(undf_w2h), intent(inout)    :: uv
-  real(kind=r_def), dimension(undf_w2v), intent(inout)    :: w
-  real(kind=r_def), dimension(undf_w2),  intent(in) :: uvw
+  real(kind=r_double), dimension(undf_w2h), intent(inout) :: uv
+  real(kind=r_double), dimension(undf_w2v), intent(inout) :: w
+  real(kind=r_double), dimension(undf_w2),  intent(in)    :: uvw
 
   ! Internal variables
   integer(kind=i_def) :: df, k
@@ -90,6 +97,42 @@ subroutine split_w2_field_code(nlayers,                    &
     end do
   end do
 
-end subroutine split_w2_field_code
+end subroutine split_w2_field_code_r_double
+
+! R_SINGLE PRECISION
+! ==================
+subroutine split_w2_field_code_r_single(nlayers,                    &
+                                        uv, w, uvw,                 &
+                                        ndf_w2h, undf_w2h, map_w2h, &
+                                        ndf_w2v, undf_w2v, map_w2v, &
+                                        ndf_w2,  undf_w2,  map_w2 )
+  implicit none
+
+  ! Arguments
+  integer(kind=i_def), intent(in) :: nlayers
+  integer(kind=i_def), intent(in) :: ndf_w2, ndf_w2h, ndf_w2v
+  integer(kind=i_def), intent(in) :: undf_w2, undf_w2h, undf_w2v
+  integer(kind=i_def), dimension(ndf_w2),  intent(in) :: map_w2
+  integer(kind=i_def), dimension(ndf_w2h), intent(in) :: map_w2h
+  integer(kind=i_def), dimension(ndf_w2v), intent(in) :: map_w2v
+  real(kind=r_single), dimension(undf_w2h), intent(inout) :: uv
+  real(kind=r_single), dimension(undf_w2v), intent(inout) :: w
+  real(kind=r_single), dimension(undf_w2),  intent(in)    :: uvw
+
+  ! Internal variables
+  integer(kind=i_def) :: df, k
+
+  ! First 2/3 of ndf are horizontal df's (=ndf_w2h),
+  ! the rest are vertical dfs' (=ndf_w2v)
+  do k = 0, nlayers-1
+    do df = 1,ndf_w2h
+      uv(map_w2h(df) + k) = uvw(map_w2(df) + k)
+    end do
+    do df = 1,ndf_w2v
+      w(map_w2v(df) + k) = uvw(map_w2(ndf_w2h+df) + k)
+    end do
+  end do
+
+end subroutine split_w2_field_code_r_single
 
 end module split_w2_field_kernel_mod

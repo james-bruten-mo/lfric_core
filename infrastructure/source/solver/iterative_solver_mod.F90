@@ -33,12 +33,12 @@ module iterative_solver_mod
   !> @brief abstract solver type for the solver API
   type, public, abstract :: abstract_iterative_solver_type
      private
-     !> Linear operator
+     !> Preconditioner
      class(abstract_preconditioner_type),  pointer :: prec => null()
+     !> Linear operator
      class(abstract_linear_operator_type), pointer :: lin_op => null()
-      !> preconditioner
 
-      ! relative tolerance
+     ! relative tolerance
      real(kind=r_def)                              :: r_tol
      ! absolute tolerance
      real(kind=r_def)                              :: a_tol

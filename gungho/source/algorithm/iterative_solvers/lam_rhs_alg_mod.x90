@@ -11,7 +11,8 @@ module lam_rhs_alg_mod
   use constants_mod,               only: r_def, i_def
   use matrix_vector_kernel_mod,    only: matrix_vector_kernel_type
   use dg_matrix_vector_kernel_mod, only: dg_matrix_vector_kernel_type
-  use dg_inc_matrix_vector_kernel_mod, only: dg_inc_matrix_vector_kernel_type
+  use dg_inc_matrix_vector_kernel_mod, &
+                                   only: dg_inc_matrix_vector_kernel_type
   use enforce_bc_kernel_mod,       only: enforce_bc_kernel_type
   use io_config_mod,               only: subroutine_timers
   use timer_mod,                   only: timer
@@ -26,9 +27,13 @@ module lam_rhs_alg_mod
   use limited_area_constants_mod,  only: get_mask
   use fs_continuity_mod,           only: W2, W3, Wtheta
   use field_mod,                   only: field_type
+  use r_solver_field_mod,          only: r_solver_field_type
   use field_collection_mod,        only: field_collection_type
-  use operator_mod,                only: operator_type
+  use operator_mod,                only: operator_type, &
+                                         r_solver_operator_type
   use field_indices_mod,           only: igh_u, igh_t, igh_d, igh_p
+  use operator_algebra_kernel_mod, only: operator_setval_x_kernel_type
+  use psykal_lite_mod,             only: invoke_copy_to_rdef
 
   implicit none
 
@@ -91,17 +96,22 @@ contains
     type(field_type),    pointer :: boundary_u => null()
     type(operator_type), pointer :: mm_vel     => null(), &
                                     mm_w3_inv  => null(), &
-                                    div        => null(), &
-                                    ptheta2    => null()
-    type(field_type),    pointer :: rho_at_u   => null()
-    type(field_type)             :: f_star, &
-                                    u_tmp,  &
+                                    div        => null()
+    type(operator_type)          :: ptheta2
+    type(field_type),    pointer :: mt_lumped_inv => null(), &
+                                    m2_diag       => null()
+    type(field_type)             :: rho_at_u, &
+                                    f_star,   &
+                                    u_tmp,    &
                                     r_tmp
     real(r_def),       parameter :: minus_one = -1.0_r_def
     type(field_type),    pointer :: w2_mask     => null(), &
                                     w3_mask     => null(), &
                                     wtheta_mask => null()
     integer(i_def)               :: mesh_id
+
+    type(r_solver_field_type), pointer :: r_solver_rho_at_u => null()
+    type(r_solver_operator_type), pointer :: r_solver_ptheta2 => null()
 
     if ( subroutine_timers ) call timer('rhs_lbc')
 
@@ -121,8 +131,13 @@ contains
     mm_vel    => get_w2_si_mass_matrix(mesh_id) ! = m2 (or dl) + tau_u*dt*coriolis
 
     ! Obtain operators from SI operators
-    ptheta2  => get_ptheta2()
-    rho_at_u => get_rho_at_u()
+    r_solver_ptheta2  => get_ptheta2()
+    call ptheta2%initialise( rhs(igh_t)%get_function_space(), &
+                             rhs(igh_u)%get_function_space() )
+    call invoke( operator_setval_x_kernel_type(ptheta2, r_solver_ptheta2) )
+    r_solver_rho_at_u => get_rho_at_u()
+    call rho_at_u%initialise( vector_space = rhs(igh_u)%get_function_space() )
+    call invoke_copy_to_rdef(rho_at_u, r_solver_rho_at_u)
     call f_star%initialise( vector_space = rhs(igh_u)%get_function_space() )
     call u_tmp%initialise( vector_space = rhs(igh_u)%get_function_space() )
     call r_tmp%initialise( vector_space = rhs(igh_d)%get_function_space() )
@@ -166,8 +181,8 @@ contains
                       )
 
     nullify ( boundary_u, w2_mask, w3_mask, wtheta_mask )
-    nullify ( mm_w3_inv, div, mm_vel )
-    nullify ( ptheta2, rho_at_u )
+    nullify ( mm_w3_inv, div, mt_lumped_inv, m2_diag, mm_vel )
+    nullify ( r_solver_ptheta2, r_solver_rho_at_u )
 
     if ( subroutine_timers ) call timer('rhs_lbc')
 

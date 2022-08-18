@@ -18,6 +18,7 @@ module limited_area_constants_mod
   use extrusion_mod,                     only: TWOD
   use fem_constants_mod,                 only: get_rmultiplicity
   use field_mod,                         only: field_type
+  use r_solver_field_mod,                only: r_solver_field_type
   use field_parent_mod,                  only: field_parent_type, write_interface
   use field_collection_mod,              only: field_collection_type
   use field_collection_iterator_mod,     only: field_collection_iterator_type, &
@@ -45,6 +46,7 @@ module limited_area_constants_mod
   use timer_mod,                         only: timer
 
 
+  use psykal_lite_mod,                   only: invoke_copy_to_rsolver
   ! Configuration
   use base_mesh_config_mod,              only: geometry, geometry_spherical
   use boundaries_config_mod,             only: normal_only, lbc_method, &
@@ -105,11 +107,16 @@ module limited_area_constants_mod
   type(field_type), allocatable, target :: mask_boundary_w2_list(:)
   type(field_type), target :: onion_layers
 
-  ! Public functions to create and access the module contents
+  ! r_solver masks
+  type(r_solver_field_type), allocatable, target :: mask_w2_list_r_solver(:)
+  type(r_solver_field_type), allocatable, target :: mask_w3_list_r_solver(:)
+  type(r_solver_field_type), allocatable, target :: mask_wt_list_r_solver(:)
 
+  ! Public functions to create and access the module contents
   public :: create_limited_area_constants
   public :: final_limited_area_constants
   public :: get_mask
+  public :: get_mask_r_solver
   public :: get_boundary_mask
   public :: get_lbc_mask
   public :: get_blend_mask
@@ -186,6 +193,9 @@ contains
     allocate(mask_blend_w3_list(num_meshes))
     allocate(mask_blend_wtheta_list(num_meshes))
     allocate(mask_boundary_w2_list(num_meshes))
+    allocate(mask_w3_list_r_solver(num_meshes))
+    allocate(mask_w2_list_r_solver(num_meshes))
+    allocate(mask_wt_list_r_solver(num_meshes))
 
     !===================== Start loop and creation of fields =================!
 
@@ -274,6 +284,14 @@ contains
         call mask_collection%add_field( mask_blend_wtheta_list(i) )
         call mask_collection%add_field( mask_boundary_w2_list(i) )
 
+        ! Create r_solver masks
+        call mask_w2_list_r_solver(i)%initialise( vector_space = w2_fs )
+        call mask_w3_list_r_solver(i)%initialise( vector_space = w3_fs )
+        call mask_wt_list_r_solver(i)%initialise( vector_space = wtheta_fs )
+        call invoke_copy_to_rsolver(mask_w2_list_r_solver(i), mask_w2_list(i))
+        call invoke_copy_to_rsolver(mask_w3_list_r_solver(i), mask_w3_list(i))
+        call invoke_copy_to_rsolver(mask_wt_list_r_solver(i), mask_wtheta_list(i))
+
         if (run_log_level == run_log_level_debug) call list_mask_fields()
 
       end if
@@ -329,6 +347,12 @@ contains
                                                      w2_source_mask,         &
                                                      rmultiplicity_w2,       &
                                                      w2_mask ) )
+
+        call mask_w3_list_r_solver(mesh_index_coarse)%initialise( w3_fs )
+        call invoke_copy_to_rsolver(mask_w3_list_r_solver(mesh_index_coarse), mask_w3_list(mesh_index_coarse))
+
+        call mask_w2_list_r_solver(mesh_index_coarse)%initialise( w2_fs )
+        call invoke_copy_to_rsolver(mask_w2_list_r_solver(mesh_index_coarse), mask_w2_list(mesh_index_coarse))
 
       end do
     end if
@@ -449,6 +473,34 @@ contains
     call check_initialised_field(mask_ptr, field_name, mesh_id, space)
 
   end function get_mask
+
+  !> @brief  Returns pointer to the interior mask at r_solver precision
+  !> @param[in] space The function space of the interior mask
+  !> @param[in] mesh_id The ID of the mesh to get the object for
+  !> @return The interior mask field
+  function get_mask_r_solver(space, mesh_id) result(sol_mask_ptr)
+    implicit none
+    integer(kind=i_def), intent(in)    :: mesh_id
+    integer(kind=i_def), intent(in)    :: space
+    type(r_solver_field_type), pointer :: sol_mask_ptr
+    integer(kind=i_def)                :: mesh_index
+
+    mesh_index = find_mesh_index(mesh_id)
+
+    select case (space)
+      case (W2)
+        sol_mask_ptr => mask_w2_list_r_solver(mesh_index)
+      case (W3)
+        sol_mask_ptr => mask_w3_list_r_solver(mesh_index)
+      case (Wtheta)
+        sol_mask_ptr => mask_wt_list_r_solver(mesh_index)
+      case default
+        sol_mask_ptr => null()
+        call log_event( "r_solver Mask not available on requested space", &
+          LOG_LEVEL_ERROR)
+    end select
+
+  end function get_mask_r_solver
 
   !> @brief  Returns pointer to the boundary mask
   !> @param[in] space The function space of the boundary mask
@@ -581,6 +633,9 @@ contains
     if (allocated(mask_blend_w3_list)) deallocate(mask_blend_w3_list)
     if (allocated(mask_blend_wtheta_list)) deallocate(mask_blend_wtheta_list)
     if (allocated(mask_boundary_w2_list)) deallocate(mask_boundary_w2_list)
+    if (allocated(mask_w3_list_r_solver)) deallocate(mask_w3_list_r_solver)
+    if (allocated(mask_w2_list_r_solver)) deallocate(mask_w2_list_r_solver)
+    if (allocated(mask_wt_list_r_solver)) deallocate(mask_wt_list_r_solver)
 
   end subroutine final_limited_area_constants
 

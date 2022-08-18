@@ -9,7 +9,7 @@
 !> in columnwise_operator_type and in a dense representation with matmul()
 module columnwise_op_app_kernel_mod_test
 
-  use constants_mod,                 only : i_def, r_def, r_solver
+  use constants_mod,                 only : i_def, r_solver
   use get_unit_test_m3x3_dofmap_mod, only : get_wtheta_m3x3_dofmap
   use get_unit_test_m3x3_q3x3x3_sizes_mod, &
        only : get_wtheta_m3x3_q3x3x3_size
@@ -62,7 +62,7 @@ contains
 
     class(columnwise_op_app_test_type), intent(inout) :: this
 
-    real(kind=r_def), parameter :: tol = 1.0e-6_r_def
+    real(kind=r_solver), parameter :: tol = 1.0e-6_r_solver
 
     integer(kind=i_def) :: i, cell
 
@@ -78,12 +78,12 @@ contains
     integer(kind=i_def), allocatable :: indirection_map(:)
     integer(kind=i_def), allocatable :: column_banded_map(:,:)
 
-    real(kind=r_def), allocatable :: lhs_data(:), rhs_data(:)
+    real(kind=r_solver), allocatable :: lhs_data(:), rhs_data(:)
 
-    real(kind=r_def), allocatable    :: lhs_direct(:)
+    real(kind=r_solver), allocatable    :: lhs_direct(:)
     real(kind=r_solver), allocatable :: columnwise_matrix(:,:,:)
 
-    real(kind=r_def), allocatable, dimension(:,:) :: densematrix
+    real(kind=r_solver), allocatable, dimension(:,:) :: densematrix
 
     call get_wtheta_m3x3_q3x3x3_size(ndf, undf, ncells, unused, unused, unused, unused, nlayers=nlayers)
 
@@ -93,7 +93,7 @@ contains
     ! Fill RHS with random data
     allocate(rhs_data(undf), lhs_data(undf) )
     call random_number(rhs_data(:))
-    lhs_data(:) = 0.0_r_def
+    lhs_data(:) = 0.0_r_solver
 
     call get_wtheta_m3x3_cma_data(ndf, undf, ncells, nlayers, map, &
                                   alpha, beta, g_m, g_p, bw,   &
@@ -106,12 +106,12 @@ contains
     @assertEqual(bw, 3)
 
     allocate(lhs_direct(nrow))
-    lhs_direct(:) = 0.0_r_def
+    lhs_direct(:) = 0.0_r_solver
 
     ! Construct banded and dense matrix representation,
     ! fill with (scaled) theta mass matrix.
     allocate(densematrix(nrow,ncol))
-    densematrix(:,:) = 0.0_r_def
+    densematrix(:,:) = 0.0_r_solver
 
     allocate( columnwise_matrix( bw, nrow, ncells ) )
     columnwise_matrix(:,:,:) = 0.0_r_solver
@@ -120,20 +120,20 @@ contains
        if (i == 1) then
           columnwise_matrix(2,i,cell) = 1.0_r_solver/3.0_r_solver
           columnwise_matrix(3,i,cell) = 1.0_r_solver/6.0_r_solver
-          densematrix(i,i)   = 1.0_r_def/3.0_r_def
-          densematrix(i,i+1) = 1.0_r_def/6.0_r_def
+          densematrix(i,i)   = 1.0_r_solver/3.0_r_solver
+          densematrix(i,i+1) = 1.0_r_solver/6.0_r_solver
        else if (i == nrow) then
           columnwise_matrix(1,i,cell) = 1.0_r_solver/6.0_r_solver
           columnwise_matrix(2,i,cell) = 1.0_r_solver/3.0_r_solver
-          densematrix(i,i-1) = 1.0_r_def/6.0_r_def
-          densematrix(i,i)   = 1.0_r_def/3.0_r_def
+          densematrix(i,i-1) = 1.0_r_solver/6.0_r_solver
+          densematrix(i,i)   = 1.0_r_solver/3.0_r_solver
        else
           columnwise_matrix(1,i,cell) = 1.0_r_solver/6.0_r_solver
           columnwise_matrix(2,i,cell) = 2.0_r_solver/3.0_r_solver
           columnwise_matrix(3,i,cell) = 1.0_r_solver/6.0_r_solver
-          densematrix(i,i-1) = 1.0_r_def/6.0_r_def
-          densematrix(i,i)   = 2.0_r_def/3.0_r_def
-          densematrix(i,i+1) = 1.0_r_def/6.0_r_def
+          densematrix(i,i-1) = 1.0_r_solver/6.0_r_solver
+          densematrix(i,i)   = 2.0_r_solver/3.0_r_solver
+          densematrix(i,i+1) = 1.0_r_solver/6.0_r_solver
        end if
     end do
 

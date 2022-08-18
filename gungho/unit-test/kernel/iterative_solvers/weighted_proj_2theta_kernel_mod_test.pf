@@ -8,7 +8,7 @@
 !>
 module weighted_proj_2theta_kernel_mod_test
 
-  use constants_mod, only: i_def, r_def
+  use constants_mod, only: i_def, r_def, r_solver
   use pFUnit_Mod
 
   implicit none
@@ -71,14 +71,14 @@ contains
 
     class(weighted_proj_2theta_test_type), intent(inout) :: this
 
-    real(kind=r_def), parameter :: tol = 1.0e-6_r_def
+    real(kind=r_solver), parameter :: tol = 1.0e-6_r_solver
 
     integer :: cell
 
-    real(kind=r_def), dimension(6,8) :: answer
+    real(kind=r_solver), dimension(6,8) :: answer
 
-    real(r_def), allocatable :: exner_data(:)
-    real(r_def), allocatable :: local_stencil(:,:,:)
+    real(r_solver), allocatable :: exner_data(:)
+    real(r_solver), allocatable :: local_stencil(:,:,:)
 
     integer(i_def) :: nlayers, ncells, ncells_3d
     integer(i_def) :: dim_space, dim_space_diff
@@ -134,10 +134,10 @@ contains
     ! Assign data for testing
     !=====================================
     allocate(exner_data(undf_w3))
-    exner_data = 1.0_r_def
+    exner_data = 1.0_r_solver
 
     allocate( local_stencil(ndf_w2, ndf_w0, ncells_3d) )
-    local_stencil(:,:,:) = 0.0_r_def
+    local_stencil(:,:,:) = 0.0_r_solver
 
     !=====================================
     ! Apply test on interior cell 1
@@ -148,7 +148,7 @@ contains
                                     ncells_3d,       &
                                     local_stencil,   &
                                     exner_data,      &
-                                    1.0_r_def,       &
+                                    1.0_r_solver,    &
                                     ndf_w2,          &
                                     basis_w2,        &
                                     diff_basis_w2,   &
@@ -184,13 +184,13 @@ contains
 
   subroutine proj_operator( proj )
 
-    use constants_mod, only: r_def
+    use constants_mod, only: r_solver
 
     implicit none
 
-    real(kind=r_def), dimension(6,8), intent(inout) :: proj
+    real(kind=r_solver), dimension(6,8), intent(inout) :: proj
 
-    proj = 0.25_r_def*real(reshape( [             &
+    proj = 0.25_r_solver*real(reshape( [             &
                           -1,  1,  0,  0, -1,  0, &
                            0,  1,  1,  0, -1,  0, &
                            0,  0,  1, -1, -1,  0, &
@@ -199,7 +199,7 @@ contains
                            0,  1,  1,  0,  0,  1, &
                            0,  0,  1, -1,  0,  1, &
                           -1,  0,  0, -1,  0,  1  &
-                          ], shape(proj) ),r_def)
+                          ], shape(proj) ),r_solver)
 
     return
   end subroutine proj_operator

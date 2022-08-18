@@ -138,48 +138,37 @@ contains
   subroutine apply_dense_op(self, x, y)
 
     implicit none
-
-    class(dense_operator_type),  intent(inout) :: self
-    class(abstract_vector_type), intent(in)    :: x
-    class(abstract_vector_type), intent(inout) :: y
-
-    ! Workaround for PSyclone to get pointers of the correct type for x and y
-    type(field_type), pointer :: x_vec_1 => null(), &
-                                 y_vec_1 => null(), &
-                                 x_vec_2 => null(), &
-                                 y_vec_2 => null()
-
+    class(dense_operator_type), intent(inout)    :: self
+    class(abstract_vector_type),          intent(in)    :: x
+    class(abstract_vector_type),          intent(inout) :: y
+    type(field_type), pointer :: x_field1 => null(), &
+                                 y_field1 => null(), &
+                                 x_field2 => null(), &
+                                 y_field2 => null()
     select type (x)
 
     type is (field_vector_type)
-
-      select type (y)
-
-      type is (field_vector_type)
-        ! Get pointers to x and y abstract types
-        x_vec_1 => x%get_field(1)
-        y_vec_1 => y%get_field(1)
-        x_vec_2 => x%get_field(2)
-        y_vec_2 => y%get_field(2)
-
-        call y%set_scalar(0.0_r_def)
-        call invoke( &
-             matrix_vector_kernel_type(y_vec_1, x_vec_1, self%mass_w0),       &
-             dg_inc_matrix_vector_kernel_type(y_vec_2, x_vec_2, self%mass_w3) &
-             )
-      class default
-        write(log_scratch_space, '(A)') "dense_operator_alg_mod: incorrect vector_type as argument y"
-        call log_event(log_scratch_space, LOG_LEVEL_ERROR)
-
-      end select
-
+       select type (y)
+       type is (field_vector_type)
+          call y%set_scalar(0.0_r_def)
+          x_field1 => x%get_field(1)
+          y_field1 => y%get_field(1)
+          x_field2 => x%get_field(2)
+          y_field2 => y%get_field(2)
+          call invoke(   &
+               matrix_vector_kernel_type(y_field1,x_field1,self%mass_w0), &
+               dg_inc_matrix_vector_kernel_type(y_field2,x_field2,self%mass_w3)  &
+               )
+          nullify(x_field1, y_field1, x_field2, y_field2)
+       class default
+          write(log_scratch_space, '(A)') "dense_operator_alg_mod: incorrect vector_type as argument y"
+          call log_event(log_scratch_space, LOG_LEVEL_ERROR)
+       end select
     class default
       write(log_scratch_space, '(A)') "dense_operator_alg_mod: incorrect vector_type as argument x"
       call log_event(log_scratch_space, LOG_LEVEL_ERROR)
 
     end select
-
-    nullify( x_vec_1, y_vec_1, x_vec_2, y_vec_2 )
 
   end subroutine apply_dense_op
 

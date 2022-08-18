@@ -21,16 +21,17 @@
 module gw_pressure_precon_alg_mod
 
   use vector_mod,                      only : abstract_vector_type
-  use field_vector_mod,                only : field_vector_type
-  use field_mod,                       only : field_type
+  use r_solver_field_vector_mod,       only : r_solver_field_vector_type
+  use r_solver_field_mod,              only : r_solver_field_type
   use hierarchical_preconditioner_mod, only : abstract_hierarchical_preconditioner_type
   use log_mod,                         only : log_event, &
                                               LOG_LEVEL_INFO, &
                                               LOG_LEVEL_ERROR, &
                                               log_scratch_space
   use columnwise_operator_mod,         only : columnwise_operator_type
-  use constants_mod,                   only : i_def, r_def, r_solver
+  use constants_mod,                   only : i_def, r_solver
   use operator_mod,                    only : operator_type
+  use operator_mod,                    only : r_solver_operator_type
 
   ! Columnwise operator kernels
   use columnwise_op_app_kernel_mod,    only : columnwise_op_app_kernel_type
@@ -110,34 +111,38 @@ contains
   !> @param[in,out] self Instance of type gw_pressure_preconditioner_type
   subroutine build_Hz(self)
 
-    use fem_constants_mod,            only : get_div_v,                 &
-                                             get_div_h,                 &
-                                             get_mass_matrix,           &
-                                             get_inverse_w3_mass_matrix
-    use fs_continuity_mod,            only : W3, W2h, W2v
+    use fem_constants_mod,                      only : get_div_v,                 &
+                                                       get_div_h,                 &
+                                                       get_mass_matrix,           &
+                                                       get_inverse_w3_mass_matrix_r_solver
+    use fs_continuity_mod,                      only : W3, W2h, W2v
     use transpose_matrix_kernel_mod,            only : transpose_matrix_kernel_type
     use enforce_operator_bc_kernel_mod,         only : enforce_operator_bc_kernel_type
     use columnwise_op_asm_kernel_mod,           only : columnwise_op_asm_kernel_type
     use columnwise_op_asm_diag_hmht_kernel_mod, only : columnwise_op_asm_diag_hmht_kernel_type
     use columnwise_op_mul_kernel_mod,           only : columnwise_op_mul_kernel_type
     use columnwise_op_scaledadd_kernel_mod,     only : columnwise_op_scaledadd_kernel_type
-    use columnwise_op_asm_m2v_lumped_inv_kernel_mod, only : columnwise_op_asm_m2v_lumped_inv_kernel_type
-
+    use columnwise_op_asm_m2v_lumped_inv_kernel_mod, &
+                                                only : columnwise_op_asm_m2v_lumped_inv_kernel_type
+    use operator_algebra_kernel_mod,            only : operator_setval_x_kernel_type
     implicit none
 
     ! Instance of type
     class(gw_pressure_preconditioner_type), intent(inout) :: self
 
     ! Pointers to mass matrices and derivative operators
-    type(operator_type), pointer :: mm_w3
-    type(operator_type), pointer :: mm_w3_inv
-    type(operator_type), pointer :: mm_w2v_noBC
-    type(operator_type), pointer :: mm_w2h
-    type(operator_type), pointer :: div_v
-    type(operator_type), pointer :: div_h
+    type(operator_type),          pointer :: mm => null()
+    type(operator_type),          pointer :: div_v_r_def => null()
+    type(operator_type),          pointer :: div_h_r_def => null()
+    type(r_solver_operator_type)          :: mm_w3
+    type(r_solver_operator_type), pointer :: mm_w3_inv
+    type(r_solver_operator_type)          :: mm_w2v_noBC
+    type(r_solver_operator_type)          :: mm_w2h
+    type(r_solver_operator_type)          :: div_v
+    type(r_solver_operator_type)          :: div_h
     ! Need a copy of vertical velocity matrix to enforce boundary conditions
-    type(operator_type) :: mm_w2v
-    type(operator_type) :: grad_v
+    type(r_solver_operator_type)          :: mm_w2v
+    type(r_solver_operator_type)          :: grad_v
     ! CMA representation of vertical weak derivatives, mass matrix and
     ! temporary matrices
     type(columnwise_operator_type) :: div_v_cma
@@ -155,18 +160,28 @@ contains
     mesh_id = self%mesh_id
 
     ! Set pointers to vertical operators
-    div_v => get_div_v(mesh_id)
+    div_v_r_def => get_div_v(mesh_id)
+    call div_v%initialise( div_v_r_def%get_fs_to(), div_v_r_def%get_fs_from() )
+    call invoke( operator_setval_x_kernel_type( div_v, div_v_r_def ) )
     call grad_v%initialise( div_v%get_fs_from(), div_v%get_fs_to() )
-    div_h => get_div_h(mesh_id)
-    mm_w3 => get_mass_matrix(W3, mesh_id)
-    mm_w3_inv => get_inverse_w3_mass_matrix(mesh_id)
+    div_h_r_def => get_div_h(mesh_id)
+    call div_h%initialise( div_h_r_def%get_fs_to(), div_h_r_def%get_fs_from() )
+    call invoke( operator_setval_x_kernel_type( div_h, div_h_r_def ) )
+    mm => get_mass_matrix(W3, mesh_id)
+    call mm_w3%initialise( mm%get_fs_to(), mm%get_fs_from() )
+    call invoke( operator_setval_x_kernel_type( mm_w3, mm ) )
+    mm_w3_inv => get_inverse_w3_mass_matrix_r_solver(mesh_id)
     ! Take a copy of the vertical mass matrix since we need to apply the BCs
-    mm_w2v_noBC => get_mass_matrix(W2v, mesh_id)
+    mm => get_mass_matrix(W2v, mesh_id)
+    call mm_w2v_noBC%initialise( mm%get_fs_to(), mm%get_fs_from() )
+    call invoke( operator_setval_x_kernel_type( mm_w2v_noBC, mm ) )
     mm_w2v = mm_w2v_noBC%deep_copy()
     ! Now apply BCs
     call invoke( enforce_operator_bc_kernel_type( mm_w2v ) )
     ! Get horizontal velocity mass matrix
-    mm_w2h => get_mass_matrix(W2h, mesh_id)
+    mm => get_mass_matrix(W2h, mesh_id)
+    call mm_w2h%initialise( mm%get_fs_to(), mm%get_fs_from() )
+    call invoke( operator_setval_x_kernel_type( mm_w2h, mm ) )
 
     ! Construct weak gradient as transpose of divergence
     call invoke( transpose_matrix_kernel_type( div_v, grad_v ) )
@@ -272,19 +287,18 @@ contains
     class(abstract_vector_type),            intent(inout) :: y
 
     ! Workaround for PSyclone to get pointers of the correct type for x and y
-    type(field_type), pointer :: x_vec => null(), y_vec => null()
+    type(r_solver_field_type), pointer :: x_vec => null(), y_vec => null()
 
     select type(x)
-    type is(field_vector_type)
+    type is(r_solver_field_vector_type)
       select type(y)
-      type is(field_vector_type)
+      type is(r_solver_field_vector_type)
         ! Get pointers to x and y abstract types
         x_vec => x%get_field(1)
         y_vec => y%get_field(1)
-        ! Set field to zero
-        call y%set_scalar(0.0_r_def)
         ! Multiply by inverse of vertical operator \f$ H_z \f$
-        call invoke( columnwise_op_appinv_kernel_type( y_vec, &
+        call invoke( setval_c(y_vec, 0.0_r_solver),           &
+                     columnwise_op_appinv_kernel_type( y_vec, &
                                                        x_vec, &
                                                        self%Hz_cma ) )
       class default

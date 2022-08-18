@@ -18,7 +18,7 @@ use argument_mod,            only : arg_type, func_type,     &
                                     GH_READ, GH_WRITE,       &
                                     GH_BASIS, GH_DIFF_BASIS, &
                                     CELL_COLUMN, GH_QUADRATURE_XYoZ
-use constants_mod,           only : r_def, i_def
+use constants_mod,           only : r_def, i_def, r_solver
 use fs_continuity_mod,       only : W2, Wtheta
 use kernel_mod,              only : kernel_type
 
@@ -97,9 +97,9 @@ subroutine weighted_proj_theta2_code(cell, nlayers, ncell_3d,         &
   real(kind=r_def), dimension(3,ndf_w2,nqp_h,nqp_v), intent(in) :: w2_basis
   real(kind=r_def), dimension(1,ndf_w2,nqp_h,nqp_v), intent(in) :: w2_diff_basis
 
-  real(kind=r_def), dimension(ndf_wt,ndf_w2,ncell_3d), intent(inout) :: projection
-  real(kind=r_def), dimension(undf_wt),                intent(in)    :: theta
-  real(kind=r_def),                                    intent(in)    :: scalar
+  real(kind=r_solver), dimension(ndf_wt,ndf_w2,ncell_3d), intent(inout) :: projection
+  real(kind=r_solver), dimension(undf_wt),                intent(in)    :: theta
+  real(kind=r_solver),                                    intent(in)    :: scalar
 
   real(kind=r_def), dimension(nqp_h), intent(in) ::  wqp_h
   real(kind=r_def), dimension(nqp_v), intent(in) ::  wqp_v
@@ -108,27 +108,38 @@ subroutine weighted_proj_theta2_code(cell, nlayers, ncell_3d,         &
   integer(kind=i_def) :: df, k, ik, dft, df2
   integer(kind=i_def) :: qp1, qp2
 
-  real(kind=r_def), dimension(ndf_wt) :: theta_e
-  real(kind=r_def) :: theta_at_quad
-  real(kind=r_def) :: div_gamma_v, i1
+  real(kind=r_solver), dimension(ndf_wt) :: theta_e
+  real(kind=r_solver) :: theta_at_quad
+  real(kind=r_solver) :: div_gamma_v, i1, wgt
+
+  real(kind=r_solver), dimension(1,ndf_wt,nqp_h,nqp_v) :: rsol_wt_basis
+  real(kind=r_solver), dimension(3,ndf_wt,nqp_h,nqp_v) :: rsol_wt_diff_basis
+  real(kind=r_solver), dimension(3,ndf_w2,nqp_h,nqp_v) :: rsol_w2_basis
+  real(kind=r_solver), dimension(1,ndf_w2,nqp_h,nqp_v) :: rsol_w2_diff_basis
+
+  rsol_wt_basis      = real(wt_basis, r_solver)
+  rsol_wt_diff_basis = real(wt_diff_basis, r_solver)
+  rsol_w2_basis      = real(w2_basis, r_solver)
+  rsol_w2_diff_basis = real(w2_diff_basis, r_solver)
 
   do k = 0, nlayers-1
     do df = 1, ndf_wt
       theta_e(df)  = theta( map_wt(df) + k )
     end do
     ik = k + 1 + (cell-1)*nlayers
-    projection(:,:,ik) = 0.0_r_def
+    projection(:,:,ik) = 0.0_r_solver
     do qp2 = 1, nqp_v
       do qp1 = 1, nqp_h
-        theta_at_quad = 0.0_r_def
+        theta_at_quad = 0.0_r_solver
         do df = 1, ndf_wt
-          theta_at_quad = theta_at_quad + theta_e(df)*wt_basis(1,df,qp1,qp2)
+          theta_at_quad = theta_at_quad + theta_e(df)*rsol_wt_basis(1,df,qp1,qp2)
         end do
-        i1 = scalar*theta_at_quad*wqp_h(qp1)*wqp_v(qp2)
+        wgt = real(wqp_h(qp1)*wqp_v(qp2), r_solver)
+        i1 = scalar*theta_at_quad*wgt
         do df2 = 1,ndf_w2
           do dft = 1,ndf_wt
-            div_gamma_v = wt_basis(1,dft,qp1,qp2)*w2_diff_basis(1,df2,qp1,qp2) &
-                        + dot_product(wt_diff_basis(:,dft,qp1,qp2),w2_basis(:,df2,qp1,qp2))
+            div_gamma_v = rsol_wt_basis(1,dft,qp1,qp2)*rsol_w2_diff_basis(1,df2,qp1,qp2) &
+                        + dot_product(rsol_wt_diff_basis(:,dft,qp1,qp2),rsol_w2_basis(:,df2,qp1,qp2))
             projection(dft,df2,ik) = projection(dft,df2,ik) - div_gamma_v*i1
           end do
         end do

@@ -18,7 +18,7 @@ use argument_mod,            only : arg_type,                          &
                                     ANY_SPACE_1, ANY_SPACE_2,          &
                                     CELL_COLUMN
 
-use constants_mod,           only : r_def, r_solver, i_def
+use constants_mod,           only : r_solver, i_def
 
 implicit none
 

@@ -23,7 +23,7 @@ use argument_mod,            only : arg_type,                            &
                                     ANY_SPACE_1,                         &
                                     CELL_COLUMN
 
-use constants_mod,           only : r_def, r_solver, i_def
+use constants_mod,           only : r_solver, i_def
 
 implicit none
 
@@ -101,7 +101,7 @@ subroutine columnwise_op_asm_m2v_lumped_inv_kernel_code(cell,                   
   integer(kind=i_def),                                        intent(in)  :: gamma_m
   integer(kind=i_def),                                        intent(in)  :: gamma_p
   integer(kind=i_def),    dimension(ndf,nlayers),             intent(in)  :: column_banded_dofmap
-  real   (kind=r_def),    dimension(ndf,ndf,ncell_3d),        intent(in)  :: local_stencil
+  real   (kind=r_solver), dimension(ndf,ndf,ncell_3d),        intent(in)  :: local_stencil
   real   (kind=r_solver), dimension(bandwidth,nrow,ncell_2d), intent(inout) :: columnwise_matrix
 
   ! Internal parameters

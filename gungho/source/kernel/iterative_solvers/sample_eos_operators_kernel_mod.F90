@@ -21,7 +21,7 @@ module sample_eos_operators_kernel_mod
                                      GH_SCALAR, GH_REAL, GH_READ, &
                                      GH_WRITE, ANY_SPACE_1, GH_BASIS, &
                                      CELL_COLUMN, GH_EVALUATOR
-  use constants_mod,           only: r_def, i_def
+  use constants_mod,           only: r_def, r_solver, i_def
   use fs_continuity_mod,       only: W3, Wtheta
   use kernel_mod,              only: kernel_type
 
@@ -106,55 +106,61 @@ subroutine sample_eos_operators_code(cell, nlayers,                      &
   integer(kind=i_def), dimension(ndf_w3),  intent(in) :: map_w3
   integer(kind=i_def), dimension(ndf_wt),  intent(in) :: map_wt
 
-  real(kind=r_def), dimension(ndf_w3,ndf_w3,ncell_3d1),  intent(inout)  :: m3exner
-  real(kind=r_def), dimension(ndf_w3,ndf_w3,ncell_3d2),  intent(inout)  :: m3rho
-  real(kind=r_def), dimension(ndf_w3,ndf_wt,ncell_3d3),  intent(inout)  :: p3theta
+  real(kind=r_solver), dimension(ndf_w3,ndf_w3,ncell_3d1),  intent(inout)  :: m3exner
+  real(kind=r_solver), dimension(ndf_w3,ndf_w3,ncell_3d2),  intent(inout)  :: m3rho
+  real(kind=r_solver), dimension(ndf_w3,ndf_wt,ncell_3d3),  intent(inout)  :: p3theta
 
   real(kind=r_def), dimension(1,ndf_w3,ndf_w3),  intent(in) :: basis_w3
   real(kind=r_def), dimension(1,ndf_wt,ndf_w3),  intent(in) :: basis_wt
 
-  real(kind=r_def), dimension(undf_w3),  intent(in)           :: rho, exner
-  real(kind=r_def), dimension(undf_wt),  intent(in)           :: theta
-  real(kind=r_def),                      intent(in)           :: kappa, rd, p_zero
+  real(kind=r_solver), dimension(undf_w3),  intent(in)           :: rho, exner
+  real(kind=r_solver), dimension(undf_wt),  intent(in)           :: theta
+  real(kind=r_def),                         intent(in)           :: kappa, rd, p_zero
 
   ! Internal variables
-  integer(kind=i_def)                          :: df, df3, dft, k, ik
-  real(kind=r_def)                             :: rho_cell, exner_cell, theta_cell
-  real(kind=r_def)                             :: p0_over_rd, onemk_over_k
+  integer(kind=i_def) :: df, df3, dft, k, ik
+  real(kind=r_solver) :: rho_cell, exner_cell, theta_cell
+  real(kind=r_solver) :: p0_over_rd, onemk_over_k
 
-  p0_over_rd = p_zero/Rd
-  onemk_over_k = (1.0_r_def - kappa)/kappa
+  real(kind=r_solver), dimension(1,ndf_w3,ndf_w3) :: rsol_basis_w3
+  real(kind=r_solver), dimension(1,ndf_wt,ndf_w3) :: rsol_basis_wt
+
+  rsol_basis_w3 = real(basis_w3, r_solver)
+  rsol_basis_wt = real(basis_wt, r_solver)
+
+  p0_over_rd = real(p_zero/Rd, r_solver)
+  onemk_over_k = real((1.0_r_def - kappa)/kappa, r_solver)
 
   do k = 0, nlayers-1
     ik = 1 + k + (cell-1)*nlayers
-    m3exner(:,:,ik) = 0.0_r_def
-    m3rho(:,:,ik)   = 0.0_r_def
-    p3theta(:,:,ik) = 0.0_r_def
+    m3exner(:,:,ik) = 0.0_r_solver
+    m3rho(:,:,ik)   = 0.0_r_solver
+    p3theta(:,:,ik) = 0.0_r_solver
     do df = 1, ndf_w3
-      exner_cell = 0.0_r_def
-      rho_cell = 0.0_r_def
+      exner_cell = 0.0_r_solver
+      rho_cell = 0.0_r_solver
       do df3 = 1, ndf_w3
-        exner_cell = exner_cell + exner(map_w3(df3)+k)*basis_w3(1,df3,df)
-        rho_cell   = rho_cell   + rho(map_w3(df3)+k)  *basis_w3(1,df3,df)
+        exner_cell = exner_cell + exner(map_w3(df3)+k)*rsol_basis_w3(1,df3,df)
+        rho_cell   = rho_cell   + rho(map_w3(df3)+k)  *rsol_basis_w3(1,df3,df)
       end do
 
-      theta_cell = 0.0_r_def
+      theta_cell = 0.0_r_solver
       do dft = 1,ndf_wt
-        theta_cell = theta_cell + theta(map_wt(dft)+k)*basis_wt(1,dft,df)
+        theta_cell = theta_cell + theta(map_wt(dft)+k)*rsol_basis_wt(1,dft,df)
       end do
 
       do df3 = 1, ndf_w3
         m3exner(df,df3,ik) = m3exner(df,df3,ik)              &
                              + onemk_over_k*          &
                              (p0_over_rd * exner_cell**onemk_over_k &
-                              /(rho_cell*theta_cell))*basis_w3(1,df3,df)/exner_cell
+                              /(rho_cell*theta_cell))*rsol_basis_w3(1,df3,df)/exner_cell
         m3rho(df,df3,ik) = m3rho(df,df3,ik)                          &
-                           + basis_w3(1,df3,df)/rho_cell
+                           + rsol_basis_w3(1,df3,df)/rho_cell
       end do
 
       do dft = 1, ndf_wt
         p3theta(df,dft,ik) = p3theta(df,dft,ik)                &
-                             + basis_wt(1,dft,df)/theta_cell
+                             + rsol_basis_wt(1,dft,df)/theta_cell
       end do
 
     end do

@@ -23,7 +23,7 @@ module weighted_proj_2theta_kernel_mod
                                ANY_SPACE_9,             &
                                GH_BASIS, GH_DIFF_BASIS, &
                                CELL_COLUMN, GH_QUADRATURE_XYoZ
-  use constants_mod,     only: r_def, i_def
+  use constants_mod,     only: r_def, i_def, r_solver
   use fs_continuity_mod, only: W2, W3
   use kernel_mod,        only: kernel_type
 
@@ -102,45 +102,60 @@ subroutine weighted_proj_2theta_code(cell, nlayers, ncell_3d,             &
   integer(kind=i_def),                     intent(in) :: undf_w3, ndf_w3, ndf_w2, ndf_wtheta
   integer(kind=i_def), dimension(ndf_w3),  intent(in) :: map_w3
 
-  real(kind=r_def), dimension(1,ndf_w3,nqp_h,nqp_v),   intent(in) :: basis_w3
-  real(kind=r_def), dimension(1,ndf_w2,nqp_h,nqp_v),   intent(in) :: diff_basis_w2
-  real(kind=r_def), dimension(3,ndf_w2,nqp_h,nqp_v),   intent(in) :: basis_w2
-  real(kind=r_def), dimension(1,ndf_wtheta,nqp_h,nqp_v),   intent(in) :: basis_wtheta
-  real(kind=r_def), dimension(3,ndf_wtheta,nqp_h,nqp_v),   intent(in) :: diff_basis_wtheta
+  real(kind=r_def), dimension(1,ndf_w3,nqp_h,nqp_v),     intent(in) :: basis_w3
+  real(kind=r_def), dimension(1,ndf_w2,nqp_h,nqp_v),     intent(in) :: diff_basis_w2
+  real(kind=r_def), dimension(3,ndf_w2,nqp_h,nqp_v),     intent(in) :: basis_w2
+  real(kind=r_def), dimension(1,ndf_wtheta,nqp_h,nqp_v), intent(in) :: basis_wtheta
+  real(kind=r_def), dimension(3,ndf_wtheta,nqp_h,nqp_v), intent(in) :: diff_basis_wtheta
 
-  real(kind=r_def), dimension(ndf_w2,ndf_wtheta,ncell_3d), intent(inout) :: projection
-  real(kind=r_def), dimension(undf_w3),                    intent(in)    :: exner
-  real(kind=r_def),                                        intent(in)    :: scalar
-  real(kind=r_def), dimension(nqp_h),                      intent(in)    :: wqp_h
-  real(kind=r_def), dimension(nqp_v),                      intent(in)    :: wqp_v
+  real(kind=r_solver), dimension(ndf_w2,ndf_wtheta,ncell_3d), intent(inout) :: projection
+  real(kind=r_solver), dimension(undf_w3),                    intent(in)    :: exner
+  real(kind=r_solver),                                        intent(in)    :: scalar
+
+  real(kind=r_def), dimension(nqp_h), intent(in) :: wqp_h
+  real(kind=r_def), dimension(nqp_v), intent(in) :: wqp_v
 
   ! Internal variables
   integer(kind=i_def)                  :: df, df0, df2, k, ik
   integer(kind=i_def)                  :: qp1, qp2
-  real(kind=r_def), dimension(ndf_w3)  :: exner_e
-  real(kind=r_def)                     :: integrand
-  real(kind=r_def)                     :: div_gamma_v
-  real(kind=r_def)                     :: exner_quad
+  real(kind=r_solver), dimension(ndf_w3)  :: exner_e
+  real(kind=r_solver)                     :: integrand
+  real(kind=r_solver)                     :: div_gamma_v
+  real(kind=r_solver)                     :: exner_quad
+  real(kind=r_solver)                     :: wt
+
+  real(kind=r_solver), dimension(1,ndf_w3,nqp_h,nqp_v)     :: rsol_basis_w3
+  real(kind=r_solver), dimension(1,ndf_w2,nqp_h,nqp_v)     :: rsol_diff_basis_w2
+  real(kind=r_solver), dimension(3,ndf_w2,nqp_h,nqp_v)     :: rsol_basis_w2
+  real(kind=r_solver), dimension(1,ndf_wtheta,nqp_h,nqp_v) :: rsol_basis_wtheta
+  real(kind=r_solver), dimension(3,ndf_wtheta,nqp_h,nqp_v) :: rsol_diff_basis_wtheta
+
+  rsol_basis_w3          = real(basis_w3, r_solver)
+  rsol_diff_basis_w2     = real(diff_basis_w2, r_solver)
+  rsol_basis_w2          = real(basis_w2, r_solver)
+  rsol_basis_wtheta      = real(basis_wtheta, r_solver)
+  rsol_diff_basis_wtheta = real(diff_basis_wtheta, r_solver)
 
   do k = 0, nlayers - 1
     ik = k + 1 + (cell-1)*nlayers
     do df = 1,ndf_w3
       exner_e(df) = exner(map_w3(df) + k)
     end do
-    projection(:,:,ik) = 0.0_r_def
+    projection(:,:,ik) = 0.0_r_solver
     do qp2 = 1, nqp_v
       do qp1 = 1, nqp_h
-        exner_quad = 0.0_r_def
+        exner_quad = 0.0_r_solver
         do df = 1, ndf_w3
           exner_quad = exner_quad &
-                   + exner_e(df)*basis_w3(1,df,qp1,qp2)
+                     + exner_e(df)*rsol_basis_w3(1,df,qp1,qp2)
         end do
-        integrand = scalar*exner_quad*wqp_h(qp1)*wqp_v(qp2)
+        wt = real(wqp_h(qp1)*wqp_v(qp2), r_solver)
+        integrand = scalar*exner_quad*wt
         do df0 = 1, ndf_wtheta
           do df2 = 1, ndf_w2
-            div_gamma_v = diff_basis_w2(1,df2,qp1,qp2)*basis_wtheta(1,df0,qp1,qp2) &
-                        + dot_product(basis_w2(:,df2,qp1,qp2), &
-                                      diff_basis_wtheta(:,df0,qp1,qp2))
+            div_gamma_v = rsol_diff_basis_w2(1,df2,qp1,qp2)*rsol_basis_wtheta(1,df0,qp1,qp2) &
+                        + dot_product(rsol_basis_w2(:,df2,qp1,qp2), &
+                                      rsol_diff_basis_wtheta(:,df0,qp1,qp2))
             projection(df2,df0,ik) = projection(df2,df0,ik) &
                                    + integrand*div_gamma_v
           end do

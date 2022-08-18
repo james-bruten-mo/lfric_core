@@ -7,7 +7,7 @@
 !> Test the application of the Helmholtz operator for eliminated theta
 module elim_helmholtz_operator_kernel_mod_test
 
-  use constants_mod, only : i_def, r_def
+  use constants_mod, only : i_def, r_solver
   use pFUnit_Mod
 
   implicit none
@@ -55,7 +55,7 @@ contains
 
     class(elim_helmholtz_operator_test_type), intent(inout) :: this
 
-    real(kind=r_def), parameter :: tol = 1.0e-12_r_def
+    real(kind=r_solver), parameter :: tol = 1.0e-12_r_solver
 
     ! Mesh
     integer(kind=i_def), parameter :: nlayers = 5
@@ -76,22 +76,22 @@ contains
     integer(kind=i_def), dimension(ndf_w2, smap_size_w2) :: smap_w2
 
     ! Fields
-    real(kind=r_def), dimension(undf_w2) :: hb_lumped_inv, u_normalisation, w2_mask
-    real(kind=r_def), dimension(undf_w3) :: helm_c,                         &
+    real(kind=r_solver), dimension(undf_w2) :: hb_lumped_inv, u_normalisation, w2_mask
+    real(kind=r_solver), dimension(undf_w3) :: helm_c,                         &
                                             helm_n, helm_e, helm_s, helm_w, &
                                             helm_u, helm_d, helm_uu, helm_dd
 
     ! Operators
-    real(kind=r_def), dimension(ndf_w2, ndf_w3, ncell) :: div_star
-    real(kind=r_def), dimension(ndf_w3, ndf_w2, ncell) :: q32
-    real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell) :: m3_exner_star
+    real(kind=r_solver), dimension(ndf_w2, ndf_w3, ncell) :: div_star
+    real(kind=r_solver), dimension(ndf_w3, ndf_w2, ncell) :: q32
+    real(kind=r_solver), dimension(ndf_w3, ndf_w3, ncell) :: m3_exner_star
 
     ! Number of dofs in a single column: 4*nlayers horizontal dofs
     ! and (nlayers + 1) vertical dofs
     integer(kind=i_def), parameter :: ndofs_col = 5*nlayers+1
 
     integer(kind=i_def) :: df, k
-    real(kind=r_def)    :: answer
+    real(kind=r_solver)    :: answer
 
     map_w3 = (/ 1_i_def /)
 
@@ -125,15 +125,15 @@ contains
     end do
 
     ! Set up the fields
-    hb_lumped_inv = 0.1_r_def
-    u_normalisation = 10.0_r_def
-    w2_mask = 1.0_r_def
+    hb_lumped_inv = 0.1_r_solver
+    u_normalisation = 10.0_r_solver
+    w2_mask = 1.0_r_solver
 
     ! Set up the operators
     ! Very simple test, set the operators and fields to constants
-    div_star = 1.0_r_def
-    m3_exner_star = 10.0_r_def
-    q32 = 10.0_r_def
+    div_star = 1.0_r_solver
+    m3_exner_star = 10.0_r_solver
+    q32 = 10.0_r_solver
 
     ! Compute Helmholtz operator
     call elim_helmholtz_operator_code(smap_size_w2,                     &
@@ -165,16 +165,16 @@ contains
 
     ! Layer 3:
     k = 2
-    answer = 70.0_r_def
+    answer = 70.0_r_solver
     @assertEqual(answer, helm_c(map_w3(1)+k), tol)
-    answer = 10.0_r_def
+    answer = 10.0_r_solver
     @assertEqual(answer, helm_n(map_w3(1)+k), tol)
     @assertEqual(answer, helm_e(map_w3(1)+k), tol)
     @assertEqual(answer, helm_s(map_w3(1)+k), tol)
     @assertEqual(answer, helm_w(map_w3(1)+k), tol)
     @assertEqual(answer, helm_u(map_w3(1)+k), tol)
     @assertEqual(answer, helm_d(map_w3(1)+k), tol)
-    answer = 0.0_r_def
+    answer = 0.0_r_solver
     @assertEqual(answer, helm_uu(map_w3(1)+k), tol)
     @assertEqual(answer, helm_dd(map_w3(1)+k), tol)
 

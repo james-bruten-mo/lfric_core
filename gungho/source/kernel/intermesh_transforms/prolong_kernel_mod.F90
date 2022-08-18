@@ -13,7 +13,7 @@
 
 module prolong_kernel_mod
 
-use constants_mod,           only: i_def, r_def
+use constants_mod,           only: i_def, r_double, r_single
 use kernel_mod,              only: kernel_type
 use argument_mod,            only: arg_type,                  &
                                    GH_FIELD, GH_REAL,         &
@@ -35,11 +35,16 @@ type, public, extends(kernel_type) :: prolong_kernel_type
                                                   mesh_arg=GH_COARSE )       &
         /)
   integer :: operates_on = CELL_COLUMN
-contains
-  procedure, nopass :: prolong_kernel_code
 end type prolong_kernel_type
 
 public :: prolong_kernel_code
+
+  ! Generic interface for real32 and real64 types
+  interface prolong_kernel_code
+    module procedure  &
+      prolong_kernel_code_r_single, &
+      prolong_kernel_code_r_double
+  end interface
 
 contains
 
@@ -58,18 +63,21 @@ contains
   !> @param[in] dofmap_f Cell dofmap on the fine grid
   !> @param[in] undf_c Total number of degrees of freedom on the coarse grid
   !> @param[in] dofmap_c Cell dofmap on the coarse grid
-  subroutine prolong_kernel_code(nlayers,         &
-                                 cell_map,        &
-                                 ncell_f_per_c_x, &
-                                 ncell_f_per_c_y, &
-                                 ncell_f,         &
-                                 fine,            &
-                                 coarse,          &
-                                 ndf,             &
-                                 undf_f,          &
-                                 dofmap_f,        &
-                                 undf_c,          &
-                                 dofmap_c)
+
+  ! R_SINGLE PRECISION
+  ! ==================
+  subroutine prolong_kernel_code_r_single(nlayers,         &
+                                          cell_map,        &
+                                          ncell_f_per_c_x, &
+                                          ncell_f_per_c_y, &
+                                          ncell_f,         &
+                                          fine,            &
+                                          coarse,          &
+                                          ndf,             &
+                                          undf_f,          &
+                                          dofmap_f,        &
+                                          undf_c,          &
+                                          dofmap_c)
 
     implicit none
 
@@ -82,8 +90,8 @@ contains
     integer(kind=i_def), dimension(ndf, ncell_f), intent(in) :: dofmap_f
     integer(kind=i_def), dimension(ndf), intent(in) :: dofmap_c
     integer(kind=i_def), intent(in) :: undf_f, undf_c
-    real(kind=r_def), dimension(undf_c), intent(in)    :: coarse
-    real(kind=r_def), dimension(undf_f), intent(inout) :: fine
+    real(kind=r_single), dimension(undf_c), intent(in)    :: coarse
+    real(kind=r_single), dimension(undf_f), intent(inout) :: fine
 
     integer(kind=i_def) :: df, k, lp_x, lp_y, lower_df
 
@@ -105,6 +113,58 @@ contains
       end do
     end do
 
-  end subroutine prolong_kernel_code
+  end subroutine prolong_kernel_code_r_single
+
+  ! R_DOUBLE PRECISION
+  ! ==================
+  subroutine prolong_kernel_code_r_double(nlayers,         &
+                                          cell_map,        &
+                                          ncell_f_per_c_x, &
+                                          ncell_f_per_c_y, &
+                                          ncell_f,         &
+                                          fine,            &
+                                          coarse,          &
+                                          ndf,             &
+                                          undf_f,          &
+                                          dofmap_f,        &
+                                          undf_c,          &
+                                          dofmap_c)
+
+    implicit none
+
+    integer(kind=i_def), intent(in) :: nlayers
+    integer(kind=i_def), intent(in) :: ncell_f_per_c_x
+    integer(kind=i_def), intent(in) :: ncell_f_per_c_y
+    integer(kind=i_def), dimension(ncell_f_per_c_x, ncell_f_per_c_y), intent(in) :: cell_map
+    integer(kind=i_def), intent(in) :: ncell_f
+    integer(kind=i_def), intent(in) :: ndf
+    integer(kind=i_def), dimension(ndf, ncell_f), intent(in) :: dofmap_f
+    integer(kind=i_def), dimension(ndf), intent(in) :: dofmap_c
+    integer(kind=i_def), intent(in) :: undf_f, undf_c
+    real(kind=r_double), dimension(undf_c), intent(in)    :: coarse
+    real(kind=r_double), dimension(undf_f), intent(inout) :: fine
+
+    integer(kind=i_def) :: df, k, lp_x, lp_y, lower_df
+
+    do k = 0, nlayers-1
+      ! If we are at bottom do lower df, otherwise only top df
+      if ( k == 0 ) then
+        lower_df = 1
+      else
+        lower_df = ndf
+      end if
+
+      do df = lower_df, ndf
+        do lp_y = 1, ncell_f_per_c_y
+          do lp_x = 1, ncell_f_per_c_x
+            fine(dofmap_f(df,cell_map(lp_x,lp_y))+k) &
+                  = fine(dofmap_f(df,cell_map(lp_x,lp_y))+k) + coarse(dofmap_c(df)+k)
+          end do
+        end do
+      end do
+    end do
+
+  end subroutine prolong_kernel_code_r_double
+
 
 end module prolong_kernel_mod

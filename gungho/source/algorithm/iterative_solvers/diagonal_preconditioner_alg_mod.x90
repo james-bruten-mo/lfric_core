@@ -91,8 +91,8 @@ contains
            x_vec => x%get_field(i)
            y_vec => y%get_field(i)
            call invoke( X_divideby_Y( y_vec, x_vec, self%mass_matrix_diagonal%vector(i) ) )
-           nullify( x_vec, y_vec )
          end do
+         nullify( x_vec, y_vec )
        class default
           write(log_scratch_space, '(A)') &
                "diagonal_preconditioner_alg_mod: incorrect vector_type argument y"

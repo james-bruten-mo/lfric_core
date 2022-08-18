@@ -8,7 +8,7 @@
 !>
 module apply_helmholtz_operator_kernel_mod_test
 
-  use constants_mod, only : i_def, r_def, l_def
+  use constants_mod, only : i_def, r_solver, l_def
   use apply_helmholtz_operator_kernel_mod, only : apply_helmholtz_operator_code
   use pFUnit_Mod
   implicit none
@@ -26,11 +26,11 @@ module apply_helmholtz_operator_kernel_mod_test
     integer(i_def), allocatable :: smap_w3(:,:,:)
     integer(i_def), allocatable :: lam_smap_w3(:,:,:)
 
-    real(r_def), allocatable :: Hp(:), p(:)
-    real(r_def), allocatable :: HC(:), HN(:), HE(:), HS(:), HW(:)
-    real(r_def), allocatable :: HU(:), HD(:), HUU(:), HDD(:)
+    real(r_solver), allocatable :: Hp(:), p(:)
+    real(r_solver), allocatable :: HC(:), HN(:), HE(:), HS(:), HW(:)
+    real(r_solver), allocatable :: HU(:), HD(:), HUU(:), HDD(:)
 
-    real(r_def)    :: answer, lam_answer
+    real(r_solver)    :: answer, lam_answer
     logical(l_def) :: limited_area
     integer(i_def) :: k
 
@@ -42,7 +42,7 @@ module apply_helmholtz_operator_kernel_mod_test
     procedure test_global
   end type apply_helmholtz_operator_test_type
 
-    real(r_def), parameter :: tol = 1.0e-12_r_def
+    real(r_solver), parameter :: tol = 1.0e-12_r_solver
 
     ! Mesh
     integer(i_def), parameter :: nlayers = 5
@@ -99,18 +99,18 @@ contains
 
     ! Set up the fields
     do df = 1,undf_w3
-      this%p(df) = real(df,r_def)
+      this%p(df) = real(df,r_solver)
     end do
-    this%HC(:)  = 2.0_r_def
-    this%HN(:)  = 3.0_r_def
-    this%HE(:)  = 4.0_r_def
-    this%HS(:)  = 5.0_r_def
-    this%HW(:)  = 6.0_r_def
-    this%HU(:)  = 7.0_r_def
-    this%HD(:)  = 8.0_r_def
-    this%HUU(:) = 9.0_r_def
-    this%HDD(:) = 10.0_r_def
-    this%Hp(:)  = 0.0_r_def
+    this%HC(:)  = 2.0_r_solver
+    this%HN(:)  = 3.0_r_solver
+    this%HE(:)  = 4.0_r_solver
+    this%HS(:)  = 5.0_r_solver
+    this%HW(:)  = 6.0_r_solver
+    this%HU(:)  = 7.0_r_solver
+    this%HD(:)  = 8.0_r_solver
+    this%HUU(:) = 9.0_r_solver
+    this%HDD(:) = 10.0_r_solver
+    this%Hp(:)  = 0.0_r_solver
 
     ! layer 3:
     this%k = 2

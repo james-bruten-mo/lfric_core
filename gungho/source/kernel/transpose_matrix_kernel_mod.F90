@@ -16,7 +16,7 @@ use argument_mod,            only : arg_type,                 &
                                     GH_READ, GH_WRITE,        &
                                     ANY_SPACE_1, ANY_SPACE_2, &
                                     CELL_COLUMN
-use constants_mod,           only : r_def, i_def
+use constants_mod,           only : r_single, r_double, i_def
 use kernel_mod,              only : kernel_type
 
 implicit none
@@ -34,14 +34,20 @@ type, public, extends(kernel_type) :: transpose_matrix_kernel_type
        arg_type(GH_OPERATOR, GH_REAL, GH_WRITE, ANY_SPACE_2, ANY_SPACE_1)  &
        /)
   integer :: operates_on = CELL_COLUMN
-contains
-  procedure, nopass :: transpose_matrix_code
 end type
 
 !-------------------------------------------------------------------------------
 ! Contained functions/subroutines
 !-------------------------------------------------------------------------------
 public :: transpose_matrix_code
+
+  ! Generic interface for real32 and real64 types
+  interface transpose_matrix_code
+    module procedure  &
+      transpose_matrix_code_r_single, &
+      transpose_matrix_code_r_double
+  end interface
+
 contains
 
 !> @brief Computes the transpose of a matrix
@@ -53,14 +59,17 @@ contains
 !> @param[in,out] mat_out Resulting transposed matrix
 !> @param[in]  ndf1 Number of degrees of freedom per cell for space 1
 !> @param[in]  ndf2 Number of degrees of freedom per cell for space 2
-subroutine transpose_matrix_code(cell,        &
-                                 nlayers,     &
-                                 ncell_3d,    &
-                                 mat_in,      &
-                                 ncell_3d_2,  &
-                                 mat_out,     &
-                                 ndf1,        &
-                                 ndf2)
+
+! R_SINGLE PRECISION
+! ==================
+subroutine transpose_matrix_code_r_single(cell,        &
+                                          nlayers,     &
+                                          ncell_3d,    &
+                                          mat_in,      &
+                                          ncell_3d_2,  &
+                                          mat_out,     &
+                                          ndf1,        &
+                                          ndf2)
 
   implicit none
 
@@ -71,8 +80,8 @@ subroutine transpose_matrix_code(cell,        &
   integer(kind=i_def), intent(in)    :: ncell_3d_2
   integer(kind=i_def), intent(in)    :: ndf1
   integer(kind=i_def), intent(in)    :: ndf2
-  real(kind=r_def), dimension(ndf1,ndf2,ncell_3d), intent(in)      :: mat_in
-  real(kind=r_def), dimension(ndf2,ndf1,ncell_3d), intent(inout)   :: mat_out
+  real(kind=r_single), dimension(ndf1,ndf2,ncell_3d), intent(in)      :: mat_in
+  real(kind=r_single), dimension(ndf2,ndf1,ncell_3d), intent(inout)   :: mat_out
 
   ! Internal variables
   integer(kind=i_def) :: k, ik
@@ -82,6 +91,39 @@ subroutine transpose_matrix_code(cell,        &
     mat_out(:,:,ik) = transpose(mat_in(:,:,ik))
   end do
 
-end subroutine transpose_matrix_code
+end subroutine transpose_matrix_code_r_single
+
+! R_DOUBLE PRECISION
+! ==================
+subroutine transpose_matrix_code_r_double(cell,        &
+                                          nlayers,     &
+                                          ncell_3d,    &
+                                          mat_in,      &
+                                          ncell_3d_2,  &
+                                          mat_out,     &
+                                          ndf1,        &
+                                          ndf2)
+
+  implicit none
+
+  ! Arguments
+  integer(kind=i_def), intent(in)    :: cell
+  integer(kind=i_def), intent(in)    :: nlayers
+  integer(kind=i_def), intent(in)    :: ncell_3d
+  integer(kind=i_def), intent(in)    :: ncell_3d_2
+  integer(kind=i_def), intent(in)    :: ndf1
+  integer(kind=i_def), intent(in)    :: ndf2
+  real(kind=r_double), dimension(ndf1,ndf2,ncell_3d), intent(in)      :: mat_in
+  real(kind=r_double), dimension(ndf2,ndf1,ncell_3d), intent(inout)   :: mat_out
+
+  ! Internal variables
+  integer(kind=i_def) :: k, ik
+
+  do k = 0, nlayers-1
+    ik = (cell-1)*nlayers + k + 1
+    mat_out(:,:,ik) = transpose(mat_in(:,:,ik))
+  end do
+
+end subroutine transpose_matrix_code_r_double
 
 end module transpose_matrix_kernel_mod

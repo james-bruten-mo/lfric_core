@@ -8,7 +8,7 @@
 !>        gravity wave equations
 module gravity_wave_alg_mod
 
-  use constants_mod,                  only: i_def,r_def
+  use constants_mod,                  only: i_def, r_def, r_solver
   use log_mod,                        only: log_event,         &
                                             log_scratch_space, &
                                             LOG_LEVEL_INFO,    &
@@ -32,6 +32,7 @@ module gravity_wave_alg_mod
   ! Derived Types
   use field_mod,                      only: field_type
   use field_vector_mod,               only: field_vector_type
+  use r_solver_field_vector_mod,      only: r_solver_field_vector_type
   use derived_config_mod,             only: bundle_size
   use function_space_mod,             only: function_space_type
   use operator_mod,                   only: operator_type
@@ -68,9 +69,9 @@ module gravity_wave_alg_mod
 
   ! 'State' items private to the algorithm that need to be
   !  created once but used every step
-  type( field_vector_type ) :: state, state_n, rhs_n, state_inc
-  type( field_type )        :: rhs_p
-  type(operator_type)       :: Q
+  type( field_vector_type )         :: state, state_n, rdef_rhs_n, rdef_state_inc
+  type( r_solver_field_vector_type) :: rhs_n, state_inc
+  type(operator_type)               :: Q
 
   ! Operator, preconditioner and iterative solver for mixed problem
   type( gw_mixed_operator_type)                       :: gw_mixed_operator
@@ -170,10 +171,12 @@ contains
     type(gw_pressure_preconditioner_type) :: gw_Hz_preconditioner
 
     !=== Create internal state field arrays ================================!
-    state   = field_vector_type(bundle_size)
-    state_n = field_vector_type(bundle_size)
-    rhs_n   = field_vector_type(bundle_size)
-    state_inc = field_vector_type(bundle_size)
+    state          = field_vector_type(bundle_size)
+    state_n        = field_vector_type(bundle_size)
+    rdef_rhs_n     = field_vector_type(bundle_size)
+    rdef_state_inc = field_vector_type(bundle_size)
+    rhs_n          = r_solver_field_vector_type(bundle_size)
+    state_inc      = r_solver_field_vector_type(bundle_size)
 
     !=== Initialise internal state field objects =============================!
     u_fs => wind%get_function_space()
@@ -185,10 +188,16 @@ contains
     call state%import_field(buoyancy, igw_b)
 
     state_n = state
-    rhs_n = state
-    state_inc = state
+    rdef_rhs_n = state
+    rdef_state_inc = state
 
-    call rhs_p%initialise( vector_space = p_fs )
+    call rhs_n%initialise_field(igw_u, u_fs)
+    call rhs_n%initialise_field(igw_p, p_fs)
+    call rhs_n%initialise_field(igw_b, b_fs)
+    call state_inc%initialise_field(igw_u, u_fs)
+    call state_inc%initialise_field(igw_p, p_fs)
+    call state_inc%initialise_field(igw_b, b_fs)
+
 
     ! Create Q operator
     call Q%initialise( u_fs, b_fs)
@@ -200,7 +209,7 @@ contains
     call invoke( compute_q_operator_type(Q, qr) )
 
     ! *** Construct Helmholtz operator
-    gw_pressure_operator = gw_pressure_operator_type(p_fs, level=1_i_def)
+    gw_pressure_operator = gw_pressure_operator_type(level=1_i_def)
 
     ! *** Allocate polymorphic solver- and preconditioner objects ***
 
@@ -232,7 +241,7 @@ contains
     else if (helmholtz_preconditioner == PRECONDITIONER_MULTIGRID) then
        gw_Hz_preconditioner = gw_pressure_preconditioner_type(level=1_i_def)
        allocate ( gw_pressure_preconditioner, &
-                  source = multigrid_preconditioner_type(rhs_p, &
+                  source = multigrid_preconditioner_type(p_fs,                 &
                                                          gw_pressure_operator, &
                                                          gw_Hz_preconditioner) )
     else
@@ -344,19 +353,22 @@ contains
     end select
 
     ! Set up mixed operator
-    gw_mixed_operator = gw_mixed_operator_type(state)
+    gw_mixed_operator = gw_mixed_operator_type(state%vector(igw_u)%get_function_space(), &
+                                               state%vector(igw_b)%get_function_space())
 
     ! Set up mixed preconditioner
     select type(gw_mixed_preconditioner)
     type is ( gw_mixed_schur_preconditioner_type )
        ! Schur-complement preconditioner
        gw_mixed_preconditioner = &
-           gw_mixed_schur_preconditioner_type(state, &
+           gw_mixed_schur_preconditioner_type(state%vector(igw_u)%get_function_space(), &
+                                              state%vector(igw_p)%get_function_space(), &
+                                              state%vector(igw_b)%get_function_space(), &
                                               gw_pressure_operator%get_Hb_lumped_inv(), &
                                               gw_pressure_solver)
     type is ( gw_mixed_diag_preconditioner_type )
        ! Diagonal preconditioner
-       gw_mixed_preconditioner = gw_mixed_diag_preconditioner_type(state)
+       gw_mixed_preconditioner = gw_mixed_diag_preconditioner_type(mesh)
     type is ( null_preconditioner_type )
        ! Null preconditioner
        gw_mixed_preconditioner = null_preconditioner_type()
@@ -462,6 +474,8 @@ contains
     use enforce_bc_kernel_mod,              only: enforce_bc_kernel_type
     use fs_continuity_mod,                  only: W0, W2, W3, Wtheta
     use boundaries_config_mod,              only: limited_area
+    use psykal_lite_mod,                    only: invoke_copy_to_rdef, &
+                                                  invoke_copy_to_rsolver
 
     implicit none
 
@@ -474,7 +488,7 @@ contains
     type(field_type), pointer    :: w3_mask => null()
     type(field_type), pointer    :: wtheta_mask => null()
     integer(i_def)               :: buoyancy_space
-
+    type( field_type )           :: rhs_p
     type(mesh_type), pointer     :: mesh => null()
 
     ! Auxiliary constants to group invokes
@@ -514,43 +528,50 @@ contains
     const2 = -dt*bvf_square
 
     ! Compute rhs of the gravity wave system
-    call invoke( setval_c(rhs_n%vector(igw_u), 0.0_r_def),                  &
-                 setval_c(rhs_n%vector(igw_b), 0.0_r_def),                  &
-                 transpose_matrix_vector_kernel_type(rhs_n%vector(igw_u),   &
-                                                     state_n%vector(igw_p), &
-                                                     div),                  &
-                 matrix_vector_kernel_type          (rhs_n%vector(igw_u),   &
-                                                     state_n%vector(igw_b), &
-                                                     Q),                    &
-                 dg_matrix_vector_kernel_type       (rhs_p,                 &
-                                                     state_n%vector(igw_u), &
-                                                     div),                  &
-                 dg_matrix_vector_kernel_type       (rhs_n%vector(igw_p),   &
-                                                     rhs_p,                 &
-                                                     m3_inv),               &
-                 transpose_matrix_vector_kernel_type(rhs_n%vector(igw_b),   &
-                                                     state_n%vector(igw_u), &
-                                                     Q),                    &
+    call rhs_p%initialise( vector_space = state_n%vector(igw_p)%get_function_space()  )
+    call invoke( setval_c(rdef_rhs_n%vector(igw_u), 0.0_r_def),                  &
+                 setval_c(rdef_rhs_n%vector(igw_b), 0.0_r_def),                  &
+                 transpose_matrix_vector_kernel_type(rdef_rhs_n%vector(igw_u),   &
+                                                     state_n%vector(igw_p),      &
+                                                     div),                       &
+                 matrix_vector_kernel_type          (rdef_rhs_n%vector(igw_u),   &
+                                                     state_n%vector(igw_b),      &
+                                                     Q),                         &
+                 dg_matrix_vector_kernel_type       (rhs_p,                      &
+                                                     state_n%vector(igw_u),      &
+                                                     div),                       &
+                 dg_matrix_vector_kernel_type       (rdef_rhs_n%vector(igw_p),   &
+                                                     rhs_p,                      &
+                                                     m3_inv),                    &
+                 transpose_matrix_vector_kernel_type(rdef_rhs_n%vector(igw_b),   &
+                                                     state_n%vector(igw_u),      &
+                                                     Q),                         &
     ! Apply timestep scalings
-                 inc_a_times_X(dt,     rhs_n%vector(igw_u)),                &
-                 inc_a_times_X(const1, rhs_n%vector(igw_p)),                &
-                 inc_a_times_X(const2, rhs_n%vector(igw_b)),                &
+                 inc_a_times_X(dt,     rdef_rhs_n%vector(igw_u)),                &
+                 inc_a_times_X(const1, rdef_rhs_n%vector(igw_p)),                &
+                 inc_a_times_X(const2, rdef_rhs_n%vector(igw_b)),                &
     ! Apply BC to wind rhs
-                 enforce_bc_kernel_type(rhs_n%vector(igw_u)) )
+                 enforce_bc_kernel_type(rdef_rhs_n%vector(igw_u)) )
 
     ! For limited area set the rhs to zero in the exterior,
     ! as defined by the masks
     if ( limited_area ) then
-      call invoke( inc_X_times_Y(rhs_n%vector(igw_u), w2_mask),             &
-                   inc_X_times_Y(rhs_n%vector(igw_p), w3_mask),             &
-                   inc_X_times_Y(rhs_n%vector(igw_b), wtheta_mask) )
+      call invoke( inc_X_times_Y(rdef_rhs_n%vector(igw_u), w2_mask),             &
+                   inc_X_times_Y(rdef_rhs_n%vector(igw_p), w3_mask),             &
+                   inc_X_times_Y(rdef_rhs_n%vector(igw_b), wtheta_mask) )
     endif
 
     ! Solve mixed system
     call log_event( "Gravity Wave: mixed solve:", LOG_LEVEL_INFO )
+    call invoke_copy_to_rsolver( rhs_n%vector(igw_u), rdef_rhs_n%vector(igw_u))
+    call invoke_copy_to_rsolver( rhs_n%vector(igw_p), rdef_rhs_n%vector(igw_p))
+    call invoke_copy_to_rsolver( rhs_n%vector(igw_b), rdef_rhs_n%vector(igw_b))
     call state_inc%set_scalar(0.0_r_def)
     call gw_mixed_solver%apply(state_inc, rhs_n)
-    call state%axpy(1.0_r_def,state_inc)
+    call invoke_copy_to_rdef( rdef_state_inc%vector(igw_u), state_inc%vector(igw_u))
+    call invoke_copy_to_rdef( rdef_state_inc%vector(igw_p), state_inc%vector(igw_p))
+    call invoke_copy_to_rdef( rdef_state_inc%vector(igw_b), state_inc%vector(igw_b))
+    call state%axpy(1.0_r_def,rdef_state_inc)
 
     ! Return fields
     call state%export_field(wind,     igw_u)

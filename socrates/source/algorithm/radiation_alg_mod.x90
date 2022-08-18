@@ -97,7 +97,7 @@ subroutine radiation_alg(dtheta_rad, theta, exner, mr,                        &
   real( kind=r_def )    :: dt_again
   type(mesh_type), pointer :: mesh      => null()
   type(mesh_type), pointer :: twod_mesh => null()
-  logical( l_def )         :: rad_this_tstep, rad_inc_this_tstep
+  logical( kind=l_def )    :: rad_this_tstep, rad_inc_this_tstep
 
   ! Unpacked fields from collections
   type( field_type ), pointer :: tile_fraction       => null()

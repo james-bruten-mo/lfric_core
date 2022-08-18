@@ -8,7 +8,7 @@
 !>
 module apply_mixed_lp_operator_kernel_mod_test
 
-  use constants_mod, only : i_def, r_def
+  use constants_mod, only : i_def, r_solver
   use pFUnit_Mod
 
   implicit none
@@ -56,7 +56,7 @@ contains
 
     class(apply_mixed_lp_operator_test_type), intent(inout) :: this
 
-    real(r_def), parameter :: tol = 1.0e-12_r_def
+    real(r_solver), parameter :: tol = 1.0e-12_r_solver
 
     ! Mesh
     integer(i_def), parameter :: nlayers = 1
@@ -74,31 +74,31 @@ contains
     integer(i_def), dimension(ndf_w3) :: map_w3
 
     ! Operators
-    real(r_def), dimension(ndf_w3, ndf_w3, ncell) :: M3p, M3r
-    real(r_def), dimension(ndf_w3, ndf_wt, ncell) :: Proj
+    real(r_solver), dimension(ndf_w3, ndf_w3, ncell) :: M3p, M3r
+    real(r_solver), dimension(ndf_w3, ndf_wt, ncell) :: Proj
 
     ! Fields
-    real(r_def), dimension(undf_w3) :: Lp, p, r
-    real(r_def), dimension(undf_wt) :: t
+    real(r_solver), dimension(undf_w3) :: Lp, p, r
+    real(r_solver), dimension(undf_wt) :: t
 
     integer(i_def) :: df
-    real(r_def)    :: answer
+    real(r_solver)    :: answer
 
     map_wt = (/ 1_i_def, 2_i_def /)
     map_w3 = (/ 1_i_def /)
 
     ! Set up operators
-    M3p(:,:,1) = 11.0_r_def
-    M3r(:,:,1) = 9.0_r_def
+    M3p(:,:,1) = 11.0_r_solver
+    M3r(:,:,1) = 9.0_r_solver
 
-    Proj(:,1,1) = 3000.0_r_def
-    Proj(:,2,1) = 3100.0_r_def
+    Proj(:,1,1) = 3000.0_r_solver
+    Proj(:,2,1) = 3100.0_r_solver
 
     ! Set up the fields
-    t = (/ 300.0_r_def, 310.0_r_def /)
-    p = (/ 1.2_r_def /)
-    r = (/ 0.8_r_def /)
-    Lp = 0.0_r_def
+    t = (/ 300.0_r_solver, 310.0_r_solver /)
+    p = (/ 1.2_r_solver /)
+    r = (/ 0.8_r_solver /)
+    Lp = 0.0_r_solver
 
     ! Compute M3p*p - M3r*r - Proj*t
     call apply_mixed_lp_operator_code(cell,                    &

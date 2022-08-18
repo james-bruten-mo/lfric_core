@@ -14,9 +14,11 @@
 module psykal_lite_mod
 
   use field_mod,                    only : field_type, field_proxy_type
+  use r_solver_field_mod,           only : r_solver_field_type, r_solver_field_proxy_type
   use scalar_mod,                   only : scalar_type
-  use operator_mod,                 only : operator_type, operator_proxy_type
-  use constants_mod,                only : r_def, i_def, cache_block
+  use operator_mod,                 only : operator_type, operator_proxy_type, &
+                                           r_solver_operator_type, r_solver_operator_proxy_type
+  use constants_mod,                only : r_def, i_def, r_double, r_solver, cache_block
   use mesh_mod,                     only : mesh_type
   use function_space_mod,           only : BASIS, DIFF_BASIS
 
@@ -1259,14 +1261,16 @@ end subroutine invoke_calc_deppts
     use reference_element_mod, only: reference_element_type
     implicit none
 
-    type(field_type), intent(in) :: helmholtz_operator(9), hb_lumped_inv, u_normalisation, t_normalisation, w2_mask
-    type(operator_type), intent(in) :: div_star, ptheta2v, compound_div, m3_exner_star, p3theta
+    type(r_solver_field_type), intent(in) :: helmholtz_operator(9)
+    type(r_solver_field_type), intent(in) ::  hb_lumped_inv, u_normalisation, t_normalisation, w2_mask
+    type(r_solver_operator_type), intent(in) :: div_star, ptheta2v, compound_div, m3_exner_star, p3theta
     integer(kind=i_def), intent(in) :: stencil_depth
     integer(kind=i_def) :: stencil_size
     integer(kind=i_def) cell
     integer(kind=i_def) nlayers
-    type(operator_proxy_type) div_star_proxy, ptheta2v_proxy, compound_div_proxy, m3_exner_star_proxy, p3theta_proxy
-    type(field_proxy_type) helmholtz_operator_proxy(9), hb_lumped_inv_proxy, u_normalisation_proxy, t_normalisation_proxy, &
+    type(r_solver_operator_proxy_type) div_star_proxy, ptheta2v_proxy, compound_div_proxy, m3_exner_star_proxy, p3theta_proxy
+    type(r_solver_field_proxy_type) helmholtz_operator_proxy(9)
+    type(r_solver_field_proxy_type) hb_lumped_inv_proxy, u_normalisation_proxy, t_normalisation_proxy, &
                            w2_mask_proxy
     integer(kind=i_def), pointer :: map_w2(:,:) => null(), map_w3(:,:) => null(), map_wtheta(:,:) => null()
     integer(kind=i_def) ndf_w3, undf_w3, ndf_w2, undf_w2, ndf_wtheta, undf_wtheta
@@ -1448,14 +1452,16 @@ end subroutine invoke_calc_deppts
 
     implicit none
 
-    type(field_type), intent(in) :: helmholtz_operator(9), hb_lumped_inv, u_normalisation, w2_mask
-    type(operator_type), intent(in) :: div_star, m3_exner_star, Q32
+    type(r_solver_field_type), intent(in) :: helmholtz_operator(9)
+    type(r_solver_field_type), intent(in) :: hb_lumped_inv, u_normalisation, w2_mask
+    type(r_solver_operator_type), intent(in) :: div_star, m3_exner_star, Q32
     integer(kind=i_def), intent(in) :: stencil_depth
     integer(kind=i_def) :: stencil_size
     integer(kind=i_def) cell
     integer(kind=i_def) nlayers
-    type(operator_proxy_type) div_star_proxy, m3_exner_star_proxy, Q32_proxy
-    type(field_proxy_type) helmholtz_operator_proxy(9), hb_lumped_inv_proxy, u_normalisation_proxy, &
+    type(r_solver_operator_proxy_type) div_star_proxy, m3_exner_star_proxy, Q32_proxy
+    type(r_solver_field_proxy_type) helmholtz_operator_proxy(9)
+    type(r_solver_field_proxy_type) hb_lumped_inv_proxy, u_normalisation_proxy, &
                            w2_mask_proxy
     integer(kind=i_def), pointer :: map_w2(:,:) => null(), map_w3(:,:) => null()
     integer(kind=i_def) ndf_w3, undf_w3, ndf_w2, undf_w2
@@ -1866,5 +1872,270 @@ end subroutine invoke_calc_deppts
       field_proxy = field%get_proxy()
       val = field_proxy%data(1)
     end subroutine invoke_getvalue
+
+    ! Psyclone does not currently have native support for builtins with mixed
+    ! precision, this will be addressed in https://github.com/stfc/PSyclone/issues/1786
+    ! Perform innerproduct of a r_solver precision field in r_double precision
+    subroutine invoke_rdouble_X_innerproduct_X(field_norm, field)
+
+      use scalar_mod,         only: scalar_type
+      use omp_lib,            only: omp_get_thread_num
+      use omp_lib,            only: omp_get_max_threads
+      use mesh_mod,           only: mesh_type
+      use r_solver_field_mod, only: r_solver_field_type, r_solver_field_proxy_type
+
+      implicit none
+
+      real(kind=r_def), intent(out) :: field_norm
+      type(r_solver_field_type), intent(in) :: field
+
+      type(scalar_type)                           :: global_sum
+      integer(kind=i_def)                         :: df
+      real(kind=r_double), allocatable, dimension(:) :: l_field_norm
+      integer(kind=i_def)                         :: th_idx
+      integer(kind=i_def)                         :: loop0_start, loop0_stop
+      integer(kind=i_def)                         :: nthreads
+      type(r_solver_field_proxy_type)             :: field_proxy
+      integer(kind=i_def)                         :: max_halo_depth_mesh
+      type(mesh_type), pointer                    :: mesh => null()
+      !
+      ! Determine the number of OpenMP threads
+      !
+      nthreads = omp_get_max_threads()
+      !
+      ! Initialise field and/or operator proxies
+      !
+      field_proxy = field%get_proxy()
+      !
+      ! Create a mesh object
+      !
+      mesh => field_proxy%vspace%get_mesh()
+      max_halo_depth_mesh = mesh%get_halo_depth()
+      !
+      ! Set-up all of the loop bounds
+      !
+      loop0_start = 1
+      loop0_stop = field_proxy%vspace%get_last_dof_owned()
+      !
+      ! Call kernels and communication routines
+      !
+      !
+      ! Zero summation variables
+      !
+      field_norm = 0.0_r_def
+      ALLOCATE (l_field_norm(nthreads))
+      l_field_norm = 0.0_r_double
+      !
+      !$omp parallel default(shared), private(df,th_idx)
+      th_idx = omp_get_thread_num()+1
+      !$omp do schedule(static)
+      DO df=loop0_start,loop0_stop
+        l_field_norm(th_idx) = l_field_norm(th_idx) + real(field_proxy%data(df),r_double)**2
+      END DO
+      !$omp end do
+      !$omp end parallel
+      !
+      ! sum the partial results sequentially
+      !
+      DO th_idx=1,nthreads
+        field_norm = field_norm+real(l_field_norm(th_idx),r_def)
+      END DO
+      DEALLOCATE (l_field_norm)
+      global_sum%value = field_norm
+      field_norm = global_sum%get_sum()
+      !
+    end subroutine invoke_rdouble_X_innerproduct_X
+
+    ! Psyclone does not currently have native support for builtins with mixed
+    ! precision, this will be addressed in https://github.com/stfc/PSyclone/issues/1786
+    ! Perform innerproduct of a r_solver precision field in r_def precision
+    subroutine invoke_rdouble_X_innerproduct_Y(field_norm, field1, field2)
+
+      use scalar_mod,         only: scalar_type
+      use omp_lib,            only: omp_get_thread_num
+      use omp_lib,            only: omp_get_max_threads
+      use mesh_mod,           only: mesh_type
+      use r_solver_field_mod, only: r_solver_field_type, r_solver_field_proxy_type
+
+      implicit none
+
+      real(kind=r_def), intent(out) :: field_norm
+      type(r_solver_field_type), intent(in) :: field1, field2
+
+      type(scalar_type)                           :: global_sum
+      integer(kind=i_def)                         :: df
+      real(kind=r_double), allocatable, dimension(:) :: l_field_norm
+      integer(kind=i_def)                         :: th_idx
+      integer(kind=i_def)                         :: loop0_start, loop0_stop
+      integer(kind=i_def)                         :: nthreads
+      type(r_solver_field_proxy_type)             :: field1_proxy, field2_proxy
+      integer(kind=i_def)                         :: max_halo_depth_mesh
+      type(mesh_type), pointer                    :: mesh => null()
+      !
+      ! Determine the number of OpenMP threads
+      !
+      nthreads = omp_get_max_threads()
+      !
+      ! Initialise field and/or operator proxies
+      !
+      field1_proxy = field1%get_proxy()
+      field2_proxy = field2%get_proxy()
+      !
+      ! Create a mesh object
+      !
+      mesh => field1_proxy%vspace%get_mesh()
+      max_halo_depth_mesh = mesh%get_halo_depth()
+      !
+      ! Set-up all of the loop bounds
+      !
+      loop0_start = 1
+      loop0_stop = field1_proxy%vspace%get_last_dof_owned()
+      !
+      ! Call kernels and communication routines
+      !
+      !
+      ! Zero summation variables
+      !
+      field_norm = 0.0_r_def
+      ALLOCATE (l_field_norm(nthreads))
+      l_field_norm = 0.0_r_double
+      !
+      !$omp parallel default(shared), private(df,th_idx)
+      th_idx = omp_get_thread_num()+1
+      !$omp do schedule(static)
+      DO df=loop0_start,loop0_stop
+        l_field_norm(th_idx) = l_field_norm(th_idx) + real(field1_proxy%data(df),r_double)*real(field2_proxy%data(df),r_double)
+      END DO
+      !$omp end do
+      !$omp end parallel
+      !
+      ! sum the partial results sequentially
+      !
+      DO th_idx=1,nthreads
+        field_norm = field_norm+real(l_field_norm(th_idx),r_def)
+      END DO
+      DEALLOCATE (l_field_norm)
+      global_sum%value = field_norm
+      field_norm = global_sum%get_sum()
+      !
+    end subroutine invoke_rdouble_X_innerproduct_Y
+
+    ! Psyclone does not currently have native support for builtins with mixed
+    ! precision, this will be addressed in https://github.com/stfc/PSyclone/issues/1786
+    ! Copy a field_type to a r_solver_field_type
+    subroutine invoke_copy_to_rsolver(rsolver_field, field)
+
+      use omp_lib,            only: omp_get_thread_num
+      use omp_lib,            only: omp_get_max_threads
+      use mesh_mod,           only: mesh_type
+      use r_solver_field_mod, only: r_solver_field_type, r_solver_field_proxy_type
+      use field_mod,          only: field_type, field_proxy_type
+
+      implicit none
+
+      type(r_solver_field_type), intent(inout) :: rsolver_field
+      type(field_type),          intent(in)    :: field
+
+      integer(kind=i_def)             :: df
+      integer(kind=i_def)             :: loop0_start, loop0_stop
+      type(r_solver_field_proxy_type) :: rsolver_field_proxy
+      type(field_proxy_type)          :: field_proxy
+      integer(kind=i_def)             :: max_halo_depth_mesh
+      type(mesh_type), pointer        :: mesh => null()
+      !
+      ! Initialise field and/or operator proxies
+      !
+      rsolver_field_proxy = rsolver_field%get_proxy()
+      field_proxy = field%get_proxy()
+      !
+      ! Create a mesh object
+      !
+      mesh => rsolver_field_proxy%vspace%get_mesh()
+      max_halo_depth_mesh = mesh%get_halo_depth()
+      !
+      ! Set-up all of the loop bounds
+      !
+      loop0_start = 1
+      loop0_stop = rsolver_field_proxy%vspace%get_last_dof_halo(1)
+      !
+      ! Call kernels and communication routines
+      !
+      IF (field_proxy%is_dirty(depth=1)) THEN
+        CALL field_proxy%halo_exchange(depth=1)
+      END IF
+      !
+      !$omp parallel default(shared), private(df)
+      !$omp do schedule(static)
+      DO df=loop0_start,loop0_stop
+        rsolver_field_proxy%data(df) = real(field_proxy%data(df), r_solver)
+      END DO
+      !$omp end do
+      !$omp end parallel
+      !
+      ! Set halos dirty/clean for fields modified in the above loop
+      !
+      CALL rsolver_field_proxy%set_dirty()
+      CALL rsolver_field_proxy%set_clean(1)
+      !
+    end subroutine invoke_copy_to_rsolver
+
+    ! Psyclone does not currently have native support for builtins with mixed
+    ! precision, this will be addressed in https://github.com/stfc/PSyclone/issues/1786
+    ! Copy a r_solver_field_type to a field_type
+    subroutine invoke_copy_to_rdef(rdef_field, field)
+
+      use omp_lib,            only: omp_get_thread_num
+      use omp_lib,            only: omp_get_max_threads
+      use mesh_mod,           only: mesh_type
+      use r_solver_field_mod, only: r_solver_field_type, r_solver_field_proxy_type
+      use field_mod,          only: field_type, field_proxy_type
+
+      implicit none
+
+      type(field_type),          intent(inout) :: rdef_field
+      type(r_solver_field_type), intent(in)    :: field
+
+      integer(kind=i_def)             :: df
+      integer(kind=i_def)             :: loop0_start, loop0_stop
+      type(r_solver_field_proxy_type) :: field_proxy
+      type(field_proxy_type)          :: rdef_field_proxy
+      integer(kind=i_def)             :: max_halo_depth_mesh
+      type(mesh_type), pointer        :: mesh => null()
+      !
+      ! Initialise field and/or operator proxies
+      !
+      rdef_field_proxy = rdef_field%get_proxy()
+      field_proxy = field%get_proxy()
+      !
+      ! Create a mesh object
+      !
+      mesh => rdef_field_proxy%vspace%get_mesh()
+      max_halo_depth_mesh = mesh%get_halo_depth()
+      !
+      ! Set-up all of the loop bounds
+      !
+      loop0_start = 1
+      loop0_stop = rdef_field_proxy%vspace%get_last_dof_halo(1)
+      !
+      ! Call kernels and communication routines
+      !
+      IF (field_proxy%is_dirty(depth=1)) THEN
+        CALL field_proxy%halo_exchange(depth=1)
+      END IF
+      !
+      !$omp parallel default(shared), private(df)
+      !$omp do schedule(static)
+      DO df=loop0_start,loop0_stop
+        rdef_field_proxy%data(df) = real(field_proxy%data(df), r_def)
+      END DO
+      !$omp end do
+      !$omp end parallel
+      !
+      ! Set halos dirty/clean for fields modified in the above loop
+      !
+      CALL rdef_field_proxy%set_dirty()
+      CALL rdef_field_proxy%set_clean(1)
+      !
+    end subroutine invoke_copy_to_rdef
 
 end module psykal_lite_mod

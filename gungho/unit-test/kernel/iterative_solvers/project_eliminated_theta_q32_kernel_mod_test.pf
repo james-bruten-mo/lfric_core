@@ -8,7 +8,7 @@
 !>
 module project_eliminated_theta_q32_kernel_mod_test
 
-  use constants_mod, only : i_def, r_def
+  use constants_mod, only : i_def, r_def, r_solver
   use pFUnit_Mod
 
   implicit none
@@ -56,7 +56,7 @@ contains
 
     class(project_eliminated_theta_q32_test_type), intent(inout) :: this
 
-    real(kind=r_def), parameter :: tol = 1.0e-12_r_def
+    real(kind=r_solver), parameter :: tol = 1.0e-12_r_solver
 
     ! Mesh
     integer(kind=i_def), parameter :: ncell   = 1
@@ -71,7 +71,7 @@ contains
     integer(kind=i_def), parameter :: undf_w2 = ndf_w2
     integer(kind=i_def), parameter :: undf_wt = ndf_wt
     ! Operators to test
-    real(kind=r_def), dimension(ndf_w3,ndf_w2,ncell) :: q32
+    real(kind=r_solver), dimension(ndf_w3,ndf_w2,ncell) :: q32
     ! Maps
     integer(kind=i_def), dimension(ndf_w3) :: map_w3
     integer(kind=i_def), dimension(ndf_w2) :: map_w2
@@ -85,14 +85,14 @@ contains
     integer(kind=i_def), parameter   :: nqp = 1_i_def
     real(kind=r_def), dimension(nqp) :: wgt
     ! Fields
-    real(kind=r_def), dimension(undf_wt) :: theta
+    real(kind=r_solver), dimension(undf_wt) :: theta
     ! Operators
-    real(kind=r_def), dimension(ndf_w3,ndf_w3,ncell) :: inv_m3
+    real(kind=r_solver), dimension(ndf_w3,ndf_w3,ncell) :: inv_m3
     ! Scalars
-    real(kind=r_def) :: const
+    real(kind=r_solver) :: const
 
     integer(kind=i_def) :: i, df1, df2
-    real(kind=r_def), dimension(ndf_w3, ndf_w2) :: answer
+    real(kind=r_solver), dimension(ndf_w3, ndf_w2) :: answer
 
     do i = 1,ndf_w3
       map_w3(i) = int(i,i_def)
@@ -121,11 +121,11 @@ contains
     diff_basis_wt(:,2) = (/ 0.0_r_def, 0.0_r_def,  1.0_r_def /)
 
     ! Fields
-    theta = (/ 310.0_r_def, 322.95_r_def /)
-    const = 17.0_r_def
+    theta = (/ 310.0_r_solver, 322.95_r_solver /)
+    const = 17.0_r_solver
     ! Operators
-    inv_m3 = 1.0_r_def/27.0_r_def
-    q32 = 0.0_r_def
+    inv_m3 = 1.0_r_solver/27.0_r_solver
+    q32 = 0.0_r_solver
     call project_eliminated_theta_q32_code(cell,                    &
                                            nlayers,                 &
                                            ncell,                   &
@@ -142,10 +142,10 @@ contains
 
     ! q32 = const * < basis_w3, (k*dtheta/dz).basis_w2 >
     ! Only the vertical components of W2 are nonzero (df2 = 3,4)
-    answer = 0.0_r_def
+    answer = 0.0_r_solver
     do df2 = 3,ndf_w2
       do df1 = 1,ndf_w3
-        answer(df1,df2) = const / 27.0_r_def * (theta(2)-theta(1))/(theta(2)+theta(1))
+        answer(df1,df2) = const / 27.0_r_solver * (theta(2)-theta(1))/(theta(2)+theta(1))
       end do
     end do
     @assertEqual(answer, q32(:,:,1), tol)

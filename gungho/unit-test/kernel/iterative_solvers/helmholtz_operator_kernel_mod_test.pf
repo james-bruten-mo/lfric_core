@@ -7,7 +7,7 @@
 !> Test the application of the Helmholtz operator
 module helmholtz_operator_kernel_mod_test
 
-  use constants_mod, only: i_def, r_def
+  use constants_mod, only: i_def, r_solver
   use pFUnit_Mod
 
   implicit none
@@ -55,7 +55,7 @@ contains
 
     class(helmholtz_operator_test_type), intent(inout) :: this
 
-    real(kind=r_def), parameter :: tol = 1.0e-12_r_def
+    real(kind=r_solver), parameter :: tol = 1.0e-12_r_solver
 
     ! Mesh
     integer(kind=i_def), parameter :: nlayers = 5
@@ -79,18 +79,18 @@ contains
     integer(kind=i_def), dimension(ndf_w2, smap_size_w2) :: smap_w2
 
     ! Fields
-    real(kind=r_def), dimension(undf_w2) :: hb_lumped_inv, u_normalisation, w2_mask
-    real(kind=r_def), dimension(undf_wt) :: t_norm
-    real(kind=r_def), dimension(undf_w3) :: helm_c,                         &
+    real(kind=r_solver), dimension(undf_w2) :: hb_lumped_inv, u_normalisation, w2_mask
+    real(kind=r_solver), dimension(undf_wt) :: t_norm
+    real(kind=r_solver), dimension(undf_w3) :: helm_c,                         &
                                             helm_n, helm_e, helm_s, helm_w, &
                                             helm_u, helm_d, helm_uu, helm_dd
 
     ! Operators
-    real(kind=r_def), dimension(ndf_w2, ndf_w3, ncell) :: div_star
-    real(kind=r_def), dimension(ndf_w3, ndf_w2, ncell) :: compound_div
-    real(kind=r_def), dimension(ndf_w3, ndf_wt, ncell) :: p3theta
-    real(kind=r_def), dimension(ndf_wt, ndf_w2, ncell) :: ptheta2v
-    real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell) :: m3_exner_star
+    real(kind=r_solver), dimension(ndf_w2, ndf_w3, ncell) :: div_star
+    real(kind=r_solver), dimension(ndf_w3, ndf_w2, ncell) :: compound_div
+    real(kind=r_solver), dimension(ndf_w3, ndf_wt, ncell) :: p3theta
+    real(kind=r_solver), dimension(ndf_wt, ndf_w2, ncell) :: ptheta2v
+    real(kind=r_solver), dimension(ndf_w3, ndf_w3, ncell) :: m3_exner_star
 
     ! Number of dofs in a single column: 4*nlayers horizontal dofs
     ! and (nlayers + 1) vertical dofs
@@ -99,7 +99,7 @@ contains
     integer(kind=i_def) :: wsen_map_count
 
     integer(kind=i_def) :: df, k
-    real(kind=r_def)    :: answer
+    real(kind=r_solver)    :: answer
 
     map_w3 = (/ 1_i_def /)
     map_wt = (/ 1_i_def, 2_i_def /)
@@ -134,18 +134,18 @@ contains
     end do
 
     ! Set up the fields
-    hb_lumped_inv = 0.1_r_def
-    u_normalisation = 10.0_r_def
-    t_norm = 10.0_r_def
-    w2_mask = 1.0_r_def
+    hb_lumped_inv = 0.1_r_solver
+    u_normalisation = 10.0_r_solver
+    t_norm = 10.0_r_solver
+    w2_mask = 1.0_r_solver
 
     ! Set up the operators
     ! Very simple test, set the operators and fields to constants
-    div_star = 1.0_r_def
-    ptheta2v = 0.1_r_def
-    compound_div = 1.0_r_def
-    m3_exner_star = 1.0_r_def
-    p3theta = 1.0_r_def
+    div_star = 1.0_r_solver
+    ptheta2v = 0.1_r_solver
+    compound_div = 1.0_r_solver
+    m3_exner_star = 1.0_r_solver
+    p3theta = 1.0_r_solver
 
     ! Set up W,S,E,N direction map
     ! Defaulting to full stencil
@@ -193,16 +193,16 @@ contains
 
     ! Layer 3:
     k = 2
-    answer = 13.0_r_def
+    answer = 13.0_r_solver
     @assertEqual(answer, helm_c(map_w3(1)+k), tol)
-    answer = 1.0_r_def
+    answer = 1.0_r_solver
     @assertEqual(answer, helm_n(map_w3(1)+k), tol)
     @assertEqual(answer, helm_e(map_w3(1)+k), tol)
     @assertEqual(answer, helm_s(map_w3(1)+k), tol)
     @assertEqual(answer, helm_w(map_w3(1)+k), tol)
     @assertEqual(answer, helm_uu(map_w3(1)+k), tol)
     @assertEqual(answer, helm_dd(map_w3(1)+k), tol)
-    answer = 5.0_r_def
+    answer = 5.0_r_solver
     @assertEqual(answer, helm_u(map_w3(1)+k), tol)
     @assertEqual(answer, helm_d(map_w3(1)+k), tol)
 

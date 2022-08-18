@@ -10,9 +10,10 @@
 !!          More details of the solver forumulation can be found in the solver section of:
 !!          https://code.metoffice.gov.uk/trac/lfric/wiki/GhaspSupport/Documentation
 module si_operators_alg_mod
-  use constants_mod,             only: i_def, r_def
-  use operator_mod,              only: operator_type
+  use constants_mod,             only: i_def, r_def, r_solver
+  use operator_mod,              only: operator_type, r_solver_operator_type
   use field_mod,                 only: field_type
+  use r_solver_field_mod,        only: r_solver_field_type
   use fs_continuity_mod,         only: W2, W3
   use log_mod,                   only: log_event,      &
                                        LOG_LEVEL_INFO, &
@@ -43,23 +44,23 @@ module si_operators_alg_mod
 
   ! Variables private to this module that can only be accessed by public
   ! functions returning pointers to them
-  type(operator_type), allocatable, dimension(:), target :: m3_rho_star
-  type(operator_type), allocatable, dimension(:), target :: m3_exner_star
-  type(operator_type), allocatable, dimension(:), target :: div_star
-  type(operator_type), allocatable, dimension(:), target :: p2theta
-  type(operator_type), allocatable, dimension(:), target :: ptheta2
-  type(operator_type), allocatable, dimension(:), target :: ptheta2v
-  type(operator_type), allocatable, dimension(:), target :: p3theta
-  type(operator_type), allocatable, dimension(:), target :: compound_div
-  type(operator_type), allocatable, dimension(:), target :: eliminated_q22
-  type(operator_type), allocatable, dimension(:), target :: eliminated_q32
-  type(operator_type),                            target :: eliminated_q2t
+  type(r_solver_operator_type), allocatable, dimension(:), target :: m3_rho_star
+  type(r_solver_operator_type), allocatable, dimension(:), target :: m3_exner_star
+  type(r_solver_operator_type), allocatable, dimension(:), target :: div_star
+  type(r_solver_operator_type), allocatable, dimension(:), target :: p2theta
+  type(r_solver_operator_type), allocatable, dimension(:), target :: ptheta2
+  type(r_solver_operator_type), allocatable, dimension(:), target :: ptheta2v
+  type(r_solver_operator_type), allocatable, dimension(:), target :: p3theta
+  type(r_solver_operator_type), allocatable, dimension(:), target :: compound_div
+  type(r_solver_operator_type), allocatable, dimension(:), target :: eliminated_q22
+  type(r_solver_operator_type), allocatable, dimension(:), target :: eliminated_q32
+  type(r_solver_operator_type),                            target :: eliminated_q2t
 
-  type(field_type), allocatable, dimension(:),   target :: rho_at_u
-  type(field_type), allocatable, dimension(:,:), target :: tri_precon
-  type(field_type), allocatable, dimension(:,:), target :: Helmholtz_operator
-  type(field_type), allocatable, dimension(:),   target :: Helm_diag
-  type(field_type), allocatable, dimension(:),   target :: Hb_lumped_inv
+  type(r_solver_field_type), allocatable, dimension(:),   target :: rho_at_u
+  type(r_solver_field_type), allocatable, dimension(:,:), target :: tri_precon
+  type(r_solver_field_type), allocatable, dimension(:,:), target :: Helmholtz_operator
+  type(r_solver_field_type), allocatable, dimension(:),   target :: Helm_diag
+  type(r_solver_field_type), allocatable, dimension(:),   target :: Hb_lumped_inv
   integer(kind=i_def) :: multigrid_levels
 
   ! Size of the Helmholtz stencil: 1 Central cell, 4 horizontal neighbours, 2
@@ -367,13 +368,13 @@ contains
     use geometric_constants_mod,              only: get_coordinates, &
                                                     get_panel_id, &
                                                     get_height
-    use fem_constants_mod,                    only: get_normalisation,  &
-                                                    get_rmultiplicity,  &
-                                                    get_div,            &
-                                                    get_mass_matrix,    &
+    use fem_constants_mod,                    only: get_normalisation_r_solver, &
+                                                    get_rmultiplicity, &
+                                                    get_div_r_solver, &
+                                                    get_mass_matrix, &
                                                     get_dl_mass_matrix, &
-                                                    get_detj_at_w3,     &
-                                                    get_inverse_w3_mass_matrix
+                                                    get_detj_at_w3_r_solver, &
+                                                    get_inverse_w3_mass_matrix_r_solver
     use limited_area_constants_mod,           only: get_mask
     use derived_config_mod,                   only: bundle_size
     use invert_local_operator_kernel_mod,     only: invert_local_operator_kernel_type
@@ -388,7 +389,8 @@ contains
                                                     dry_static_adjust
     use sort_ref_kernel_mod,                  only: sort_ref_kernel_type
     use psykal_lite_mod,                      only: invoke_helmholtz_operator_kernel_type, &
-                                                    invoke_elim_helmholtz_operator_kernel_type
+                                                    invoke_elim_helmholtz_operator_kernel_type, &
+                                                    invoke_copy_to_rsolver
     use boundaries_config_mod,                only: limited_area
     use sample_eliminated_theta_q32_kernel_mod, &
                                               only: sample_eliminated_theta_q32_kernel_type
@@ -407,39 +409,40 @@ contains
 
     type(field_type), intent(in)           :: state(bundle_size) ! (u, theta, rho, exner)
     real(kind=r_def), intent(in)           :: dt
-
-    type(field_type)                       :: theta, rho, exner, coarse_field
     type(quadrature_xyoz_type)             :: qr
     type(quadrature_face_type)             :: qrf
     type(quadrature_rule_gaussian_type)    :: quadrature_rule
     type(field_type),              pointer :: chi(:) => null()
     type(field_type),              pointer :: panel_id => null()
-    type(operator_type),           pointer :: m3_inv => null(), div => null()
-    type(field_type)                       :: ones
+    type(r_solver_operator_type),  pointer :: m3_inv => null(), div => null()
+    type(r_solver_field_type)              :: ones
     type(field_type),              pointer :: w2_rmultiplicity => null()
     type(function_space_type),     pointer :: w3_fs => null()
     type(function_space_type),     pointer :: w2_fs => null()
     type(function_space_type),     pointer :: wt_fs => null()
-    real(kind=r_def)                       :: const1, const2, const3
-
+    real(kind=r_solver)                    :: const1, const2, const3
+    integer(kind=i_def), parameter         :: imone = -1_i_def
     class(reference_element_type), pointer :: reference_element =>null()
     type(mesh_type),               pointer :: mesh => null()
     type(operator_type),           pointer :: m2 => null()
-    type(field_type),              pointer :: u_normalisation => null(), &
+    type(r_solver_field_type),     pointer :: u_normalisation => null(), &
                                               t_normalisation => null()
-    type(field_type)                       :: m2_u, theta_adv_term, exner_in_wth
+    type(r_solver_field_type)              :: m2_u, theta_adv_term
     integer(kind=i_def)                    :: level, i
-    type(field_type),              target  :: dummy_w2_mask
-    type(field_type),              pointer :: w2_mask   => null()
-    type(field_type),              pointer :: height_w3 => null()
-    type(field_type),              pointer :: height_wt => null()
-    type(field_type),              pointer :: detj_at_w3 => null()
-    type(field_type)                       :: multiplicity
+    type(r_solver_field_type)              :: rsol_w2_mask
+    type(field_type),              pointer :: w2_mask => null()
+    type(field_type), pointer              :: height_w3 => null()
+    type(field_type), pointer              :: height_wt => null()
+    type(r_solver_field_type)              :: multiplicity
 
-    ! Parameters
-    integer(kind=i_def), parameter :: imone = -1_i_def
-    real(kind=r_def),    parameter :: one   =  1_r_def
-
+    type(r_solver_field_type)              :: exner,        &
+                                              exner_in_wth, &
+                                              rho,          &
+                                              theta,        &
+                                              coarse_field
+    type(r_solver_field_type)              :: rsol_w2_rmultiplicity
+    type(r_solver_operator_type)           :: m2_r_solver
+    type(r_solver_field_type),     pointer :: detj_at_w3 => null()
 
     if ( subroutine_timers ) call timer('si_operators_alg:compute')
     call log_event( "Gungho: computing si_operators", LOG_LEVEL_INFO )
@@ -448,10 +451,13 @@ contains
     w2_fs => state(igh_u)%get_function_space()
     wt_fs => state(igh_t)%get_function_space()
 
-    ! Create reference state
-    call state(igh_p)%copy_field(exner)
-    call state(igh_d)%copy_field(rho)
-    call state(igh_t)%copy_field(theta)
+    ! Create reference state (as r_solver fields)
+    call exner%initialise( w3_fs )
+    call rho%initialise( w3_fs )
+    call theta%initialise( wt_fs )
+    call invoke_copy_to_rsolver(exner, state(igh_p))
+    call invoke_copy_to_rsolver(rho,   state(igh_d))
+    call invoke_copy_to_rsolver(theta, state(igh_t))
     if (dry_static_adjust) &
       call invoke( sort_ref_kernel_type(theta) )
 
@@ -469,6 +475,7 @@ contains
                                reference_element, quadrature_rule)
     qr = quadrature_xyoz_type(nqp_exact, quadrature_rule)
 
+    ! Create r_solver versions of reference fields
 
     do level = 1, multigrid_levels
 
@@ -479,7 +486,7 @@ contains
        chi      => get_coordinates( mesh%get_id() )
        panel_id => get_panel_id( mesh%get_id() )
 
-       u_normalisation => get_normalisation( W2, mesh%get_id() )
+       u_normalisation => get_normalisation_r_solver(W2, mesh%get_id())
 
        ! Non-topological operators
        call exner_in_wth%initialise( vector_space = theta%get_function_space() )
@@ -491,14 +498,14 @@ contains
          nullify(height_w3, height_wt)
        else
          call multiplicity%initialise( vector_space = theta%get_function_space() )
-         call invoke( setval_c(multiplicity, 0.0_r_def),      &
+         call invoke( setval_c(multiplicity, 0.0_r_solver),      &
                       multiplicity_kernel_type(multiplicity), &
-                      setval_c(exner_in_wth, 0.0_r_def),      &
+                      setval_c(exner_in_wth, 0.0_r_solver),      &
                       sample_field_kernel_type(exner_in_wth, multiplicity, exner) )
        end if
 
-       m3_inv => get_inverse_w3_mass_matrix( mesh%get_id() )
-       const1 = tau_t*tau_u*dt**2*cp
+       m3_inv => get_inverse_w3_mass_matrix_r_solver( mesh%get_id() )
+       const1 = real(tau_t*tau_u*dt**2*cp, r_solver)
        select case(eos_method)
        case(eos_method_sampled)
          call invoke( sample_eos_operators_kernel_type(m3_exner_star(level), m3_rho_star(level), &
@@ -511,25 +518,30 @@ contains
          call log_event( "Gungho: Unrecognised method used for equation of state", LOG_LEVEL_ERROR )
        end select
 
+       if ( eliminate_variables == eliminate_variables_analytic ) then
 
-      call invoke( eliminated_theta_q22_kernel_type(eliminated_q22(level), theta,       &
-                                                     exner_in_wth, u_normalisation,      &
-                                                     chi, panel_id, const1, qr) )
+         call invoke( eliminated_theta_q22_kernel_type(eliminated_q22(level), theta,       &
+                                                       exner_in_wth, u_normalisation,      &
+                                                       chi, panel_id, const1, qr) )
+       end if
 
        ! Compute rho^ref at u nodal points
        if (l_multigrid) then
           ! rmultiplicity is a half at lowest order, at higher order, MG has to do
           ! something different anyway
-          call invoke(setval_c(rho_at_u(level), 0.0_r_def), &
+          call invoke(setval_c(rho_at_u(level), 0.0_r_solver), &
                mg_flux_kernel_type(rho_at_u(level), rho) )
        else
           ! for non MG, at higher order, need computed rmultiplicity
           call ones%initialise( vector_space = w2_fs )
           w2_rmultiplicity => get_rmultiplicity( W2, mesh%get_id() )
-          call invoke( setval_c(ones,     1.0_r_def),         &
-               setval_c(rho_at_u(level), 0.0_r_def),          &
-               sample_flux_kernel_type(rho_at_u(level), ones, &
-               w2_rmultiplicity, rho) )
+          call rsol_w2_rmultiplicity%initialise( w2_fs )
+          call invoke_copy_to_rsolver(rsol_w2_rmultiplicity, w2_rmultiplicity)
+          call invoke( setval_c(ones,            1.0_r_solver),       &
+                       setval_c(rho_at_u(level), 0.0_r_solver),       &
+                       sample_flux_kernel_type(rho_at_u(level), ones, &
+                                               rsol_w2_rmultiplicity, &
+                                               rho) )
        end if
 
        ! The rest of the operators are topological and so do not need as high
@@ -537,11 +549,11 @@ contains
        qr = quadrature_xyoz_type(element_order+2, quadrature_rule)
 
        ! Cell kernels
-       const1 = tau_u*dt*cp
-       const2 = tau_t*dt
-       const3 = tau_r*dt
-       m3_inv => get_inverse_w3_mass_matrix( mesh%get_id() )
-       div    => get_div( mesh%get_id() )
+       const1 = real(tau_u*dt*cp, r_solver)
+       const2 = real(tau_t*dt, r_solver)
+       const3 = real(tau_r*dt, r_solver)
+       m3_inv => get_inverse_w3_mass_matrix_r_solver(mesh%get_id())
+       div    => get_div_r_solver(mesh%get_id())
        call invoke( name = "cell_and_boundary_kernels",                                 &
             weighted_div_kernel_type(div_star(level), theta, const1, qr),               &
             weighted_proj_2theta_kernel_type(p2theta(level), exner, const1, qr),        &
@@ -556,18 +568,16 @@ contains
                                            m3_inv, div, rho_at_u(level), const3),       &
             operator_setval_x_kernel_type( eliminated_q32(level), compound_div(level) ) )
 
-       if ( level == 1 ) then
-
-          call invoke( eliminated_theta_q2t_kernel_type(eliminated_q2t, u_normalisation, &
-                                                        exner_in_wth, const1, qr) )
-
+       if ( level == 1 .and. eliminate_variables == eliminate_variables_analytic ) then
+         call invoke( eliminated_theta_q2t_kernel_type(eliminated_q2t, u_normalisation, &
+                                                       exner_in_wth, const1, qr) )
        end if
 
        if ( eliminate_variables == eliminate_variables_analytic ) then
          ! Add on contribution to q32 from eliminating theta
-         detj_at_w3    => get_detj_at_w3( mesh%get_id() )
          select case(eos_method)
          case(eos_method_sampled)
+           detj_at_w3 => get_detj_at_w3_r_solver( mesh%get_id() )
            call invoke( sample_eliminated_theta_q32_kernel_type(eliminated_q32(level), theta, detj_at_w3 , &
                                                                 const2) )
          case(eos_method_projected)
@@ -584,52 +594,54 @@ contains
        else
           m2 => get_mass_matrix(W2, mesh%get_id() )
        end if
-       u_normalisation => get_normalisation( W2, mesh%get_id() )
-       t_normalisation => get_normalisation( Wtheta, mesh%get_id() )
+       call m2_r_solver%initialise( w2_fs, w2_fs )
+       call invoke( operator_setval_x_kernel_type( m2_r_solver, m2 ) )
+       u_normalisation => get_normalisation_r_solver(W2, mesh%get_id())
+       t_normalisation => get_normalisation_r_solver(Wtheta, mesh%get_id())
 
        call m2_u%initialise( vector_space = w2_fs )
        call ones%initialise( vector_space = w2_fs )
-       call theta_adv_term%initialise( vector_space = wt_fs )
        if ( eliminate_variables == eliminate_variables_analytic ) then
          ! H_B = (Nu * Mu - Q22) * ones
-         call invoke( name = "compute_analytic_lumped_inverse_h_b_operator",        &
-                      setval_c(ones, 1.0_r_def),                                    &
-                      setval_c(Hb_lumped_inv(level), 0.0_r_def),                    &
-                      setval_c(m2_u, 0.0_r_def),                                    &
-                      matrix_vector_kernel_type(Hb_lumped_inv(level), ones, m2),    &
-                      inc_X_times_Y(Hb_lumped_inv(level), u_normalisation),         &
-                      matrix_vector_kernel_type(m2_u, ones, eliminated_q22(level)), &
-                      inc_X_minus_Y(Hb_lumped_inv(level), m2_u),                    &
+         call invoke( name = "compute_analytic_lumped_inverse_h_b_operator",              &
+                      setval_c(ones, 1.0_r_solver),                                       &
+                      setval_c(Hb_lumped_inv(level), 0.0_r_solver),                       &
+                      setval_c(m2_u, 0.0_r_solver),                                       &
+                      matrix_vector_kernel_type(Hb_lumped_inv(level), ones, m2_r_solver), &
+                      inc_X_times_Y(Hb_lumped_inv(level), u_normalisation),               &
+                      matrix_vector_kernel_type(m2_u, ones, eliminated_q22(level)),       &
+                      inc_X_minus_Y(Hb_lumped_inv(level), m2_u),                          &
                       inc_X_powint_n(Hb_lumped_inv(level), imone) )
 
        else
          ! H_B = Nu * ( Mu + P2t * Mt^-1 * Pt2v ) * ones
+         call theta_adv_term%initialise( vector_space = wt_fs )
          call invoke( name = "compute_lumped_inverse_h_b_operator",         &
-                      setval_c(ones, 1.0_r_def),                            &
-                      setval_c(Hb_lumped_inv(level), 0.0_r_def),            &
-                      setval_c(m2_u, 0.0_r_def),                            &
-                      setval_c(theta_adv_term, 0.0_r_def),                  &
-                      matrix_vector_kernel_type(m2_u, ones, m2),            &
-                      dg_inc_matrix_vector_kernel_type(                     &
+                      setval_c(ones, 1.0_r_solver),                         &
+                      setval_c(Hb_lumped_inv(level), 0.0_r_solver),         &
+                      setval_c(m2_u, 0.0_r_solver),                         &
+                      setval_c(theta_adv_term, 0.0_r_solver),               &
+                      matrix_vector_kernel_type(m2_u, ones, m2_r_solver),   &
+                      matrix_vector_kernel_type(                            &
                                 theta_adv_term, ones, ptheta2v(level)),     &
                       inc_X_times_Y(theta_adv_term, t_normalisation),       &
                       matrix_vector_kernel_type(                            &
                                 Hb_lumped_inv(level), theta_adv_term,       &
                                 p2theta(level) ),                           &
-                      inc_aX_plus_Y(one, Hb_lumped_inv(level), m2_u),       &
+                      inc_X_plus_Y(Hb_lumped_inv(level), m2_u),             &
                       inc_X_times_Y(Hb_lumped_inv(level), u_normalisation), &
                       inc_X_powint_n(Hb_lumped_inv(level), imone) )
        end if
 
        ! Compute the Helmholtz operator
        if ( element_order == 0 ) then
+         call rsol_w2_mask%initialise( vector_space = w2_fs )
          if ( limited_area ) then
-           w2_mask => get_mask( W2, mesh%get_id() )
+           w2_mask => get_mask(W2, mesh%get_id())
+           call invoke_copy_to_rsolver(rsol_w2_mask, w2_mask)
          else
            ! Create dummy mask arrays with 1 in every entry
-           call dummy_w2_mask%initialise( vector_space = w2_fs )
-           call invoke( setval_c(dummy_w2_mask, 1.0_r_def) )
-           w2_mask => dummy_w2_mask
+           call invoke( setval_c(rsol_w2_mask, 1.0_r_solver) )
          end if
          if ( eliminate_variables == eliminate_variables_analytic ) then
            call invoke_elim_helmholtz_operator_kernel_type(                         &
@@ -640,7 +652,7 @@ contains
                                                        div_star(level),             &
                                                        m3_exner_star(level),        &
                                                        eliminated_q32(level),       &
-                                                       w2_mask)
+                                                       rsol_w2_mask)
 
          else
            call invoke_helmholtz_operator_kernel_type( Helmholtz_operator(:,level), &
@@ -653,7 +665,7 @@ contains
                                                        compound_div(level),         &
                                                        m3_exner_star(level),        &
                                                        p3theta(level),              &
-                                                       w2_mask)
+                                                       rsol_w2_mask)
          end if
        end if
 
@@ -685,10 +697,10 @@ contains
             call invoke(inc_X_times_Y(tri_precon(i,level), Helm_diag(level)) )
           end do
        else
-          call invoke( setval_c(Helm_diag(level), 1.0_r_def) )
+          call invoke( setval_c(Helm_diag(level), 1.0_r_solver) )
        end if
 
-       ! Restrict the fields for the next level, provided not last time round
+      ! Restrict the fields for the next level, provided not last time round
        ! the loop
        if (level < multigrid_levels) then
           ! should not get here if no multigrid, but just in case
@@ -740,7 +752,7 @@ contains
   !> @return The operator
   function get_m3_rho_star_fine() result(op)
     implicit none
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => m3_rho_star(1)
   end function get_m3_rho_star_fine
 
@@ -751,7 +763,7 @@ contains
   function get_m3_rho_star_mg(level) result(op)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => m3_rho_star(level)
   end function get_m3_rho_star_mg
 
@@ -760,7 +772,7 @@ contains
   !> @return The operator
   function get_m3_exner_star_fine() result(op)
     implicit none
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => m3_exner_star(1)
   end function get_m3_exner_star_fine
 
@@ -771,7 +783,7 @@ contains
   function get_m3_exner_star_mg(level) result(op)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => m3_exner_star(level)
   end function get_m3_exner_star_mg
 
@@ -780,7 +792,7 @@ contains
   !> @return The operator
   function get_div_star_fine() result(op)
     implicit none
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => div_star(1)
   end function get_div_star_fine
 
@@ -791,7 +803,7 @@ contains
   function get_div_star_mg(level) result(op)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => div_star(level)
   end function get_div_star_mg
 
@@ -800,7 +812,7 @@ contains
   !> @return The operator
   function get_p2theta_fine() result(op)
     implicit none
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => p2theta(1)
   end function get_p2theta_fine
 
@@ -811,7 +823,7 @@ contains
   function get_p2theta_mg(level) result(op)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => p2theta(level)
   end function get_p2theta_mg
 
@@ -820,7 +832,7 @@ contains
   !> @return The operator
   function get_ptheta2_fine() result(op)
     implicit none
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => ptheta2(1)
   end function get_ptheta2_fine
 
@@ -831,7 +843,7 @@ contains
   function get_ptheta2_mg(level) result(op)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => ptheta2(level)
   end function get_ptheta2_mg
 
@@ -840,7 +852,7 @@ contains
   !> @return The operator
   function get_ptheta2v_fine() result(op)
     implicit none
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => ptheta2v(1)
   end function get_ptheta2v_fine
 
@@ -851,7 +863,7 @@ contains
   function get_ptheta2v_mg(level) result(op)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => ptheta2v(level)
   end function get_ptheta2v_mg
 
@@ -860,7 +872,7 @@ contains
   !> @return The operator
   function get_p3theta_fine() result(op)
     implicit none
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => p3theta(1)
   end function get_p3theta_fine
 
@@ -871,7 +883,7 @@ contains
   function get_p3theta_mg(level) result(op)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => p3theta(level)
   end function get_p3theta_mg
 
@@ -880,7 +892,7 @@ contains
   !> @return The operator
   function get_compound_div_fine() result(op)
     implicit none
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => compound_div(1)
   end function get_compound_div_fine
 
@@ -891,7 +903,7 @@ contains
   function get_compound_div_mg(level) result(op)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(operator_type), pointer ::op
+    type(r_solver_operator_type), pointer ::op
     op => compound_div(level)
   end function get_compound_div_mg
 
@@ -900,7 +912,7 @@ contains
   !> @return The field
   function get_rho_at_u_fine() result(field)
     implicit none
-    type(field_type), pointer :: field
+    type(r_solver_field_type), pointer :: field
     field => rho_at_u(1)
   end function get_rho_at_u_fine
 
@@ -911,68 +923,68 @@ contains
   function get_rho_at_u_mg(level) result(field)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(field_type), pointer :: field
+    type(r_solver_field_type), pointer :: field
     field => rho_at_u(level)
   end function get_rho_at_u_mg
 
   !> @brief Function to return a pointer to the tri_precon
   !!        on the finest multigrid level.
   !> @return The field
-  function get_tri_precon_fine() result(field)
+  function get_tri_precon_fine() result(sol_field)
     implicit none
-    type(field_type), pointer :: field(:)
-    field => tri_precon(:,1)
+    type(r_solver_field_type), pointer :: sol_field(:)
+    sol_field => tri_precon(:,1)
   end function get_tri_precon_fine
 
   !> @brief Function to return a pointer to the tri_precon
   !!        on the specified multigrid level.
   !> @param[in] level The multigrid level
   !> @return The field
-  function get_tri_precon_mg(level) result(field)
+  function get_tri_precon_mg(level) result(sol_field)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(field_type), pointer :: field(:)
-    field => tri_precon(:,level)
+    type(r_solver_field_type), pointer :: sol_field(:)
+    sol_field => tri_precon(:,level)
   end function get_tri_precon_mg
 
   !> @brief Function to return a pointer to the helmholtz_operator
   !!        on the finest multigrid level.
   !> @return The field
-  function get_helmholtz_operator_fine() result(field)
+  function get_helmholtz_operator_fine() result(sol_field)
     implicit none
-    type(field_type), pointer :: field(:)
-    field => helmholtz_operator(:,1)
+    type(r_solver_field_type), pointer :: sol_field(:)
+    sol_field => helmholtz_operator(:,1)
   end function get_helmholtz_operator_fine
 
   !> @brief Function to return a pointer to the helmholtz_operator
   !!        on the specified multigrid level.
   !> @param[in] level The multigrid level
   !> @return The field
-  function get_helmholtz_operator_mg(level) result(field)
+  function get_helmholtz_operator_mg(level) result(sol_field)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(field_type), pointer :: field(:)
-    field => helmholtz_operator(:,level)
+    type(r_solver_field_type), pointer :: sol_field(:)
+    sol_field => helmholtz_operator(:,level)
   end function get_helmholtz_operator_mg
 
   !> @brief Function to return a pointer to the Helm diagonal
   !!        on the finest multigrid level.
   !> @return The field
-  function get_helm_diag_fine() result(field)
+  function get_helm_diag_fine() result(sol_field)
     implicit none
-    type(field_type), pointer :: field
-    field => helm_diag(1)
+    type(r_solver_field_type), pointer :: sol_field
+    sol_field => helm_diag(1)
   end function get_helm_diag_fine
 
   !> @brief Function to return a pointer to the Helm diagonal
   !!        on the specified multigrid level,
   !> @param[in] level The multigrid level
   !> @return The field
-  function get_helm_diag_mg(level) result(field)
+  function get_helm_diag_mg(level) result(sol_field)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(field_type), pointer :: field
-    field => helm_diag(level)
+    type(r_solver_field_type), pointer :: sol_field
+    sol_field => helm_diag(level)
   end function get_helm_diag_mg
 
   !> @brief Function to return a pointer to the lumped inverse Hb operator
@@ -980,7 +992,7 @@ contains
   !> @return The field
   function get_hb_lumped_inv_fine() result(field)
     implicit none
-    type(field_type), pointer :: field
+    type(r_solver_field_type), pointer :: field
     field => hb_lumped_inv(1)
   end function get_hb_lumped_inv_fine
 
@@ -991,7 +1003,7 @@ contains
   function get_hb_lumped_inv_mg(level) result(field)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(field_type), pointer :: field
+    type(r_solver_field_type), pointer :: field
     field => hb_lumped_inv(level)
   end function get_hb_lumped_inv_mg
 
@@ -1000,7 +1012,7 @@ contains
   !> @return The operator
   function get_eliminated_q22_fine() result(op)
     implicit none
-    type(operator_type), pointer :: op
+    type(r_solver_operator_type), pointer :: op
     op => eliminated_q22(1)
   end function get_eliminated_q22_fine
 
@@ -1011,7 +1023,7 @@ contains
   function get_eliminated_q22_mg(level) result(op)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(operator_type), pointer :: op
+    type(r_solver_operator_type), pointer :: op
     op => eliminated_q22(level)
   end function get_eliminated_q22_mg
 
@@ -1020,7 +1032,7 @@ contains
   !> @return The operator
   function get_eliminated_q32_fine() result(op)
     implicit none
-    type(operator_type), pointer :: op
+    type(r_solver_operator_type), pointer :: op
     op => eliminated_q32(1)
   end function get_eliminated_q32_fine
 
@@ -1031,7 +1043,7 @@ contains
   function get_eliminated_q32_mg(level) result(op)
     implicit none
     integer(kind=i_def), intent(in) :: level
-    type(operator_type), pointer :: op
+    type(r_solver_operator_type), pointer :: op
     op => eliminated_q32(level)
   end function get_eliminated_q32_mg
 
@@ -1039,7 +1051,7 @@ contains
   !> @return The operator
   function get_eliminated_q2t() result(op)
     implicit none
-    type(operator_type), pointer :: op
+    type(r_solver_operator_type), pointer :: op
     op => eliminated_q2t
   end function get_eliminated_q2t
 
@@ -1047,7 +1059,7 @@ contains
   !> @return The operator
   function get_eliminated_q3t() result(op)
     implicit none
-    type(operator_type), pointer :: op
+    type(r_solver_operator_type), pointer :: op
     op => p3theta(1)
   end function get_eliminated_q3t
 

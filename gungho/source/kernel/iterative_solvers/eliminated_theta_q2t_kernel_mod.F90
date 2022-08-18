@@ -21,7 +21,7 @@ module eliminated_theta_q2t_kernel_mod
                                GH_READ, GH_WRITE,       &
                                GH_BASIS, GH_DIFF_BASIS, &
                                CELL_COLUMN, GH_QUADRATURE_XYoZ
-  use constants_mod,     only: i_def, r_def
+  use constants_mod,     only: i_def, r_def, r_solver
   use fs_continuity_mod, only: W2, Wtheta
   use kernel_mod,        only: kernel_type
 
@@ -108,11 +108,12 @@ subroutine eliminated_theta_q2t_code(cell, nlayers, ncell_3d, &
   real(kind=r_def), dimension(1, ndf_wt, nqp_h, nqp_v), intent(in) :: basis_wt
   real(kind=r_def), dimension(3, ndf_wt, nqp_h, nqp_v), intent(in) :: diff_basis_wt
 
-  real(kind=r_def), dimension(ndf_w2, ndf_wt, ncell_3d), intent(inout) :: q2t_op
+  real(kind=r_solver), dimension(ndf_w2, ndf_wt, ncell_3d), intent(inout) :: q2t_op
 
-  real(kind=r_def), dimension(undf_wt), intent(in) :: exner
-  real(kind=r_def), dimension(undf_w2), intent(in) :: norm_u
-  real(kind=r_def),                     intent(in) :: const
+  real(kind=r_solver), dimension(undf_wt), intent(in) :: exner
+  real(kind=r_solver), dimension(undf_w2), intent(in) :: norm_u
+  real(kind=r_solver),                     intent(in) :: const
+
   real(kind=r_def), dimension(nqp_h),   intent(in) :: wqp_h
   real(kind=r_def), dimension(nqp_v),   intent(in) :: wqp_v
 
@@ -120,27 +121,36 @@ subroutine eliminated_theta_q2t_code(cell, nlayers, ncell_3d, &
   integer(kind=i_def) :: dft, df2, k, ik
   integer(kind=i_def) :: qp1, qp2
 
-  real(kind=r_def) :: dexnerdz_q, integrand
+  real(kind=r_solver) :: dexnerdz_q, integrand, wt
+  real(kind=r_solver), dimension(3, ndf_w2, nqp_h, nqp_v) :: rsol_basis_w2
+  real(kind=r_solver), dimension(1, ndf_wt, nqp_h, nqp_v) :: rsol_basis_wt
+  real(kind=r_solver), dimension(3, ndf_wt, nqp_h, nqp_v) :: rsol_diff_basis_wt
+
+  rsol_basis_w2 = real(basis_w2, r_solver)
+  rsol_basis_wt = real(basis_wt, r_solver)
+  rsol_diff_basis_wt = real(diff_basis_wt, r_solver)
+
 
   do k = 0, nlayers-1
      ik = 1 + k + (cell-1)*nlayers
 
-    q2t_op(:, :, ik) = 0.0_r_def
+    q2t_op(:, :, ik) = 0.0_r_solver
     do qp2 = 1, nqp_v
       do qp1 = 1, nqp_h
 
-        dexnerdz_q = 0.0_r_def
+        dexnerdz_q = 0.0_r_solver
         do dft = 1, ndf_wt
-          dexnerdz_q = dexnerdz_q + exner(map_wt(dft)+k)*diff_basis_wt(3, dft, qp1, qp2)
+          dexnerdz_q = dexnerdz_q + exner(map_wt(dft)+k)*rsol_diff_basis_wt(3, dft, qp1, qp2)
         end do
 
+        wt = real(wqp_h(qp1) * wqp_v(qp2), r_solver)
         do dft = 1, ndf_wt
-          integrand = wqp_h(qp1) * wqp_v(qp2) * const  &
-                    * dexnerdz_q * basis_wt(1,dft,qp1,qp2)
+          integrand = wt * const  &
+                    * dexnerdz_q * rsol_basis_wt(1,dft,qp1,qp2)
           do df2 = 1, ndf_w2
             q2t_op(df2,dft,ik) = q2t_op(df2,dft,ik)    &
                                - norm_u(map_w2(df2)+k) &
-                                *basis_w2(3,df2,qp1,qp2)*integrand
+                                *rsol_basis_w2(3,df2,qp1,qp2)*integrand
           end do
         end do
       end do

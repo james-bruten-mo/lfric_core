@@ -20,18 +20,19 @@ module gw_pressure_operator_alg_mod
 
   use hierarchical_linear_operator_mod,   only: abstract_hierarchical_linear_operator_type
   use vector_mod,                         only: abstract_vector_type
-  use field_mod,                          only: field_type
-  use field_vector_mod,                   only: field_vector_type
-  use constants_mod,                      only: i_def, r_def
+  use r_solver_field_mod,                 only: r_solver_field_type
+  use r_solver_field_vector_mod,          only: r_solver_field_vector_type
+  use constants_mod,                      only: i_def, r_solver
   use fem_constants_mod,                  only: get_mass_matrix,     &
-                                                get_inverse_w3_mass_matrix, &
-                                                get_div
+                                                get_inverse_w3_mass_matrix_r_solver, &
+                                                get_div_r_solver
   use fs_continuity_mod,                  only: W0, W2, W3, Wtheta
   use timestepping_config_mod,            only: dt
 
   use initial_temperature_config_mod,     only: bvf_square
 
-  use operator_mod,                       only: operator_type
+  use operator_mod,                       only: operator_type, &
+                                                r_solver_operator_type
   use field_indices_mod,                  only: igw_u, igw_p, igw_b
   use log_mod,                            only: log_event,       &
                                                 LOG_LEVEL_ERROR, &
@@ -51,15 +52,13 @@ module gw_pressure_operator_alg_mod
                         gw_pressure_operator_type
   private
      !> Off-centering parameter in SI timestepping
-     real(kind=r_def) :: alpha
+     real(kind=r_solver) :: alpha
      !> Temporary fields used in operator application
-     type(field_type) :: grad_p, div_grad_p
+     type(r_solver_field_type) :: grad_p, div_grad_p
      !> Lumped inverse \f$\tilde{H}_B^{-1}\f$
-     type(field_type) :: Hb_lumped_inv
+     type(r_solver_field_type) :: Hb_lumped_inv
      !> Multigrid level
      integer(kind=i_def) :: level
-     !> Id of pressure function space
-     integer(kind=i_def) :: fs_id
      contains
      !> Return the lumped inverse \f$\tilde{H}_B^{-1}\f$
      procedure, public  :: get_Hb_lumped_inv
@@ -95,51 +94,58 @@ contains
   !!          inverse \f$ \tilde{H}_b^{-1} \f$ as well as other operators
   !!          such as div and grad for the Helmholtz operator application.
   !>
-  !> @param[in] wp Function space for the pressure on this level
   !> @param[in] level Multigrid level
   !> @return Instance of the Helmholtz operator
-  function gw_pressure_operator_constructor(wp, level) result(self)
-    use function_space_mod,            only: function_space_type
-    use fs_continuity_mod,             only: W2, W0, W3, Wtheta
-    use finite_element_config_mod,     only: element_order
-    use quadrature_xyoz_mod,           only: quadrature_xyoz_type
-    use quadrature_rule_gaussian_mod,  only: quadrature_rule_gaussian_type
-    use compute_q_operator_kernel_mod, only: compute_q_operator_type
-    use matrix_vector_kernel_mod,      only: matrix_vector_kernel_type
+  function gw_pressure_operator_constructor(level) result(self)
+    use function_space_mod,                 only: function_space_type
+    use fs_continuity_mod,                  only: W2, W0, W3, Wtheta
+    use finite_element_config_mod,          only: element_order
+    use quadrature_xyoz_mod,                only: quadrature_xyoz_type
+    use quadrature_rule_gaussian_mod,       only: quadrature_rule_gaussian_type
+    use compute_q_operator_kernel_mod,      only: compute_q_operator_type
+    use matrix_vector_kernel_mod,           only: matrix_vector_kernel_type
     use transpose_matrix_vector_kernel_mod, only: transpose_matrix_vector_kernel_type
-    use function_space_collection_mod, only: function_space_collection
-
+    use function_space_collection_mod,      only: function_space_collection
+    use mesh_collection_mod,                only: mesh_collection
+    use multigrid_config_mod,               only: chain_mesh_tags
+    use base_mesh_config_mod,               only: prime_mesh_name
+    use operator_algebra_kernel_mod,        only: operator_setval_x_kernel_type
     implicit none
 
     type(gw_pressure_operator_type)     :: self
-    type(function_space_type), pointer, intent(in) :: wp
     integer(kind=i_def), intent(in)     :: level
     type(function_space_type), pointer  :: wu => null(), &
-                                           wb => null()
+                                           wb => null(), &
+                                           wp => null()
     integer(kind=i_def)                 :: order
     type(mesh_type), pointer            :: mesh => null()
-    real(kind=r_def)                    :: const1
-    type(field_type)                    :: ones, M_lumped, &
+    real(kind=r_solver)                 :: const1
+    type(r_solver_field_type)           :: ones, M_lumped, &
                                            ones_u, M_lumped_u, &
                                            Mb_lumped_inv, QT1
-    type(operator_type), pointer        :: Mb => null(), Mu => null()
+    type(operator_type), pointer        :: Mm => null()
+    type(r_solver_operator_type)        :: Mu, Mb
     type(quadrature_xyoz_type)          :: qr
     type(quadrature_rule_gaussian_type) :: quadrature_rule
-    type(operator_type)                 :: Q
+    type(r_solver_operator_type)        :: Q
 
 
     call log_event( 'Constructing pressure operator...', LOG_LEVEL_INFO )
 
-    self%alpha = 0.5_r_def
+    self%alpha = 0.5_r_solver
     self%level = level
 
-    ! ID of pressure function space
-    self%fs_id = wp%get_id()
-
     ! Get needed function spaces
-    order =  wp%get_element_order()
-    mesh  => wp%get_mesh()
+    order =  element_order
+    if ( level == 1 ) then
+      ! Prime mesh
+      mesh => mesh_collection%get_mesh( prime_mesh_name )
+    else
+      ! Multigrid mesh
+      mesh => mesh_collection%get_mesh( chain_mesh_tags(level) )
+    end if
 
+    wp => function_space_collection%get_fs( mesh, order, W3 )
     wu => function_space_collection%get_fs( mesh, order, W2 )
     select case(b_space)
       case(b_space_w0)
@@ -160,14 +166,16 @@ contains
     call Mb_lumped_inv%initialise( vector_space = wb )
     select case(b_space)
       case(b_space_w0)
-        Mb => get_mass_matrix(W0, mesh%get_id())
+        Mm => get_mass_matrix(W0, mesh%get_id())
       case(b_space_w3)
-        Mb => get_mass_matrix(W3, mesh%get_id())
+        Mm => get_mass_matrix(W3, mesh%get_id())
       case(b_space_wtheta)
-        Mb => get_mass_matrix(Wtheta, mesh%get_id())
+        Mm => get_mass_matrix(Wtheta, mesh%get_id())
     end select
-    call invoke( setval_c( ones,     1.0_r_def ),               &
-                 setval_c( M_lumped, 0.0_r_def ),               &
+    call Mb%initialise( wb, wb )
+    call invoke( operator_setval_x_kernel_type( Mb, Mm ),       &
+                 setval_c( ones,     1.0_r_solver ),            &
+                 setval_c( M_lumped, 0.0_r_solver ),            &
                  matrix_vector_kernel_type(M_lumped, ones, Mb), &
                  X_divideby_Y(Mb_lumped_inv, ones, M_lumped) )
 
@@ -181,12 +189,13 @@ contains
     call M_lumped_u%initialise( vector_space = wu )
     call QT1%initialise( vector_space = wb )
     call self%Hb_lumped_inv%initialise( vector_space = wu )
-    Mu => get_mass_matrix(W2, mesh%get_id())
-
-    const1 = self%alpha**2*dt**2*bvf_square
-    call invoke( setval_c(ones_u,     1.0_r_def),                        &
-                 setval_c(M_lumped_u, 0.0_r_def),                        &
-                 setval_c(QT1,        0.0_r_def),                        &
+    Mm => get_mass_matrix(W2, mesh%get_id())
+    call Mu%initialise( Mm%get_fs_to(), Mm%get_fs_from() )
+    const1 = self%alpha**2*real(dt**2*bvf_square, r_solver)
+    call invoke( operator_setval_x_kernel_type( Mu, Mm ),                &
+                 setval_c(ones_u,     1.0_r_solver),                     &
+                 setval_c(M_lumped_u, 0.0_r_solver),                     &
+                 setval_c(QT1,        0.0_r_solver),                     &
                  transpose_matrix_vector_kernel_type(QT1, ones_u, Q),    &
                  inc_X_times_Y(QT1, Mb_lumped_inv),                      &
                  matrix_vector_kernel_type(M_lumped_u, QT1, Q),          &
@@ -215,7 +224,6 @@ contains
     ! Deep copy of the contents of the pressure_operator_type
     dest%alpha = source%alpha
     dest%level = source%level
-    dest%fs_id = source%fs_id
     call source%grad_p%copy_field(dest%grad_p)
     call source%div_grad_p%copy_field(dest%div_grad_p)
     call source%Hb_lumped_inv%copy_field(dest%Hb_lumped_inv)
@@ -233,7 +241,7 @@ contains
   function get_Hb_lumped_inv(self) result(Hb_lumped_inv)
     implicit none
     class(gw_pressure_operator_type), intent(in) :: self
-    type(field_type) :: Hb_lumped_inv
+    type(r_solver_field_type) :: Hb_lumped_inv
     call self%Hb_lumped_inv%copy_field(Hb_lumped_inv)
   end function get_Hb_lumped_inv
 
@@ -251,32 +259,33 @@ contains
     class(gw_pressure_operator_type), intent(inout) :: self
     class(abstract_vector_type),      intent(in)    :: x
     class(abstract_vector_type),      intent(inout) :: y
-    real(kind=r_def) :: const
+    real(kind=r_solver) :: const
 
     type(mesh_type), pointer :: mesh => null()
 
-    type(operator_type), pointer :: div => null(), M3_inv => null()
+    type(r_solver_operator_type), pointer :: div => null(), &
+                                             M3_inv => null()
 
     ! Workaround for PSyclone to get pointers of the correct type for x and y
-    type(field_type), pointer :: x_vec => null(), &
-                                 y_vec => null()
+    type(r_solver_field_type), pointer :: x_vec => null(), &
+                                          y_vec => null()
 
     select type (x)
 
-    type is (field_vector_type)
+    type is (r_solver_field_vector_type)
 
       select type (y)
 
-      type is (field_vector_type)
+      type is (r_solver_field_vector_type)
         ! Get pointers to x and y abstract types
         x_vec => x%get_field(1)
         y_vec => y%get_field(1)
 
         mesh   => x%vector(1)%get_mesh()
-        div    => get_div(mesh%get_id())
-        M3_inv => get_inverse_w3_mass_matrix(mesh%get_id())
-        const = self%alpha**2*dt**2*cs_square
-        call invoke( setval_c(self%grad_p, 0.0_r_def),                &
+        div    => get_div_r_solver(mesh%get_id())
+        M3_inv => get_inverse_w3_mass_matrix_r_solver(mesh%get_id())
+        const = self%alpha**2*real(dt**2*cs_square, r_solver)
+        call invoke( setval_c(self%grad_p, 0.0_r_solver),             &
                      transpose_matrix_vector_kernel_type(self%grad_p, &
                                                          x_vec,       &
                                                          div),        &
@@ -317,17 +326,15 @@ contains
   !!        next level of the multigrid hierarchy.
   !>
   !> @param[in] self Instance of gw_pressure_operator_type
-  !> @param[in] fs_coarse Coarse level function space
   !> @param[in,out] coarse_operator Coarsened version of the operator on
   !!                                the next multigrid level
-  subroutine coarsen_gw_pressure_operator(self,fs_coarse,coarse_operator)
+  subroutine coarsen_gw_pressure_operator(self,coarse_operator)
     use function_space_mod, only: function_space_type
     implicit none
     class(gw_pressure_operator_type), intent(in) :: self
-    type(function_space_type), pointer, intent(in) :: fs_coarse
     class(abstract_hierarchical_linear_operator_type), allocatable, intent(inout) :: coarse_operator
     allocate(coarse_operator, &
-             source=gw_pressure_operator_type(fs_coarse,self%level+1))
+             source=gw_pressure_operator_type(self%level+1))
   end subroutine coarsen_gw_pressure_operator
 
   !> @brief Finalizer for the Helmholtz operator.

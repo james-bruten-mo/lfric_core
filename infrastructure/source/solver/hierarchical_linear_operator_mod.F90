@@ -10,7 +10,6 @@
 !> can be coarsened to the next level of the multigrid hierarchy.
 
 module hierarchical_linear_operator_mod
-  use function_space_mod, only : function_space_type
   use linear_operator_mod, only : abstract_linear_operator_type
   implicit none
 
@@ -30,11 +29,9 @@ module hierarchical_linear_operator_mod
      !>@param[in] self a hierarchical linear operator
      !>@param[in] fs_coarse coarse level function space
      !>@param[inout] coarse_operator coarsened version on the next multigrid level
-     subroutine coarsen_interface(self,fs_coarse,coarse_operator)
-       import :: abstract_hierarchical_linear_operator_type, &
-                 function_space_type
+     subroutine coarsen_interface(self,coarse_operator)
+       import :: abstract_hierarchical_linear_operator_type
        class(abstract_hierarchical_linear_operator_type), intent(in) :: self
-       type(function_space_type), pointer, intent(in) :: fs_coarse
        class(abstract_hierarchical_linear_operator_type), allocatable, intent(inout) :: coarse_operator
      end subroutine coarsen_interface
   end interface

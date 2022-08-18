@@ -9,7 +9,7 @@
 !!        assembled operators and B & C are mass matrices
 module compound_operator_kernel_mod
 
-use constants_mod,           only: r_def, i_def
+use constants_mod,           only: r_solver, i_def
 use kernel_mod,              only: kernel_type
 use argument_mod,            only: arg_type,                 &
                                    GH_OPERATOR, GH_FIELD,    &
@@ -87,21 +87,21 @@ subroutine compound_operator_kernel_code(cell, nlayers, &
   integer(kind=i_def), dimension(ndf2),    intent(in) :: map2
 
 
-  real(kind=r_def), dimension(ndf1,ndf2,ncell_3d_1), intent(inout) :: compound_operator
-  real(kind=r_def), dimension(ndf1,ndf1,ncell_3d_2), intent(in)    :: mass_matrix1
-  real(kind=r_def), dimension(ndf1,ndf1,ncell_3d_3), intent(in)    :: mass_matrix2
-  real(kind=r_def), dimension(ndf1,ndf2,ncell_3d_4), intent(in)    :: differential_matrix
-  real(kind=r_def), dimension(undf2),                intent(in)    :: field
-  real(kind=r_def),                                  intent(in)    :: tau
+  real(kind=r_solver), dimension(ndf1,ndf2,ncell_3d_1), intent(inout) :: compound_operator
+  real(kind=r_solver), dimension(ndf1,ndf1,ncell_3d_2), intent(in)    :: mass_matrix1
+  real(kind=r_solver), dimension(ndf1,ndf1,ncell_3d_3), intent(in)    :: mass_matrix2
+  real(kind=r_solver), dimension(ndf1,ndf2,ncell_3d_4), intent(in)    :: differential_matrix
+  real(kind=r_solver), dimension(undf2),                intent(in)    :: field
+  real(kind=r_solver),                                  intent(in)    :: tau
 
   ! Internal variables
-  integer(kind=i_def)                     :: k, ik, df
-  real(kind=r_def),  dimension(ndf1,ndf2) :: d
+  integer(kind=i_def)                        :: k, ik, df
+  real(kind=r_solver),  dimension(ndf1,ndf2) :: d
 
   do k = 0, nlayers - 1
     ik = k + 1 + (cell-1)*nlayers
     d = matmul(mass_matrix1(:,:,ik),matmul(mass_matrix2(:,:,ik),&
-                                          differential_matrix(:,:,ik)))
+                                           differential_matrix(:,:,ik)))
     do df = 1,ndf2
       compound_operator(:,df,ik) = tau*d(:,df)*field(map2(df)+k)
     end do

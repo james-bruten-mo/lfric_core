@@ -11,7 +11,7 @@ module combine_w2_field_kernel_mod
                                 GH_FIELD, GH_REAL, &
                                 GH_INC, GH_READ,   &
                                 CELL_COLUMN
-  use constants_mod,     only : r_def, i_def
+  use constants_mod,     only : r_double, r_single, i_def
   use fs_continuity_mod, only : W2, W2h, W2v
   use kernel_mod,        only : kernel_type
 
@@ -33,13 +33,18 @@ module combine_w2_field_kernel_mod
          arg_type(GH_FIELD, GH_REAL, GH_READ, W2v)  &
          /)
     integer :: operates_on = CELL_COLUMN
-  contains
-    procedure, nopass :: combine_w2_field_code
   end type
   !---------------------------------------------------------------------------
   ! Contained functions/subroutines
   !---------------------------------------------------------------------------
   public :: combine_w2_field_code
+
+  ! Generic interface for real32 and real64 types
+  interface combine_w2_field_code
+    module procedure  &
+      combine_w2_field_code_r_single, &
+      combine_w2_field_code_r_double
+  end interface
 
 contains
 
@@ -56,11 +61,14 @@ contains
 !! @param[in] map_q Dofmap for the cell at the base of the column for the field to be advected
 !! @param[in] basis_q Basis functions evaluated at gaussian quadrature points
 !! @param[in] q Advected field
-subroutine combine_w2_field_code(nlayers,                  &
-                               uvw, uv, w,                 &
-                               ndf_w2,  undf_w2,  map_w2,  &
-                               ndf_w2h, undf_w2h, map_w2h, &
-                               ndf_w2v, undf_w2v, map_w2v )
+
+! R_DOUBLE PRECISION
+! ==================
+subroutine combine_w2_field_code_r_double(nlayers,                    &
+                                          uvw, uv, w,                 &
+                                          ndf_w2,  undf_w2,  map_w2,  &
+                                          ndf_w2h, undf_w2h, map_w2h, &
+                                          ndf_w2v, undf_w2v, map_w2v )
 
   implicit none
 
@@ -71,9 +79,9 @@ subroutine combine_w2_field_code(nlayers,                  &
   integer(kind=i_def), dimension(ndf_w2),  intent(in) :: map_w2
   integer(kind=i_def), dimension(ndf_w2h), intent(in) :: map_w2h
   integer(kind=i_def), dimension(ndf_w2v), intent(in) :: map_w2v
-  real(kind=r_def), dimension(undf_w2),  intent(inout) :: uvw
-  real(kind=r_def), dimension(undf_w2h), intent(in)    :: uv
-  real(kind=r_def), dimension(undf_w2v), intent(in)    :: w
+  real(kind=r_double), dimension(undf_w2),  intent(inout) :: uvw
+  real(kind=r_double), dimension(undf_w2h), intent(in)    :: uv
+  real(kind=r_double), dimension(undf_w2v), intent(in)    :: w
 
   ! Internal variables
   integer(kind=i_def) :: df, k
@@ -87,6 +95,42 @@ subroutine combine_w2_field_code(nlayers,                  &
     end do
   end do
 
-end subroutine combine_w2_field_code
+end subroutine combine_w2_field_code_r_double
+
+! R_SINGLE PRECISION
+! ==================
+subroutine combine_w2_field_code_r_single(nlayers,                    &
+                                          uvw, uv, w,                 &
+                                          ndf_w2,  undf_w2,  map_w2,  &
+                                          ndf_w2h, undf_w2h, map_w2h, &
+                                          ndf_w2v, undf_w2v, map_w2v )
+
+  implicit none
+
+  ! Arguments
+  integer(kind=i_def), intent(in) :: nlayers
+  integer(kind=i_def), intent(in) :: ndf_w2, ndf_w2h, ndf_w2v
+  integer(kind=i_def), intent(in) :: undf_w2, undf_w2h, undf_w2v
+  integer(kind=i_def), dimension(ndf_w2),  intent(in) :: map_w2
+  integer(kind=i_def), dimension(ndf_w2h), intent(in) :: map_w2h
+  integer(kind=i_def), dimension(ndf_w2v), intent(in) :: map_w2v
+  real(kind=r_single), dimension(undf_w2),  intent(inout) :: uvw
+  real(kind=r_single), dimension(undf_w2h), intent(in)    :: uv
+  real(kind=r_single), dimension(undf_w2v), intent(in)    :: w
+
+  ! Internal variables
+  integer(kind=i_def) :: df, k
+
+  do k = 0, nlayers-1
+    do df = 1,4
+      uvw(map_w2(df) + k) = uv(map_w2h(df) + k)
+    end do
+    do df = 1,2
+      uvw(map_w2(4+df) + k) = w(map_w2v(df) + k)
+    end do
+  end do
+
+end subroutine combine_w2_field_code_r_single
+
 
 end module combine_w2_field_kernel_mod

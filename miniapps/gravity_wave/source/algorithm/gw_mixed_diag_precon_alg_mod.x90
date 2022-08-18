@@ -18,8 +18,8 @@ module gw_mixed_diag_precon_alg_mod
   use constants_mod,                  only: i_def
   use vector_mod,                     only: abstract_vector_type
   use preconditioner_mod,             only: abstract_preconditioner_type
-  use field_mod,                      only: field_type
-  use field_vector_mod,               only: field_vector_type
+  use r_solver_field_mod,             only: r_solver_field_type
+  use r_solver_field_vector_mod,      only: r_solver_field_vector_type
   use log_mod,                        only: log_event,       &
                                             LOG_LEVEL_ERROR, &
                                             LOG_LEVEL_INFO,  &
@@ -42,7 +42,7 @@ module gw_mixed_diag_precon_alg_mod
      private
 
      !> Diagonal mass matrices
-     type(field_type) :: mm_diagonal_p, mm_diagonal_u, mm_diagonal_b
+     type(r_solver_field_type) :: mm_diagonal_p, mm_diagonal_u, mm_diagonal_b
 
      contains
 
@@ -73,9 +73,9 @@ contains
   !>
   !> @details This constructs all required fields and builds operators.
   !>
-  !> @param[in] state Current state (passed as a field-vector)
+  !> @param[in] mesh Mesh object
   !> @return self The constructed preconditioner object
-  function gw_mixed_diag_preconditioner_constructor(state) result(self)
+  function gw_mixed_diag_preconditioner_constructor(mesh) result(self)
 
     use gravity_wave_constants_config_mod, only: b_space,    &
                                                  b_space_w0, &
@@ -84,27 +84,42 @@ contains
     use fem_constants_mod,                 only: get_mass_matrix_diagonal
     use fs_continuity_mod,                 only: W0, W2, W3, Wtheta
     use field_indices_mod,                 only: igw_u
-
+    use psykal_lite_mod,                   only: invoke_copy_to_rsolver
+    use mesh_mod,                          only: mesh_type
+    use field_mod,                         only: field_type
 
     implicit none
 
-    type(field_vector_type), intent(in) :: state
+    type(mesh_type), intent(in) :: mesh
     type(gw_mixed_diag_preconditioner_type)  :: self
     integer(kind=i_def) :: mesh_id
+    type(field_type) :: diagonal
 
     call log_event('Constructing gravity waves mixed diag preconditioner...', &
                    LOG_LEVEL_INFO )
-    mesh_id = state%vector(igw_u)%get_mesh_id()
-    self%mm_diagonal_u = get_mass_matrix_diagonal(W2, mesh_id)
-    self%mm_diagonal_p = get_mass_matrix_diagonal(W3, mesh_id)
+    mesh_id = mesh%get_id()
+
+    ! u diagonal
+    diagonal = get_mass_matrix_diagonal(W2, mesh_id)
+    call self%mm_diagonal_u%initialise(diagonal%get_function_space())
+    call invoke_copy_to_rsolver(self%mm_diagonal_u, diagonal)
+
+    ! p diagonal
+    diagonal = get_mass_matrix_diagonal(W3, mesh_id)
+    call self%mm_diagonal_p%initialise(diagonal%get_function_space())
+    call invoke_copy_to_rsolver(self%mm_diagonal_p, diagonal)
+
+    ! b diagonal
     select case(b_space)
       case(b_space_w0)
-        self%mm_diagonal_b = get_mass_matrix_diagonal(W0, mesh_id)
+        diagonal = get_mass_matrix_diagonal(W0, mesh_id)
       case(b_space_w3)
-        self%mm_diagonal_b = get_mass_matrix_diagonal(W3, mesh_id)
+        diagonal = get_mass_matrix_diagonal(W3, mesh_id)
       case(b_space_wtheta)
-        self%mm_diagonal_b = get_mass_matrix_diagonal(Wtheta, mesh_id)
+        diagonal = get_mass_matrix_diagonal(Wtheta, mesh_id)
     end select
+    call self%mm_diagonal_b%initialise(diagonal%get_function_space())
+    call invoke_copy_to_rsolver(self%mm_diagonal_b, diagonal)
 
     call log_event( 'done', LOG_LEVEL_INFO )
 
@@ -142,7 +157,7 @@ contains
   !!                     \f$(\textbf{U},P,B)\f$ to be calculated
   subroutine apply_gw_mixed_diag_preconditioner(self, x, y)
 
-    use field_indices_mod,          only: igw_u, igw_p, igw_b
+    use field_indices_mod, only: igw_u, igw_p, igw_b
 
     implicit none
 
@@ -151,19 +166,19 @@ contains
     class(abstract_vector_type),              intent(inout) :: y
 
     ! Workaround for PSyclone to get pointers of the correct type for x and y
-    type(field_type), pointer :: x_vec_u => null(), &
-                                 x_vec_p => null(), &
-                                 x_vec_b => null(), &
-                                 y_vec_u => null(), &
-                                 y_vec_p => null(), &
-                                 y_vec_b => null()
+    type(r_solver_field_type), pointer :: x_vec_u => null(), &
+                                          x_vec_p => null(), &
+                                          x_vec_b => null(), &
+                                          y_vec_u => null(), &
+                                          y_vec_p => null(), &
+                                          y_vec_b => null()
 
     if ( subroutine_timers ) call timer('gw_mixed_diag_precon_alg')
 
     select type(x)
-    type is(field_vector_type)
+    type is(r_solver_field_vector_type)
       select type(y)
-      type is(field_vector_type)
+      type is(r_solver_field_vector_type)
         ! Get pointers to x and y abstract types
         x_vec_u => x%get_field( igw_u )
         x_vec_p => x%get_field( igw_p )

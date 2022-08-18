@@ -548,7 +548,7 @@
                              resolutions=[("BiP100x100-10x10",1.25)],
                              checkkgo=False,
                              env={"crun":1, "nrun":360,
-                                  "directives":{"default":{"mpi_parts":100,"panel_decomp":' + row + ',
+                                  "directives":{"default":{"mpi_parts":25,
                                                            "threads":3,
                                                            "use_xios":"False",
                                                            "wallclock":"00:45:00"} } },

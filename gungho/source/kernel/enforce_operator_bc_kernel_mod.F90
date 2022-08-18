@@ -16,7 +16,7 @@ use argument_mod,            only : arg_type,                 &
                                     GH_READWRITE,             &
                                     ANY_SPACE_1, ANY_SPACE_2, &
                                     CELL_COLUMN
-use constants_mod,           only : r_def, i_def
+use constants_mod,           only : r_single, r_double, i_def
 
 implicit none
 
@@ -32,14 +32,19 @@ type, public, extends(kernel_type) :: enforce_operator_bc_kernel_type
        arg_type(GH_OPERATOR, GH_REAL, GH_READWRITE, ANY_SPACE_1, ANY_SPACE_2) &
        /)
   integer :: operates_on = CELL_COLUMN
-contains
-  procedure, nopass :: enforce_operator_bc_code
 end type
 
 !-------------------------------------------------------------------------------
 ! Contained functions/subroutines
 !-------------------------------------------------------------------------------
 public :: enforce_operator_bc_code
+
+  ! Generic interface for real32 and real64 types
+  interface enforce_operator_bc_code
+    module procedure  &
+      enforce_operator_bc_code_r_single, &
+      enforce_operator_bc_code_r_double
+  end interface
 
 contains
 
@@ -52,10 +57,13 @@ contains
 !> @param[in] ndf2 Number of degrees of freedom per cell for from space
 !> @param[in] boundary_value Flags (= 0) for dofs that live on the
 !!            vertical boundaries of the cell (=1 for other dofs)
-subroutine enforce_operator_bc_code(cell, nlayers,                   &
-                                    ncell_3d, op,                    &
-                                    ndf1, ndf2, boundary_value       &
-                                   )
+
+! R_SINGLE PRECISION
+! ==================
+subroutine enforce_operator_bc_code_r_single(cell, nlayers,                   &
+                                             ncell_3d, op,                    &
+                                             ndf1, ndf2, boundary_value       &
+                                            )
 
   implicit none
 
@@ -64,7 +72,7 @@ subroutine enforce_operator_bc_code(cell, nlayers,                   &
   integer(kind=i_def), intent(in) :: ndf1, ndf2
   integer(kind=i_def), dimension(ndf1,2), intent(in) :: boundary_value
 
-  real(kind=r_def), dimension(ndf1,ndf2,ncell_3d), intent(inout) :: op
+  real(kind=r_single), dimension(ndf1,ndf2,ncell_3d), intent(inout) :: op
 
   ! Local variables
   integer(kind=i_def) :: df, k, ik
@@ -72,14 +80,45 @@ subroutine enforce_operator_bc_code(cell, nlayers,                   &
   k = 1
   ik = (cell-1)*nlayers + k
   do df = 1,ndf1
-    op(df,:,ik) = op(df,:,ik)*real(boundary_value(df,1), r_def)
+    op(df,:,ik) = op(df,:,ik)*real(boundary_value(df,1), r_single)
   end do
   k = nlayers
   ik = (cell-1)*nlayers + k
   do df = 1,ndf1
-    op(df,:,ik) = op(df,:,ik)*real(boundary_value(df,2), r_def)
+    op(df,:,ik) = op(df,:,ik)*real(boundary_value(df,2), r_single)
   end do
 
-end subroutine enforce_operator_bc_code
+end subroutine enforce_operator_bc_code_r_single
 
+! R_DOUBLE PRECISION
+! ==================
+subroutine enforce_operator_bc_code_r_double(cell, nlayers,                   &
+                                             ncell_3d, op,                    &
+                                             ndf1, ndf2, boundary_value       &
+                                            )
+
+  implicit none
+
+  ! Arguments
+  integer(kind=i_def), intent(in) :: nlayers, cell, ncell_3d
+  integer(kind=i_def), intent(in) :: ndf1, ndf2
+  integer(kind=i_def), dimension(ndf1,2), intent(in) :: boundary_value
+
+  real(kind=r_double), dimension(ndf1,ndf2,ncell_3d), intent(inout) :: op
+
+  ! Local variables
+  integer(kind=i_def) :: df, k, ik
+
+  k = 1
+  ik = (cell-1)*nlayers + k
+  do df = 1,ndf1
+    op(df,:,ik) = op(df,:,ik)*real(boundary_value(df,1), r_double)
+  end do
+  k = nlayers
+  ik = (cell-1)*nlayers + k
+  do df = 1,ndf1
+    op(df,:,ik) = op(df,:,ik)*real(boundary_value(df,2), r_double)
+  end do
+
+end subroutine enforce_operator_bc_code_r_double
 end module enforce_operator_bc_kernel_mod

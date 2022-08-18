@@ -74,8 +74,9 @@ method='bicgstab',
 monitor_convergence=.true.
 normalise=.true.,
 preconditioner='tridiagonal',
+si_pressure_a_tol=1.0-6
 si_pressure_maximum_iterations=400,
-si_pressure_tolerance=1.0e-6,
+si_pressure_tolerance=1.0e-4,
 /
 &idealised
 test='gravity_wave',
@@ -149,7 +150,7 @@ monitor_convergence=.true.
 normalise=.true.,
 reference_reset_freq=4,
 si_maximum_iterations=10,
-si_method='block_gcr',
+si_method='bicgstab',
 si_preconditioner='pressure',
 si_tolerance=1.0e-3,
 split_w=.true.,

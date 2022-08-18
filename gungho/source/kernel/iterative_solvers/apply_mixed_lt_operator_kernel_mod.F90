@@ -12,7 +12,7 @@ use argument_mod,      only : arg_type,              &
                               GH_FIELD, GH_OPERATOR, &
                               GH_READ, GH_READWRITE, &
                               GH_REAL, CELL_COLUMN
-use constants_mod,     only : r_def, i_def
+use constants_mod,     only : r_solver, i_def
 use kernel_mod,        only : kernel_type
 use fs_continuity_mod, only : W2, Wtheta
 
@@ -34,7 +34,7 @@ type, public, extends(kernel_type) :: apply_mixed_lt_operator_kernel_type
        arg_type(GH_FIELD,    GH_REAL, GH_READ,      Wtheta)          & ! norm_theta
        /)
   integer :: operates_on = CELL_COLUMN
-contains
+  contains
   procedure, nopass :: apply_mixed_lt_operator_code
 end type
 
@@ -87,18 +87,18 @@ subroutine apply_mixed_lt_operator_code(cell,                    &
   integer(kind=i_def), dimension(ndf_wt), intent(in) :: map_wt
 
   ! Fields
-  real(kind=r_def), dimension(undf_wt), intent(inout) :: lhs_theta
-  real(kind=r_def), dimension(undf_w2), intent(in)    :: wind
-  real(kind=r_def), dimension(undf_wt), intent(in)    :: theta, norm_theta
+  real(kind=r_solver), dimension(undf_wt), intent(inout) :: lhs_theta
+  real(kind=r_solver), dimension(undf_w2), intent(in)    :: wind
+  real(kind=r_solver), dimension(undf_wt), intent(in)    :: theta, norm_theta
 
   ! Operators
-  real(kind=r_def), dimension(ndf_wt, ndf_wt, ncell1), intent(in) :: mtheta
-  real(kind=r_def), dimension(ndf_wt, ndf_w2, ncell2), intent(in) :: ptheta2
+  real(kind=r_solver), dimension(ndf_wt, ndf_wt, ncell1), intent(in) :: mtheta
+  real(kind=r_solver), dimension(ndf_wt, ndf_w2, ncell2), intent(in) :: ptheta2
 
   ! Internal variables
-  integer(kind=i_def)                 :: df, k, ik
-  real(kind=r_def), dimension(ndf_w2) :: u_e
-  real(kind=r_def), dimension(ndf_wt) :: t_e, lhs_e
+  integer(kind=i_def)                    :: df, k, ik
+  real(kind=r_solver), dimension(ndf_w2) :: u_e
+  real(kind=r_solver), dimension(ndf_wt) :: t_e, lhs_e
 
   do k = 0, nlayers-1
     do df = 1, ndf_w2

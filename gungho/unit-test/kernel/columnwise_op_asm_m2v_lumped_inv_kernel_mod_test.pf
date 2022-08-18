@@ -9,7 +9,7 @@
 !>
 module columnwise_op_asm_m2v_lumped_inv_kernel_mod_test
 
-  use constants_mod,                 only : i_def, r_def, r_solver
+  use constants_mod,                 only : i_def, r_solver
   use get_unit_test_m3x3_q3x3x3_sizes_mod, &
        only : get_w2v_m3x3_q3x3x3_size
   use get_unit_test_m3x3_dofmap_mod, only : get_w2v_m3x3_dofmap
@@ -72,7 +72,7 @@ contains
     integer(kind=i_def), allocatable, dimension(:,:)   :: col_bmap
     integer(kind=i_def), allocatable, dimension(:)     :: ind_map
     real(kind=r_solver), allocatable, dimension(:,:,:) :: col_mat_mm
-    real(kind=r_def),    allocatable, dimension(:,:,:) :: local_stencil
+    real(kind=r_solver),    allocatable, dimension(:,:,:) :: local_stencil
 
     nlayers = 3
     call get_w2v_m3x3_q3x3x3_size( ndf, unused, ncell_2d, unused, unused, &
@@ -92,8 +92,8 @@ contains
     col_mat_mm = 0.0_r_solver
 
     do i=1, ncell_3d
-       local_stencil(:,:,i) = reshape( (/ 1.0_r_def/3.0_r_def, 1.0_r_def/6.0_r_def,    &
-                                          1.0_r_def/6.0_r_def, 1.0_r_def/3.0_r_def /), &
+       local_stencil(:,:,i) = reshape( (/ 1.0_r_solver/3.0_r_solver, 1.0_r_solver/6.0_r_solver,    &
+                                          1.0_r_solver/6.0_r_solver, 1.0_r_solver/3.0_r_solver /), &
                                           (/2, 2/) )
     end do
 

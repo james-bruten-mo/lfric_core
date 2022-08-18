@@ -25,7 +25,7 @@ module eliminated_theta_q22_kernel_mod
                                      GH_QUADRATURE_XYoZ,      &
                                      ANY_DISCONTINUOUS_SPACE_3
 
-  use constants_mod,           only: i_def, r_def
+  use constants_mod,           only: i_def, r_def, r_solver
   use coordinate_jacobian_mod, only: coordinate_jacobian
   use fs_continuity_mod,       only: W2, Wtheta, Wchi
   use kernel_mod,              only: kernel_type
@@ -137,15 +137,15 @@ subroutine eliminated_theta_q22_code(cell, nlayers, ncell_3d,    &
   real(kind=r_def), dimension(3, ndf_chi, nqp_h, nqp_v), intent(in) :: diff_basis_chi
   real(kind=r_def), dimension(3, ndf_wt,  nqp_h, nqp_v), intent(in) :: diff_basis_wt
 
-  real(kind=r_def), dimension(ndf_w2, ndf_w2, ncell_3d), intent(inout) :: q22_op
+  real(kind=r_solver), dimension(ndf_w2, ndf_w2, ncell_3d), intent(inout) :: q22_op
 
-  real(kind=r_def), dimension(undf_chi), intent(in) :: chi1, chi2, chi3
-  real(kind=r_def), dimension(undf_wt),  intent(in) :: theta, exner
-  real(kind=r_def), dimension(undf_w2),  intent(in) :: norm_u
-  real(kind=r_def), dimension(undf_pid), intent(in) :: panel_id
-  real(kind=r_def),                      intent(in) :: const
-  real(kind=r_def), dimension(nqp_h),    intent(in) :: wqp_h
-  real(kind=r_def), dimension(nqp_v),    intent(in) :: wqp_v
+  real(kind=r_def), dimension(undf_chi),   intent(in) :: chi1, chi2, chi3
+  real(kind=r_solver), dimension(undf_wt), intent(in) :: theta, exner
+  real(kind=r_solver), dimension(undf_w2), intent(in) :: norm_u
+  real(kind=r_def), dimension(undf_pid),   intent(in) :: panel_id
+  real(kind=r_solver),                     intent(in) :: const
+  real(kind=r_def), dimension(nqp_h),      intent(in) :: wqp_h
+  real(kind=r_def), dimension(nqp_v),      intent(in) :: wqp_v
 
   ! Internal variables
   integer(kind=i_def) :: df, df2, k, ik
@@ -153,9 +153,17 @@ subroutine eliminated_theta_q22_code(cell, nlayers, ncell_3d,    &
   integer(kind=i_def) :: ipanel
 
   real(kind=r_def), dimension(ndf_chi)         :: chi1_e, chi2_e, chi3_e
-  real(kind=r_def), dimension(3)               :: grad_theta, grad_exner, grad_term
   real(kind=r_def), dimension(nqp_h,nqp_v)     :: dj
   real(kind=r_def), dimension(3,3,nqp_h,nqp_v) :: jac
+
+
+  real(kind=r_solver)                                      :: wt_dj
+  real(kind=r_solver), dimension(3)                        :: grad_theta, grad_exner, grad_term
+  real(kind=r_solver), dimension(3, ndf_w2,  nqp_h, nqp_v) :: rsol_basis_w2
+  real(kind=r_solver), dimension(3, ndf_wt,  nqp_h, nqp_v) :: rsol_diff_basis_wt
+
+  rsol_basis_w2 = real(basis_w2, r_solver)
+  rsol_diff_basis_wt = real(diff_basis_wt, r_solver)
 
   ipanel = int(panel_id(map_pid(1)), i_def)
 
@@ -170,26 +178,28 @@ subroutine eliminated_theta_q22_code(cell, nlayers, ncell_3d,    &
 
     call coordinate_jacobian(ndf_chi, nqp_h, nqp_v, chi1_e, chi2_e, chi3_e, &
                              ipanel, basis_chi, diff_basis_chi, jac, dj)
-    q22_op(:, :, ik) = 0.0_r_def
+    q22_op(:, :, ik) = 0.0_r_solver
     do qp2 = 1, nqp_v
       do qp1 = 1, nqp_h
-        grad_theta(:) = 0.0_r_def
-        grad_exner(:) = 0.0_r_def
+        grad_theta(:) = 0.0_r_solver
+        grad_exner(:) = 0.0_r_solver
         ! Only take the vertical component of gradient
         do df = 1, ndf_wt
-          grad_theta(3) = grad_theta(3) + theta(map_wt(df)+k)*diff_basis_wt(3, df, qp1, qp2)
-          grad_exner(3) = grad_exner(3) + exner(map_wt(df)+k)*diff_basis_wt(3, df, qp1, qp2)
+          grad_theta(3) = grad_theta(3) + theta(map_wt(df)+k)*rsol_diff_basis_wt(3, df, qp1, qp2)
+          grad_exner(3) = grad_exner(3) + exner(map_wt(df)+k)*rsol_diff_basis_wt(3, df, qp1, qp2)
         end do
         ! Ensure dtheta/dz (and hence static stability: N^2 = g/theta *
         ! dtheta/dz) is positive
-        grad_theta(3) = max(1.0_r_def, grad_theta(3))
+        grad_theta(3) = max(1.0_r_solver, grad_theta(3))
+
+        wt_dj = real(wqp_h(qp1)*wqp_v(qp2)/dj(qp1,qp2), r_solver)
         do df2 = 1, ndf_w2
-          grad_term = wqp_h(qp1) * wqp_v(qp2) * const                     &
-                     *dot_product(grad_theta(:), basis_w2(:,df2,qp1,qp2)) &
-                     *grad_exner/dj(qp1,qp2)
+          grad_term = wt_dj * const                                            &
+                     *dot_product(grad_theta(:), rsol_basis_w2(:,df2,qp1,qp2)) &
+                     *grad_exner
           do df = 1, ndf_w2
             q22_op(df,df2,ik) = q22_op(df,df2,ik) + norm_u(map_w2(df)+k) &
-                               *dot_product(basis_w2(:,df,qp1,qp2), grad_term)
+                               *dot_product(rsol_basis_w2(:,df,qp1,qp2), grad_term)
           end do
         end do
        end do

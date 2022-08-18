@@ -18,7 +18,7 @@ use argument_mod,            only : arg_type, func_type,              &
                                     ANY_SPACE_1, ANY_SPACE_2,         &
                                     CELL_COLUMN
 
-use constants_mod,           only : r_def, r_solver, i_def
+use constants_mod,           only : r_solver, i_def
 
 implicit none
 
@@ -93,8 +93,8 @@ contains
     integer(kind=i_def), intent(in) :: nrow, ncol, bandwidth
     integer(kind=i_def), intent(in) :: undf1, ndf1
     integer(kind=i_def), intent(in) :: undf2, ndf2
-    real(kind=r_def), dimension(undf1), intent(inout) :: lhs
-    real(kind=r_def), dimension(undf2), intent(in) :: x
+    real(kind=r_solver), dimension(undf1), intent(inout) :: lhs
+    real(kind=r_solver), dimension(undf2), intent(in) :: x
     real(kind=r_solver), dimension(bandwidth,nrow,ncell_2d), intent(in) :: columnwise_matrix
     integer(kind=i_def), dimension(ndf1), intent(in) :: map1
     integer(kind=i_def), dimension(ndf2), intent(in) :: map2
@@ -117,7 +117,7 @@ contains
        do j = MAX(1,j_minus), MIN(ncol,j_plus)
           mu_j = map2(1) + indirection_dofmap_from(j) - 1
           lhs(mu_i) = lhs(mu_i) &
-                    + real(columnwise_matrix(j-j_minus+1,i,cell), r_def) * x(mu_j)
+                    + columnwise_matrix(j-j_minus+1,i,cell) * x(mu_j)
        end do
     end do
 

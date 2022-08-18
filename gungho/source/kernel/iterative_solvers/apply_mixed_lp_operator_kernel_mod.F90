@@ -12,7 +12,7 @@ use argument_mod,            only : arg_type,              &
                                     GH_FIELD, GH_OPERATOR, &
                                     GH_READ, GH_WRITE,     &
                                     GH_REAL, CELL_COLUMN
-use constants_mod,           only : r_def, i_def
+use constants_mod,           only : r_solver, i_def
 use kernel_mod,              only : kernel_type
 use fs_continuity_mod,       only : W3, Wtheta
 
@@ -35,7 +35,7 @@ type, public, extends(kernel_type) :: apply_mixed_lp_operator_kernel_type
        arg_type(GH_OPERATOR, GH_REAL, GH_READ,  W3, Wtheta) & ! P3t
        /)
   integer :: operates_on = CELL_COLUMN
-contains
+  contains
   procedure, nopass :: apply_mixed_lp_operator_code
 end type
 
@@ -88,19 +88,19 @@ subroutine apply_mixed_lp_operator_code(cell,                    &
   integer(kind=i_def), dimension(ndf_w3), intent(in) :: map_w3
 
   ! Fields
-  real(kind=r_def), dimension(undf_w3), intent(inout) :: lhs_exner
-  real(kind=r_def), dimension(undf_wt), intent(in)    :: theta
-  real(kind=r_def), dimension(undf_w3), intent(in)    :: rho, exner
+  real(kind=r_solver), dimension(undf_w3), intent(inout) :: lhs_exner
+  real(kind=r_solver), dimension(undf_wt), intent(in)    :: theta
+  real(kind=r_solver), dimension(undf_w3), intent(in)    :: rho, exner
 
   ! Operators
-  real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell1), intent(in) :: m3exner
-  real(kind=r_def), dimension(ndf_w3, ndf_w3, ncell2), intent(in) :: m3rho
-  real(kind=r_def), dimension(ndf_w3, ndf_wt, ncell3), intent(in) :: p3theta
+  real(kind=r_solver), dimension(ndf_w3, ndf_w3, ncell1), intent(in) :: m3exner
+  real(kind=r_solver), dimension(ndf_w3, ndf_w3, ncell2), intent(in) :: m3rho
+  real(kind=r_solver), dimension(ndf_w3, ndf_wt, ncell3), intent(in) :: p3theta
 
   ! Internal variables
-  integer(kind=i_def)                 :: df, k, ik
-  real(kind=r_def), dimension(ndf_wt) :: t_e
-  real(kind=r_def), dimension(ndf_w3) :: r_e, p_e, lhs_e
+  integer(kind=i_def)                    :: df, k, ik
+  real(kind=r_solver), dimension(ndf_wt) :: t_e
+  real(kind=r_solver), dimension(ndf_w3) :: r_e, p_e, lhs_e
 
   do k = 0, nlayers-1
     do df = 1, ndf_wt

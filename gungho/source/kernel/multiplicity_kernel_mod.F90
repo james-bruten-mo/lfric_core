@@ -16,7 +16,7 @@ use argument_mod,            only : arg_type,            &
                                     GH_FIELD, GH_REAL,   &
                                     GH_INC, ANY_SPACE_1, &
                                     CELL_COLUMN
-use constants_mod,           only : r_def, i_def
+use constants_mod,           only : r_single, r_double, i_def
 
 implicit none
 
@@ -32,14 +32,20 @@ type, public, extends(kernel_type) :: multiplicity_kernel_type
        arg_type(GH_FIELD, GH_REAL, GH_INC, ANY_SPACE_1) &
        /)
   integer :: operates_on = CELL_COLUMN
-contains
-  procedure, nopass :: multiplicity_code
 end type
 
 !-------------------------------------------------------------------------------
 ! Contained functions/subroutines
 !-------------------------------------------------------------------------------
 public :: multiplicity_code
+
+  ! Generic interface for real32 and real64 types
+  interface multiplicity_code
+    module procedure  &
+      multiplicity_code_r_single, &
+      multiplicity_code_r_double
+  end interface
+
 contains
 
 !> @brief Compute the multiplicity of a field (number of cells each DoF is shared by)
@@ -49,9 +55,11 @@ contains
 !! @param[in] undf Number of unique degrees of freedom  for the function space
 !! @param[in] map Dofmap for the cell at the base of the column for the function space
 
-subroutine multiplicity_code(nlayers, &
-                             field,   &
-                             ndf, undf, map)
+! R_SINGLE PRECISION
+! ==================
+subroutine multiplicity_code_r_single(nlayers, &
+                                      field,   &
+                                      ndf, undf, map)
 
   implicit none
 
@@ -60,17 +68,44 @@ subroutine multiplicity_code(nlayers, &
   integer(kind=i_def), intent(in) :: ndf
   integer(kind=i_def), intent(in) :: undf
   integer(kind=i_def), dimension(ndf),  intent(in) :: map
-  real(kind=r_def), dimension(undf), intent(inout) :: field
+  real(kind=r_single), dimension(undf), intent(inout) :: field
 
   ! Internal variables
   integer(kind=i_def) :: k, df
 
   do k = 0, nlayers - 1
     do df = 1,ndf
-      field(map(df) + k) = field(map(df) + k) + 1.0_r_def
+      field(map(df) + k) = field(map(df) + k) + 1.0_r_single
     end do
   end do
 
-end subroutine multiplicity_code
+end subroutine multiplicity_code_r_single
+
+
+! R_DOUBLE PRECISION
+! ==================
+subroutine multiplicity_code_r_double(nlayers, &
+                                      field,   &
+                                      ndf, undf, map)
+
+  implicit none
+
+  ! Arguments
+  integer(kind=i_def), intent(in) :: nlayers
+  integer(kind=i_def), intent(in) :: ndf
+  integer(kind=i_def), intent(in) :: undf
+  integer(kind=i_def), dimension(ndf),  intent(in) :: map
+  real(kind=r_double), dimension(undf), intent(inout) :: field
+
+  ! Internal variables
+  integer(kind=i_def) :: k, df
+
+  do k = 0, nlayers - 1
+    do df = 1,ndf
+      field(map(df) + k) = field(map(df) + k) + 1.0_r_double
+    end do
+  end do
+
+end subroutine multiplicity_code_r_double
 
 end module multiplicity_kernel_mod

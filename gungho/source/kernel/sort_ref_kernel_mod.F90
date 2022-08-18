@@ -11,7 +11,7 @@ module sort_ref_kernel_mod
   use argument_mod,      only: arg_type,          &
                                GH_FIELD, GH_REAL, &
                                GH_READWRITE, CELL_COLUMN
-  use constants_mod,     only: r_def, i_def
+  use constants_mod,     only: r_double, r_single, i_def
   use fs_continuity_mod, only: Wtheta
   use kernel_mod,        only: kernel_type
 
@@ -31,8 +31,6 @@ module sort_ref_kernel_mod
          arg_type(GH_FIELD, GH_REAL, GH_READWRITE, Wtheta) &
          /)
     integer :: operates_on = CELL_COLUMN
-  contains
-    procedure, nopass :: sort_ref_code
   end type
 
   !---------------------------------------------------------------------------
@@ -40,6 +38,12 @@ module sort_ref_kernel_mod
   !---------------------------------------------------------------------------
   public :: sort_ref_code
 
+  ! Generic interface for real32 and real64 types
+  interface sort_ref_code
+    module procedure  &
+      sort_ref_code_r_single, &
+      sort_ref_code_r_double
+  end interface
 contains
 
 !> @brief The subroutine which is called directly by the psy layer
@@ -48,10 +52,13 @@ contains
 !! @param[in] ndf_wth Number of degrees of freedom per cell for Wtheta
 !! @param[in] undf_wth The number of unique degrees of freedom for Wtheta
 !! @param[in] map_wth Dofmap for the cell at the base of the column for Wtheta
-subroutine sort_ref_code(nlayers,                   &
-                         theta_ref,                 &
-                         ndf_wth, undf_wth, map_wth &
-                         )
+
+! R_SINGLE PRECISION
+! ==================
+subroutine sort_ref_code_r_single(nlayers,                   &
+                                  theta_ref,                 &
+                                  ndf_wth, undf_wth, map_wth &
+                                 )
 
   implicit none
 
@@ -60,13 +67,12 @@ subroutine sort_ref_code(nlayers,                   &
 
   integer(kind=i_def), intent(in) :: ndf_wth, undf_wth
 
-  real(kind=r_def), dimension(undf_wth), intent(inout) :: theta_ref
-  integer(kind=i_def), dimension(ndf_wth), intent(in)  :: map_wth
+  real(kind=r_single), dimension(undf_wth), intent(inout) :: theta_ref
+  integer(kind=i_def), dimension(ndf_wth),  intent(in)    :: map_wth
 
   ! Internal variables
-  integer(kind=i_def)         :: k, kcnt
-
-  real(kind=r_def)            :: theta_k
+  integer(kind=i_def) :: k, kcnt
+  real(kind=r_single) :: theta_k
 
   do k = 1, nlayers
 
@@ -82,6 +88,43 @@ subroutine sort_ref_code(nlayers,                   &
     theta_ref(map_wth(1) + kcnt) = theta_k
   end do
 
-end subroutine sort_ref_code
+end subroutine sort_ref_code_r_single
+
+! R_DOUBLE PRECISION
+! ==================
+subroutine sort_ref_code_r_double(nlayers,                   &
+                                  theta_ref,                 &
+                                  ndf_wth, undf_wth, map_wth &
+                                 )
+
+  implicit none
+
+  ! Arguments
+  integer(kind=i_def), intent(in) :: nlayers
+
+  integer(kind=i_def), intent(in) :: ndf_wth, undf_wth
+
+  real(kind=r_double), dimension(undf_wth), intent(inout) :: theta_ref
+  integer(kind=i_def), dimension(ndf_wth),  intent(in)    :: map_wth
+
+  ! Internal variables
+  integer(kind=i_def) :: k, kcnt
+  real(kind=r_double) :: theta_k
+
+  do k = 1, nlayers
+
+    theta_k=theta_ref(map_wth(1) + k)
+    kcnt=k
+
+    do while (theta_ref(map_wth(1) + kcnt -1) > theta_k)
+      theta_ref(map_wth(1) + kcnt) = theta_ref(map_wth(1) + kcnt -1)
+      kcnt = kcnt - 1
+      if (kcnt == 0) exit
+
+    end do
+    theta_ref(map_wth(1) + kcnt) = theta_k
+  end do
+
+end subroutine sort_ref_code_r_double
 
 end module sort_ref_kernel_mod

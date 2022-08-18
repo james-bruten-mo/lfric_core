@@ -9,7 +9,7 @@
 !>
 module columnwise_op_asm_diag_hmht_kernel_mod_test
 
-  use constants_mod,                 only : i_def, r_def, r_solver
+  use constants_mod,                 only : i_def, r_solver
   use get_unit_test_m3x3_q3x3x3_sizes_mod, &
                                      only : get_w3_m3x3_q3x3x3_size, &
                                             get_w2h_m3x3_q3x3x3_size
@@ -75,20 +75,20 @@ contains
     integer(kind=i_def), allocatable, dimension(:,:)   :: col_map
     real(kind=r_solver), allocatable, dimension(:,:,:) :: col_mat_diag_hmht
 
-    real(kind=r_def), allocatable, dimension(:,:,:) :: local_stencil_div
-    real(kind=r_def), allocatable, dimension(:,:,:) :: local_stencil_M2h
-    real(kind=r_def),              dimension(4)     :: rho
-    real(kind=r_def),              dimension(4)     :: sigma
+    real(kind=r_solver), allocatable, dimension(:,:,:) :: local_stencil_div
+    real(kind=r_solver), allocatable, dimension(:,:,:) :: local_stencil_M2h
+    real(kind=r_solver),              dimension(4)     :: rho
+    real(kind=r_solver),              dimension(4)     :: sigma
     real(kind=r_solver)                             :: answer
 
-    rho(1) = 2.0_r_def
-    rho(2) = 3.0_r_def
-    rho(3) = 4.0_r_def
-    rho(4) = 5.0_r_def
-    sigma(1) = 2.0_r_def
-    sigma(2) = 7.0_r_def
-    sigma(3) = 9.1_r_def
-    sigma(4) = 4.8_r_def
+    rho(1) = 2.0_r_solver
+    rho(2) = 3.0_r_solver
+    rho(3) = 4.0_r_solver
+    rho(4) = 5.0_r_solver
+    sigma(1) = 2.0_r_solver
+    sigma(2) = 7.0_r_solver
+    sigma(3) = 9.1_r_solver
+    sigma(4) = 4.8_r_solver
 
     ! Test mass matrix kernel
     nlayers = 3
@@ -116,10 +116,10 @@ contains
        local_stencil_div(:,:,i) = reshape( (/ rho(1), rho(2), rho(3), rho(4) /),&
                                              (/1, 4/) )
 
-       local_stencil_M2h(:,:,i) = reshape( (/ sigma(1),0.0_r_def,0.0_r_def,0.0_r_def,   &
-                                              0.0_r_def,sigma(2),0.0_r_def,0.0_r_def,   &
-                                              0.0_r_def,0.0_r_def,sigma(3),0.0_r_def,   &
-                                              0.0_r_def,0.0_r_def,0.0_r_def,sigma(4) /),&
+       local_stencil_M2h(:,:,i) = reshape( (/ sigma(1),0.0_r_solver,0.0_r_solver,0.0_r_solver,   &
+                                              0.0_r_solver,sigma(2),0.0_r_solver,0.0_r_solver,   &
+                                              0.0_r_solver,0.0_r_solver,sigma(3),0.0_r_solver,   &
+                                              0.0_r_solver,0.0_r_solver,0.0_r_solver,sigma(4) /),&
                                               (/4, 4/) )
     end do
 

@@ -8,7 +8,7 @@
 !>
 module eliminated_theta_q2t_kernel_mod_test
 
-  use constants_mod, only : i_def, r_def
+  use constants_mod, only : i_def, r_def, r_solver
   use pFUnit_Mod
 
   implicit none
@@ -56,7 +56,7 @@ contains
 
     class(eliminated_theta_q2t_test_type), intent(inout) :: this
 
-    real(kind=r_def), parameter :: tol = 1.0e-12_r_def
+    real(kind=r_solver), parameter :: tol = 1.0e-12_r_solver
 
     ! Mesh
     integer(kind=i_def), parameter :: ncell   = 1
@@ -69,7 +69,7 @@ contains
     integer(kind=i_def), parameter :: undf_w2 = ndf_w2
     integer(kind=i_def), parameter :: undf_wt = ndf_wt
     ! Operators to test
-    real(kind=r_def), dimension(ndf_w2,ndf_wt,ncell) :: q2t
+    real(kind=r_solver), dimension(ndf_w2,ndf_wt,ncell) :: q2t
     ! Maps
     integer(kind=i_def), dimension(ndf_w2) :: map_w2
     integer(kind=i_def), dimension(ndf_wt) :: map_wt
@@ -81,13 +81,13 @@ contains
     integer(kind=i_def), parameter   :: nqp = 1_i_def
     real(kind=r_def), dimension(nqp) :: wgt
     ! Fields
-    real(kind=r_def), dimension(ndf_w2) :: norm_u
-    real(kind=r_def), dimension(ndf_wt) :: exner
+    real(kind=r_solver), dimension(ndf_w2) :: norm_u
+    real(kind=r_solver), dimension(ndf_wt) :: exner
     ! Scalars
-    real(kind=r_def)                    :: const
+    real(kind=r_solver)                    :: const
 
     integer(kind=i_def) :: i, df1, df2
-    real(kind=r_def), dimension(ndf_w2, ndf_wt) :: answer
+    real(kind=r_solver), dimension(ndf_w2, ndf_wt) :: answer
 
     do i = 1,ndf_w2
       map_w2(i) = int(i,i_def)
@@ -111,9 +111,9 @@ contains
     diff_basis_wt(:,2) =  (/ 0.0_r_def, 0.0_r_def,  1.0_r_def /)
 
     ! Fields
-    exner = (/ 1.0_r_def, 0.95_r_def /)
-    norm_u = (/ 2.0_r_def, 0.5_r_def, 3.0_r_def, 6.3_r_def /)
-    const = 17.0_r_def
+    exner = (/ 1.0_r_solver, 0.95_r_solver /)
+    norm_u = (/ 2.0_r_solver, 0.5_r_solver, 3.0_r_solver, 6.3_r_solver /)
+    const = 17.0_r_solver
 
     call eliminated_theta_q2t_code(cell,                    &
                                    nlayers,                 &
@@ -130,10 +130,10 @@ contains
 
     ! q2t = - norm_u * const * < basis_w2, (k*dexner/dz)*basis_wt >
     ! This is only non-zero for vertical components of W2 ( df1 = 3,4)
-    answer = 0.0_r_def
+    answer = 0.0_r_solver
     do df2 = 1,ndf_wt
       do df1 = 3,ndf_w2
-        answer(df1,df2) = -0.25_r_def * const * norm_u(df1) * (exner(2)-exner(1))
+        answer(df1,df2) = -0.25_r_solver * const * norm_u(df1) * (exner(2)-exner(1))
       end do
     end do
     @assertEqual(answer, q2t(:,:,1), tol)
