@@ -40,8 +40,7 @@ contains
                                      ffsl_flux_splitting_full,      &
                                      ffsl_advective_splitting_full, &
                                      max_vert_cfl_calc_uniform,     &
-                                     moisture_eqn_advective,        &
-                                     ffsl_scheme_three_dim
+                                     moisture_eqn_advective
     implicit none
 
     class(poly1d_vert_adv_coeffs_test_type), intent(inout) :: this
@@ -74,7 +73,6 @@ contains
                                  enforce_min_value = (/.false./),                          &
                                  min_value = (/0.0_r_def/),                                &
                                  max_vert_cfl_calc = max_vert_cfl_calc_uniform,            &
-                                 ffsl_scheme = ffsl_scheme_three_dim,                      &
                                  reversible = (/.false./)                                  &
                                  )
     call feign_base_mesh_config( filename='foo',                      &

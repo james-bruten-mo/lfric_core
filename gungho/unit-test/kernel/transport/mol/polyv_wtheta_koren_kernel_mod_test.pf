@@ -37,8 +37,7 @@ contains
                                     ffsl_flux_splitting_full,      &
                                     ffsl_advective_splitting_full, &
                                     max_vert_cfl_calc_uniform,     &
-                                    moisture_eqn_advective,        &
-                                    ffsl_scheme_three_dim
+                                    moisture_eqn_advective
     implicit none
 
     class(polyv_wtheta_koren_test_type), intent(inout) :: this
@@ -71,8 +70,7 @@ contains
                                  reversible = (/.false./),                                 &
                                  enforce_min_value = (/.false./),                          &
                                  min_value = (/0.0_r_def/),                                &
-                                 max_vert_cfl_calc = max_vert_cfl_calc_uniform,            &
-                                 ffsl_scheme = ffsl_scheme_three_dim                       &
+                                 max_vert_cfl_calc = max_vert_cfl_calc_uniform             &
                                  )
 
   end subroutine setUp

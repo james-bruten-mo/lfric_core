@@ -438,4 +438,98 @@ contains
 
   end subroutine calc_local_vertical_index_test
 
+  @test
+  subroutine get_index_positive_test()
+    use pFUnit_Mod
+    use constants_mod,   only : r_def, i_def
+    use cosmic_flux_mod, only : get_index_positive
+
+    implicit none
+
+    integer(kind=i_def) :: ind_lo, ind_hi, n_cells_to_sum, dof_iterator
+    integer(kind=i_def) :: stencil_size, stencil_half
+
+    ! Test with n_cells_to_sum = 1
+    n_cells_to_sum = 1
+
+    dof_iterator   = 1
+    stencil_size   = 7
+    stencil_half   = (stencil_size+1)/2
+    call get_index_positive(ind_lo, ind_hi, n_cells_to_sum, dof_iterator, stencil_size, stencil_half)
+    @assertEqual(1, ind_lo)
+    @assertEqual(5, ind_hi)
+
+    dof_iterator   = 2
+    stencil_size   = 7
+    stencil_half   = (stencil_size+1)/2
+    call get_index_positive(ind_lo, ind_hi, n_cells_to_sum, dof_iterator, stencil_size, stencil_half)
+    @assertEqual(2, ind_lo)
+    @assertEqual(6, ind_hi)
+
+    ! Test with n_cells_to_sum = 2
+    n_cells_to_sum = 2
+
+    dof_iterator   = 1
+    stencil_size   = 9
+    stencil_half   = (stencil_size+1)/2
+    call get_index_positive(ind_lo, ind_hi, n_cells_to_sum, dof_iterator, stencil_size, stencil_half)
+    @assertEqual(1, ind_lo)
+    @assertEqual(5, ind_hi)
+
+    dof_iterator   = 2
+    stencil_size   = 9
+    stencil_half   = (stencil_size+1)/2
+    call get_index_positive(ind_lo, ind_hi, n_cells_to_sum, dof_iterator, stencil_size, stencil_half)
+    @assertEqual(2, ind_lo)
+    @assertEqual(6, ind_hi)
+
+  end subroutine get_index_positive_test
+
+  @test
+  subroutine get_index_negative_test()
+    use pFUnit_Mod
+    use constants_mod,   only : r_def, i_def
+    use cosmic_flux_mod, only : get_index_negative
+
+    implicit none
+
+    integer(kind=i_def) :: ind_lo, ind_hi, n_cells_to_sum, dof_iterator
+    integer(kind=i_def) :: stencil_size, stencil_half
+
+    ! Test with n_cells_to_sum = 1
+    n_cells_to_sum = 1
+
+    dof_iterator   = 1
+    stencil_size   = 7
+    stencil_half   = (stencil_size+1)/2
+    call get_index_negative(ind_lo, ind_hi, n_cells_to_sum, dof_iterator, stencil_size, stencil_half)
+    @assertEqual(2, ind_lo)
+    @assertEqual(6, ind_hi)
+
+    dof_iterator   = 2
+    stencil_size   = 7
+    stencil_half   = (stencil_size+1)/2
+    call get_index_negative(ind_lo, ind_hi, n_cells_to_sum, dof_iterator, stencil_size, stencil_half)
+    @assertEqual(3, ind_lo)
+    @assertEqual(7, ind_hi)
+
+    ! Test with n_cells_to_sum = 2
+    n_cells_to_sum = 2
+
+    dof_iterator   = 1
+    stencil_size   = 13
+    stencil_half   = (stencil_size+1)/2
+    call get_index_negative(ind_lo, ind_hi, n_cells_to_sum, dof_iterator, stencil_size, stencil_half)
+    @assertEqual(6, ind_lo)
+    @assertEqual(10, ind_hi)
+
+    dof_iterator   = 2
+    stencil_size   = 13
+    stencil_half   = (stencil_size+1)/2
+    call get_index_negative(ind_lo, ind_hi, n_cells_to_sum, dof_iterator, stencil_size, stencil_half)
+    @assertEqual(7, ind_lo)
+    @assertEqual(11, ind_hi)
+
+  end subroutine get_index_negative_test
+
 end module cosmic_flux_mod_test

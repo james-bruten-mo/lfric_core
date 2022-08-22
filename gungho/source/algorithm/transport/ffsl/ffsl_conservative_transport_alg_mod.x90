@@ -1,0 +1,427 @@
+!-----------------------------------------------------------------------------
+! (C) Crown copyright 2021 Met Office. All rights reserved.
+! The file LICENCE, distributed with this code, contains details of the terms
+! under which the code may be used.
+!-----------------------------------------------------------------------------
+!> @brief   Algorithms for 2D and 3D FFSL conservative transport scheme step.
+!> @details The algorithms solve the 2D or 3D conservative transport equation
+!!          \f$\frac{\partial \rho}{\partial t} + \nabla \cdot (\mathbf{u} \rho) = 0)\f$,
+!!          using the flux-form semi-Lagrangian (FFSL) transport scheme and a
+!!          choice of splitting methods. The output increment is
+!!          \f$\nabla \cdot (\mathbf{u} \rho)\f$
+!!          and so the transport equation can be updated as
+!!          \f$rho^{n+1} = rho^{n} - \Delta{t}\times \mbox{increment}\f$.
+module ffsl_conservative_transport_alg_mod
+
+  ! Constants and types
+  use constants_mod,          only: r_def, i_def
+  use field_mod,              only: field_type
+  use function_space_mod,     only: function_space_type
+  use timer_mod,              only: timer
+  use flux_direction_mod,     only: x_direction, y_direction
+
+  ! Algorithms
+  use ffsl_1d_advect_alg_mod, only: ffsl_1d_advect_first, &
+                                    ffsl_1d_advect_final, &
+                                    ffsl_1d_advect_vert
+  use ffsl_1d_flux_alg_mod,   only: ffsl_1d_flux_first, &
+                                    ffsl_1d_flux_final, &
+                                    ffsl_1d_flux_vert
+
+  ! Configuration options
+  use io_config_mod,          only: subroutine_timers
+  use transport_config_mod,   only: ffsl_flux_splitting,       &
+                                    ffsl_flux_splitting_macho, &
+                                    ffsl_flux_splitting_afc,   &
+                                    ffsl_flux_splitting_full
+
+  implicit none
+
+  private
+
+  public :: ffsl_conservative_transport_alg
+  public :: ffsl_conservative_horizontal_alg
+
+contains
+
+
+  !> @brief   Algorithm for 3D FFSL conservative transport scheme step.
+  !> @details The algorithm solves the 3D conservative transport equation,
+  !!          giving increment = div(u field). One-dimensional flux differences
+  !!          denoted F, G, H (and advective differences, f, g, h) are computed
+  !!          and used with the chosen option for splitting. The transport equation
+  !!          can be updated as field_np1 = field_n - dt*increment.
+  !> @param[in]     field             Transported field
+  !> @param[in]     dep_pts_x         Departure points in x direction
+  !> @param[in]     dep_pts_y         Departure points in y direction
+  !> @param[in]     dep_pts_z         Departure points in z direction
+  !> @param[in]     detj_at_w2        Det(J) at W2 dofs
+  !> @param[in]     panel_id          Panel ID of the cells
+  !> @param[in]     dt                Time step
+  !> @param[in,out] increment         Conservative transport increment
+  subroutine ffsl_conservative_transport_alg( field,      &
+                                              dep_pts_x,  &
+                                              dep_pts_y,  &
+                                              dep_pts_z,  &
+                                              detj_at_w2, &
+                                              panel_id,   &
+                                              dt,         &
+                                              increment )
+
+    implicit none
+
+    type(field_type), intent(in)    :: field
+    type(field_type), intent(in)    :: dep_pts_x
+    type(field_type), intent(in)    :: dep_pts_y
+    type(field_type), intent(in)    :: dep_pts_z
+    type(field_type), intent(in)    :: detj_at_w2
+    type(field_type), intent(in)    :: panel_id
+    real(kind=r_def), intent(in)    :: dt
+    type(field_type), intent(inout) :: increment
+
+    ! Subroutine name for timer
+    character(*), parameter :: routine_name = 'ffsl_conservative_transport_alg'
+
+    ! Density substeps in given direction
+    type(field_type) :: field_x
+    type(field_type) :: field_y
+    type(field_type) :: field_z
+    type(field_type) :: field_f
+    type(field_type) :: field_g
+    type(field_type) :: field_h
+    type(field_type) :: field_xy
+
+    ! Field increments and fluxes in given direction
+    type(field_type) :: increment_x
+    type(field_type) :: increment_y
+    type(field_type) :: increment_z
+    type(field_type) :: half_increment_x
+    type(field_type) :: half_increment_y
+    type(field_type) :: half_increment_z
+    type(field_type) :: half_increment_xy
+    type(field_type) :: half_increment_yx
+    type(field_type) :: half_increment_zx
+    type(field_type) :: half_increment_xz
+    type(field_type) :: half_increment_yz
+    type(field_type) :: half_increment_zy
+    type(field_type) :: flux_x
+    type(field_type) :: flux_y
+    type(field_type) :: flux_z
+
+    ! Useful constants
+    real(kind=r_def)    :: half_dt
+    real(kind=r_def)    :: third_dt
+    integer(kind=i_def) :: order
+
+    ! Coordinate fields
+    type(function_space_type), pointer :: dep_fs => null()
+    type(function_space_type), pointer :: field_fs => null()
+
+    if ( subroutine_timers ) call timer(routine_name)
+
+    ! Function space for departure points
+    dep_fs => dep_pts_x%get_function_space()
+    ! Function space for field
+    field_fs => field%get_function_space()
+
+    ! Initialise fields used by all splitting options
+    call increment_x%initialise( vector_space = field_fs )
+    call increment_y%initialise( vector_space = field_fs )
+    call increment_z%initialise( vector_space = field_fs )
+    call half_increment_x%initialise( vector_space = field_fs )
+    call half_increment_y%initialise( vector_space = field_fs )
+    call half_increment_z%initialise( vector_space = field_fs )
+    call field_x%initialise( vector_space = field_fs )
+    call field_y%initialise( vector_space = field_fs )
+    call field_z%initialise( vector_space = field_fs )
+    call field_xy%initialise( vector_space = field_fs )
+    call flux_x%initialise( vector_space = dep_fs )
+    call flux_y%initialise( vector_space = dep_fs )
+    call flux_z%initialise( vector_space = dep_fs )
+
+    ! Set constants
+    half_dt = 0.5_r_def * dt
+    third_dt = 1.0_r_def / 3.0_r_def * dt
+
+    ! Order of 1D scheme
+    ! @TODO #3324 will place order options in the namelist
+    order = 2_i_def
+
+    ! Select type of splitting
+    select case(ffsl_flux_splitting)
+
+    case(ffsl_flux_splitting_macho)
+
+      ! MACHO splitting (Leonard et al. 1996).
+      ! It has the form
+      !
+      !   rho_x  = rho - dt * f(rho)
+      !   rho_xy = rho_x - dt * g(rho_x)
+      !
+      ! Output: F(rho) + G(rho_x) + H(rho_xy)
+
+      ! Compute rho_x
+      call ffsl_1d_advect_first( x_direction, field, dep_pts_x, detj_at_w2, &
+                                 dt, order, half_increment_x )
+      call invoke( X_minus_bY( field_x, field, dt, half_increment_x ) )
+
+      ! Compute rho_xy
+      call ffsl_1d_advect_first( y_direction, field_x, dep_pts_y, detj_at_w2, &
+                                 dt, order, half_increment_y )
+      call invoke( X_minus_bY( field_xy, field_x, dt, half_increment_y ) )
+
+      ! Compute flux terms
+      call ffsl_1d_flux_first( x_direction, field, dep_pts_x, detj_at_w2,   &
+                               dt, flux_x, increment_x )
+      call ffsl_1d_flux_first( y_direction, field_x, dep_pts_y, detj_at_w2, &
+                               dt, flux_y, increment_y )
+      call ffsl_1d_flux_vert( field_xy, dep_pts_z, detj_at_w2, dt, flux_z, increment_z )
+
+      ! Collect the increments
+      call invoke( X_plus_Y( increment, increment_x, increment_y ), &
+                   inc_X_plus_Y( increment, increment_z ) )
+
+    case(ffsl_flux_splitting_afc)
+
+      ! Asymmetrical Flux (AFC) splitting
+      ! It has the form
+      !
+      !   rho_x = rho - dt/3 * f(rho)  |
+      !   rho_y = rho - dt/3 * g(rho)  | First advective step terms
+      !   rho_z = rho - dt/3 * h(rho)  |
+      !
+      !   rho_h = rho - dt * f(rho_y) |
+      !   rho_f = rho - dt * g(rho_z) | Second advective step terms
+      !   rho_g = rho - dt * h(rho_x) |
+      !
+      ! Output: F(rho_yz) + G(rho_zx) + H(rho_xy)
+
+      ! Initialise fields for AFC splitting
+      call half_increment_xy%initialise( vector_space = field_fs )
+      call half_increment_zx%initialise( vector_space = field_fs )
+      call half_increment_yz%initialise( vector_space = field_fs )
+      call field_f%initialise( vector_space = field_fs )
+      call field_g%initialise( vector_space = field_fs )
+      call field_h%initialise( vector_space = field_fs )
+
+      ! 1st advective step
+      call ffsl_1d_advect_first( x_direction, field, dep_pts_x, detj_at_w2, &
+                                 dt, order, half_increment_x )
+      call ffsl_1d_advect_first( y_direction, field, dep_pts_y, detj_at_w2, &
+                                 dt, order, half_increment_y )
+      call ffsl_1d_advect_vert( field, dep_pts_z, detj_at_w2, dt, half_increment_z )
+      call invoke( X_minus_bY( field_x, field, third_dt, half_increment_x ), &
+                   X_minus_bY( field_y, field, third_dt, half_increment_y ), &
+                   X_minus_bY( field_z, field, third_dt, half_increment_z ) )
+
+      ! 2nd advective step
+      call ffsl_1d_advect_final( x_direction, field_x, field_y, dep_pts_x, &
+                                 detj_at_w2, dt, panel_id, order, half_increment_xy )
+      call ffsl_1d_advect_first( y_direction, field_z, dep_pts_y, detj_at_w2, &
+                                 dt, order, half_increment_yz )
+      call ffsl_1d_advect_vert( field_x, dep_pts_z, detj_at_w2, dt, half_increment_zx )
+      call invoke( X_minus_bY( field_f, field, dt, half_increment_yz ), &
+                   X_minus_bY( field_g, field, dt, half_increment_zx ), &
+                   X_minus_bY( field_h, field, dt, half_increment_xy ) )
+
+      ! Final conservative step
+      call ffsl_1d_flux_final( x_direction, field_g, field_f, dep_pts_x, &
+                               detj_at_w2, dt, panel_id, flux_x, increment_x )
+      call ffsl_1d_flux_final( y_direction, field_g, field_f, dep_pts_y, &
+                               detj_at_w2, dt, panel_id, flux_y, increment_y )
+      call ffsl_1d_flux_vert( field_h, dep_pts_z, detj_at_w2, dt, flux_z, increment_z )
+
+      ! Collect the increments
+      call invoke( X_plus_Y( increment, increment_x, increment_y ), &
+                   inc_X_plus_Y( increment, increment_z ) )
+
+
+    case(ffsl_flux_splitting_full)
+
+      ! Full COSMIC splitting (from Leonard et al. 1996).
+      ! It has the form
+      !
+      !   rho_x = rho - dt/3 * f(rho)  |
+      !   rho_y = rho - dt/3 * g(rho)  | First advective step terms
+      !   rho_z = rho - dt/3 * h(rho)  |
+      !
+      !   rho_xy = rho - dt * f(rho_y) |
+      !   rho_yz = rho - dt * g(rho_z) |
+      !   rho_zx = rho - dt * h(rho_x) | Second advective step terms
+      !   rho_xz = rho - dt * f(rho_z) |
+      !   rho_yx = rho - dt * g(rho_x) |
+      !   rho_zy = rho - dt * h(rho_y) |
+      !
+      ! Output: F( (rho_yz + rho_yz)/2 ) + G( (rho_xz + rho_zx)/2 )
+      !                                  + H( (rho_xy + rho_yx)/2 )
+
+      ! Initialise fields for FULL splitting
+      call half_increment_xy%initialise( vector_space = field_fs )
+      call half_increment_xz%initialise( vector_space = field_fs )
+      call half_increment_yx%initialise( vector_space = field_fs )
+      call half_increment_yz%initialise( vector_space = field_fs )
+      call half_increment_zx%initialise( vector_space = field_fs )
+      call half_increment_zy%initialise( vector_space = field_fs )
+      call field_f%initialise( vector_space = field_fs )
+      call field_g%initialise( vector_space = field_fs )
+      call field_h%initialise( vector_space = field_fs )
+
+      ! 1st advective step
+      call ffsl_1d_advect_first( x_direction, field, dep_pts_x, detj_at_w2, &
+                                 dt, order, half_increment_x )
+      call ffsl_1d_advect_first( y_direction, field, dep_pts_y, detj_at_w2, &
+                                 dt, order, half_increment_y )
+      call ffsl_1d_advect_vert( field, dep_pts_z, detj_at_w2, dt, half_increment_z )
+      call invoke( X_minus_bY( field_x, field, third_dt, half_increment_x ), &
+                   X_minus_bY( field_y, field, third_dt, half_increment_y ), &
+                   X_minus_bY( field_z, field, third_dt, half_increment_z ) )
+
+      ! 2nd advective step
+      call ffsl_1d_advect_final( x_direction, field_x, field_y, dep_pts_x, &
+                                 detj_at_w2, dt, panel_id, order, half_increment_xy )
+      call ffsl_1d_advect_final( y_direction, field_x, field_y, dep_pts_y, &
+                                 detj_at_w2, dt, panel_id, order, half_increment_yx )
+      call ffsl_1d_advect_first( x_direction, field_z, dep_pts_x, detj_at_w2, &
+                                 dt, order, half_increment_xz )
+      call ffsl_1d_advect_first( y_direction, field_z, dep_pts_y, detj_at_w2, &
+                                 dt, order, half_increment_yz )
+      call ffsl_1d_advect_vert( field_x, dep_pts_z, detj_at_w2, dt, half_increment_zx )
+      call ffsl_1d_advect_vert( field_y, dep_pts_z, detj_at_w2, dt, half_increment_zy )
+      call invoke( X_minus_bY( field_f, field, half_dt, half_increment_yz ), &
+                   X_minus_bY( field_g, field, half_dt, half_increment_xz ), &
+                   X_minus_bY( field_h, field, half_dt, half_increment_xy ), &
+                   inc_X_minus_bY( field_f, half_dt, half_increment_zy ),    &
+                   inc_X_minus_bY( field_g, half_dt, half_increment_zx ),    &
+                   inc_X_minus_bY( field_h, half_dt, half_increment_yx ) )
+
+      ! Final conservative step
+      call ffsl_1d_flux_final( x_direction, field_g, field_f, dep_pts_x, &
+                               detj_at_w2, dt, panel_id, flux_x, increment_x )
+      call ffsl_1d_flux_final( y_direction, field_g, field_f, dep_pts_y, &
+                               detj_at_w2, dt, panel_id, flux_y, increment_y )
+      call ffsl_1d_flux_vert( field_h, dep_pts_z, detj_at_w2, dt, flux_z, increment_z )
+
+      ! Collect the increments
+      call invoke( X_plus_Y( increment, increment_x, increment_y ), &
+                   inc_X_plus_Y( increment, increment_z ) )
+
+    end select
+
+    if ( subroutine_timers ) call timer(routine_name)
+
+    nullify( field_fs, dep_fs )
+
+  end subroutine ffsl_conservative_transport_alg
+
+
+  !> @brief   Algorithm for horizontal FFSL conservative transport scheme step.
+  !> @details The algorithm solves the 2D conservative transport equation,
+  !!          giving increment = div(u field). One-dimensional flux differences
+  !!          denoted F, G (and advective differences, f, g) are computed
+  !!          and used with COSMIC splitting. The transport equation
+  !!          can be updated as field_np1 = field_n - dt*increment.
+  !> @param[in]     field             Transported field
+  !> @param[in]     dep_pts_x         Departure points in x direction
+  !> @param[in]     dep_pts_y         Departure points in y direction
+  !> @param[in]     detj_at_w2        Det(J) at W2 dofs
+  !> @param[in]     panel_id          Panel ID of the cells
+  !> @param[in]     dt                Time step
+  !> @param[in,out] increment         Conservative transport increment
+  subroutine ffsl_conservative_horizontal_alg( field,      &
+                                               dep_pts_x,  &
+                                               dep_pts_y,  &
+                                               detj_at_w2, &
+                                               panel_id,   &
+                                               dt,         &
+                                               increment )
+
+    implicit none
+
+    type(field_type), intent(in)    :: field
+    type(field_type), intent(in)    :: dep_pts_x
+    type(field_type), intent(in)    :: dep_pts_y
+    type(field_type), intent(in)    :: detj_at_w2
+    type(field_type), intent(in)    :: panel_id
+    real(kind=r_def), intent(in)    :: dt
+    type(field_type), intent(inout) :: increment
+
+    ! Subroutine name for timer
+    character(*), parameter :: routine_name = 'ffsl_conservative_horizontal_alg'
+
+    ! Density substeps in given direction
+    type(field_type) :: field_x
+    type(field_type) :: field_y
+
+    ! Field increments in given direction
+    type(field_type) :: increment_x
+    type(field_type) :: increment_y
+    type(field_type) :: half_increment_x
+    type(field_type) :: half_increment_y
+
+    ! Fluxes are included to be ready for #2997
+    type(field_type) :: flux_x
+    type(field_type) :: flux_y
+
+    ! Useful constants
+    real(kind=r_def)    :: half_dt
+    integer(kind=i_def) :: order
+
+    ! Coordinate fields
+    type(function_space_type), pointer :: dep_fs => null()
+    type(function_space_type), pointer :: field_fs => null()
+
+    if ( subroutine_timers ) call timer(routine_name)
+
+    ! Function space for departure points
+    dep_fs => dep_pts_x%get_function_space()
+    ! Function space for field
+    field_fs => field%get_function_space()
+
+    call increment_x%initialise( vector_space = field_fs )
+    call increment_y%initialise( vector_space = field_fs )
+    call half_increment_x%initialise( vector_space = field_fs )
+    call half_increment_y%initialise( vector_space = field_fs )
+    call field_x%initialise( vector_space = field_fs )
+    call field_y%initialise( vector_space = field_fs )
+    call flux_x%initialise( vector_space = dep_fs )
+    call flux_y%initialise( vector_space = dep_fs )
+
+    ! Set constants
+    half_dt = 0.5_r_def * dt
+
+    ! Order of 1D scheme
+    ! @TODO #3324 will place order options in the namelist
+    order = 2_i_def
+
+    ! COSMIC/Lin-Rood splitting (Leonard et al. 1996, Lin and Rood 1996).
+    ! It has the form
+    !
+    !   rho_x = rho - dt/2 * f(rho)
+    !   rho_y = rho - dt/2 * g(rho)
+    !
+    ! Output: F(rho_y) + G(rho_x)
+
+    ! First advective step
+    call ffsl_1d_advect_first( x_direction, field, dep_pts_x, detj_at_w2, &
+                               dt, order, half_increment_x )
+    call ffsl_1d_advect_first( y_direction, field, dep_pts_y, detj_at_w2, &
+                               dt, order, half_increment_y )
+    call invoke( X_minus_bY( field_x, field, half_dt, half_increment_x ), &
+                 X_minus_bY( field_y, field, half_dt, half_increment_y ) )
+
+    ! Final conservative step
+    call ffsl_1d_flux_final( x_direction, field_x, field_y, dep_pts_x, &
+                             detj_at_w2, dt, panel_id, flux_x, increment_x )
+    call ffsl_1d_flux_final( y_direction, field_x, field_y, dep_pts_y, &
+                             detj_at_w2, dt, panel_id, flux_y, increment_y )
+
+    ! Collect the increments
+    call invoke( X_plus_Y( increment, increment_x, increment_y ) )
+
+    if ( subroutine_timers ) call timer(routine_name)
+
+    nullify( field_fs, dep_fs )
+
+  end subroutine ffsl_conservative_horizontal_alg
+
+end module ffsl_conservative_transport_alg_mod

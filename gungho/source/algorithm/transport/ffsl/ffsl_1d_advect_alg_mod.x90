@@ -3,332 +3,343 @@
 ! The file LICENCE, distributed with this code, contains details of the terms
 ! under which the code may be used.
 !-----------------------------------------------------------------------------
-!> @brief   One-dimensional operators for 3D FFSL advective transport scheme.
-!> @details These routines are required for 3D flux-form semi-Lagrangian (FFSL)
-!!          splittings. They provide the calculation of one dimensional advective
-!!          differences, as well as calculating advective steps. There are two
-!!          routines for both differences and steps, as subsequent advection
-!!          takes into account the cubed sphere panel direction.
-!!          "ffsl_1d_advect_step": used when the input rho has not been previously
-!!          advected, or for vertical transport (which only uses a single column).
-!!          "ffsl_1d_horz_advect_step": used for horizontal advection when the input
-!!          has been previously advected - it takes both directional first steps
-!!          as inputs, and correctly handles the direction at the cubed sphere panel edges.
+!> @brief   One-dimensional operators for the FFSL advective transport scheme.
+!> @details These routines are required for the flux-form semi-Lagrangian (FFSL)
+!!          splittings. They provide the calculation of one-dimensional advective
+!!          differences. The advective increment f(q) is calculated using the
+!!          flux F(q) following Putman and Lin, JCP, 2007. As
+!!          \f$q - dt f (q)  = (q - dt F(q)) / (1 - dt F(1))\f$
+!!          therefore
+!!          \f$f(q) = (q - (q - dt F(q)) / (1 - dt F(1)) )/dt\f$
+!!          There are three routines: 'first'; 'final'; 'vert'.
+!!          'first' is used for the first step where the direction of the input
+!!                  field is not important.
+!!          'final' is used for later steps where the direction of the previous
+!!                  step is important at the edges of cubed sphere panels.
+!!          'vert' is used for vertical advective differences.
 
 module ffsl_1d_advect_alg_mod
 
   use constants_mod,                    only: r_def, i_def
+  use ffsl_1d_flux_alg_mod,             only: ffsl_1d_flux_first, &
+                                              ffsl_1d_flux_final, &
+                                              ffsl_1d_flux_vert
   use field_mod,                        only: field_type
-  use flux_direction_mod,               only: x_direction, y_direction, z_direction
+  use flux_direction_mod,               only: x_direction, y_direction
   use function_space_mod,               only: function_space_type
-  use log_mod,                          only: log_event, &
-                                              LOG_LEVEL_ERROR
-  use ffsl_1d_advective_update_alg_mod, only: ffsl_1d_advective_update_alg, &
-                                              ffsl_1d_advective_first_update_alg
-  use ffsl_vert_advective_alg_mod,      only: ffsl_vert_advective_alg
 
   implicit none
 
   private
 
-  public :: ffsl_1d_advect_step
-  public :: ffsl_1d_horz_advect_step
-  public :: ffsl_1d_advect_diff
-  public :: ffsl_1d_horz_advect_diff
+  public :: ffsl_1d_advect_first
+  public :: ffsl_1d_advect_final
+  public :: ffsl_1d_advect_vert
 
 contains
 
+
   !===========================================================================!
-  !> @brief   Algorithm to calculate an FFSL advective step.
-  !> @details This algorithm performs a single advective step in the specified
-  !!          direction. We have separate inputs for rho:
-  !!          rho   is used to calculate the advective flux;
-  !!          rho_n is added to the update;
-  !!          The output (for direction xi= x, y or z) is:
-  !!          \f$rho^{n} - \mbox{step\_scale} \times \Delta{t}
-  !!          \times u \frac{\partial rho}{\partial \xi}\f$
-  !!          calculated in the form
-  !!          \f$(1-\mbox{step\_scale})rho^{n} + \mbox{step\_scale} \times
-  !!          (\rho^{n} - \Delta{t} \times u \frac{\partial rho}{\partial \xi})\f$
+  !> @brief   Algorithm to calculate the first advective form FFSL increment
+  !!          in one horizontal dimension.
+  !> @details The algorithm calculates the advective difference in the given direction.
+  !!          The advective difference is calculated to give the increment,
+  !!          v_i * dq/dx_i, at the cell centre. This is used to compute the first
+  !!          step of the FFSL transport scheme.
   !!
-  !> @param[in]     direction         Direction (x/y/z)
-  !> @param[in]     rho_n             Density at time level n [kg m^-3]
-  !> @param[in]     rho               Density for advective difference [kg m^-3]
-  !> @param[in]     cell_orientation  Orientation of cells held in W3 field
-  !> @param[in]     dep_pts           Departure points in specified direction
-  !> @param[in]     detj_at_w2        Detj values at W2 dof locations
-  !> @param[in]     step_scale        How much of an increment to add
-  !> @param[in]     dt                Model timestep length [s]
-  !> @param[in,out] rho_adv_update    1D advective density update [kg m^-3]
-  subroutine ffsl_1d_advect_step( direction,        &
-                                  rho_n,            &
-                                  rho,              &
-                                  cell_orientation, &
-                                  dep_pts,          &
-                                  detj_at_w2,       &
-                                  step_scale,       &
-                                  dt,               &
-                                  rho_adv_update )
+  !> @param[in]     direction         Direction (x/y)
+  !> @param[in]     field             Input field
+  !> @param[in]     dep_pts           Departure points in the chosen direction
+  !> @param[in]     detj_at_w2        Det(J) at W2 dofs
+  !> @param[in]     dt                The model timestep length
+  !> @param[in]     order             Order of the reconstruction,
+  !!                                  0 for constant, 2 for PPM. This is included
+  !!                                  here to be ready for #3324
+  !> @param[in,out] increment         Advective increment
+  subroutine ffsl_1d_advect_first( direction,  &
+                                   field,      &
+                                   dep_pts,    &
+                                   detj_at_w2, &
+                                   dt,         &
+                                   order,      &
+                                   increment )
 
     implicit none
 
-    integer(i_def),   intent(in) :: direction
-    type(field_type), intent(in) :: rho_n
-    type(field_type), intent(in) :: rho
-    type(field_type), intent(in) :: cell_orientation
-    type(field_type), intent(in) :: dep_pts
-    type(field_type), intent(in) :: detj_at_w2
-    real(r_def),      intent(in) :: step_scale
-    real(r_def),      intent(in) :: dt
+    ! Arguments
+    integer(i_def),   intent(in)    :: direction
+    type(field_type), intent(in)    :: field
+    type(field_type), intent(in)    :: dep_pts
+    type(field_type), intent(in)    :: detj_at_w2
+    real(r_def),      intent(in)    :: dt
+    integer(i_def),   intent(in)    :: order
+    type(field_type), intent(inout) :: increment
 
-    type(field_type), intent(inout) :: rho_adv_update
+    ! Fields and increments
+    type(field_type) :: inc_rho
+    type(field_type) :: inc_one
+    type(field_type) :: ini_one
+    type(field_type) :: flux
+    type(field_type) :: adv_rho
+    type(field_type) :: adv_one
+    type(field_type) :: divide_part
+    type(field_type) :: inc_part
 
-    type(field_type) :: rho_adv
-    real(r_def)      :: one_minus_step_scale
+    ! Constant
+    real(r_def)      :: one_over_dt
 
-    type(function_space_type), pointer :: rho_fs => null()
+    ! Initialise fields
+    call inc_rho%initialise( vector_space=field%get_function_space() )
+    call inc_one%initialise( vector_space=field%get_function_space() )
+    call ini_one%initialise( vector_space=field%get_function_space() )
+    call flux%initialise( vector_space=dep_pts%get_function_space() )
+    call adv_rho%initialise( vector_space=field%get_function_space() )
+    call adv_one%initialise( vector_space=field%get_function_space() )
+    call inc_part%initialise( vector_space=field%get_function_space() )
+    call divide_part%initialise( vector_space=field%get_function_space() )
+    call invoke( setval_c(inc_rho, 0.0_r_def),  &
+                 setval_c(inc_one, 0.0_r_def),  &
+                 setval_c(ini_one, 1.0_r_def),  &
+                 setval_c(flux, 0.0_r_def),     &
+                 setval_c(adv_rho, 0.0_r_def),  &
+                 setval_c(adv_one, 0.0_r_def),  &
+                 setval_c(inc_part, 0.0_r_def), &
+                 setval_c(divide_part, 0.0_r_def) )
 
-    rho_fs => rho%get_function_space()
-    call rho_adv%initialise( vector_space = rho_fs )
+    ! Set constant value
+    one_over_dt = 1.0_r_def / dt
 
-    select case(direction)
+    ! Compute the increment of the field, F(q)
+    call ffsl_1d_flux_first( direction,  &
+                             field,      &
+                             dep_pts,    &
+                             detj_at_w2, &
+                             dt,         &
+                             flux,       &
+                             inc_rho )
+    call invoke( X_minus_bY( adv_rho, field, dt, inc_rho) )
 
-    case(x_direction, y_direction)
-      ! Calculate rho - dt u dot grad rho
-      ! for specified horizontal direction.
-      call ffsl_1d_advective_first_update_alg( direction, dep_pts, cell_orientation, &
-                                               rho, rho_adv, dt )
+    ! Compute the increment of one, F(1)
+    call ffsl_1d_flux_first( direction,  &
+                             ini_one,    &
+                             dep_pts,    &
+                             detj_at_w2, &
+                             dt,         &
+                             flux,       &
+                             inc_one )
 
-    case(z_direction)
-      ! Perform advective update in the Z direction.
-      call ffsl_vert_advective_alg( rho_adv, rho, dep_pts, detj_at_w2, &
-                                    cell_orientation, dt )
+    ! Get the advective increment from these conservative increments
+    ! adv_rho   = q - dt * F(q)
+    ! adv_one   = 1 - dt * F(1)
+    ! inc_part  = q - adv_rho / adv_one
+    ! increment = inc_part / dt
+    call invoke( X_minus_bY(adv_one, ini_one, dt, inc_one),   &
+                 X_divideby_Y(divide_part, adv_rho, adv_one), &
+                 X_minus_Y(inc_part, field, divide_part),     &
+                 a_times_X(increment, one_over_dt, inc_part) )
 
-    case default
-      call log_event ( 'Invalid advective step direction', LOG_LEVEL_ERROR )
-
-    end select
-
-    ! Average the advective density update with the density at timestep level n
-    one_minus_step_scale = 1.0_r_def - step_scale
-    call invoke( inc_X_minus_Y(rho_adv, rho),                     &
-                 inc_X_plus_Y(rho_adv, rho_n),                    &
-                 aX_plus_bY(rho_adv_update, one_minus_step_scale, &
-                            rho_n, step_scale, rho_adv) )
-
-    nullify( rho_fs )
-
-  end subroutine ffsl_1d_advect_step
+  end subroutine ffsl_1d_advect_first
 
 
   !===========================================================================!
-  !> @brief   Algorithm to calculate a horizontal advective step.
-  !> @details This algorithm performs a single advective step in the specified
-  !!          horizontal direction. It differs from ffsl_1d_advect_step in that
-  !!          it can be used at any step of the FFSL scheme.
-  !!          We have separate inputs for rho:
-  !!          rho_x/rho_y   density advected in x/y during a previous FFSL
-  !!                        step, and are used to calculate the advective flux;
-  !!          rho_n         added to the update;
-  !!          The output (for direction xi= x, y) is:
-  !!          \f$rho^{n} - \mbox{step\_scale} \times \Delta{t}
-  !!          \times u \frac{\partial rho}{\partial \xi}\f$
-  !!          calculated in the form
-  !!          \f$(1-\mbox{step\_scale})rho^{n} + \mbox{step\_scale} \times
-  !!          (\rho^{n} - \Delta{t} \times u \frac{\partial rho}{\partial \xi})\f$
+  !> @brief   Algorithm to calculate the subsequent advective form FFSL increment
+  !!          in one horizontal dimension.
+  !> @details The algorithm calculates the advective difference in the given direction.
+  !!          The advective difference is calculated to give the increment,
+  !!          v_i * dq/dx_i, at the cell centre. This is used to compute the final
+  !!          advective steps of the FFSL transport scheme. As it depends on previous
+  !!          steps it requires the field from both x and y so that it uses the
+  !!          correct values at cubed sphere panel edges.
   !!
-  !> @param[in]     direction         Direction (x/y/z)
-  !> @param[in]     rho_n             Density at time level n [kg m^-3]
-  !> @param[in]     rho_x             Input density (previously advected in x) [kg m^-3]
-  !> @param[in]     rho_y             Input density (previously advected in y) [kg m^-3]
-  !> @param[in]     cell_orientation  Orientation of cells held in W3 field
-  !> @param[in]     dep_pts_x         Departure points in x
-  !> @param[in]     dep_pts_y         Departure points in y
-  !> @param[in]     detj_at_w2        Detj values at W2 dof locations
-  !> @param[in]     step_scale        How much of an increment to add
-  !> @param[in]     dt                Model timestep length [s]
-  !> @param[in,out] rho_adv_update    1D advective density update [kg m^-3]
-  subroutine ffsl_1d_horz_advect_step( direction,        &
-                                       rho_n,            &
-                                       rho_x,            &
-                                       rho_y,            &
-                                       cell_orientation, &
-                                       dep_pts_x,        &
-                                       dep_pts_y,        &
-                                       detj_at_w2,       &
-                                       step_scale,       &
-                                       dt,               &
-                                       rho_adv_update )
+  !> @param[in]     direction         Direction (x/y)
+  !> @param[in]     field_x           Input field in x
+  !> @param[in]     field_y           Input field in y
+  !> @param[in]     dep_pts           Departure points in the chosen direction
+  !> @param[in]     detj_at_w2        Det(J) at W2 dofs
+  !> @param[in]     dt                The model timestep length
+  !> @param[in]     panel_id          Panel ID of the cells
+  !> @param[in]     order             Order of the reconstruction,
+  !!                                  0 for constant, 2 for PPM. This is included
+  !!                                  here to be ready for #3324
+  !> @param[in,out] increment         Advective increment
+  subroutine ffsl_1d_advect_final( direction,  &
+                                   field_x,    &
+                                   field_y,    &
+                                   dep_pts,    &
+                                   detj_at_w2, &
+                                   dt,         &
+                                   panel_id,   &
+                                   order,      &
+                                   increment )
 
     implicit none
 
-    integer(i_def),   intent(in) :: direction
-    type(field_type), intent(in) :: rho_n
-    type(field_type), intent(in) :: rho_x
-    type(field_type), intent(in) :: rho_y
-    type(field_type), intent(in) :: cell_orientation
-    type(field_type), intent(in) :: dep_pts_x
-    type(field_type), intent(in) :: dep_pts_y
-    type(field_type), intent(in) :: detj_at_w2
-    real(r_def),      intent(in) :: step_scale
-    real(r_def),      intent(in) :: dt
+    ! Arguments
+    integer(i_def),   intent(in)    :: direction
+    type(field_type), intent(in)    :: field_x
+    type(field_type), intent(in)    :: field_y
+    type(field_type), intent(in)    :: dep_pts
+    type(field_type), intent(in)    :: detj_at_w2
+    real(r_def),      intent(in)    :: dt
+    type(field_type), intent(in)    :: panel_id
+    integer(i_def),   intent(in)    :: order
+    type(field_type), intent(inout) :: increment
 
-    type(field_type), intent(inout) :: rho_adv_update
+    ! Fields and increments
+    type(field_type) :: inc_rho
+    type(field_type) :: inc_one
+    type(field_type) :: ini_one
+    type(field_type) :: flux
+    type(field_type) :: adv_rho
+    type(field_type) :: adv_one
+    type(field_type) :: divide_part
+    type(field_type) :: inc_part
+    type(field_type) :: field_n
 
-    type(field_type) :: rho_adv
-    real(r_def)      :: one_minus_step_scale
+    ! Constant
+    real(r_def)      :: one_over_dt
 
-    type(function_space_type), pointer :: rho_fs => null()
+    ! Initialise fields
+    call inc_rho%initialise( vector_space=field_x%get_function_space() )
+    call inc_one%initialise( vector_space=field_x%get_function_space() )
+    call ini_one%initialise( vector_space=field_x%get_function_space() )
+    call flux%initialise( vector_space=dep_pts%get_function_space() )
+    call adv_rho%initialise( vector_space=field_x%get_function_space() )
+    call adv_one%initialise( vector_space=field_x%get_function_space() )
+    call inc_part%initialise( vector_space=field_x%get_function_space() )
+    call divide_part%initialise( vector_space=field_x%get_function_space() )
+    call field_n%initialise( vector_space=field_x%get_function_space() )
+    call invoke( setval_c(inc_rho, 0.0_r_def),  &
+                 setval_c(inc_one, 0.0_r_def),  &
+                 setval_c(ini_one, 1.0_r_def),  &
+                 setval_c(flux, 0.0_r_def),     &
+                 setval_c(adv_rho, 0.0_r_def),  &
+                 setval_c(adv_one, 0.0_r_def),  &
+                 setval_c(inc_part, 0.0_r_def), &
+                 setval_c(divide_part, 0.0_r_def) )
 
-    rho_fs => rho_n%get_function_space()
-    call rho_adv%initialise( vector_space = rho_fs )
+    ! Set constant
+    one_over_dt = 1.0_r_def / dt
 
-    ! Calculate rho - dt u dot grad rho
-    ! for specified horizontal direction. Both rho_x and rho_y are needed to
-    ! get the correct direction at cubed sphere panel edges
-    call ffsl_1d_advective_update_alg( direction, dep_pts_x, dep_pts_y, &
-                                       cell_orientation, rho_x, rho_y,  &
-                                       rho_adv, detj_at_w2, dt )
+    ! Get correct field to update based on direction
+    if (direction == x_direction) then
+      call invoke( setval_X(field_n, field_y) )
+    else if (direction == y_direction) then
+      call invoke( setval_X(field_n, field_x) )
+    end if
 
-    ! Average the advective density update with the density at timestep level n
-    one_minus_step_scale = 1.0_r_def - step_scale
+    ! Compute the increment of the field, F(q)
+    call ffsl_1d_flux_final( direction,  &
+                             field_x,    &
+                             field_y,    &
+                             dep_pts,    &
+                             detj_at_w2, &
+                             dt,         &
+                             panel_id,   &
+                             flux,       &
+                             inc_rho )
+    call invoke( X_minus_bY( adv_rho, field_n, dt, inc_rho) )
 
-    select case(direction)
+    ! Compute the increment of one, F(1)
+    call ffsl_1d_flux_first( direction,  &
+                             ini_one,    &
+                             dep_pts,    &
+                             detj_at_w2, &
+                             dt,         &
+                             flux,       &
+                             inc_one )
 
-    case(x_direction)
+    ! Get the advective increment from these conservative increments
+    ! adv_rho   = q - dt * F(q)
+    ! adv_one   = 1 - dt * F(1)
+    ! inc_part  = q - adv_rho / adv_one
+    ! increment = inc_part / dt
+    call invoke( X_minus_bY(adv_one, ini_one, dt, inc_one),   &
+                 X_divideby_Y(divide_part, adv_rho, adv_one), &
+                 X_minus_Y(inc_part, field_n, divide_part),   &
+                 a_times_X(increment, one_over_dt, inc_part) )
 
-      call invoke( inc_X_minus_Y(rho_adv, rho_y) )
-
-    case(y_direction)
-
-      call invoke( inc_X_minus_Y(rho_adv, rho_x) )
-
-    end select
-
-    call invoke( inc_X_plus_Y(rho_adv, rho_n),                    &
-                 aX_plus_bY(rho_adv_update, one_minus_step_scale, &
-                            rho_n, step_scale, rho_adv) )
-
-    nullify( rho_fs )
-
-  end subroutine ffsl_1d_horz_advect_step
+  end subroutine ffsl_1d_advect_final
 
 
   !===========================================================================!
-  !> @brief   Algorithm to calculate an FFSL advective difference.
-  !> @details This algorithm performs a single step in the specified direction,
-  !!          giving an advective increment. The output (for direction xi= x, y or z) is:
-  !!          \f$-\Delta{t} u \frac{\partial \rho}{\partial \xi}\f$
+  !> @brief   Algorithm to calculate the advective form FFSL increment in the vertical.
+  !> @details The algorithm calculates the advective difference in the vertical
+  !!          to give the increment, w * dq/dz, at the cell centre.
   !!
-  !> @param[in]     direction         Direction (x/y/z)
-  !> @param[in]     rho               Density for advective difference [kg m^-3]
-  !> @param[in]     cell_orientation  Orientation of cells held in W3 field
-  !> @param[in]     dep_pts           Departure points in specified direction
-  !> @param[in]     detj_at_w2        Detj values at W2 dof locations
-  !> @param[in]     dt                Model timestep length [s]
-  !> @param[in,out] increment         1D advective increment [kg m^-3]
-  subroutine ffsl_1d_advect_diff( direction,        &
-                                  rho,              &
-                                  cell_orientation, &
-                                  dep_pts,          &
-                                  detj_at_w2,       &
-                                  dt,               &
+  !> @param[in]     field             Input field
+  !> @param[in]     dep_pts           Departure points in the chosen direction
+  !> @param[in]     detj_at_w2        Det(J) at W2 dofs
+  !> @param[in]     dt                The model timestep length
+  !> @param[in,out] increment         Advective increment
+  subroutine ffsl_1d_advect_vert( field,      &
+                                  dep_pts,    &
+                                  detj_at_w2, &
+                                  dt,         &
                                   increment )
 
     implicit none
 
-    integer(i_def),   intent(in) :: direction
-    type(field_type), intent(in) :: rho
-    type(field_type), intent(in) :: cell_orientation
-    type(field_type), intent(in) :: dep_pts
-    type(field_type), intent(in) :: detj_at_w2
-    real(r_def),      intent(in) :: dt
-
-    type(field_type), intent(inout) :: increment
-
-    select case(direction)
-
-    case(x_direction, y_direction)
-      ! Calculate rho - dt u dot grad rho
-      ! for specified horizontal direction.
-      call ffsl_1d_advective_first_update_alg( direction, dep_pts, cell_orientation, &
-                                               rho, increment, dt )
-
-    case(z_direction)
-      ! Perform advective update in the Z direction.
-      call ffsl_vert_advective_alg( increment, rho, dep_pts, detj_at_w2, &
-                                    cell_orientation, dt )
-
-    case default
-      call log_event ( 'Invalid advective step direction', LOG_LEVEL_ERROR )
-
-    end select
-
-    ! subtract rho to leave -dt u dot grad rho
-    call invoke( inc_X_minus_Y(increment, rho) )
-
-  end subroutine ffsl_1d_advect_diff
-
-
-  !===========================================================================!
-  !> @brief   Algorithm to calculate a horizontal advective difference.
-  !> @details This algorithm performs a single step in the specified horizontal
-  !!          direction, giving an advective increment. It differs from
-  !!          ffsl_1d_advect_diff in that it can be used at any step of the FFSL
-  !!          scheme. The output (for direction xi= x, y) is:
-  !!          \f$-\Delta{t} u \frac{\partial \rho}{\partial \xi}\f$
-  !!
-  !> @param[in]     direction         Direction (x/y/z)
-  !> @param[in]     rho_x             Input density (previously advected in x) [kg m^-3]
-  !> @param[in]     rho_y             Input density (previously advected in y) [kg m^-3]
-  !> @param[in]     cell_orientation  Orientation of cells held in W3 field
-  !> @param[in]     dep_pts_x         Departure points in x
-  !> @param[in]     dep_pts_y         Departure points in y
-  !> @param[in]     detj_at_w2        Detj values at W2 dof locations
-  !> @param[in]     dt                Model timestep length [s]
-  !> @param[in,out] increment         1D advective increment [kg m^-3]
-  subroutine ffsl_1d_horz_advect_diff( direction,        &
-                                       rho_x,            &
-                                       rho_y,            &
-                                       cell_orientation, &
-                                       dep_pts_x,        &
-                                       dep_pts_y,        &
-                                       detj_at_w2,       &
-                                       dt,               &
-                                       increment )
-
-    implicit none
-
-    integer(i_def),   intent(in)    :: direction
-    type(field_type), intent(in)    :: rho_x
-    type(field_type), intent(in)    :: rho_y
-    type(field_type), intent(in)    :: cell_orientation
-    type(field_type), intent(in)    :: dep_pts_x
-    type(field_type), intent(in)    :: dep_pts_y
+    ! Arguments
+    type(field_type), intent(in)    :: field
+    type(field_type), intent(in)    :: dep_pts
     type(field_type), intent(in)    :: detj_at_w2
     real(r_def),      intent(in)    :: dt
     type(field_type), intent(inout) :: increment
 
-    ! Calculate rho - dt u dot grad rho
-    ! for specified horizontal direction. Both rho_x and rho_y are needed to
-    ! get the correct direction at cubed sphere panel edges
-    call ffsl_1d_advective_update_alg( direction, dep_pts_x, dep_pts_y, &
-                                       cell_orientation, rho_x, rho_y,  &
-                                       increment, detj_at_w2, dt )
+    ! Fields and increments
+    type(field_type) :: inc_rho
+    type(field_type) :: inc_one
+    type(field_type) :: ini_one
+    type(field_type) :: flux
+    type(field_type) :: adv_rho
+    type(field_type) :: adv_one
+    type(field_type) :: divide_part
+    type(field_type) :: inc_part
 
-    ! subtract rho from increment to leave -dt u dot grad rho
-    select case(direction)
+    ! Constant
+    real(r_def)      :: one_over_dt
 
-    case(x_direction)
+    ! Initialise fields
+    call inc_rho%initialise( vector_space=field%get_function_space() )
+    call inc_one%initialise( vector_space=field%get_function_space() )
+    call ini_one%initialise( vector_space=field%get_function_space() )
+    call flux%initialise( vector_space=dep_pts%get_function_space() )
+    call adv_rho%initialise( vector_space=field%get_function_space() )
+    call adv_one%initialise( vector_space=field%get_function_space() )
+    call inc_part%initialise( vector_space=field%get_function_space() )
+    call divide_part%initialise( vector_space=field%get_function_space() )
+    call invoke( setval_c(inc_rho, 0.0_r_def),  &
+                 setval_c(inc_one, 0.0_r_def),  &
+                 setval_c(ini_one, 1.0_r_def),  &
+                 setval_c(flux, 0.0_r_def),     &
+                 setval_c(adv_rho, 0.0_r_def),  &
+                 setval_c(adv_one, 0.0_r_def),  &
+                 setval_c(inc_part, 0.0_r_def), &
+                 setval_c(divide_part, 0.0_r_def)  )
 
-      call invoke( inc_X_minus_Y(increment, rho_y) )
+    ! Set constant
+    one_over_dt = 1.0_r_def / dt
 
-    case(y_direction)
+    ! Compute the increment of the field, F(q)
+    call ffsl_1d_flux_vert( field, dep_pts, detj_at_w2, dt, &
+                            flux, inc_rho )
+    call invoke( X_minus_bY( adv_rho, field, dt, inc_rho ) )
 
-      call invoke( inc_X_minus_Y(increment, rho_x) )
+    ! Compute the increment of one, F(1)
+    call ffsl_1d_flux_vert( ini_one, dep_pts, detj_at_w2, dt, &
+                            flux, inc_one )
 
-    end select
+    ! Get the advective increment from these conservative increments
+    ! adv_rho   = q - dt * F(q)
+    ! adv_one   = 1 - dt * F(1)
+    ! inc_part  = q - adv_rho / adv_one
+    ! increment = inc_part / dt
+    call invoke( X_minus_bY(adv_one, ini_one, dt, inc_one),   &
+                 X_divideby_Y(divide_part, adv_rho, adv_one), &
+                 X_minus_Y(inc_part, field, divide_part),     &
+                 a_times_X(increment, one_over_dt, inc_part) )
 
-  end subroutine ffsl_1d_horz_advect_diff
+  end subroutine ffsl_1d_advect_vert
 
 end module ffsl_1d_advect_alg_mod

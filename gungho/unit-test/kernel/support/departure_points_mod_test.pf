@@ -328,4 +328,44 @@ contains
 
   end subroutine calc_vertical_departure_dist_test
 
+  @test
+  subroutine interpolate_u_to_x_test()
+    use pFUnit_Mod
+    use constants_mod,        only: r_def, i_def
+    use departure_points_mod, only: interpolate_u_to_x
+
+    implicit none
+
+    real(kind=r_def), parameter   :: tol = 10.0e-8_r_def  ! r_def 64-bit
+    real(kind=r_def)              :: x_in, u_at_x
+    real(kind=r_def), allocatable :: wind_values(:)
+    integer(kind=i_def)           :: n_points, n_centre
+
+    n_points = 5
+    n_centre = (n_points+1)/2
+
+    allocate(wind_values(1:n_points))
+    wind_values=(/ 1.0_r_def, 2.0_r_def, 3.0_r_def, 4.0_r_def, 5.0_r_def /)
+
+    ! Test both positive and negative x, and greater and smaller than 1
+
+    x_in = 0.6_r_def
+    call interpolate_u_to_x(u_at_x, x_in, wind_values, n_points, n_centre)
+    @assertEqual(2.4_r_def, u_at_x, tol)
+
+    x_in = 1.6_r_def
+    call interpolate_u_to_x(u_at_x, x_in, wind_values, n_points, n_centre)
+    @assertEqual(1.4_r_def, u_at_x, tol)
+
+    x_in = -0.7_r_def
+    call interpolate_u_to_x(u_at_x, x_in, wind_values, n_points, n_centre)
+    @assertEqual(3.7_r_def, u_at_x, tol)
+
+    x_in = -1.7_r_def
+    call interpolate_u_to_x(u_at_x, x_in, wind_values, n_points, n_centre)
+    @assertEqual(4.7_r_def, u_at_x, tol)
+
+    deallocate(wind_values)
+  end subroutine interpolate_u_to_x_test
+
 end module departure_points_mod_test

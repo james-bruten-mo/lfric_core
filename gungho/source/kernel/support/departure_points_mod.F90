@@ -37,6 +37,7 @@ public :: calc_u_at_x
 public :: calc_u_in_vertical_comp
 public :: calc_u_in_vertical_phys
 public :: vertical_increasing_check
+public :: interpolate_u_to_x
 
 contains
 
@@ -715,5 +716,57 @@ contains
     end do
 
   end subroutine vertical_increasing_check
+
+  !----------------------------------------------------------------------------
+  !> @brief  Subroutine to interpolate the wind u to the point x.
+  !!
+  !> @param[in,out] u_int         Wind interpolated to point x
+  !> @param[in]     x_in          Interpolation destination
+  !> @param[in]     u_in          Wind at neighbouring points
+  !> @param[in]     n_points      Number of wind points in stencil
+  !> @param[in]     n_centre      Index of arrival point in stencil
+  !----------------------------------------------------------------------------
+  subroutine interpolate_u_to_x(u_int, x_in, u_in, n_points, n_centre)
+
+    implicit none
+
+    real(kind=r_def),    intent(inout) :: u_int
+    real(kind=r_def),    intent(in)    :: x_in
+    integer(kind=i_def), intent(in)    :: n_points
+    integer(kind=i_def), intent(in)    :: n_centre
+    real(kind=r_def),    intent(in)    :: u_in(1:n_points)
+
+    integer(kind=i_def) :: int_x
+    real(kind=r_def)    :: frac_x
+    real(kind=r_def)    :: u_left, u_right
+    integer(kind=i_def) :: n_left, n_right
+    integer(kind=i_def) :: sgx, shift_pos, shift_neg
+
+    ! u_in has the stencil, e.g. | 1 | 2 | 3 | 4 | 5 | with cell 3 the arrival point
+
+    ! Get integer and fractional parts of x
+    frac_x = abs(x_in - int(x_in))
+    int_x  = abs(int(x_in))
+
+    ! For positive x_in, the neighbouring values and linear interpolation are
+    ! u_left  = u_in(n_centre-int_x-1)
+    ! u_right = u_in(n_centre-int_x)
+    ! u_int = u_right - frac_x*(u_right - u_left)
+    ! For negative x_in, the neighbouring values and linear interpolation are
+    ! u_left  = u_in(n_centre+int_x)
+    ! u_right = u_in(n_centre+int_x+1)
+    ! u_int = u_left - frac_x*(u_left - u_right)
+    ! We can combine these using the sign function to avoid an if statement
+
+    sgx = sign(1_i_def, int( sign(1.0_r_def, x_in), i_def))
+    shift_pos = max(sgx, 0_i_def)
+    n_left    = n_centre - sgx*(int_x + shift_pos)
+    u_left    = u_in(n_left)
+    shift_neg = max(-sgx, 0_i_def)
+    n_right   = n_centre - sgx*(int_x + shift_neg)
+    u_right   = u_in(n_right)
+    u_int     = u_right*shift_pos + u_left*shift_neg - sgx*frac_x*(u_right - u_left)
+
+  end subroutine interpolate_u_to_x
 
 end module departure_points_mod

@@ -26,215 +26,40 @@ module calc_dep_pts_alg_mod
   use function_space_collection_mod,     only: function_space_collection
   use fs_continuity_mod,                 only: W3, W2
   use finite_element_config_mod,         only: element_order
-  use flux_direction_mod,                only: x_direction, y_direction, z_direction
-  use departure_points_config_mod,       only: method, n_dep_pt_iterations, &
-                                               vertical_method,             &
-                                               departure_grid_physical,     &
-                                               departure_grid_uniform,      &
+  use eulerian_deppt_kernel_mod,         only: eulerian_deppt_kernel_type
+  use midpoint_deppt_kernel_mod,         only: midpoint_deppt_kernel_type
+  use trapezoidal_deppt_kernel_mod,      only: trapezoidal_deppt_kernel_type
+  use departure_points_config_mod,       only: method,                  &
+                                               method_euler,            &
+                                               method_timeaverage,      &
+                                               method_trapezoidal,      &
+                                               method_midpoint,         &
+                                               n_dep_pt_iterations,     &
+                                               vertical_method,         &
+                                               departure_grid_physical, &
+                                               departure_grid_uniform,  &
                                                departure_grid
   use subgrid_config_mod,                only: dep_pt_stencil_extent,        &
                                                calculate_detj,               &
                                                calculate_detj_averaged,      &
                                                calculate_detj_upwind
-  use psykal_lite_mod,                   only: invoke_calc_deppts,           &
-                                               invoke_extract_xy,            &
-                                               invoke_cosmic_departure_wind, &
-                                               invoke_correct_ffsl_wind
   use fem_constants_mod,                 only: get_detj_at_w2,               &
                                                get_detj_at_w2_above,         &
                                                get_detj_at_w2_below
-  use geometric_constants_mod,           only: get_coordinates,              &
-                                               get_panel_id,                 &
-                                               get_height
+  use geometric_constants_mod,           only: get_height
   use log_mod,                           only: log_event,                    &
                                                LOG_LEVEL_INFO,               &
                                                LOG_LEVEL_ERROR
   use mesh_mod,                          only: mesh_type
-  use ffsl_divergence_alg_mod,           only: ffsl_divergence_alg
 
   implicit none
 
   private
-  public :: calc_dep_pts
   public :: calc_hori_dep_pts
   public :: calc_vert_dep_pts
   public :: select_detj_at_w2
 
 contains
-
-  !> @brief   An algorithm for calculating departure points used by FFSL transport.
-  !> @details The algorithm calculates the departure points for the cell edges.
-  !!          The departure points are calculated in the x, y and z direction
-  !!          separately as 1D calculations.
-  !!          This is used by the dimensionally-split swept-area approach of
-  !!          the flux form semi-Lagrangian (FFSL) scheme.
-  !!
-  !> @param[in,out] dep_pts_x         Departure points in x direction
-  !> @param[in,out] dep_pts_y         Departure points in y direction
-  !> @param[in,out] dep_pts_z         Departure points in z direction
-  !> @param[in,out] cfl               Vertical CFL
-  !> @param[in,out] wind_divergence   Divergence of wind field
-  !> @param[in]     wind_n            Wind field at timestep n
-  !> @param[in]     wind_np1          Wind field at timestep n+1
-  !> @param[in]     detj_at_w2        Det(J) at W2 dofs
-  !> @param[in]     cell_orientation  Orientation of halo cells
-  !> @param[in]     dt                The model timestep length
-  subroutine calc_dep_pts( dep_pts_x,        &
-                           dep_pts_y,        &
-                           dep_pts_z,        &
-                           cfl,              &
-                           wind_divergence,  &
-                           wind_n,           &
-                           wind_np1,         &
-                           detj_at_w2,       &
-                           cell_orientation, &
-                           dt )
-
-    implicit none
-
-    type( field_type ), intent(inout) :: dep_pts_x
-    type( field_type ), intent(inout) :: dep_pts_y
-    type( field_type ), intent(inout) :: dep_pts_z
-    type( field_type ), intent(inout) :: cfl
-    type( field_type ), intent(inout) :: wind_divergence
-    type( field_type ), intent(in)    :: wind_n
-    type( field_type ), intent(in)    :: wind_np1
-    type( field_type ), intent(in)    :: detj_at_w2
-    type( field_type ), intent(in)    :: cell_orientation
-    real( kind=r_def ), intent(in)    :: dt
-
-    type( field_type ) :: u_x_fem_n, u_y_fem_n, u_x_fem_np1, u_y_fem_np1
-    type( field_type ) :: dep_wind_x_n, dep_wind_y_n
-    type( field_type ) :: dep_wind_x_np1, dep_wind_y_np1
-    type( field_type ) :: departure_wind_n, departure_wind_np1
-    type( field_type ) :: corrected_dep_wind_x_n, corrected_dep_wind_y_n
-    type( field_type ) :: corrected_dep_wind_x_np1, corrected_dep_wind_y_np1
-    type( field_type ) :: divergence_x, divergence_y, divergence_z
-
-    type( field_type ), pointer :: chi(:) => null()
-    type( field_type ), pointer :: panel_id => null()
-    type( field_type ), pointer :: height_w2 => null()
-
-    type( function_space_type ), pointer :: w2_fs => null()
-    type( function_space_type ), pointer :: w3_fs => null()
-
-    type(mesh_type), pointer :: mesh => null()
-
-    w2_fs => dep_pts_x%get_function_space()
-    mesh  => wind_n%get_mesh()
-    w3_fs => function_space_collection%get_fs( mesh, element_order, W3 )
-
-    chi => get_coordinates(mesh%get_id())
-    panel_id => get_panel_id(mesh%get_id())
-    height_w2 => get_height(W2, mesh%get_id())
-
-    call u_x_fem_n%initialise( vector_space = w2_fs )
-    call u_y_fem_n%initialise( vector_space = w2_fs )
-    call u_x_fem_np1%initialise( vector_space = w2_fs )
-    call u_y_fem_np1%initialise( vector_space = w2_fs )
-    call dep_wind_x_n%initialise( vector_space = w2_fs )
-    call dep_wind_y_n%initialise( vector_space = w2_fs )
-    call dep_wind_x_np1%initialise( vector_space = w2_fs )
-    call dep_wind_y_np1%initialise( vector_space = w2_fs )
-    call departure_wind_n%initialise( vector_space = w2_fs )
-    call departure_wind_np1%initialise( vector_space = w2_fs )
-    call corrected_dep_wind_x_n%initialise( vector_space = w2_fs )
-    call corrected_dep_wind_y_n%initialise( vector_space = w2_fs )
-    call corrected_dep_wind_x_np1%initialise( vector_space = w2_fs )
-    call corrected_dep_wind_y_np1%initialise( vector_space = w2_fs )
-
-    call divergence_x%initialise( vector_space = w3_fs )
-    call divergence_y%initialise( vector_space = w3_fs )
-    call divergence_z%initialise( vector_space = w3_fs )
-
-    if ( subroutine_timers ) call timer( 'calc_dep_pts' )
-
-    ! Calculate vertical departure points and departure winds.
-    ! Currently the trapezoidal method has been choosen for calculating departure
-    ! points in the vertical.
-    ! *_n and *_np1 denotes fields at timestep n and timestep n+1 with density known
-    ! at timestep n.
-    call invoke( setval_c( dep_pts_x, 0.0_r_def ),                        &
-                 setval_c( dep_pts_y, 0.0_r_def ),                        &
-                 setval_c( dep_pts_z, 0.0_r_def ),                        &
-                 setval_c( cfl, 0.0_r_def ),                              &
-                 setval_c( departure_wind_n, LARGE_REAL_NEGATIVE ),       &
-                 setval_c( departure_wind_np1, LARGE_REAL_NEGATIVE ),     &
-                 setval_c( u_x_fem_n, LARGE_REAL_NEGATIVE ),              &
-                 setval_c( u_y_fem_n, LARGE_REAL_NEGATIVE ),              &
-                 setval_c( u_x_fem_np1, LARGE_REAL_NEGATIVE ),            &
-                 setval_c( u_y_fem_np1, LARGE_REAL_NEGATIVE ),            &
-                 X_divideby_Y(departure_wind_n, wind_n, detj_at_w2),      &
-                 X_divideby_Y(departure_wind_np1, wind_np1, detj_at_w2),  &
-                 vertical_deppt_kernel_type( dep_pts_z,                   &
-                                             cfl,                         &
-                                             departure_wind_n,            &
-                                             departure_wind_np1,          &
-                                             height_w2,                   &
-                                             n_dep_pt_iterations,         &
-                                             vertical_method, dt )  )
-
-    ! Calculate horizontal departure points.
-
-    ! Separate finite-element wind field into x and y directional components.
-    call invoke_extract_xy( u_x_fem_n, u_y_fem_n, wind_n, cell_orientation )
-    call invoke_extract_xy( u_x_fem_np1, u_y_fem_np1, wind_np1, cell_orientation )
-
-    ! Divide the Piola wind coefficients, u_x_fem and u_y_fem, by Det(J) at the W2 dofs.
-    ! Returning wind coefficients, dep_wind_x and dep_wind_y, which have dimension 1/T.
-    ! dep_wind_x and dep_wind_y have no length associated with them since we solve
-    ! for departure points on a rescaled mesh which is dimensionless where the
-    ! distance between cell edges is length 1.0.
-    call invoke_cosmic_departure_wind( dep_wind_x_n, dep_wind_y_n, u_x_fem_n, u_y_fem_n, detj_at_w2, x_direction )
-    call invoke_cosmic_departure_wind( dep_wind_x_n, dep_wind_y_n, u_x_fem_n, u_y_fem_n, detj_at_w2, y_direction )
-    call invoke_cosmic_departure_wind( dep_wind_x_np1, dep_wind_y_np1, u_x_fem_np1, u_y_fem_np1, detj_at_w2, x_direction )
-    call invoke_cosmic_departure_wind( dep_wind_x_np1, dep_wind_y_np1, u_x_fem_np1, u_y_fem_np1, detj_at_w2, y_direction )
-
-    ! For Cosmic if the wind value is assumed positive in the x or y direction then it moves mass in the positive x or
-    ! y direction. Note that Cosmic locally defines an x or y direction on each panel of the cubed sphere.
-    ! The basis function in the y direction actually points in the negative direction.
-    ! Therefore a negative Piola wind coefficient means that the wind is in the positive y direction.
-    ! The following code corrects the wind coefficient values so that the wind has the correct sign in the x and y direction.
-    call invoke_correct_ffsl_wind( corrected_dep_wind_x_n, corrected_dep_wind_y_n,                &
-                                   dep_wind_x_n, dep_wind_y_n, cell_orientation, x_direction )
-    call invoke_correct_ffsl_wind( corrected_dep_wind_x_n, corrected_dep_wind_y_n,                &
-                                   dep_wind_x_n, dep_wind_y_n, cell_orientation, y_direction )
-    call invoke_correct_ffsl_wind( corrected_dep_wind_x_np1, corrected_dep_wind_y_np1,            &
-                                   dep_wind_x_np1, dep_wind_y_np1, cell_orientation, x_direction )
-    call invoke_correct_ffsl_wind( corrected_dep_wind_x_np1, corrected_dep_wind_y_np1,            &
-                                   dep_wind_x_np1, dep_wind_y_np1, cell_orientation, y_direction )
-
-    ! The departure points are calculated at cell edge values.
-    ! The code assumes lowest order W2 nodal points, i.e. one W2 dof per cell edge.
-    call invoke_calc_deppts( corrected_dep_wind_x_n, corrected_dep_wind_x_np1, dep_pts_x,   &
-                             cell_orientation, x_direction, method, dep_pt_stencil_extent, dt )
-    call invoke_calc_deppts( corrected_dep_wind_y_n, corrected_dep_wind_y_np1, dep_pts_y,   &
-                             cell_orientation, y_direction, method, dep_pt_stencil_extent, dt )
-
-    ! Calculate the divergence of the wind field used in Cosmic.
-    call ffsl_divergence_alg( divergence_x, corrected_dep_wind_x_n, detj_at_w2, &
-                              cell_orientation, x_direction )
-
-    call ffsl_divergence_alg( divergence_y, corrected_dep_wind_y_n, detj_at_w2, &
-                              cell_orientation, y_direction )
-
-    call ffsl_divergence_alg( divergence_z, departure_wind_n, detj_at_w2, &
-                              cell_orientation, z_direction )
-
-    call invoke( X_plus_Y(wind_divergence, divergence_x, divergence_y),     &
-                 inc_X_plus_Y( wind_divergence, divergence_z) )
-
-    call departure_wind_n%log_minmax( LOG_LEVEL_INFO, 'departure_wind_n' )
-    call departure_wind_np1%log_minmax( LOG_LEVEL_INFO, 'departure_wind_np1' )
-    call dep_pts_x%log_minmax( LOG_LEVEL_INFO, 'dep_pts_x' )
-    call dep_pts_y%log_minmax( LOG_LEVEL_INFO, 'dep_pts_y' )
-    call dep_pts_z%log_minmax( LOG_LEVEL_INFO, 'dep_pts_z' )
-
-    nullify( w2_fs, mesh )
-
-    if ( subroutine_timers ) call timer( 'calc_dep_pts' )
-
-  end subroutine calc_dep_pts
 
 
   !===========================================================================!
@@ -250,14 +75,12 @@ contains
   !> @param[in]     wind_n            Wind field at timestep n
   !> @param[in]     wind_np1          Wind field at timestep n+1
   !> @param[in]     detj_at_w2        Det(J) at W2 dofs
-  !> @param[in]     cell_orientation  Orientation of halo cells
   !> @param[in]     dt                The model timestep length
   subroutine calc_hori_dep_pts( dep_pts_x,        &
                                 dep_pts_y,        &
                                 wind_n,           &
                                 wind_np1,         &
                                 detj_at_w2,       &
-                                cell_orientation, &
                                 dt )
 
     implicit none
@@ -267,88 +90,66 @@ contains
     type( field_type ), intent(in)    :: wind_n
     type( field_type ), intent(in)    :: wind_np1
     type( field_type ), intent(in)    :: detj_at_w2
-    type( field_type ), intent(in)    :: cell_orientation
     real( kind=r_def ), intent(in)    :: dt
 
-    type( field_type ) :: u_x_fem_n, u_y_fem_n, u_x_fem_np1, u_y_fem_np1
-    type( field_type ) :: dep_wind_x_n, dep_wind_y_n
-    type( field_type ) :: dep_wind_x_np1, dep_wind_y_np1
-    type( field_type ) :: corrected_dep_wind_x_n, corrected_dep_wind_y_n
-    type( field_type ) :: corrected_dep_wind_x_np1, corrected_dep_wind_y_np1
-
-    type( field_type ), pointer :: chi(:) => null()
-    type( field_type ), pointer :: panel_id => null()
+    type( field_type ) :: wind_adv
+    type( field_type ) :: dep_wind
+    type( field_type ) :: dep_wind_n
+    type( field_type ) :: dep_wind_np1
 
     type( function_space_type ), pointer :: w2_fs => null()
-    type( function_space_type ), pointer :: w3_fs => null()
-
     type(mesh_type), pointer ::  mesh => null()
-
-    w2_fs => dep_pts_x%get_function_space()
-    mesh  => wind_n%get_mesh()
-    w3_fs => function_space_collection%get_fs( mesh, element_order, W3 )
-
-    chi => get_coordinates(mesh%get_id())
-    panel_id => get_panel_id(mesh%get_id())
-
-    call u_x_fem_n%initialise( vector_space = w2_fs )
-    call u_y_fem_n%initialise( vector_space = w2_fs )
-    call u_x_fem_np1%initialise( vector_space = w2_fs )
-    call u_y_fem_np1%initialise( vector_space = w2_fs )
-    call dep_wind_x_n%initialise( vector_space = w2_fs )
-    call dep_wind_y_n%initialise( vector_space = w2_fs )
-    call dep_wind_x_np1%initialise( vector_space = w2_fs )
-    call dep_wind_y_np1%initialise( vector_space = w2_fs )
-    call corrected_dep_wind_x_n%initialise( vector_space = w2_fs )
-    call corrected_dep_wind_y_n%initialise( vector_space = w2_fs )
-    call corrected_dep_wind_x_np1%initialise( vector_space = w2_fs )
-    call corrected_dep_wind_y_np1%initialise( vector_space = w2_fs )
 
     if ( subroutine_timers ) call timer( 'calc_hori_dep_pts' )
 
-    ! Initialise departure points as zero and other variables as LARGE_REAL_NEGATIVE
+    ! Get function space and mesh
+    w2_fs => dep_pts_x%get_function_space()
+    mesh  => wind_n%get_mesh()
 
-    call invoke( setval_c( dep_pts_x, 0.0_r_def ),             &
-                 setval_c( dep_pts_y, 0.0_r_def ),             &
-                 setval_c( u_x_fem_n, LARGE_REAL_NEGATIVE ),   &
-                 setval_c( u_y_fem_n, LARGE_REAL_NEGATIVE ),   &
-                 setval_c( u_x_fem_np1, LARGE_REAL_NEGATIVE ), &
-                 setval_c( u_y_fem_np1, LARGE_REAL_NEGATIVE ) )
+    call wind_adv%initialise( vector_space = w2_fs )
+    call dep_wind%initialise( vector_space = w2_fs )
+    call dep_wind_n%initialise( vector_space = w2_fs )
+    call dep_wind_np1%initialise( vector_space = w2_fs )
 
-    ! Separate finite-element wind field into x and y directional components.
-    call invoke_extract_xy( u_x_fem_n, u_y_fem_n, wind_n, cell_orientation )
-    call invoke_extract_xy( u_x_fem_np1, u_y_fem_np1, wind_np1, cell_orientation )
+    ! Initialise variables as zero
+    call invoke( setval_c( dep_pts_x, 0.0_r_def ),    &
+                 setval_c( dep_pts_y, 0.0_r_def ),    &
+                 setval_c( wind_adv, 0.0_r_def ),     &
+                 setval_c( dep_wind_n, 0.0_r_def ),   &
+                 setval_c( dep_wind_np1, 0.0_r_def ), &
+                 setval_c( dep_wind, 0.0_r_def )   )
 
-    ! Divide the Piola wind coefficients, u_x_fem and u_y_fem, by Det(J) at the W2 dofs.
-    ! Returning wind coefficients, dep_wind_x and dep_wind_y, which have dimension 1/T.
-    ! dep_wind_x and dep_wind_y have no length associated with them since we solve
-    ! for departure points on a rescaled mesh which is dimensionless where the
-    ! distance between cell edges is length 1.0.
-    call invoke_cosmic_departure_wind( dep_wind_x_n, dep_wind_y_n, u_x_fem_n, u_y_fem_n, detj_at_w2, x_direction )
-    call invoke_cosmic_departure_wind( dep_wind_x_n, dep_wind_y_n, u_x_fem_n, u_y_fem_n, detj_at_w2, y_direction )
-    call invoke_cosmic_departure_wind( dep_wind_x_np1, dep_wind_y_np1, u_x_fem_np1, u_y_fem_np1, detj_at_w2, x_direction )
-    call invoke_cosmic_departure_wind( dep_wind_x_np1, dep_wind_y_np1, u_x_fem_np1, u_y_fem_np1, detj_at_w2, y_direction )
+    ! Calculate the departure points based on Eulerian or Lagrangian approach
+    select case ( method )
 
-    ! For Cosmic if the wind value is assumed positive in the x or y direction then it moves mass in the positive x or
-    ! y direction. Note that Cosmic locally defines an x or y direction on each panel of the cubed sphere.
-    ! The basis function in the y direction actually points in the negative direction.
-    ! Therefore a negative Piola wind coefficient means that the wind is in the positive y direction.
-    ! The following code corrects the wind coefficient values so that the wind has the correct sign in the x and y direction.
-    call invoke_correct_ffsl_wind( corrected_dep_wind_x_n, corrected_dep_wind_y_n,                &
-                                   dep_wind_x_n, dep_wind_y_n, cell_orientation, x_direction )
-    call invoke_correct_ffsl_wind( corrected_dep_wind_x_n, corrected_dep_wind_y_n,                &
-                                   dep_wind_x_n, dep_wind_y_n, cell_orientation, y_direction )
-    call invoke_correct_ffsl_wind( corrected_dep_wind_x_np1, corrected_dep_wind_y_np1,            &
-                                   dep_wind_x_np1, dep_wind_y_np1, cell_orientation, x_direction )
-    call invoke_correct_ffsl_wind( corrected_dep_wind_x_np1, corrected_dep_wind_y_np1,            &
-                                   dep_wind_x_np1, dep_wind_y_np1, cell_orientation, y_direction )
+      case ( method_trapezoidal )
+        call invoke( X_divideby_Y(dep_wind_n, wind_n, detj_at_w2),                     &
+                     X_divideby_Y(dep_wind_np1, wind_np1, detj_at_w2),                 &
+                     trapezoidal_deppt_kernel_type( dep_pts_x, dep_pts_y,              &
+                                                    dep_wind_n, dep_pt_stencil_extent, &
+                                                    dep_wind_np1, n_dep_pt_iterations, dt ) )
 
-    ! The departure points are calculated at cell edge values.
-    ! The code assumes lowest order W2 nodal points, i.e. one W2 dof per cell edge.
-    call invoke_calc_deppts( corrected_dep_wind_x_n, corrected_dep_wind_x_np1, dep_pts_x,   &
-                             cell_orientation, x_direction, method, dep_pt_stencil_extent, dt )
-    call invoke_calc_deppts( corrected_dep_wind_y_n, corrected_dep_wind_y_np1, dep_pts_y,   &
-                             cell_orientation, y_direction, method, dep_pt_stencil_extent, dt )
+      case ( method_midpoint )
+        call invoke( X_divideby_Y(dep_wind_n, wind_n, detj_at_w2),                  &
+                     midpoint_deppt_kernel_type( dep_pts_x, dep_pts_y,              &
+                                                 dep_wind_n, dep_pt_stencil_extent, &
+                                                 n_dep_pt_iterations, dt ) )
+
+      case ( method_euler, method_timeaverage)
+        ! Set the advecting wind based on the departure point method
+        if ( method == method_euler ) then
+          call invoke( setval_X(wind_adv, wind_np1) )
+        else
+          call invoke( aX_plus_bY(wind_adv, 0.5_r_def, wind_n,0.5_r_def, wind_np1) )
+        end if
+        call invoke( X_divideby_Y(dep_wind, wind_adv, detj_at_w2),     &
+                     eulerian_deppt_kernel_type( dep_pts_x, dep_pts_y, &
+                                                 dep_wind, dt ) )
+
+      case default
+        call log_event( "Gungho: Invalid departure point method", LOG_LEVEL_ERROR )
+
+    end select
 
     call dep_pts_x%log_minmax( LOG_LEVEL_INFO, 'dep_pts_x' )
     call dep_pts_y%log_minmax( LOG_LEVEL_INFO, 'dep_pts_y' )
@@ -392,8 +193,6 @@ contains
 
     type( field_type ) :: departure_wind_n, departure_wind_np1
 
-    type( field_type ), pointer :: chi(:) => null()
-    type( field_type ), pointer :: panel_id => null()
     type( field_type ), pointer :: height_w2 => null()
 
     type( function_space_type ), pointer :: w2_fs => null()
@@ -405,8 +204,6 @@ contains
     mesh  => wind_n%get_mesh()
     w3_fs => function_space_collection%get_fs( mesh, element_order, W3 )
 
-    chi => get_coordinates( mesh%get_id() )
-    panel_id => get_panel_id( mesh%get_id() )
     height_w2 => get_height(W2, mesh%get_id())
 
     call departure_wind_n%initialise( vector_space = w2_fs )

@@ -24,7 +24,7 @@ module vertical_deppt_kernel_mod
 
 use argument_mod,                only : arg_type,              &
                                         GH_FIELD, GH_REAL,     &
-                                        GH_INC, GH_READ,       &
+                                        GH_WRITE, GH_READ,     &
                                         GH_SCALAR, GH_INTEGER, &
                                         CELL_COLUMN
 use fs_continuity_mod,           only : W2
@@ -43,15 +43,15 @@ private
 !> The type declaration for the kernel. Contains the metadata needed by the Psy layer
 type, public, extends(kernel_type) :: vertical_deppt_kernel_type
   private
-  type(arg_type) :: meta_args(8) = (/             &
-       arg_type(GH_FIELD,  GH_REAL, GH_INC,  W2), & ! dep_pts
-       arg_type(GH_FIELD,  GH_REAL, GH_INC,  W2), & ! cfl
-       arg_type(GH_FIELD,  GH_REAL, GH_READ, W2), & ! u_n
-       arg_type(GH_FIELD,  GH_REAL, GH_READ, W2), & ! u_np1
-       arg_type(GH_FIELD,  GH_REAL, GH_READ, W2), & ! heights_w2
-       arg_type(GH_SCALAR, GH_INTEGER, GH_READ),  & ! iterations
-       arg_type(GH_SCALAR, GH_INTEGER, GH_READ),  & ! method
-       arg_type(GH_SCALAR, GH_REAL, GH_READ)      & ! dt
+  type(arg_type) :: meta_args(8) = (/              &
+       arg_type(GH_FIELD,  GH_REAL, GH_WRITE, W2), & ! dep_pts
+       arg_type(GH_FIELD,  GH_REAL, GH_WRITE, W2), & ! cfl
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,  W2), & ! u_n
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,  W2), & ! u_np1
+       arg_type(GH_FIELD,  GH_REAL, GH_READ,  W2), & ! heights_w2
+       arg_type(GH_SCALAR, GH_INTEGER, GH_READ),   & ! iterations
+       arg_type(GH_SCALAR, GH_INTEGER, GH_READ),   & ! method
+       arg_type(GH_SCALAR, GH_REAL, GH_READ)       & ! dt
        /)
   integer :: operates_on = CELL_COLUMN
 contains

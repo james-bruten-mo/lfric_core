@@ -129,11 +129,9 @@ contains
   !> @param[in] shifted_mesh    (Optional) Shifted mesh
   function transport_runtime_constructor(primal_wind_n, primal_wind_np1, dt, shifted_mesh) result(self)
 
-    use calc_dep_pts_alg_mod,          only: calc_dep_pts, &
-                                             calc_vert_dep_pts, &
+    use calc_dep_pts_alg_mod,          only: calc_vert_dep_pts, &
                                              calc_hori_dep_pts, &
                                              select_detj_at_w2
-    use geometric_constants_mod,       only: get_cell_orientation
     use split_w2_field_kernel_mod,     only: split_w2_field_kernel_type
     use timestepping_config_mod,       only: beta
     use transport_config_mod,          only: max_vert_cfl_calc, &
@@ -158,7 +156,6 @@ contains
     integer(kind=i_def)            :: mesh_idx, i, fs_idx, num_compute_meshes
     type(mesh_type),       pointer :: mesh => null()
     type(local_mesh_type), pointer :: local_mesh => null()
-    type(field_type),      pointer :: cell_orientation => null()
     type(field_type),      pointer :: wind_n           => null()
     type(field_type),      pointer :: wind_np1         => null()
     type(field_type),      target  :: shifted_wind_n
@@ -326,13 +323,11 @@ contains
 
       ! If any horizontal scheme is ffsl compute horizontal departure points
       if (any_horz_dep_pts) then
-        cell_orientation => get_cell_orientation(self%mesh_ids(mesh_idx))
         call calc_hori_dep_pts( self%departure_points_x_w2(mesh_idx),  &
                                 self%departure_points_y_w2(mesh_idx),  &
                                 wind_n,                                &
                                 wind_np1,                              &
                                 self%detj_at_w2_transport(mesh_idx),   &
-                                cell_orientation,                      &
                                 dt )
       end if
 

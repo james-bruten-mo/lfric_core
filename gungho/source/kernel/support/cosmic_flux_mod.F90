@@ -35,6 +35,8 @@ public :: w2_dof
 public :: reorientate_w2field
 public :: dof_to_update
 public :: calc_local_vertical_index
+public :: get_index_positive
+public :: get_index_negative
 
 
 !------------------------------------------------------------------------------
@@ -458,5 +460,77 @@ contains
     end do
 
   end subroutine calc_local_vertical_index
+
+  !----------------------------------------------------------------------------
+  !> @brief  Returns the indices required for the PPM calculation for positive
+  !!         wind with support for large time steps.
+  !!
+  !> @param[out]  ind_lo             Index of first cell in PPM calculation
+  !> @param[out]  ind_hi             Index of last cell in PPM calculation
+  !> @param[in]   n_cells_to_sum     Number of cells to sum
+  !> @param[in]   dof_iterator       Either 1 or 2 based on the cell face
+  !> @param[in]   stencil_size       Size of 1D stencil being used
+  !> @param[in]   stencil_half       Index of centre cell in stencil
+  !----------------------------------------------------------------------------
+  subroutine get_index_positive(ind_lo, ind_hi, n_cells_to_sum, &
+                                dof_iterator, stencil_size, stencil_half)
+
+    implicit none
+
+    integer(kind=i_def), intent(out) :: ind_lo
+    integer(kind=i_def), intent(out) :: ind_hi
+    integer(kind=i_def), intent(in)  :: n_cells_to_sum
+    integer(kind=i_def), intent(in)  :: dof_iterator
+    integer(kind=i_def), intent(in)  :: stencil_size
+    integer(kind=i_def), intent(in)  :: stencil_half
+
+    integer(kind=i_def) :: mid_low
+    integer(kind=i_def) :: mid_high
+
+    ! Compute first and last cells centred on centre cell
+    mid_low  = stencil_half - 2_i_def
+    mid_high = stencil_half + 2_i_def
+
+    ! Adjust based on integer CFL
+    ind_lo = mid_low - n_cells_to_sum + 1_i_def - (2_i_def - dof_iterator)
+    ind_hi = mid_high - n_cells_to_sum + 1_i_def - (2_i_def - dof_iterator)
+
+  end subroutine get_index_positive
+
+  !----------------------------------------------------------------------------
+  !> @brief  Returns the indices required for the PPM calculation for negative
+  !!         wind with support for large time steps.
+  !!
+  !> @param[out]  ind_lo             Index of first cell in PPM calculation
+  !> @param[out]  ind_hi             Index of last cell in PPM calculation
+  !> @param[in]   n_cells_to_sum     Number of cells to sum
+  !> @param[in]   dof_iterator       Either 1 or 2 based on the cell face
+  !> @param[in]   stencil_size       Size of 1D stencil being used
+  !> @param[in]   stencil_half       Index of centre cell in stencil
+  !----------------------------------------------------------------------------
+  subroutine get_index_negative(ind_lo, ind_hi, n_cells_to_sum, &
+                                dof_iterator, stencil_size, stencil_half)
+
+    implicit none
+
+    integer(kind=i_def), intent(out) :: ind_lo
+    integer(kind=i_def), intent(out) :: ind_hi
+    integer(kind=i_def), intent(in)  :: n_cells_to_sum
+    integer(kind=i_def), intent(in)  :: dof_iterator
+    integer(kind=i_def), intent(in)  :: stencil_size
+    integer(kind=i_def), intent(in)  :: stencil_half
+
+    integer(kind=i_def) :: mid_low
+    integer(kind=i_def) :: mid_high
+
+    ! Compute first and last cells centred on centre cell
+    mid_low  = stencil_half - 2_i_def
+    mid_high = stencil_half + 2_i_def
+
+    ! Adjust based on integer CFL
+    ind_lo = mid_low + n_cells_to_sum - 1_i_def + (dof_iterator - 1_i_def)
+    ind_hi = mid_high + n_cells_to_sum - 1_i_def + (dof_iterator - 1_i_def)
+
+  end subroutine get_index_negative
 
 end module cosmic_flux_mod
