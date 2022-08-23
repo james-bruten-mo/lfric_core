@@ -61,10 +61,15 @@ module reconstruct_w3_field_alg_mod
   use mesh_collection_mod,            only: mesh_collection
   use mesh_mod,                       only: mesh_type
   use extrusion_mod,                  only: TWOD
-  use transport_enumerated_types_mod, only: direction_v,    &
-                                            direction_h,    &
-                                            direction_3d,   &
-                                            monotone_koren, &
+  use transport_enumerated_types_mod, only: direction_v,                  &
+                                            direction_h,                  &
+                                            direction_3d,                 &
+                                            horizontal_monotone_none,     &
+                                            horizontal_monotone_koren,    &
+                                            horizontal_monotone_clipping, &
+                                            vertical_monotone_none,       &
+                                            vertical_monotone_koren,      &
+                                            vertical_monotone_clipping,   &
                                             equation_consistent
   use transport_metadata_mod,         only: transport_metadata_type
   use polyv_w3_koren_kernel_mod,      only: polyv_w3_koren_kernel_type
@@ -403,6 +408,21 @@ contains
 
       case(operators_fv)
 
+        if ( direction == direction_h .or. direction == direction_3d ) then
+          if ( transport_metadata%get_horizontal_monotone() /= horizontal_monotone_none     .and. &
+               transport_metadata%get_horizontal_monotone() /= horizontal_monotone_clipping .and. &
+               transport_metadata%get_horizontal_monotone() /= horizontal_monotone_koren ) then
+               call log_event("reconstruct_w3_field_alg: Invalid horizontal_monotonicity", LOG_LEVEL_ERROR)
+          end if
+        end if
+        if ( direction == direction_v ) then
+          if ( transport_metadata%get_vertical_monotone() /= vertical_monotone_none     .and. &
+               transport_metadata%get_vertical_monotone() /= vertical_monotone_clipping .and. &
+               transport_metadata%get_vertical_monotone() /= vertical_monotone_koren ) then
+               call log_event("reconstruct_w3_field_alg: Invalid vertical_monotonicity", LOG_LEVEL_ERROR)
+          end if
+        end if
+
         ! Set default value to be 0 and then update the mass flux
         ! in cases where the wind is nonzero using an upwind reconstruction
         call invoke( setval_c( field_new, 0.0_r_def) )
@@ -496,7 +516,7 @@ contains
     ndata_h => ndata_h_list(mesh_index)
     flux_coeffs => flux_coeffs_list(mesh_index)
 
-    if ( transport_metadata%get_monotone() == monotone_koren ) then
+    if ( transport_metadata%get_horizontal_monotone() == horizontal_monotone_koren ) then
       ! Compute horizontal components of mass flux with the koren scheme
       call invoke( name="W3_koren_hor_reconstruction",           &
               polyh_w3_koren_kernel_type( field_new,             &
@@ -558,7 +578,7 @@ contains
 
     reversible = ( transport_metadata%get_reversible() .and. final_rk_stage )
     logspace = transport_metadata%get_log_space()
-    monotonicity = transport_metadata%get_monotone()
+    monotonicity = transport_metadata%get_vertical_monotone()
 
     mesh => field_new%get_mesh()
     mesh_index = find_mesh_index(mesh%get_id())
@@ -574,7 +594,7 @@ contains
       vertical_order = fv_vertical_order
     end if
 
-    if ( monotonicity == monotone_koren ) then
+    if ( monotonicity == vertical_monotone_koren ) then
       call invoke(name="W3_vert_reconstruction_koren",                         &
                   polyv_w3_koren_kernel_type( field_new,                       &
                                               wind,                            &

@@ -10,8 +10,9 @@
 
 module vertical_sl_conservative_alg_mod
 
-  use constants_mod,                      only: r_def, i_def
+  use constants_mod,                      only: r_def, i_def, l_def
   use finite_element_config_mod,          only: element_order
+  use geometric_constants_mod,            only: get_height
   use io_config_mod,                      only: subroutine_timers
   use timer_mod,                          only: timer
   use field_mod,                          only: field_type
@@ -19,6 +20,7 @@ module vertical_sl_conservative_alg_mod
                                                 slice_order_linear,   &
                                                 slice_order_parabola, &
                                                 slice_order_cubic,    &
+                                                vertical_sl_order,    &
                                                 dry_field_name,       &
                                                 advective_then_flux
   use log_mod,                            only: log_event, LOG_LEVEL_ERROR
@@ -33,10 +35,15 @@ module vertical_sl_conservative_alg_mod
   use fem_constants_mod,                  only: get_mass_matrix, &
                                                 get_inverse_w3_mass_matrix
   use operator_mod,                       only: operator_type
-  use fs_continuity_mod,                  only: W2, W3
+  use fs_continuity_mod,                  only: W2, W3, Wtheta
   use function_space_mod,                 only: function_space_type
   use function_space_collection_mod,      only: function_space_collection
-
+  use transport_enumerated_types_mod,     only: vertical_monotone_none,           &
+                                                vertical_monotone_strict,         &
+                                                vertical_monotone_relaxed,        &
+                                                vertical_monotone_order_constant, &
+                                                vertical_monotone_order_linear,   &
+                                                vertical_monotone_order_high
 
   implicit none
 
@@ -69,11 +76,15 @@ contains
     type(operator_type), pointer :: mm_w3_inv => null()
     type(operator_type), pointer :: mm_w3 => null()
     type(field_type),    pointer :: dep_pts_z_get => null()
+    type(field_type),    pointer :: height => null()
     type(field_type),    pointer :: field_start => null()
     type(field_type),    pointer :: old_flux_inc => null()
     type(mesh_type),     pointer :: mesh => null()
     type(function_space_type),    pointer :: w2_fs => null()
     type(transport_runtime_type), pointer :: transport_runtime => null()
+    integer(kind=i_def)  :: monotone, monotone_order
+    logical(l_def)       :: enforce_min_value
+    real(kind=r_def)     :: min_value
 
     if ( subroutine_timers ) call timer( 'vertical_sl_conservative_alg' )
 
@@ -87,6 +98,22 @@ contains
     mesh => field_n%get_mesh()
     mesh_id = mesh%get_id()
     transport_runtime => get_transport_runtime(mesh)
+    monotone = transport_metadata%get_vertical_monotone()
+    monotone_order = transport_metadata%get_vertical_monotone_order()
+    enforce_min_value = transport_metadata%get_enforce_min_value()
+    min_value = transport_metadata%get_min_value()
+
+    if ( monotone /= vertical_monotone_none    .and. &
+         monotone /= vertical_monotone_strict  .and. &
+         monotone /= vertical_monotone_relaxed       ) then
+      call log_event( "vertical_sl_conservative: Invalid monotone", LOG_LEVEL_ERROR )
+    end if
+    if ( monotone_order /= vertical_monotone_order_constant  .and. &
+         monotone_order /= vertical_monotone_order_linear    .and. &
+         monotone_order /= vertical_monotone_order_high            ) then
+      call log_event( "vertical_sl_conservative: Invalid monotone_order", LOG_LEVEL_ERROR )
+    end if
+
     w2_fs => function_space_collection%get_fs( mesh, element_order, W2 )
     call flux%initialise( w2_fs )
 
@@ -108,8 +135,10 @@ contains
     mm_w3 => get_mass_matrix(W3, field_n%get_mesh_id())
     mm_w3_inv => get_inverse_w3_mass_matrix(field_n%get_mesh_id())
 
-    call invoke( dg_matrix_vector_kernel_type(mass, field_np1, mm_w3),              &
-                 vertical_mass_remapping_kernel_type(dep_pts_z, mass, slice_order), &
+    call invoke( dg_matrix_vector_kernel_type(mass, field_np1, mm_w3),               &
+                 vertical_mass_remapping_kernel_type(dep_pts_z, mass, slice_order,   &
+                                                      monotone, monotone_order,      &
+                                                      enforce_min_value, min_value), &
                  dg_matrix_vector_kernel_type(field_np1, mass, mm_w3_inv ) )
 
     if (advective_then_flux) then
@@ -119,8 +148,12 @@ contains
       if (transport_runtime%get_tracer_step_ctr() /=  &
           transport_runtime%get_num_dry_steps()) then
         ! Not the last split step. Redo in advective form
-        call invoke( setval_X(field_np1, field_n), &
-                     vertical_sl_rho_kernel_type(dep_pts_z, field_np1) )
+        height => get_height( Wtheta, mesh%get_id() )
+        call invoke( setval_X(field_np1, field_n),                                   &
+                     vertical_sl_rho_kernel_type( dep_pts_z, field_np1, height,      &
+                                                  vertical_sl_order, monotone,       &
+                                                  monotone_order, enforce_min_value, &
+                                                  min_value ) )
       else
         ! Last split step. Add all the flux increments together
         field_start => transport_runtime%get_field_n(mesh_id)
@@ -147,7 +180,7 @@ contains
 
     call transport_runtime%inc_tracer_step_ctr()
 
-    nullify( mm_w3, mm_w3_inv, dep_pts_z_get, mesh, transport_runtime )
+    nullify( mm_w3, mm_w3_inv, dep_pts_z_get, mesh, transport_runtime, height )
 
     if ( subroutine_timers ) call timer( 'vertical_sl_conservative_alg' )
 

@@ -164,7 +164,6 @@ log_space          = 4*.false.
 max_vert_cfl_calc  = 'uniform'
 min_value          = 0.0,0.0,-99999999.0,-99999999.0
 moisture_eqn     = 'advective'
-monotone           = 4*1
 oned_reconstruction = .false.
 operators          = 'fv'
 profile_size       = 4
@@ -176,6 +175,9 @@ splitting          = 4*1
 use_density_predictor = .true.
 vertical_method    = 4*1
 vertical_sl_order  = 'cubic'
+horizontal_monotone = 4*1
+vertical_monotone   = 4*1
+vertical_monotone_order = 4*3
 /
 
 &io

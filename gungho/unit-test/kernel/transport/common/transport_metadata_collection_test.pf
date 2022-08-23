@@ -18,7 +18,9 @@ module transport_metadata_collection_test
                                              scheme_split,          &
                                              split_method_mol,      &
                                              split_method_sl,       &
-                                             monotone_none
+                                             horizontal_monotone_none,      &
+                                             vertical_monotone_none,        &
+                                             vertical_monotone_order_linear
   use transport_metadata_collection_mod, &
                                       only : transport_metadata_collection_type, &
                                              transport_metadata_collection
@@ -55,7 +57,10 @@ contains
                                      ffsl_flux_splitting_full,      &
                                      ffsl_advective_splitting_full, &
                                      max_vert_cfl_calc_uniform,     &
-                                     moisture_eqn_advective
+                                     moisture_eqn_advective,        &
+                                     horizontal_monotone,           &
+                                     vertical_monotone,             &
+                                     vertical_monotone_order
 
     implicit none
 
@@ -70,7 +75,9 @@ contains
                                  splitting = (/1, 1, 1/),                             &
                                  horizontal_method = (/ 1, 1, 1 /),                   &
                                  vertical_method = (/ 1, 1, 1 /),                     &
-                                 monotone = (/ 1, 1, 1 /),                            &
+                                 horizontal_monotone = (/ 1, 1, 1 /),                 &
+                                 vertical_monotone = (/ 1, 1, 1 /),                   &
+                                 vertical_monotone_order = (/ 1, 1, 1 /),             &
                                  log_space = (/ .false., .false., .false. /),         &
                                  enforce_min_value = (/ .false., .false., .false. /), &
                                  min_value = (/ 0.0_r_def, 0.0_r_def, 0.0_r_def /),   &
@@ -144,49 +151,55 @@ contains
 
     ! Add two metadata objects and then get them
     fname = 'do'
-    metadata = transport_metadata_type(fname,                 &
-                                       equation_advective,    &
-                                       splitting_none,        &
-                                       scheme_mol_3d,         &
-                                       split_method_mol,      &
-                                       split_method_mol,      &
-                                       monotone_none,         &
-                                       no_enforce_min_value,  &
-                                       zero_min_value,        &
-                                       no_logspace,           &
-                                       divergence_factor,     &
+    metadata = transport_metadata_type(fname,                          &
+                                       equation_advective,             &
+                                       splitting_none,                 &
+                                       scheme_mol_3d,                  &
+                                       split_method_mol,               &
+                                       split_method_mol,               &
+                                       horizontal_monotone_none,       &
+                                       vertical_monotone_none,         &
+                                       vertical_monotone_order_linear, &
+                                       no_enforce_min_value,           &
+                                       zero_min_value,                 &
+                                       no_logspace,                    &
+                                       divergence_factor,              &
                                        reversible)
 
     call transport_metadata_collection%set_transport_metadata(metadata)
 
     fname = 're'
-    metadata = transport_metadata_type(fname,                 &
-                                       equation_conservative, &
-                                       splitting_strang_vhv,  &
-                                       scheme_split,          &
-                                       split_method_mol,      &
-                                       split_method_mol,      &
-                                       monotone_none,         &
-                                       no_enforce_min_value,  &
-                                       zero_min_value,        &
-                                       no_logspace,           &
-                                       divergence_factor,     &
+    metadata = transport_metadata_type(fname,                          &
+                                       equation_conservative,          &
+                                       splitting_strang_vhv,           &
+                                       scheme_split,                   &
+                                       split_method_mol,               &
+                                       split_method_mol,               &
+                                       horizontal_monotone_none,       &
+                                       vertical_monotone_none,         &
+                                       vertical_monotone_order_linear, &
+                                       no_enforce_min_value,           &
+                                       zero_min_value,                 &
+                                       no_logspace,                    &
+                                       divergence_factor,              &
                                        reversible)
 
     call transport_metadata_collection%set_transport_metadata(metadata)
 
     fname = 'mi'
-    metadata = transport_metadata_type(fname,                 &
-                                       equation_conservative, &
-                                       splitting_strang_hvh,  &
-                                       scheme_split,          &
-                                       split_method_mol,      &
-                                       split_method_sl,       &
-                                       monotone_none,         &
-                                       enforce_min_value,     &
-                                       one_min_value,         &
-                                       logspace,              &
-                                       divergence_factor,     &
+    metadata = transport_metadata_type(fname,                          &
+                                       equation_conservative,          &
+                                       splitting_strang_hvh,           &
+                                       scheme_split,                   &
+                                       split_method_mol,               &
+                                       split_method_sl,                &
+                                       horizontal_monotone_none,       &
+                                       vertical_monotone_none,         &
+                                       vertical_monotone_order_linear, &
+                                       enforce_min_value,              &
+                                       one_min_value,                  &
+                                       logspace,                       &
+                                       divergence_factor,              &
                                        reversible)
 
     call transport_metadata_collection%set_transport_metadata(metadata)

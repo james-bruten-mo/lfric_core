@@ -36,9 +36,19 @@ module transport_enumerated_types_mod
   integer(kind=i_def), parameter :: direction_h  = 6423_i_def
   integer(kind=i_def), parameter :: direction_v  = 1483_i_def
 
-  integer(kind=i_def), parameter :: monotone_none     = 1_i_def
-  integer(kind=i_def), parameter :: monotone_clipping = 2_i_def
-  integer(kind=i_def), parameter :: monotone_koren    = 3_i_def
+  integer(kind=i_def), parameter :: horizontal_monotone_none       = 1_i_def
+  integer(kind=i_def), parameter :: horizontal_monotone_clipping   = 2_i_def
+  integer(kind=i_def), parameter :: horizontal_monotone_koren      = 3_i_def
+
+  integer(kind=i_def), parameter :: vertical_monotone_none     = 1_i_def
+  integer(kind=i_def), parameter :: vertical_monotone_clipping = 2_i_def
+  integer(kind=i_def), parameter :: vertical_monotone_koren    = 3_i_def
+  integer(kind=i_def), parameter :: vertical_monotone_strict   = 4_i_def
+  integer(kind=i_def), parameter :: vertical_monotone_relaxed  = 5_i_def
+
+  integer(kind=i_def), parameter :: vertical_monotone_order_constant = 1_i_def
+  integer(kind=i_def), parameter :: vertical_monotone_order_linear   = 2_i_def
+  integer(kind=i_def), parameter :: vertical_monotone_order_high     = 3_i_def
 
 contains
 

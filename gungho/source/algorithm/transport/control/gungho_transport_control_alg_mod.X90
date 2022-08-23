@@ -54,7 +54,6 @@ contains
     use transport_config_mod,         only: profile_size,          &
                                             field_names,           &
                                             scheme,                &
-                                            monotone,              &
                                             splitting,             &
                                             horizontal_method,     &
                                             vertical_method,       &
@@ -62,7 +61,10 @@ contains
                                             min_value,             &
                                             log_space,             &
                                             use_density_predictor, &
-                                            reversible
+                                            reversible,            &
+                                            horizontal_monotone,   &
+                                            vertical_monotone,     &
+                                            vertical_monotone_order
 
     implicit none
 
@@ -103,17 +105,19 @@ contains
         use_divergence_factor = .false.
       end if
 
-      transport_metadata = transport_metadata_type( field_names(config),       &
-                                                    equation_form,             &
-                                                    splitting(config),         &
-                                                    scheme(config),            &
-                                                    horizontal_method(config), &
-                                                    vertical_method(config),   &
-                                                    monotone(config),          &
-                                                    enforce_min_value(config), &
-                                                    min_value(config),         &
-                                                    log_space(config),         &
-                                                    use_divergence_factor,     &
+      transport_metadata = transport_metadata_type( field_names(config),             &
+                                                    equation_form,                   &
+                                                    splitting(config),               &
+                                                    scheme(config),                  &
+                                                    horizontal_method(config),       &
+                                                    vertical_method(config),         &
+                                                    horizontal_monotone(config),     &
+                                                    vertical_monotone(config),       &
+                                                    vertical_monotone_order(config), &
+                                                    enforce_min_value(config),       &
+                                                    min_value(config),               &
+                                                    log_space(config),               &
+                                                    use_divergence_factor,           &
                                                     reversible(config) )
 
       call transport_metadata_collection%set_transport_metadata(transport_metadata)

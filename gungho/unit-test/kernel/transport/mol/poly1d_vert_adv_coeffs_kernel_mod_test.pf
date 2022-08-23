@@ -68,7 +68,9 @@ contains
                                  splitting = (/1/),                                        &
                                  horizontal_method = (/1/),                                &
                                  vertical_method = (/1/),                                  &
-                                 monotone = (/1/),                                         &
+                                 horizontal_monotone = (/1/),                              &
+                                 vertical_monotone = (/1/),                                &
+                                 vertical_monotone_order = (/1/),                          &
                                  log_space = (/.false./),                                  &
                                  enforce_min_value = (/.false./),                          &
                                  min_value = (/0.0_r_def/),                                &

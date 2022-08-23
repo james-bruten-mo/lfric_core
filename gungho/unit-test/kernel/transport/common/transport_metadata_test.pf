@@ -9,12 +9,14 @@
 module transport_metadata_test
 
   use constants_mod,                  only : r_def, l_def, str_def, i_def
-  use transport_enumerated_types_mod, only : equation_advective,  &
-                                             splitting_hv,        &
-                                             scheme_split,        &
-                                             split_method_ffsl,   &
-                                             split_method_sl,     &
-                                             monotone_none
+  use transport_enumerated_types_mod, only : equation_advective,           &
+                                             splitting_hv,                 &
+                                             scheme_split,                 &
+                                             split_method_ffsl,            &
+                                             split_method_sl,              &
+                                             horizontal_monotone_none,     &
+                                             vertical_monotone_none,       &
+                                             vertical_monotone_order_high
   use transport_metadata_mod,         only : transport_metadata_type
   use pFUnit_Mod
 
@@ -72,7 +74,9 @@ contains
     integer(kind=i_def)           :: splitting = splitting_hv
     integer(kind=i_def)           :: horizontal_method = split_method_ffsl
     integer(kind=i_def)           :: vertical_method = split_method_sl
-    integer(kind=i_def)           :: monotone = monotone_none
+    integer(kind=i_def)           :: horizontal_monotone = horizontal_monotone_none
+    integer(kind=i_def)           :: vertical_monotone = vertical_monotone_none
+    integer(kind=i_def)           :: monotone_order = vertical_monotone_order_high
     logical(kind=l_def)           :: enforce_min_value = .true.
     logical(kind=l_def)           :: logspace = .true.
     logical(kind=l_def)           :: divergence_factor = .false.
@@ -82,17 +86,19 @@ contains
 
 
     ! Set up metadata object and then get them
-    our_metadata = transport_metadata_type(fname,             &
-                                           equation_form,     &
-                                           splitting,         &
-                                           scheme,            &
-                                           horizontal_method, &
-                                           vertical_method,   &
-                                           monotone,          &
-                                           enforce_min_value, &
-                                           min_value,         &
-                                           logspace,          &
-                                           divergence_factor, &
+    our_metadata = transport_metadata_type(fname,                &
+                                           equation_form,        &
+                                           splitting,            &
+                                           scheme,               &
+                                           horizontal_method,    &
+                                           vertical_method,      &
+                                           horizontal_monotone,  &
+                                           vertical_monotone,    &
+                                           monotone_order,       &
+                                           enforce_min_value,    &
+                                           min_value,            &
+                                           logspace,             &
+                                           divergence_factor,    &
                                            reversible)
 
     ! Check all properties of metadata object
@@ -102,7 +108,9 @@ contains
     @assertEqual(scheme, our_metadata%get_scheme())
     @assertEqual(horizontal_method, our_metadata%get_horizontal_method())
     @assertEqual(vertical_method, our_metadata%get_vertical_method())
-    @assertEqual(monotone, our_metadata%get_monotone())
+    @assertEqual(horizontal_monotone, our_metadata%get_horizontal_monotone())
+    @assertEqual(vertical_monotone, our_metadata%get_vertical_monotone())
+    @assertEqual(monotone_order, our_metadata%get_vertical_monotone_order())
     @assertEqual(enforce_min_value, our_metadata%get_enforce_min_value())
     @assertEqual(min_value, our_metadata%get_min_value())
     @assertEqual(logspace, our_metadata%get_log_space())

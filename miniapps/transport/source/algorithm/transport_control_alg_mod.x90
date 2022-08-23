@@ -61,17 +61,20 @@ contains
   !> @param[in] number_of_meshes Number of meshes to transport on
   subroutine transport_prerun_setup( number_of_meshes )
 
-    use transport_config_mod,    only: profile_size,      &
-                                       field_names,       &
-                                       scheme,            &
-                                       monotone,          &
-                                       splitting,         &
-                                       horizontal_method, &
-                                       vertical_method,   &
-                                       log_space,         &
-                                       enforce_min_value, &
-                                       min_value,         &
-                                       reversible
+    use transport_config_mod,    only: profile_size,         &
+                                       field_names,          &
+                                       scheme,               &
+                                       splitting,            &
+                                       horizontal_method,    &
+                                       vertical_method,      &
+                                       log_space,            &
+                                       enforce_min_value,    &
+                                       min_value,            &
+                                       reversible,           &
+                                       horizontal_monotone,  &
+                                       vertical_monotone,    &
+                                       vertical_monotone_order
+
 
     use initial_wind_config_mod, only: profile,                      &
                                        profile_curl_free_reversible, &
@@ -90,11 +93,10 @@ contains
     implicit none
 
     integer(kind=i_def), intent(in) :: number_of_meshes
-
-    integer(kind=i_def)            :: equation_form
-    integer(kind=i_def)            :: config
-    type(transport_metadata_type)  :: transport_metadata
-    logical(kind=l_def), parameter :: use_divergence_factor = .false.
+    integer(kind=i_def)             :: equation_form
+    integer(kind=i_def)             :: config
+    type(transport_metadata_type)   :: transport_metadata
+    logical(kind=l_def), parameter  :: use_divergence_factor = .false.
 
     ! ------------------------------------------------------------------------ !
     ! Allocate arrays for initial/true fields
@@ -154,17 +156,19 @@ contains
         equation_form = equation_advective
       end if
 
-      transport_metadata = transport_metadata_type( field_names(config),       &
-                                                    equation_form,             &
-                                                    splitting(config),         &
-                                                    scheme(config),            &
-                                                    horizontal_method(config), &
-                                                    vertical_method(config),   &
-                                                    monotone(config),          &
-                                                    enforce_min_value(config), &
-                                                    min_value(config),         &
-                                                    log_space(config),         &
-                                                    use_divergence_factor,     &
+      transport_metadata = transport_metadata_type( field_names(config),             &
+                                                    equation_form,                   &
+                                                    splitting(config),               &
+                                                    scheme(config),                  &
+                                                    horizontal_method(config),       &
+                                                    vertical_method(config),         &
+                                                    horizontal_monotone(config),     &
+                                                    vertical_monotone(config),       &
+                                                    vertical_monotone_order(config), &
+                                                    enforce_min_value(config),       &
+                                                    min_value(config),               &
+                                                    log_space(config),               &
+                                                    use_divergence_factor,           &
                                                     reversible(config) )
 
       call transport_metadata_collection%set_transport_metadata(transport_metadata)

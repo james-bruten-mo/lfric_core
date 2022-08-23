@@ -40,10 +40,10 @@ module tl_reconstruct_w3_field_alg_mod
                                             oned_reconstruction
   use log_mod,                        only: log_event,         &
                                             LOG_LEVEL_ERROR
-  use transport_enumerated_types_mod, only: direction_v,    &
-                                            direction_h,    &
-                                            direction_3d,   &
-                                            monotone_koren, &
+  use transport_enumerated_types_mod, only: direction_v,               &
+                                            direction_h,               &
+                                            direction_3d,              &
+                                            vertical_monotone_koren,   &
                                             equation_consistent
   use transport_metadata_mod,         only: transport_metadata_type
   use transport_runtime_alg_mod,      only: transport_runtime_type
@@ -200,7 +200,7 @@ contains
 
     reversible = ( transport_metadata%get_reversible() .and. final_rk_stage )
     logspace = transport_metadata%get_log_space()
-    monotonicity = transport_metadata%get_monotone()
+    monotonicity = transport_metadata%get_vertical_monotone()
 
     mesh => field_new%get_mesh()
     mesh_id = mesh%get_id()
@@ -216,7 +216,7 @@ contains
       vertical_order = fv_vertical_order
     end if
 
-    if ( monotonicity == monotone_koren ) then
+    if ( monotonicity == vertical_monotone_koren ) then
       call log_event('T.L. vertical Koren not implemented', LOG_LEVEL_ERROR)
 
     else

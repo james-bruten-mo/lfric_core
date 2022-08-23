@@ -25,12 +25,15 @@ module transport_metadata_mod
     integer(kind=i_def)    :: scheme    ! Transport scheme (= mol3d, ffsl3d, split)
     integer(kind=i_def)    :: horizontal_method ! Horizontal transport method (= mol, ffsl)
     integer(kind=i_def)    :: vertical_method ! Vertical transport method (= mol, sl/slice, ffsl)
-    integer(kind=i_def)    :: monotone  ! Apply monotone limiter
+    integer(kind=i_def)    :: horizontal_monotone      ! Horizontal monotone scheme
+    integer(kind=i_def)    :: vertical_monotone        ! Vertical monotone scheme
+    integer(kind=i_def)    :: vertical_monotone_order  ! Order of the vertical monotone scheme
     logical(kind=l_def)    :: enforce_min_value  ! enforce a min value (=T/F)
     real(kind=r_def)       :: min_value          ! the min value to be enforced
     logical(kind=l_def)    :: log_space ! Do interpolation in log space
     logical(kind=l_def)    :: divergence_factor ! Compute divergence factor (=1-beta*dt*div(u^n))
     logical(kind=l_def)    :: reversible ! Use a reversible transport scheme
+
     contains
 
     procedure, public :: get_name
@@ -44,6 +47,10 @@ module transport_metadata_mod
     procedure, public :: get_min_value
     procedure, public :: get_log_space
     procedure, public :: get_divergence_factor
+    procedure, public :: get_horizontal_monotone
+    procedure, public :: get_vertical_monotone
+    procedure, public :: get_vertical_monotone_order
+    procedure, public :: get_monotone_order
     procedure, public :: get_reversible
 
   end type transport_metadata_type
@@ -60,7 +67,10 @@ contains
 
     function transport_metadata_constructor(fname, equation, splitting, &
                                             scheme, horizontal_method,  &
-                                            vertical_method, monotone,  &
+                                            vertical_method,            &
+                                            horizontal_monotone,        &
+                                            vertical_monotone,          &
+                                            vertical_monotone_order,    &
                                             enforce_min_value,          &
                                             min_value,                  &
                                             log_space,                  &
@@ -78,25 +88,29 @@ contains
     integer(kind=i_def),    intent(in) :: scheme
     integer(kind=i_def),    intent(in) :: horizontal_method
     integer(kind=i_def),    intent(in) :: vertical_method
-    integer(kind=i_def),    intent(in) :: monotone
+    integer(kind=i_def),    intent(in) :: horizontal_monotone
+    integer(kind=i_def),    intent(in) :: vertical_monotone
+    integer(kind=i_def),    intent(in) :: vertical_monotone_order
     logical(kind=l_def),    intent(in) :: enforce_min_value
     real(kind=r_def),       intent(in) :: min_value
     logical(kind=l_def),    intent(in) :: log_space
     logical(kind=l_def),    intent(in) :: divergence_factor
     logical(kind=l_def),    intent(in) :: reversible
 
-    self%fname             = trim(fname)
-    self%equation          = equation
-    self%splitting         = splitting
-    self%scheme            = scheme
-    self%horizontal_method = horizontal_method
-    self%vertical_method   = vertical_method
-    self%monotone          = monotone
-    self%enforce_min_value = enforce_min_value
-    self%min_value         = min_value
-    self%log_space         = log_space
-    self%divergence_factor = divergence_factor
-    self%reversible        = reversible
+    self%fname                   = trim(fname)
+    self%equation                = equation
+    self%splitting               = splitting
+    self%scheme                  = scheme
+    self%horizontal_method       = horizontal_method
+    self%vertical_method         = vertical_method
+    self%horizontal_monotone     = horizontal_monotone
+    self%vertical_monotone       = vertical_monotone
+    self%vertical_monotone_order = vertical_monotone_order
+    self%enforce_min_value       = enforce_min_value
+    self%min_value               = min_value
+    self%log_space               = log_space
+    self%divergence_factor       = divergence_factor
+    self%reversible              = reversible
 
   end function transport_metadata_constructor
 
@@ -185,18 +199,80 @@ contains
   end function get_vertical_method
 
   !> @brief Get the monotone option
+  !> @param[in] self       The transport_metadata object
+  !> @param[in] direction  The direction of transport
+  !> @return               The monotone option
+  function get_monotone(self,direction) result(monotone)
+    use transport_enumerated_types_mod, only: direction_h,  &
+                                              direction_v,  &
+                                              direction_3d
+    implicit none
+
+    class(transport_metadata_type), intent(in) :: self
+    integer(kind=i_def),            intent(in) :: direction
+    integer(kind=i_def)                        :: monotone
+
+    select case (direction)
+      case (direction_h, direction_3d)
+         monotone = self%horizontal_monotone
+      case (direction_v)
+         monotone = self%vertical_monotone
+    end select
+  end function get_monotone
+
+  !> @brief Get the monotone_order
+  !> @param[in] self       The transport_metadata object
+  !> @return               The monotone_order
+  function get_monotone_order(self) result(monotone_order)
+    implicit none
+    class(transport_metadata_type), intent(in) :: self
+    integer(kind=i_def)                        :: monotone_order
+
+    monotone_order = self%vertical_monotone_order
+
+  end function get_monotone_order
+
+  !> @brief Get the horizontal_monotone option
   !> @param[in] self     The transport_metadata object
-  !> @return             The monotone option
-  function get_monotone(self) result(monotone)
+  !> @return             The horizontal_monotone option
+  function get_horizontal_monotone(self) result(horizontal_monotone)
 
     implicit none
 
     class(transport_metadata_type), intent(in) :: self
-    integer(kind=i_def)                        :: monotone
+    integer(kind=i_def)                        :: horizontal_monotone
 
-    monotone = self%monotone
+    horizontal_monotone = self%horizontal_monotone
 
-  end function get_monotone
+  end function get_horizontal_monotone
+
+  !> @brief Get the vertical_monotone option
+  !> @param[in] self     The transport_metadata object
+  !> @return             The vertical_monotone option
+  function get_vertical_monotone(self) result(vertical_monotone)
+
+    implicit none
+
+    class(transport_metadata_type), intent(in) :: self
+    integer(kind=i_def)                        :: vertical_monotone
+
+    vertical_monotone = self%vertical_monotone
+
+  end function get_vertical_monotone
+
+  !> @brief Get the vertical_monotone_order
+  !> @param[in] self     The transport_metadata object
+  !> @return             The vertical_monotone_order
+  function get_vertical_monotone_order(self) result(vertical_monotone_order)
+
+    implicit none
+
+    class(transport_metadata_type), intent(in) :: self
+    integer(kind=i_def)                        :: vertical_monotone_order
+
+    vertical_monotone_order = self%vertical_monotone_order
+
+  end function get_vertical_monotone_order
 
   !> @brief Get the enforce_min_value option
   !> @param[in] self     The transport_metadata object
@@ -254,6 +330,7 @@ contains
 
   end function get_divergence_factor
 
+
   !> @brief Get the reversible option
   !> @param[in] self     The transport_metadata object
   !> @return             The reversible switch
@@ -267,5 +344,6 @@ contains
     reversible = self%reversible
 
   end function get_reversible
+
 
 end module transport_metadata_mod
