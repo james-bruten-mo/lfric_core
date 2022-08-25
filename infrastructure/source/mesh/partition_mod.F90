@@ -36,6 +36,10 @@ module partition_mod
             partitioner_interface
 
   type, public :: partition_type
+
+    ! Note: If component variables listed are modified, the
+    !       copy constructor routine will need to be updated to
+    !       the change.
     private
   ! A List of global cell ids known to this partition ordered with inner cells
   ! first followed by the edge cells and finally the halo cells ordered by
@@ -67,7 +71,7 @@ module partition_mod
     integer(i_def)              :: global_num_cells
   ! Number of panels in the 3D mesh
     integer(i_def)              :: npanels
-
+  ! Maximum cell depth of stencil that this partition will support
     integer(i_def)              :: max_stencil_depth
 
   contains
@@ -86,6 +90,7 @@ module partition_mod
     procedure, public :: get_num_panels_global_mesh
     procedure, public :: get_max_stencil_depth
     procedure, public :: partition_type_assign
+
     procedure, public :: clear
 
     final             :: partition_destructor
@@ -343,6 +348,7 @@ contains
     dest%last_halo_cell=source%last_halo_cell
 
     dest%npanels=source%npanels
+    dest%max_stencil_depth=source%max_stencil_depth
 
   end subroutine partition_type_assign
 
@@ -1281,7 +1287,6 @@ contains
     max_stencil_depth = self%max_stencil_depth
 
   end function get_max_stencil_depth
-
 
   !---------------------------------------------------------------------------
   !> @brief Gets number of cells in a halo.
