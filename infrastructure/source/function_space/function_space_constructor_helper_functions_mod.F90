@@ -1613,7 +1613,7 @@ contains
     integer(i_def), intent(in) :: ndof_cell
     integer(i_def), intent(out) :: last_dof_owned
     integer(i_def), intent(out) :: last_dof_annexed
-    integer(i_def), intent(out) :: last_dof_halo(:)
+    integer(i_def), intent(out) :: last_dof_halo(0:)
     integer(i_def), intent(out) :: dofmap(ndof_cell, 0:ncells_2d_with_ghost)
 
     integer(i_halo_index), intent(out) :: global_dof_id(:)
@@ -2029,6 +2029,9 @@ contains
 
     end do halo_loop
 
+    ! The zeroth depth halo contains no dofs, so set the last dof to be the
+    ! same as the last dof before it in memory - i.e. the last annexed dof
+    last_dof_halo(0) = last_dof_annexed
 
     ! Copy from the dofmap_dn arrays into one dofmap array
     dof_column_height(:,:) = -999

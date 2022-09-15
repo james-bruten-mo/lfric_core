@@ -1087,7 +1087,7 @@ contains
     integer(i_def), intent(in) :: depth
     integer(i_def)             :: inner_cells
 
-    if( depth > self%inner_depth )then
+    if( depth > self%inner_depth .or. depth < 1 )then
       inner_cells = 0
     else
       inner_cells = self%num_inner(depth)
@@ -1115,8 +1115,12 @@ contains
     integer(i_def), intent(in) :: depth
     integer(i_def)             :: last_inner_cell
 
-    if( depth > self%inner_depth )then
+    if( depth > self%inner_depth .or. depth < 0)then
       last_inner_cell = 0
+    else if( depth == 0 )then
+      ! The zeroth depth inner halo has no size, so its last cell is in the
+      ! same place as the inner halo before it in memory: inner(1)
+      last_inner_cell = self%last_inner_cell(1)
     else
       last_inner_cell = self%last_inner_cell(depth)
     end if
@@ -1197,7 +1201,7 @@ contains
     integer(i_def), intent(in) :: depth
     integer(i_def)             :: halo_cells
 
-    if( depth > self%halo_depth )then
+    if( depth > self%halo_depth .or. depth < 1)then
       halo_cells = 0
     else
       halo_cells = self%num_halo(depth)
@@ -1225,8 +1229,12 @@ contains
     integer(i_def), intent(in) :: depth
     integer(i_def)             :: last_halo_cell
 
-    if( depth > self%halo_depth )then
+    if( depth > self%halo_depth .or. depth < 0 )then
       last_halo_cell = 0
+    else if (depth == 0) then
+      ! The zeroth depth halo has no size, so its last cell is in the
+      ! same place as the last edge cell
+      last_halo_cell = self%get_last_edge_cell()
     else
       last_halo_cell = self%last_halo_cell(depth)
     end if

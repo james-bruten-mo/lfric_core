@@ -500,7 +500,7 @@ contains
     allocate(&
     self%global_vert_dof_id_2d(self%mesh%get_num_verts_owned_2d() * self%ndata))
 
-    allocate(self%last_dof_halo (self%mesh % get_halo_depth()))
+    allocate(self%last_dof_halo (0 : self%mesh % get_halo_depth()))
 
     call dofmap_setup ( self%mesh, self%fs, self%element_order, self%ndata, &
                         ncells_2d_with_ghost,                               &
@@ -544,7 +544,7 @@ contains
 
     class(function_space_type), intent(in) :: self
 
-    get_undf = self%last_dof_halo(size(self%last_dof_halo))
+    get_undf = self%last_dof_halo(ubound(self%last_dof_halo,1))
 
   end function get_undf
 
@@ -1158,7 +1158,7 @@ contains
 
     integer(i_def) :: last_dof_halo
 
-    last_dof_halo = self%last_dof_halo(size(self%last_dof_halo))
+    last_dof_halo = self%last_dof_halo(ubound(self%last_dof_halo,1))
 
   end function get_last_dof_halo_deepest
 

@@ -219,6 +219,12 @@ contains
         last_inner_cell = local_mesh%get_last_inner_cell(1)
         @assertEqual( 36, last_inner_cell )
 
+        num_cells_inner = local_mesh%get_num_cells_inner(0)
+        @assertEqual( 0, num_cells_inner )
+
+        last_inner_cell = local_mesh%get_last_inner_cell(0)
+        @assertEqual( 36, last_inner_cell )
+
         num_cells_edge = local_mesh%get_num_cells_edge()
         @assertEqual( 28, num_cells_edge )
 
@@ -232,6 +238,12 @@ contains
         @assertEqual( 0, num_cells_halo )
 
         last_halo_cell = local_mesh%get_last_halo_cell(1)
+        @assertEqual( 64, last_halo_cell )
+
+        num_cells_halo = local_mesh%get_num_cells_halo(0)
+        @assertEqual( 0, num_cells_halo )
+
+        last_halo_cell = local_mesh%get_last_halo_cell(0)
         @assertEqual( 64, last_halo_cell )
 
         num_cells_ghost = local_mesh%get_num_cells_ghost()

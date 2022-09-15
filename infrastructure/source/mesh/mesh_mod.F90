@@ -1352,7 +1352,7 @@ contains
     integer(i_def), intent(in) :: depth
     integer(i_def)             :: inner_cells
 
-    if( depth > self%get_inner_depth() )then
+    if( depth > self%get_inner_depth() .or. depth < 1 )then
       inner_cells = 0
     else
       inner_cells = self%local_mesh%get_num_cells_inner(depth)
@@ -1375,8 +1375,12 @@ contains
     integer(i_def), intent(in) :: depth
     integer(i_def)             :: last_inner_cell
 
-    if( depth > self%get_inner_depth() )then
+    if( depth > self%get_inner_depth() .or. depth < 0 )then
       last_inner_cell = 0
+    else if( depth == 0 )then
+      ! The zeroth depth inner halo has no size, so its last cell is in the
+      ! same place as the inner halo before it in memory: inner(1)
+      last_inner_cell = self%local_mesh%get_last_inner_cell(1)
     else
       last_inner_cell = self%local_mesh%get_last_inner_cell(depth)
     end if
@@ -1404,7 +1408,13 @@ contains
 
     ! Check arguments, which will abort if out of bounds
     call bounds_check (self, function_name, colour=colour, depth=depth )
-    last_inner_cell = self%last_inner_cell_per_colour(colour, depth)
+    if(depth == 0)then
+      ! The zeroth depth inner halo has no size, so its last cell is in the
+      ! same place as the inner halo before it in memory: inner(1)
+      last_inner_cell = self%last_inner_cell_per_colour(colour, 1)
+    else
+      last_inner_cell = self%last_inner_cell_per_colour(colour, depth)
+    end if
 
   end function get_last_inner_cell_per_colour
 
@@ -1529,7 +1539,7 @@ contains
     integer(i_def),   intent(in) :: depth
     integer(i_def)               :: halo_cells
 
-    if (depth > self%get_halo_depth()) then
+    if (depth > self%get_halo_depth() .or. depth < 1) then
       halo_cells = 0
     else
       halo_cells = self%local_mesh%get_num_cells_halo(depth)
@@ -1557,7 +1567,13 @@ contains
 
     ! Check arguments, which will abort if out of bounds
     call bounds_check (self, function_name, depth=depth )
-    last_halo_cell = self%local_mesh%get_last_halo_cell(depth)
+    if (depth == 0) then
+      ! The zeroth depth halo has no size, so its last cell is in the
+      ! same place as the last edge cell
+      last_halo_cell = self%local_mesh%get_last_edge_cell()
+    else
+      last_halo_cell = self%local_mesh%get_last_halo_cell(depth)
+    end if
 
   end function get_last_halo_cell_any
 
@@ -1582,7 +1598,13 @@ contains
 
     ! Check arguments, which will abort if out of bounds
     call bounds_check (self, function_name, colour=colour, depth=depth )
-    ncells_colour = self%last_halo_cell_per_colour(colour, depth)
+    if (depth == 0) then
+      ! The zeroth depth halo has no size, so its last cell is in the
+      ! same place as the last edge cell
+      ncells_colour = self%get_last_edge_cell_per_colour(colour)
+    else
+      ncells_colour = self%last_halo_cell_per_colour(colour, depth)
+    end if
 
   end function get_last_halo_cell_per_colour_any
 
@@ -1735,7 +1757,7 @@ contains
     integer(i_def), intent(in), optional :: depth
 
     if (present(depth)) then
-      if( depth > self%get_halo_depth() .or. depth < 1 )then
+      if( depth > self%get_halo_depth() .or. depth < 0 )then
         write(log_scratch_space,'(A,A,I5,A)')function_name,': depth ', &
            depth,' is out of bounds'
         call log_event(log_scratch_space, LOG_LEVEL_ERROR)
