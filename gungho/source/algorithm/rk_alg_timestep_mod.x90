@@ -243,8 +243,7 @@ contains
       ! Compute advection terms
       call gungho_transport_control_alg( rhs_prediction(:,stage), state, &
                                          state(igh_u), state(igh_u),     &
-                                         mr, mr, moist_dyn,              &
-                                         dt, outer )
+                                         mr, mr, dt, outer )
       ! Compute new rhs
       if ( rotating ) then
         coriolis => get_coriolis(mesh_id)

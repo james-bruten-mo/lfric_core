@@ -176,7 +176,6 @@ module tl_test_transport_control_mod
                                       ls_state(igh_u),         &
                                       ls_mr_out,               &
                                       ls_mr,                   &
-                                      ls_moist_dyn,            &
                                       dt,                      &
                                       outer                    )
 
@@ -229,7 +228,6 @@ module tl_test_transport_control_mod
                                         state(igh_u),            &
                                         n_mr_out,                &
                                         n_mr_in,                 &
-                                        moist_dyn,               &
                                         dt,                      &
                                         outer                    )
 
@@ -239,7 +237,6 @@ module tl_test_transport_control_mod
                                     p_state(igh_u),   &
                                     p_mr_out,         &
                                     p_mr_in,          &
-                                    p_moist_dyn,      &
                                     ls_state,         &
                                     ls_state(igh_u),  &
                                     ls_state(igh_u),  &

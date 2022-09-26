@@ -44,7 +44,6 @@ contains
   !> @param[in]     wind_n             ACTIVE Start of timestep wind field
   !> @param[in,out] mr_out             ACTIVE Moisture fields after transport
   !> @param[in]     mr_in              ACTIVE Moisture fields before transport
-  !> @param[in]     moist_dyn          ACTIVE Moist dynamics factors
   !> @param[in]     ls_advected_fields PASSIVE Fields to advect: [u, rho, theta, exner]
   !> @param[in]     ls_wind_np1        PASSIVE End of timestep wind field
   !> @param[in]     ls_wind_n          PASSIVE Start of timestep wind field
@@ -52,7 +51,7 @@ contains
   !> @param[in]     model_dt           Difference in time through model time step
   subroutine tl_transport_control_alg(advection_inc, advected_fields,   &
                                       wind_np1, wind_n, mr_out, mr_in,  &
-                                      moist_dyn, ls_advected_fields,    &
+                                      ls_advected_fields,               &
                                       ls_wind_np1, ls_wind_n, ls_mr_in, &
                                       model_dt )
 
@@ -66,8 +65,6 @@ contains
     use dg_inc_matrix_vector_kernel_mod, only: dg_inc_matrix_vector_kernel_type
     use mesh_mod,                        only: mesh_type
     use mesh_collection_mod,             only: mesh_collection
-    use moist_dyn_mod,                   only: num_moist_factors
-    use moist_dyn_factors_alg_mod,       only: moist_dyn_factors_alg
     use mr_indices_mod,                  only: nummr
     use operator_mod,                    only: operator_type
     use timestepping_config_mod,         only: time_method => method, &
@@ -89,7 +86,6 @@ contains
     type(field_type),            intent(in)    :: ls_wind_n
     type(field_type),            intent(inout) :: mr_out(nummr)
     type(field_type),            intent(in)    :: mr_in(nummr)
-    type(field_type),            intent(inout) :: moist_dyn(num_moist_factors)
     type(field_type),            intent(in)    :: ls_advected_fields(bundle_size)
     type(field_type),            intent(in)    :: ls_mr_in(nummr)
     real(kind=r_def),            intent(in)    :: model_dt
@@ -195,8 +191,6 @@ contains
       call tl_moist_mr_transport_alg( mr_out, mr_in, ls_mr_in,      &
                                       nummr_to_transport, model_dt, &
                                       transport_metadata )
-      call moist_dyn_factors_alg(moist_dyn, mr_out)
-
 
     end if
 

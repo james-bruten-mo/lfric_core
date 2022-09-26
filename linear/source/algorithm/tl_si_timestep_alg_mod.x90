@@ -469,25 +469,24 @@ contains
                                         ls_state_n(igh_u),              &
                                         ls_mr_itns(:, outer, 1),        &
                                         ls_mr_after_slow(:),            &
-                                        ls_moist_dyn_itns(:, outer, 1), &
                                         dt, outer)
 
       if (use_wavedynamics) then
 
-        ! Update factors for moist dynamics
-        if (use_moisture) then
-          call moist_dyn_factors_alg( ls_moist_dyn_itns(:, outer, 1), &
-                                      ls_mr_itns(:, outer, 1) )
-        end if
-
         ! Use advective update to guess n+1 level scalar fields.
-        if ( guess_np1 ) &
+        if ( guess_np1 ) then
+          ! Update factors for moist dynamics
+          if (use_moisture) then
+            call moist_dyn_factors_alg( ls_moist_dyn_itns(:, outer, 1), &
+                                        ls_mr_itns(:, outer, 1) )
+          end if
           call update_prognostic_scalars_alg(        &
                          ls_state_itns(:, outer, 1), &
                          ls_rhs_n,                   &
                          ls_rhs_adv(:, outer, 1),    &
                          ls_rhs_phys(:, outer, 1),   &
                          ls_moist_dyn_itns(gas_law, outer, 1) )
+        end if
 
         !=====================================================================
         ! Start the Inner (nonlinear, coriolis) loop
@@ -600,6 +599,12 @@ contains
                            ls_mr_itns(:, next_outer, next_inner),              &
                            rho_guess,                                          &
                            write_moisture_diag )
+            ! If not already done update factors for moist dynamics
+            if ( .not. guess_np1 .and. use_moisture) then
+              call moist_dyn_factors_alg(                        &
+                   ls_moist_dyn_itns(:, next_outer, next_inner), &
+                   ls_mr_itns(:, next_outer, next_inner) )
+            end if
             if (exner_from_eos) then
               call derive_exner_from_eos( &
                            ls_state_itns(:, next_outer, next_inner), &
@@ -695,7 +700,6 @@ contains
                                     state_n(igh_u),                 &
                                     mr,                             &
                                     mr_after_slow,                  &
-                                    moist_dyn,                      &
                                     ls_advected_state,              &
                                     ls_state_itns(igh_u, outer, 1), &
                                     ls_state_n(igh_u),              &
@@ -703,11 +707,6 @@ contains
                                     dt                              )
 
       if (use_wavedynamics) then
-
-        ! Update factors for moist dynamics
-        if (use_moisture) then
-          call tl_moist_dyn_factors_alg(moist_dyn, mr )
-        end if
 
         ! Use advective update to guess n+1 level scalar fieldsgv .
         if ( guess_np1 ) &
@@ -775,6 +774,11 @@ contains
                                               moist_dyn(gas_law),   &
                                               mr,                   &
                                               rho_guess, write_moisture_diag )
+          ! Update factors for moist dynamics
+          if (use_moisture) then
+            call tl_moist_dyn_factors_alg(moist_dyn, mr )
+          end if
+
           if (exner_from_eos) then
             call tl_derive_exner_from_eos( state,              &
                                            moist_dyn(gas_law), &

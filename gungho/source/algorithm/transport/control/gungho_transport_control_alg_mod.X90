@@ -149,7 +149,6 @@ contains
   !> @param[in]     wind_n          Start of timestep wind field
   !> @param[in,out] mr_out          Moisture fields after transport
   !> @param[in]     mr_in           Moisture fields before transport
-  !> @param[in]     moist_dyn       Moist dynamics factors
   !> @param[in]     model_dt        Difference in time through model time step
   !> @param[in]     outer           Outer (advection) iteration number
   !> @param[in,out] adv_fields_all_outer Fields after transport on every iteration
@@ -159,7 +158,6 @@ contains
 
   subroutine gungho_transport_control_alg(advection_inc, advected_fields,  &
                                           wind_np1, wind_n, mr_out, mr_in, &
-                                          moist_dyn,                       &
                                           model_dt, outer,                 &
                                           adv_fields_all_outer,            &
                                           adv_fields_all_outer_after_slow, &
@@ -176,8 +174,6 @@ contains
     use dg_inc_matrix_vector_kernel_mod, only: dg_inc_matrix_vector_kernel_type
     use io_config_mod,                   only: write_conservation_diag
     use moisture_conservation_alg_mod,   only: moisture_conservation_alg
-    use moist_dyn_mod,                   only: num_moist_factors
-    use moist_dyn_factors_alg_mod,       only: moist_dyn_factors_alg
     use moist_mr_transport_alg_mod,      only: moist_mr_transport_alg
     use mr_indices_mod,                  only: nummr, nummr_to_transport
     use operator_mod,                    only: operator_type
@@ -199,7 +195,6 @@ contains
     type(field_type),            intent(in)    :: wind_n
     type(field_type),            intent(inout) :: mr_out(nummr)
     type(field_type),            intent(in)    :: mr_in(nummr)
-    type(field_type),            intent(inout) :: moist_dyn(num_moist_factors)
     real(kind=r_def),            intent(in)    :: model_dt
     integer(kind=i_def),         intent(in)    :: outer
     type(field_collection_type), intent(inout), optional :: adv_fields_all_outer
@@ -310,7 +305,6 @@ contains
       transport_metadata => transport_metadata_collection%get_transport_metadata('moisture')
       call moist_mr_transport_alg( mr_out, mr_in, nummr_to_transport, &
                                    model_dt, transport_metadata )
-      call moist_dyn_factors_alg(moist_dyn, mr_out)
 
       ! ---------------------------------------------------------------------- !
       ! Transport fields which are active in fast physics, and therefore need

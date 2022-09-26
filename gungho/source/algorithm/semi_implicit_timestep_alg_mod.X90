@@ -470,12 +470,15 @@ contains
       if (use_wavedynamics) then
         call gungho_transport_control_alg( rhs_adv, advected_state,         &
                                            state(igh_u), state_n(igh_u),    &
-                                           mr, mr_after_slow, moist_dyn,    &
-                                           dt, outer,                       &
+                                           mr, mr_after_slow, dt, outer,    &
                                            adv_fields_all_outer,            &
                                            adv_fields_all_outer_after_slow, &
                                            adv_fields_last_outer,           &
                                            adv_fields_last_outer_after_slow )
+
+        ! Compute the time-level n+1 dynamics terms
+        call rhs_alg(rhs_np1, -varalpha*dt, state, state, moist_dyn, .true., &
+                       dlayer_on, dt)
       else
         if (use_moisture) call copy_bundle(mr_after_slow, mr, nummr)
       end if
@@ -490,7 +493,7 @@ contains
              then
           call calc_phys_predictors_alg(derived_fields, rhs_np1, rhs_adv,      &
                                         rhs_n, state, state_after_slow,        &
-                                        moist_dyn, varalpha, clock, dt)
+                                        clock)
         end if
         if (use_moisture) call copy_bundle(mr, mr_after_adv, nummr)
         call conditional_collection_copy(cloud_fields_after_adv,               &
@@ -531,14 +534,14 @@ contains
 
       if (use_wavedynamics) then
 
-        ! Update factors for moist dynamics
-        if (use_moisture) call moist_dyn_factors_alg(moist_dyn, mr)
-
-        ! Use advective update to guess n+1 level scalar fieldsgv .
-        if ( guess_np1 ) &
+        ! Use advective update to guess n+1 level scalar fields.
+        if ( guess_np1 ) then
+          ! Update factors for moist dynamics
+          if (use_moisture) call moist_dyn_factors_alg(moist_dyn, mr)
           call update_prognostic_scalars_alg(state, rhs_n, rhs_adv, &
                                              rhs_phys,              &
                                              moist_dyn(gas_law))
+        end if
 
         !============================================================================
         ! Start the Inner (nonlinear, coriolis) loop
@@ -556,8 +559,8 @@ contains
           !--------------------------------------------------------------------
           ! Compute the time-level n+1 dynamics terms
           !--------------------------------------------------------------------
-          call rhs_alg(rhs_np1, -varalpha*dt, state, state, moist_dyn, .true., &
-                       dlayer_on, dt)
+          if (inner > 1) call rhs_alg(rhs_np1, -varalpha*dt, state, state, &
+               moist_dyn, .true., dlayer_on, dt)
 
           !--------------------------------------------------------------------
           ! Compute the LAM LBCs and RHS
@@ -602,6 +605,11 @@ contains
                                               moist_dyn(gas_law), &
                                               mr,                 &
                                               rho_guess, write_moisture_diag )
+
+          ! If not already done update factors for moist dynamics
+          if ( .not. guess_np1 .and. use_moisture ) &
+            call moist_dyn_factors_alg(moist_dyn, mr)
+
           if (exner_from_eos) then
             call derive_exner_from_eos( state, &
                                         moist_dyn(gas_law) )
