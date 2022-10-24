@@ -95,20 +95,20 @@ abstract interface
   !-----------------------------------------------------------------------------
   !> @brief Interface: Returns mesh metadata information.
   !>
-  !> @param[in]             self               The generator strategy object.
   !> @param[out, optional]  mesh_name          Name of mesh instance to generate
   !> @param[out, optional]  geometry           Domain geometry enumeration key
   !> @param[out, optional]  topology           Domain topology enumeration key
   !> @param[out, optional]  coord_sys          Co-ordinate sys enumeration key
   !> @param[out, optional]  periodic_x         Periodic in E-W direction.
   !> @param[out, optional]  periodic_y         Periodic in N-S direction.
-  !> @param[out, optional]  coord_sys          Coordinate system use to locate nodes.
   !> @param[out, optional]  edge_cells_x       Number of panel edge cells (x-axis).
   !> @param[out, optional]  edge_cells_y       Number of panel edge cells (y-axis).
   !> @param[out, optional]  constructor_inputs Inputs used to create this mesh from
   !>                                           the this ugrid_generator_type
   !> @param[out, optional]  nmaps              Number of maps to create with this mesh
   !>                                           as source mesh
+  !> @param[out, optional]  rim_depth          Rim depth of LBC mesh (LAMs).
+  !> @param[out, optional]  domain_size        Size of global model domain.
   !> @param[out, optional]  target_mesh_names  Mesh names of the target meshes that
   !>                                           this mesh has maps for.
   !> @param[out, optional]  maps_edge_cells_x  Number of panel edge cells (x-axis) of
@@ -124,8 +124,8 @@ abstract interface
                                       geometry, topology, coord_sys,         &
                                       periodic_x, periodic_y,                &
                                       edge_cells_x, edge_cells_y,            &
-                                      constructor_inputs, nmaps,             &
-                                      target_mesh_names,                     &
+                                      constructor_inputs, nmaps, rim_depth,  &
+                                      domain_size, target_mesh_names,        &
                                       maps_edge_cells_x, maps_edge_cells_y,  &
                                       north_pole, null_island  )
 
@@ -152,9 +152,11 @@ abstract interface
                     optional, intent(out) :: maps_edge_cells_y(:)
 
     integer(i_def), optional, intent(out) :: nmaps
+    integer(i_def), optional, intent(out) :: rim_depth
     integer(i_def), optional, intent(out) :: edge_cells_x
     integer(i_def), optional, intent(out) :: edge_cells_y
 
+    real(r_def),    optional, intent(out) :: domain_size(2)
     real(r_def),    optional, intent(out) :: north_pole(2)
     real(r_def),    optional, intent(out) :: null_island(2)
 
@@ -225,15 +227,15 @@ abstract interface
   !-----------------------------------------------------------------------------
   !> @brief Interface: Gets a selection of connectivity information from the
   !>                   mesh generator.
-  !> @param[in]     self                   The generator strategy object.
+  !>
   !> @param[out]    face_node_connectivity Nodes around each face
-  !> @param[out]    edge_node_connectivity Nodes defining each edge
   !> @param[out]    face_edge_connectivity Edges around each face.
   !> @param[out]    face_face_connectivity Faces adjacent to each face.
+  !> @param[out]    edge_node_connectivity Nodes defining each edge
   !-----------------------------------------------------------------------------
-  subroutine get_connectivity_interface (self,                         &
-                       face_node_connectivity, edge_node_connectivity, &
-                       face_edge_connectivity, face_face_connectivity)
+  subroutine get_connectivity_interface ( self,                        &
+                       face_node_connectivity, face_edge_connectivity, &
+                       face_face_connectivity, edge_node_connectivity )
 
     import :: ugrid_generator_type, i_def
 
@@ -242,9 +244,9 @@ abstract interface
     class(ugrid_generator_type), intent(in) :: self
 
     integer(i_def), intent(out) :: face_node_connectivity(:,:)
-    integer(i_def), intent(out) :: edge_node_connectivity(:,:)
     integer(i_def), intent(out) :: face_edge_connectivity(:,:)
     integer(i_def), intent(out) :: face_face_connectivity(:,:)
+    integer(i_def), intent(out) :: edge_node_connectivity(:,:)
 
   end subroutine get_connectivity_interface
 

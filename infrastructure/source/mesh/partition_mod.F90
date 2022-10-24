@@ -68,6 +68,14 @@ module partition_mod
     integer(i_def)              :: halo_depth
   ! The number of "ghost" cells in the <code>global_cell_id</code> list
     integer(i_def)              :: num_ghost
+
+  !> @todo The following variables are connected with the
+  !>       global mesh parent. Although these are not really information
+  !>       about partition, it is reasonable that the partition
+  !>       would be aware of the global mesh it is a partition of.
+  !>       This variables should be replaced in future with a getter
+  !>       to return a pointer to the global mesh object.
+  !>
   ! The total number of cells in the global domain
     integer(i_def)              :: global_num_cells
   ! Number of panels in the 3D mesh

@@ -7,27 +7,35 @@ class global_mesh_mod::global_mesh_type {
   -geometry: integer
   -topology: integer
   -coord_sys: integer
+  -coord_units_xy: string[2]
+  -constructor_inputs: string
+  -domain_size: real[2]
+  -north_pole: real[2]
+  -null_island: real[2]
   -periodic_x: logical
   -periodic_y: logical
-  -cell_coords: real[::] <<allocatable>>
+  -rim_depth: integer
+  -vert_coords: real[::] <<allocatable>>
   -cell_next_2d: integer[::] <<allocatable>>
-  -cell_on_edge_2d: integer[::] <<allocatable>>
+  -vert_on_cell_2d: integer[::] <<allocatable>>
   -cell_on_vert_2d: integer[::] <<allocatable>>
-  -edge_cell_owner: integer[  ] <<allocatable>>
   -edge_on_cell_2d: integer[::] <<allocatable>>
-  -max_cells_per_vertex: integer
-  -ncells: integer
-  -nedges_per_cell: integer
-  -nedges: integer
+  -cell_on_edge_2d: integer[::] <<allocatable>>
+  -vert_cell_owner: integer[:] <<allocatable>>
+  -edge_cell_owner: integer[:] <<allocatable>>
   -nverts: integer
+  -nedges: integer
+  -ncells: integer
   -nverts_per_cell: integer
+  -nverts_per_edge: integer
+  -nedges_per_cell: integer
+  -max_cells_per_vertex: integer
+  -npanels: integer
   -ntarget_meshes: integer
   -target_global_mesh_names: string[] <<allocatable>>
-  -vert_cell_owner: integer[] <<allocatable>>
-  -vert_coords: real[::] <<allocatable>>
-  -vert_on_cell_2d: integer[::] <<allocatable>>
-  -npanels: integer
   -global_mesh_maps: global_mesh_map_collection_type <<allocatable>>
+  -cell_coords: real[::] <<allocatable>>
+  -vert_on_edge_2d: integer[::] <<allocatable>>
 
   +<<create>>  global_mesh_constructor( <<in>>ugrid_mesh_data: ugrid_mesh_data_type, <<in>>npanels: integer ): global_mesh_type
   +<<create>>  global_mesh_unit_test_data(): global_mesh_type
@@ -36,6 +44,31 @@ class global_mesh_mod::global_mesh_type {
 
   +get_mesh_name(): string
   +get_npanels(): integer
+  +get_mesh_periodicity( <<out>>periodic_x: logical, <<out>>periodic_y: logical )
+  +get_cell_id(<<in>>cell_number: integer,<<in>>x_cells: integer,<<in>>y_cells: integer ): integer
+  +get_cell_on_vert( <<in>>vertex_number: integer, <<out>>cells: integer[] )
+  +get_cell_on_edge( <<in>>edge_number: integer, <<out>>cells: integer[] )
+  +get_nverts(): integer
+  +get_nedges(): integer
+  +get_ncells(): integer
+  +get_max_cells_per_vertex(): integer
+  +get_edge_on_cell( <<in>>cell_gid: integer, <<out>>edges: integer[] )
+  +get_vert_on_cell( <<in>>cell_gid: integer, <<out>>verts: integer[] )
+
+  +get_edge_on_all_cells(): integer[::]
+  +get_vert_on_all_cells(): integer[::]
+  +get_nverts_per_cell(): integer
+  +get_nedges_per_cell(): integer
+  +get_cell_next( <<in>>cell_gid: integer, <<out>>cell_next: integer[] )
+  +get_all_cells_next(): integer[::]
+  +get_vert_coords( <<in>>vert_gid: integer, <<out>>vert_coords: real[] )
+  +get_vert_cell_owner( vert: integer ): integer
+  +get_edge_cell_owner( <<in>>edge: integer ): integer
+  +add_global_mesh_map(<<in>>target_global_mesh:global_mesh_type<<pointer>>, <<in>>map:integer[:::])
+  +get_global_mesh_map(<<in>>target_global_mesh_id:integer): global_mesh_map<<pointer>>
+  +get_target_mesh_names(): string[] <<allocatable>>
+  +get_nmaps(): integer
+  +get_mesh_maps(): global_maps <<global_mesh_map_collection_type, pointer>>
 
   +is_geometry_spherical(): logical
   +is_geometry_planar(): logical
@@ -45,31 +78,14 @@ class global_mesh_mod::global_mesh_type {
   +is_coord_sys_xyz(): logical
   +is_coord_sys_ll(): logical
 
-  +get_target_mesh_names(): string[] <<allocatable>>
-  +get_nmaps(): integer
-  +get_all_cells_next(): integer[::]
-  +get_edge_on_all_cells(): integer[::]
-  +get_vert_on_all_cells(): integer[::]
-  +get_cell_id(<<in>>cell_number: integer,<<in>>x_cells: integer,<<in>>y_cells: integer ): integer
-  +get_cell_next( <<in>>cell_gid: integer, <<out>>cell_next: integer[] )
-  +get_cell_on_edge( <<in>>edge_number: integer, <<out>>cells: integer[] )
-  +get_cell_on_vert( <<in>>vertex_number: integer, <<out>>cells: integer[] )
-  +get_edge_cell_owner( <<in>>edge: integer ): integer
-  +get_edge_on_cell( <<in>>cell_gid: integer, <<out>>edges: integer[] )
-  +get_max_cells_per_vertex(): integer
-  +get_mesh_periodicity( <<out>>periodic_x: logical, <<out>>periodic_y: logical )
-  +get_ncells(): integer
-  +get_nedges(): integer
-  +get_nedges_per_cell(): integer
-  +get_nverts(): integer
-  +get_nverts_per_cell(): integer
-  +get_vert_cell_owner( vert: integer ): integer
-  +get_vert_coords( <<in>>vert_gid: integer, <<out>>vert_coords: real[] )
-  +get_vert_on_cell( <<in>>cell_gid: integer, <<out>>verts: integer[] )
+  +get_rim_depth(): integer
+  +get_domain_size(): integer
+  +get_north_pole(): integer
+  +get_null_island(): integer
+  +get_vert_on_edge(): integer
+  +get_coord_units(): integer
+  +get_constructor_inputs(): integer
 
-  +add_global_mesh_map(<<in>>target_global_mesh:global_mesh_type<<pointer>>, <<in>>map:integer[:::])
-  +get_global_mesh_map(<<in>>target_global_mesh_id:integer): global_mesh_map<<pointer>>
-  +get_mesh_maps(): global_maps <<global_mesh_map_collection_type, pointer>>
 }
 
 

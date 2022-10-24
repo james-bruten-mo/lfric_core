@@ -15,42 +15,47 @@
 !-----------------------------------------------------------------------------
 program planar_mesh_generator
 
-  use cli_mod,           only: get_initial_filename
-  use constants_mod,     only: i_def, l_def, r_def, str_def, i_native, &
-                               cmdi, imdi, emdi, str_max_filename
-  use configuration_mod, only: read_configuration, final_configuration
-  use gen_lbc_mod,       only: gen_lbc_type
-  use gen_planar_mod,    only: gen_planar_type,          &
-                               set_partition_parameters
-  use rotation_mod,      only: get_target_north_pole,    &
-                               get_target_null_island
-  use global_mesh_mod,   only: global_mesh_type
-  use global_mesh_collection_mod,                      &
-                         only: global_mesh_collection, &
-                               global_mesh_collection_type
-  use halo_comms_mod,    only: initialise_halo_comms, &
-                               finalise_halo_comms
-  use io_utility_mod,    only: open_file, close_file
-  use local_mesh_mod,    only: local_mesh_type
-  use log_mod,           only: initialise_logging,       &
-                               finalise_logging,         &
-                               log_event, log_set_level, &
-                               log_scratch_space,        &
-                               LOG_LEVEL_INFO,           &
-                               LOG_LEVEL_ERROR
+  use cli_mod,             only: get_initial_filename
+  use constants_mod,       only: i_def, l_def, r_def, str_def, i_native, &
+                                 cmdi, imdi, emdi, str_max_filename
+  use configuration_mod,   only: read_configuration, final_configuration
+  use coord_transform_mod, only: rebase_longitude_range
+  use gen_lbc_mod,         only: gen_lbc_type
+  use gen_planar_mod,      only: gen_planar_type, &
+                                 set_partition_parameters
 
-  use mpi_mod,           only: initialise_comm, store_comm, finalise_comm, &
-                               get_comm_size, get_comm_rank
-  use ncdf_quad_mod,     only: ncdf_quad_type
-  use partition_mod,     only: partition_type, partitioner_interface
+  use generate_op_global_objects_mod, only: generate_op_global_objects
+  use generate_op_local_objects_mod,  only: generate_op_local_objects
+  use global_mesh_collection_mod,     only: global_mesh_collection, &
+                                            global_mesh_collection_type
+  use global_mesh_mod,                only: global_mesh_type
+  use halo_comms_mod,                 only: initialise_halo_comms, &
+                                            finalise_halo_comms
+  use io_utility_mod,                 only: open_file, close_file
+  use local_mesh_collection_mod,      only: local_mesh_collection, &
+                                            local_mesh_collection_type
+
+  use local_mesh_mod, only: local_mesh_type
+  use log_mod,        only: initialise_logging, finalise_logging, &
+                            log_event, log_set_level,             &
+                            log_scratch_space, LOG_LEVEL_INFO,    &
+                            LOG_LEVEL_ERROR
+  use mpi_mod,        only: initialise_comm, store_comm,  &
+                            finalise_comm, get_comm_size, &
+                            get_comm_rank
+  use ncdf_quad_mod,  only: ncdf_quad_type
+  use partition_mod,  only: partition_type, partitioner_interface
+
   use reference_element_mod, only: reference_element_type, &
                                    reference_cube_type
   use remove_duplicates_mod, only: any_duplicates
+  use rotation_mod,          only: get_target_north_pole,  &
+                                   get_target_null_island
   use ugrid_2d_mod,          only: ugrid_2d_type
   use ugrid_file_mod,        only: ugrid_file_type
   use ugrid_mesh_data_mod,   only: ugrid_mesh_data_type
 
-  ! Configuration modules
+  ! Configuration modules.
   use mesh_config_mod,         only: mesh_filename, rotate_mesh, &
                                      n_meshes, mesh_names,       &
                                      mesh_maps, partition_mesh,  &
@@ -80,9 +85,6 @@ program planar_mesh_generator
                                      rotation_target,             &
                                      ROTATION_TARGET_NULL_ISLAND, &
                                      ROTATION_TARGET_NORTH_POLE
-  use coord_transform_mod,     only: rebase_longitude_range
-
-  use generate_op_global_objects_mod, only: generate_op_global_objects
 
   implicit none
 
@@ -93,11 +95,11 @@ program planar_mesh_generator
 
   type(reference_cube_type) :: cube_element
 
+  class(ugrid_file_type), allocatable :: ugrid_file
   type(gen_planar_type),  allocatable :: mesh_gen(:)
   type(ugrid_2d_type),    allocatable :: ugrid_2d(:)
-  class(ugrid_file_type), allocatable :: ugrid_file
-
-  type(ugrid_2d_type) :: ugrid_2d_lbc
+  type(gen_lbc_type)  :: lbc_mesh_gen
+  type(ugrid_2d_type) :: lbc_ugrid_2d
 
   integer(i_def) :: fsize
   integer(i_def) :: xproc, yproc
@@ -112,60 +114,53 @@ program planar_mesh_generator
   integer(i_def),     allocatable :: target_edge_cells_y_tmp(:)
   character(str_def), allocatable :: target_mesh_names_tmp(:)
 
-  ! Partition variables
-  procedure(partitioner_interface),  &
-                          pointer     :: partitioner_ptr => null()
-  type(global_mesh_type), pointer     :: global_mesh_ptr => null()
-  type(partition_type)                :: partition
-  type(local_mesh_type)               :: local_mesh
+  ! Partition variables.
+  procedure(partitioner_interface), pointer :: partitioner_ptr => null()
+  integer(i_def) :: start_partition
+  integer(i_def) :: end_partition
 
-  integer(i_def) :: start_partition, end_partition
-
-  ! Switches
+  ! Switches.
   logical(l_def) :: l_found = .false.
   logical(l_def) :: any_duplicate_names = .false.
+  logical(l_def) :: lbc_generated = .false.
 
-  ! Temporary variables
+  ! Temporary variables.
   character(str_def), allocatable :: requested_mesh_maps(:)
   character(str_def) :: first_mesh
   character(str_def) :: second_mesh
   character(str_def) :: tmp_str
   character(str_def) :: check_mesh(2)
-  integer(i_def)     :: first_mesh_edge_cells_x, first_mesh_edge_cells_y
-  integer(i_def)     :: second_mesh_edge_cells_x,second_mesh_edge_cells_y
+  integer(i_def)     :: first_mesh_edge_cells_x,  first_mesh_edge_cells_y
+  integer(i_def)     :: second_mesh_edge_cells_x, second_mesh_edge_cells_y
   real(r_def)        :: set_north_pole(2)
   real(r_def)        :: set_null_island(2)
-
-  logical(l_def)     :: lbc_generated
-  type(gen_lbc_type) :: lbc_mesh_gen
-
-  character(str_def)  :: lon_str
-  character(str_def)  :: lat_str
-
-  ! Counters
-  integer(i_def)    :: i, j, k, l, n_voids
-  integer(i_native) :: log_level
+  character(str_def) :: lon_str
+  character(str_def) :: lat_str
+  integer(i_native)  :: log_level
 
   character(str_max_filename) :: output_basename
+  character(str_max_filename) :: output_file
 
-  character(str_def) :: name, source_name
+  character(str_def) :: name
+
+  ! Counters.
+  integer(i_def) :: i, j, k, l, n_voids
 
   !===================================================================
   ! 1.0 Set the logging level for the run, should really be able
-  !     to set it from the command line as an option
+  !     to set it from the command line as an option.
   !===================================================================
   call log_set_level(LOG_LEVEL_INFO)
 
-
   !===================================================================
-  ! 2.0 Start up
+  ! 2.0 Start up.
   !===================================================================
   cube_element = reference_cube_type()
 
   call initialise_comm(communicator)
   call store_comm(communicator)
 
-  ! Initialise halo functionality
+  ! Initialise halo functionality.
   call initialise_halo_comms( communicator )
 
   total_ranks = get_comm_size()
@@ -174,7 +169,7 @@ program planar_mesh_generator
 
 
   !===================================================================
-  ! 3.0 Read in the control namelists from file
+  ! 3.0 Read in the control namelists from file.
   !===================================================================
   call get_initial_filename( filename )
   call read_configuration( filename )
@@ -191,9 +186,9 @@ program planar_mesh_generator
   end if
 
   !===================================================================
-  ! 4.0 Perform some error checks on the namelist inputs
+  ! 4.0 Perform some error checks on the namelist inputs.
   !===================================================================
-  ! 4.1a Check the namelist file enumeration: geometry
+  ! 4.1a Check the namelist file enumeration: geometry.
   log_level = LOG_LEVEL_ERROR
   select case (geometry)
 
@@ -206,12 +201,12 @@ program planar_mesh_generator
   case default
     write( log_scratch_space,'(A)' )                   &
         'Unrecognised enumeration key for geometry:'// &
-        trim(key_from_geometry(geometry))
+        trim(key_from_geometry(geometry))//'.'
     call log_event( log_scratch_space, log_level )
   end select
 
 
-  ! 4.1b Check the namelist file enumeration: topology
+  ! 4.1b Check the namelist file enumeration: topology.
   log_level = LOG_LEVEL_ERROR
   select case (topology)
 
@@ -262,12 +257,12 @@ program planar_mesh_generator
   case default
     write( log_scratch_space,'(A)' )                    &
         'Unrecognised enumeration key for topology: '// &
-        key_from_topology(topology)
+        key_from_topology(topology)//'.'
     call log_event( log_scratch_space, log_level )
   end select
 
 
-  ! 4.1c Check the namelist file enumeration: coord_sys
+  ! 4.1c Check the namelist file enumeration: coord_sys.
   log_level = LOG_LEVEL_ERROR
   select case (coord_sys)
 
@@ -281,7 +276,7 @@ program planar_mesh_generator
   case default
     write( log_scratch_space,'(A)' )                    &
         'Unrecognised enumeration key for coord_sys:'// &
-        trim(key_from_coord_sys(coord_sys))
+        trim(key_from_coord_sys(coord_sys))//'.'
     call log_event( log_scratch_space, log_level )
 
   end select
@@ -290,7 +285,7 @@ program planar_mesh_generator
   ! 4.2 Check the number of meshes requested.
   if (n_meshes < 1) then
     write( log_scratch_space,'(A,I0,A)' ) &
-        'Invalid number of meshes requested, (',n_meshes,')'
+        'Invalid number of meshes requested, (',n_meshes,').'
     call log_event( log_scratch_space, LOG_LEVEL_ERROR )
   end if
 
@@ -308,7 +303,7 @@ program planar_mesh_generator
   if ( any(edge_cells_x == imdi) .or. &
        any(edge_cells_y == imdi) ) then
     write( log_scratch_space,'(A)' ) &
-        'Missing data in namelist variable, edge_cells_x/edge_cells_y'
+        'Missing data in namelist variable, edge_cells_x/edge_cells_y.'
     call log_event( log_scratch_space, LOG_LEVEL_ERROR )
   end if
 
@@ -330,8 +325,8 @@ program planar_mesh_generator
     call log_event( log_scratch_space, LOG_LEVEL_ERROR )
   end if
 
-  ! Perform a number of checks related to mesh map
-  ! requests.
+  ! 4.7 Perform a number of checks related to mesh map
+  !     requests.
   if (n_mesh_maps > 0) then
     do i=1, n_mesh_maps
 
@@ -358,7 +353,7 @@ program planar_mesh_generator
         end if
       end do
 
-      ! 4.7 Check that mesh names in the map request exist.
+      ! 4.7a Check that mesh names in the map request exist.
       do j=1, size(check_mesh)
 
         l_found = .false.
@@ -376,8 +371,8 @@ program planar_mesh_generator
         end if
       end do
 
-      ! 4.8 Check the map request is not mapping at mesh
-      !     to itself.
+      ! 4.7b Check the map request is not mapping at mesh
+      !      to itself.
       if (trim(first_mesh) == trim(second_mesh)) then
         write( log_scratch_space,'(A)' )              &
             'Found identical adjacent mesh names "'// &
@@ -385,8 +380,8 @@ program planar_mesh_generator
         call log_event( log_scratch_space, LOG_LEVEL_ERROR )
       end if
 
-      ! 4.9 Check that the number of edge cells of the meshes
-      !     are not the same.
+      ! 4.7c Check that the number of edge cells of the meshes
+      !      are not the same.
       if ( (first_mesh_edge_cells_x == second_mesh_edge_cells_x ) .and. &
             first_mesh_edge_cells_y == second_mesh_edge_cells_y ) then
         write( log_scratch_space,'(A,I0,A)' )                    &
@@ -400,7 +395,7 @@ program planar_mesh_generator
     end do
   end if
 
-  ! 4.10 Check the requested lbc parent lam exists
+  ! 4.8 Check the requested LBC parent LAM exists.
   if (create_lbc_mesh) then
     l_found = .false.
     do i=1, n_meshes
@@ -417,10 +412,43 @@ program planar_mesh_generator
     end if
   end if
 
+  ! 4.9 Checks related to partitioning.
+  if (partition_mesh) then
+
+    ! 4.9a Checks for valid output partition range.
+    start_partition = partition_range(1)
+    end_partition   = partition_range(2)
+
+    do i=1, 2
+      if ( partition_range(i) <  0 .or. &
+           partition_range(i) >= n_partitions ) then
+        write( log_scratch_space,'(A,I0)' )         &
+            'Invalid partition ID range bound, ' // &
+            'valid IDs are 0:', n_partitions-1
+        call log_event( log_scratch_space, LOG_LEVEL_ERROR )
+      end if
+    end do
+
+    if ( partition_range(1) > partition_range(2) ) then
+      write( log_scratch_space,'(A,I0)' )                     &
+          'Invalid start/end partitions, start partition ' // &
+          'ID should be less than end partition ID.'
+      call log_event( log_scratch_space, LOG_LEVEL_ERROR )
+    end if
+
+    ! 4.9b Check for valid number of partitions on global mesh.
+    if ( n_partitions <  1 ) then
+      write( log_scratch_space,'(A,I0)' ) &
+          'At least 1 partition must be requested.'
+      call log_event( log_scratch_space, LOG_LEVEL_ERROR )
+    end if
+
+  end if ! partition_mesh
+
 
   !===================================================================
   ! 5.0 Create unique list of Requested Mesh maps.
-  !     Each map request will create two maps, one in each direction
+  !     Each map request will create two maps, one in each direction.
   !===================================================================
   if (n_mesh_maps > 0) then
     allocate(requested_mesh_maps(n_mesh_maps*2))
@@ -439,7 +467,7 @@ program planar_mesh_generator
 
 
   !===================================================================
-  ! 6.0 Report/Check what the code thinks is requested by user
+  ! 6.0 Report/Check what the code thinks is requested by user.
   !===================================================================
   log_level=LOG_LEVEL_INFO
 
@@ -478,7 +506,7 @@ program planar_mesh_generator
   allocate( mesh_gen (n_meshes) )
   allocate( ugrid_2d (n_meshes) )
 
-  ! 6.2 Assign temporary arrays for target meshes in requested maps
+  ! 6.2 Assign temporary arrays for target meshes in requested maps.
   if (n_mesh_maps > 0) then
     if (allocated(target_mesh_names_tmp))   deallocate(target_mesh_names_tmp)
     if (allocated(target_edge_cells_x_tmp)) deallocate(target_edge_cells_x_tmp)
@@ -498,7 +526,7 @@ program planar_mesh_generator
 
       select case ( rotation_target )
       case ( ROTATION_TARGET_NULL_ISLAND )
-        ! Use the domain_centre (Null Island) rather than pole as input
+        ! Use the domain_centre (Null Island) rather than pole as input.
         set_north_pole(:) = get_target_north_pole(target_null_island)
         set_null_island(:) = target_null_island
         write( log_scratch_space,'(A)' ) &
@@ -517,7 +545,7 @@ program planar_mesh_generator
         set_null_island(:) = get_target_null_island(target_north_pole)
       end select
 
-      ! Ensure the requested target longitudes are in the range -180,180
+      ! Ensure the requested target longitudes are in the range -180,180.
       set_null_island(1) = rebase_longitude_range( set_null_island(1), -180.0_r_def)
       set_north_pole(1)  = rebase_longitude_range( set_north_pole(1), -180.0_r_def)
 
@@ -547,7 +575,7 @@ program planar_mesh_generator
     call log_event( log_scratch_space, LOG_LEVEL_INFO )
 
 
-    ! 6.3 Get any target mappings requested for this mesh
+    ! 6.3 Get any target mappings requested for this mesh.
     n_targets = 0
     if (n_mesh_maps > 0) then
 
@@ -572,7 +600,7 @@ program planar_mesh_generator
       n_targets=l-1
     end if  ! n_mesh_maps > 0
 
-    ! 6.4 Call generation strategy
+    ! 6.4 Call generation strategy.
     if (n_targets == 0 .or. n_meshes == 1 ) then
 
       mesh_gen(i) = gen_planar_type(                          &
@@ -636,14 +664,14 @@ program planar_mesh_generator
       call log_event( log_scratch_space, LOG_LEVEL_ERROR )
     end if
 
-    ! Pass the generation object to the ugrid file writer
+    ! Pass the generation object to the ugrid file writer.
     call ugrid_2d(i)%set_by_generator(mesh_gen(i))
 
     ! Generate the LBC mesh generation strategy.
     if ( create_lbc_mesh .and. &
        ( trim(mesh_names(i)) == trim(lbc_parent_mesh) ) ) then
       lbc_mesh_gen = gen_lbc_type(mesh_gen(i), lbc_rim_depth)
-      call ugrid_2d_lbc%set_by_generator(lbc_mesh_gen)
+      call lbc_ugrid_2d%set_by_generator(lbc_mesh_gen)
     end if
 
     if (allocated(target_mesh_names))   deallocate(target_mesh_names)
@@ -657,90 +685,61 @@ program planar_mesh_generator
       '===================================================================='
   call log_event( log_scratch_space, LOG_LEVEL_INFO )
 
-  output_basename = mesh_filename( 1:index(mesh_filename, '.nc',back=.true. )-1)
+  output_basename = mesh_filename( 1:index(mesh_filename,'.nc',back=.true.)-1 )
 
-  !=================================================================
-  ! 7.0 Offline Partitioning (OP)
-  !=================================================================
   if (partition_mesh) then
-    !----------------------------------------------------------------------
-    ! 7.1 Create OP global meshes
-    !----------------------------------------------------------------------
-    allocate( global_mesh_collection, source = global_mesh_collection_type() )
+    !=================================================================
+    ! 7.0 Mesh partitioning.
+    !=================================================================
+
+    !-----------------------------------------------------------------
+    ! 7.1 Create global meshes.
+    !-----------------------------------------------------------------
+    allocate( global_mesh_collection, source=global_mesh_collection_type() )
     if ( create_lbc_mesh ) then
       call generate_op_global_objects( ugrid_2d, global_mesh_collection, &
-                                       ugrid_2d_lbc )
+                                       lbc_ugrid_2d )
     else
       call generate_op_global_objects( ugrid_2d, global_mesh_collection )
     end if
 
-    !----------------------------------------------------------------------
-    ! 7.2 OP Checks
-    !----------------------------------------------------------------------
-    start_partition = partition_range(1)
-    end_partition   = partition_range(2)
-    do i=1, 2
-      if ( partition_range(i) <  0 .or. &
-           partition_range(i) >= n_partitions ) then
-        write( log_scratch_space,'(A,I0)' )         &
-            'Invalid partition ID range bound, ' // &
-            'valid IDs are 0:', n_partitions-1
-        call log_event( log_scratch_space, LOG_LEVEL_ERROR )
-      end if
-    end do
-
-    if ( partition_range(1) > partition_range(2) ) then
-      write( log_scratch_space,'(A,I0)' )                     &
-          'Invalid start/end partitions, start partition ' // &
-          'ID should be less than end partition ID.'
-      call log_event( log_scratch_space, LOG_LEVEL_ERROR )
-    end if
-
-    if ( n_partitions <  1 ) then
-      write( log_scratch_space,'(A,I0)' ) &
-          'At least 1 partition must be requested.'
-      call log_event( log_scratch_space, LOG_LEVEL_ERROR )
-    end if
-
-    !----------------------------------------------------------------------
-    ! 7.3 OP partitioning parameters.
-    !----------------------------------------------------------------------
+    !---------------------------------------------------------------
+    ! 7.2 Get partitioning parameters.
+    !---------------------------------------------------------------
     call set_partition_parameters( xproc, yproc, partitioner_ptr )
 
-    !----------------------------------------------------------------------
-    ! 7.4 Create OP local meshes
-    !----------------------------------------------------------------------
-    do i=1, n_meshes
+    !---------------------------------------------------------------
+    ! 7.3 Create local meshes for partitions.
+    !---------------------------------------------------------------
+    allocate( local_mesh_collection, source=local_mesh_collection_type() )
 
-      source_name     =  mesh_names(i)
-      global_mesh_ptr => global_mesh_collection%get_global_mesh(source_name)
+    if ( create_lbc_mesh ) then
+      call generate_op_local_objects( local_mesh_collection,               &
+                                      mesh_names, global_mesh_collection,  &
+                                      n_partitions, partition_range,       &
+                                      max_stencil_depth, xproc, yproc,     &
+                                      partitioner_ptr, lbc_parent_mesh )
+    else
+      call generate_op_local_objects( local_mesh_collection,               &
+                                      mesh_names, global_mesh_collection,  &
+                                      n_partitions, partition_range,       &
+                                      max_stencil_depth, xproc, yproc,     &
+                                      partitioner_ptr )
+    end if
 
-      ! 7.3 Create local mesh partitions
-      do j=start_partition, end_partition
-        partition = partition_type( global_mesh_ptr,   &
-                                    partitioner_ptr,   &
-                                    xproc, yproc,      &
-                                    max_stencil_depth, &
-                                    j, n_partitions )
-
-        write( name,'(A,I0)' ) trim(source_name)//'_', j
-
-        call local_mesh%initialise( global_mesh_ptr, partition, mesh_name=name )
-      end do
-
-      global_mesh_ptr => null()
-
-    end do
-
-    ! ========================================================
-    ! End of developmental Offline Partioning code
-    ! ========================================================
+    !---------------------------------------------------------------
+    ! 8.0 Write local meshes to file.
+    !---------------------------------------------------------------
+    ! @todo Output to file of partitioned local meshes is to be done by
+    !       ticket #3132.
 
   else
 
-    !===================================================================
-    ! 8.0 Now the write out mesh to the UGRID file
-    !===================================================================
+    !=================================================================
+    ! 9.0 Write out global meshes to UGRID file.
+    !=================================================================
+    write(output_file,'(2(A,I0),A)') trim(output_basename)//'.nc'
+
     do i=1, n_meshes
 
       if (.not. allocated(ugrid_file)) allocate(ncdf_quad_type::ugrid_file)
@@ -748,15 +747,15 @@ program planar_mesh_generator
       call ugrid_2d(i)%set_file_handler(ugrid_file)
 
       if (i==1) then
-        call ugrid_2d(i)%write_to_file( trim(mesh_filename) )
+        call ugrid_2d(i)%write_to_file( trim(output_file) )
       else
-        call ugrid_2d(i)%append_to_file( trim(mesh_filename) )
+        call ugrid_2d(i)%append_to_file( trim(output_file) )
       end if
 
-      inquire(file=mesh_filename, size=fsize)
-      write( log_scratch_space,'(A,I0,A)')                  &
-          'Adding mesh (' // trim(mesh_names(i)) //         &
-          ') to ' // trim(adjustl(mesh_filename)) // ' - ', &
+      inquire(file=output_file, size=fsize)
+      write( log_scratch_space, '(A,I0,A)')               &
+          'Adding mesh (' // trim(mesh_names(i)) //       &
+          ') to ' // trim(adjustl(output_file)) // ' - ', &
           fsize, ' bytes written.'
 
       call log_event( log_scratch_space, LOG_LEVEL_INFO )
@@ -764,9 +763,8 @@ program planar_mesh_generator
 
     end do ! n_meshes
 
-
     !===================================================================
-    ! 9.0 Now create/output LBC mesh
+    ! 9.1 Now create/output LBC mesh
     !===================================================================
     ! A LBC mesh is created from a parent planar mesh strategy that has
     ! been generated. The name of the resulting LBC mesh will be:
@@ -783,18 +781,16 @@ program planar_mesh_generator
 
         call mesh_gen(i)%get_metadata(mesh_name=name)
         if (trim(name) == trim(lbc_parent_mesh)) then
-          lbc_mesh_gen = gen_lbc_type(mesh_gen(i), lbc_rim_depth)
 
-          call ugrid_2d_lbc%set_by_generator(lbc_mesh_gen)
           if (.not. allocated(ugrid_file)) allocate(ncdf_quad_type::ugrid_file)
 
-          call ugrid_2d_lbc%set_file_handler(ugrid_file)
-          call ugrid_2d_lbc%append_to_file( trim(mesh_filename) )
+          call lbc_ugrid_2d%set_file_handler(ugrid_file)
+          call lbc_ugrid_2d%append_to_file( trim(output_file) )
 
-          inquire(file=mesh_filename, size=fsize)
+          inquire(file=output_file, size=fsize)
           write( log_scratch_space,'(A,I0,A)' )                &
               'Adding lbc mesh for ' // trim(mesh_names(i)) // &
-              ' to ' // trim(adjustl(mesh_filename)) // ' - ', &
+              ' to ' // trim(adjustl(output_file)) // ' - ',   &
               fsize, ' bytes written.'
 
           call log_event( log_scratch_space, LOG_LEVEL_INFO )
@@ -804,12 +800,13 @@ program planar_mesh_generator
 
         end if
       end do
-    end if
+
+    end if ! create_lbc_mesh
 
   end if ! partition_mesh
 
   !===================================================================
-  ! 9.0 Clean up and Finalise
+  ! 9.0 Clean up and Finalise.
   !===================================================================
 
   if ( allocated( mesh_gen ) ) deallocate (mesh_gen)

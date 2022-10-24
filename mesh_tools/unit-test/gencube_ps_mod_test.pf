@@ -148,8 +148,8 @@ contains
 
 
     ! Retrieve mesh connectivity
-    call csgen%get_connectivity(nodes_on_face, nodes_on_edge, &
-                                edges_on_face, faces_on_face)
+    call csgen%get_connectivity( nodes_on_face, edges_on_face, &
+                                 faces_on_face, nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual( [  6, 5, 2, 1 ], nodes_on_face(:,1), "Incorrect vertex sequence on faces.")
@@ -305,8 +305,8 @@ contains
 
 
     ! Retrieve mesh connectivity
-    call csgen%get_connectivity(nodes_on_face, nodes_on_edge, &
-                                edges_on_face, faces_on_face)
+    call csgen%get_connectivity( nodes_on_face, edges_on_face, &
+                                 faces_on_face, nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual( [  3,   4, 2, 1 ], nodes_on_face(:,1), "Incorrect vertex sequence on faces.")

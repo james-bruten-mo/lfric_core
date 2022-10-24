@@ -46,7 +46,7 @@ module gen_planar_mod
   public :: NON_PERIODIC_ID
 
   ! Mesh Vertex directions: local aliases for reference_element_mod
-  ! values
+  ! values.
   integer(i_def), parameter :: NW = NWB
   integer(i_def), parameter :: NE = NEB
   integer(i_def), parameter :: SE = SEB
@@ -58,16 +58,16 @@ module gen_planar_mod
 
   integer(i_def), parameter :: NON_PERIODIC_ID = -1
 
-  ! For a planar meshes there is only one panel
+  ! For a planar meshes there is only one panel.
   integer(i_def), parameter :: NPANELS  = 1
 
   integer(i_def), parameter :: NBORDERS = 4
 
-  ! Prefix for error messages
-  character(len=*),   parameter :: PREFIX = "[Planar Mesh] "
+  ! Prefix for error messages.
+  character(len=*), parameter :: PREFIX = "[Planar Mesh] "
 
-  ! Flag to print out mesh data for debugging purposes
-  logical(l_def),     parameter :: DEBUG = .false.
+  ! Flag to print out mesh data for debugging purposes.
+  logical(l_def),   parameter :: DEBUG = .false.
 
   type, extends(ugrid_generator_type), public :: gen_planar_type
 
@@ -76,41 +76,39 @@ module gen_planar_mod
     logical(l_def)     :: generated = .false.
 
     character(str_def) :: mesh_name
-
     integer(i_native)  :: geometry
     integer(i_native)  :: topology
     integer(i_native)  :: coord_sys = emdi
-
     character(str_def) :: coord_units_x
     character(str_def) :: coord_units_y
+    integer(i_def)     :: edge_cells_x
+    integer(i_def)     :: edge_cells_y
+    integer(i_def)     :: npanels = NPANELS
+    real(r_def)        :: domain_size(2)
+    real(r_def)        :: north_pole(2)  = TRUE_NORTH_POLE_LL
+    real(r_def)        :: null_island(2) = TRUE_NULL_ISLAND_LL
 
     character(str_longlong) :: constructor_inputs
 
-    integer(i_def) :: edge_cells_x, edge_cells_y
     real(r_def)    :: dx, dy
+    logical(l_def) :: periodic_x
+    logical(l_def) :: periodic_y
+    real(r_def)    :: first_node(2) = rmdi
+    logical(l_def) :: rotate_mesh   = .false.
 
-    integer(i_def) :: nmaps
-
+    ! Unique element types.
     integer(i_def) :: n_nodes
     integer(i_def) :: n_edges
     integer(i_def) :: n_faces
 
-    logical(l_def) :: periodic_x
-    logical(l_def) :: periodic_y
-
-    real(r_def)    :: first_node(2)  = rmdi
-    logical(l_def) :: rotate_mesh    = .false.
-
+    ! Location index sets of cells adjacent to
+    ! domain boundaries.
     integer(i_def), allocatable :: north_cells(:)
     integer(i_def), allocatable :: east_cells(:)
     integer(i_def), allocatable :: south_cells(:)
     integer(i_def), allocatable :: west_cells(:)
 
-    character(str_def), allocatable :: target_mesh_names(:)
-    integer(i_def),     allocatable :: target_edge_cells_x(:)
-    integer(i_def),     allocatable :: target_edge_cells_y(:)
-    type(global_mesh_map_collection_type), allocatable :: global_mesh_maps
-
+    ! Connectivity and coordinates.
     integer(i_def), allocatable :: cell_next(:,:)     ! (4, edge_cells_x*edge_cells_y)
     integer(i_def), allocatable :: verts_on_cell(:,:) ! (4, edge_cells_x*edge_cells_y)
     integer(i_def), allocatable :: edges_on_cell(:,:) ! (4, edge_cells_x*edge_cells_y)
@@ -118,20 +116,25 @@ module gen_planar_mod
     real(r_def),    allocatable :: vert_coords(:,:)   ! (2, edge_cells_x*edge_cells_y)
     real(r_def),    allocatable :: cell_coords(:,:)   ! (2, edge_cells_x*edge_cells_y)
 
+    ! Intergrid maps.
+    integer(i_def) :: nmaps
+    character(str_def), allocatable :: target_mesh_names(:)
+    integer(i_def),     allocatable :: target_edge_cells_x(:)
+    integer(i_def),     allocatable :: target_edge_cells_y(:)
+    type(global_mesh_map_collection_type), allocatable :: global_mesh_maps
+
     ! Hold variables from the reference element.
     ! Done because the available Cray compiler has internal compiler errors
     ! when attempting to include the reference_element_type.
     integer(i_def) :: nodes_per_face
     integer(i_def) :: edges_per_face
     integer(i_def) :: nodes_per_edge
-
     integer(i_def) :: max_num_faces_per_node
 
-    ! Information about the domain orientation
-    real(r_def)    :: north_pole(2)  = TRUE_NORTH_POLE_LL
-    real(r_def)    :: null_island(2) = TRUE_NULL_ISLAND_LL
-
   contains
+
+    procedure :: is_generated
+    procedure :: get_corner_gid
 
     procedure :: generate
     procedure :: get_number_of_panels
@@ -140,10 +143,8 @@ module gen_planar_mod
     procedure :: get_coordinates
     procedure :: get_connectivity
     procedure :: get_global_mesh_maps
-    procedure :: write_mesh
-    procedure :: is_generated
-    procedure :: get_corner_gid
 
+    procedure :: write_mesh
     procedure :: clear
 
     ! Objects should have a finaliser, however the inclusion of a finaliser
@@ -177,22 +178,22 @@ contains
 !>                factor of the main mesh, e.g. edge_cells_x=3;
 !>                target_edge_cells_x=[6,9,12,15]
 !>
-!> @param[in] mesh_name       Name of this mesh topology
-!> @param[in] edge_cells_x    Number of cells in planar mesh x-axis
-!> @param[in] edge_cells_y    Number of cells in planar mesh y-axis
-!> @param[in] periodic_x      Logical for specifying periodicity in x-axis
-!> @param[in] periodic_y      Logical for specifying periodicity in y-axis
-!> @param[in] domain_x        Domain size in x-axis
-!> @param[in] domain_y        Domain size in y-axis
+!> @param[in] mesh_name       Name of this mesh topology.
+!> @param[in] edge_cells_x    Number of cells in planar mesh x-axis.
+!> @param[in] edge_cells_y    Number of cells in planar mesh y-axis.
+!> @param[in] periodic_x      Logical for specifying periodicity in x-axis.
+!> @param[in] periodic_y      Logical for specifying periodicity in y-axis.
+!> @param[in] domain_x        Domain size in x-axis.
+!> @param[in] domain_y        Domain size in y-axis.
 !> @param[in] coord_sys       Coordinate system used to position nodes.
 !> @param[in, optional] target_mesh_names
-!>                            Names of mesh(es) to map to
+!>                            Names of mesh(es) to map to.
 !> @param[in, optional] target_edge_cells_x
 !>                            Number of cells in x axis of
-!>                            target mesh(es) to map to
+!>                            target mesh(es) to map to.
 !> @param[in, optional] target_edge_cells_y
 !>                            Number of cells in y axis of
-!>                            target mesh(es) to map to
+!>                            target mesh(es) to map to.
 !> @param[in, optional] rotate_mesh
 !>                            Logical to indicate whether to rotate the pole.
 !> @param[in, optional] target_north_pole
@@ -235,7 +236,6 @@ function gen_planar_constructor( reference_element,          &
   logical(l_def),     intent(in) :: periodic_x, periodic_y
   real(r_def),        intent(in) :: domain_x, domain_y
 
-
   logical,            optional, intent(in) :: rotate_mesh
   real(r_def),        optional, intent(in) :: target_north_pole(2)
   real(r_def),        optional, intent(in) :: target_null_island(2)
@@ -273,10 +273,10 @@ function gen_planar_constructor( reference_element,          &
   integer(i_def) :: min_cells_y
 
   ! At present this mesh generator strategy only supports 2d quad elements
-  ! i.e. cube elements
+  ! i.e. cube elements.
   select type(reference_element)
     type is (reference_cube_type)
-      ! Carry on
+      ! Carry on.
     class default
       call log_event( PREFIX//'Un-supported reference element type. ' // &
                       'Use reference_cube_type.', LOG_LEVEL_ERROR )
@@ -285,7 +285,8 @@ function gen_planar_constructor( reference_element,          &
   self%nodes_per_face = reference_element%get_number_2d_vertices()
   self%edges_per_face = reference_element%get_number_2d_edges()
   self%nodes_per_edge = reference_element%get_number_verts_per_edge()
-  ! There are a maximum of 4 faces around a node in this type of mesh
+
+  ! There are a maximum of 4 faces around a node in this type of mesh.
   self%max_num_faces_per_node = 4
 
   min_cells_x = 1
@@ -321,6 +322,7 @@ function gen_planar_constructor( reference_element,          &
   if (domain_y <= 0.0_r_def)                                       &
       call log_event( PREFIX//" y-domain argument must be > 0.0.", &
                       LOG_LEVEL_ERROR )
+  self%domain_size  = [domain_x, domain_y]
 
   if (present(rotate_mesh)) then
     self%rotate_mesh = rotate_mesh
@@ -340,22 +342,29 @@ function gen_planar_constructor( reference_element,          &
 
   select case (self%coord_sys)
   case(coord_sys_xyz)
-    self%dx = domain_x / self%edge_cells_x
-    self%dy = domain_y / self%edge_cells_y
+    self%dx = self%domain_size(1) / self%edge_cells_x
+    self%dy = self%domain_size(2) / self%edge_cells_y
+    self%coord_units_x = 'm'
+    self%coord_units_y = 'm'
 
   case(coord_sys_ll)
     ! The namelist inputs were in degrees, so convert
     ! and store them as radians.
-    self%dx = domain_x * degrees_to_radians / self%edge_cells_x
-    self%dy = domain_y * degrees_to_radians / self%edge_cells_y
+    self%domain_size = degrees_to_radians * self%domain_size
+    self%dx = self%domain_size(1) / self%edge_cells_x
+    self%dy = self%domain_size(2) / self%edge_cells_y
+
     self%first_node    = first_node * degrees_to_radians
+    self%rotate_mesh   = rotate_mesh
+    self%coord_units_x = 'radians'
+    self%coord_units_y = 'radians'
 
     if ( self%rotate_mesh ) then
       self%north_pole  = degrees_to_radians * target_north_pole
       self%null_island = degrees_to_radians * target_null_island
     else
       ! Default value is also given in degrees so
-      ! convert to radians
+      ! convert to radians.
       self%north_pole  = degrees_to_radians * TRUE_NORTH_POLE_LL
       self%null_island = degrees_to_radians * TRUE_NULL_ISLAND_LL
     end if
@@ -367,7 +376,7 @@ function gen_planar_constructor( reference_element,          &
 
   end select
 
-  ! Construct input string
+  ! Construct input string.
   write(lchar_periodic_x,'(L8)')    periodic_x
   write(lchar_periodic_y,'(L8)')    periodic_y
   write(lchar_coord_sys, '(A)')     trim(key_from_coord_sys(self%coord_sys))
@@ -389,7 +398,7 @@ function gen_planar_constructor( reference_element,          &
 
   if (self%coord_sys == coord_sys_ll) then
 
-    ! Append rotate_mesh
+    ! Append rotate_mesh.
     write(logic_str,'(L8)') self%rotate_mesh
     write(temp_str,'(A)') 'rotate_mesh='//trim(adjustl(logic_str))
     write(self%constructor_inputs,'(A)') &
@@ -397,7 +406,7 @@ function gen_planar_constructor( reference_element,          &
 
     if (self%rotate_mesh) then
 
-      ! Append target pole coordinates
+      ! Append target pole coordinates.
       write(lon_str,'(F10.2)') target_north_pole(1)
       write(lat_str,'(F10.2)') target_north_pole(2)
       write(temp_str,'(A)')                &
@@ -408,7 +417,7 @@ function gen_planar_constructor( reference_element,          &
       write(self%constructor_inputs,'(A)') &
           trim(self%constructor_inputs) // ';' // trim(temp_str)
 
-      ! Append null island coordinates
+      ! Append null island coordinates.
       write(lon_str,'(F10.2)') target_null_island(1)
       write(lat_str,'(F10.2)') target_null_island(2)
       write(temp_str,'(A)')                &
@@ -418,7 +427,7 @@ function gen_planar_constructor( reference_element,          &
       write(self%constructor_inputs,'(A)') &
           trim(self%constructor_inputs) // ';' // trim(temp_str)
 
-      ! Append first node coordinates
+      ! Append first node coordinates.
       write(lon_str,'(F10.2)') first_node(1)
       write(lat_str,'(F10.2)') first_node(2)
       write(temp_str,'(A)')                &
@@ -433,12 +442,12 @@ function gen_planar_constructor( reference_element,          &
   end if ! coords_sys_ll
 
 
-  ! Initialise as a plane with cyclic boundaries
+  ! Initialise as a plane with cyclic boundaries.
   nodes_x = self%edge_cells_x
   nodes_y = self%edge_cells_y
   n_edges = 2 * self%edge_cells_x * self%edge_cells_y
 
-  ! Modify properties based on any non-periodic axes
+  ! Modify properties based on any non-periodic axes.
   if (.not. self%periodic_x) then
     nodes_x = nodes_x + 1
     n_edges = n_edges + self%edge_cells_y
@@ -449,7 +458,7 @@ function gen_planar_constructor( reference_element,          &
     n_edges = n_edges + self%edge_cells_x
   end if
 
-  ! Update properties for the resulting object
+  ! Update properties for the resulting object.
   self%n_nodes = nodes_x * nodes_y
   self%n_edges = n_edges
   self%n_faces = self%edge_cells_x * self%edge_cells_y
@@ -479,7 +488,7 @@ function gen_planar_constructor( reference_element,          &
 
       do i=1, self%nmaps
 
-        ! Check that mesh is not being mapped to itself
+        ! Check that mesh is not being mapped to itself.
         if (self%edge_cells_x == target_edge_cells_x(i) .and. &
             self%edge_cells_y == target_edge_cells_y(i)) then
           write(log_scratch_space, '(A)') &
@@ -487,7 +496,7 @@ function gen_planar_constructor( reference_element,          &
           call log_event( trim(log_scratch_space), LOG_LEVEL_ERROR )
         end if
 
-        ! for x-axis
+        ! for x-axis.
         if (target_edge_cells_x(i) < self%edge_cells_x) then
           remainder = mod(self%edge_cells_x, target_edge_cells_x(i))
           write(log_scratch_space,'(2(A,I0),A)')             &
@@ -509,7 +518,7 @@ function gen_planar_constructor( reference_element,          &
           call log_event( trim(log_scratch_space), LOG_LEVEL_ERROR )
         end if
 
-        ! for y-axis
+        ! for y-axis.
         if (target_edge_cells_y(i) < self%edge_cells_y) then
           remainder = mod(self%edge_cells_y, target_edge_cells_y(i))
           write(log_scratch_space,'(2(A,I0),A)')               &
@@ -579,7 +588,7 @@ end function gen_planar_constructor
 
 
 !-------------------------------------------------------------------------------
-!> @brief   Calculates mesh cell adjacency. (private subroutine)
+!> @brief   Calculates mesh cell adjacency. (private subroutine).
 !> @details Allocates and populates the instance's cell_next(:,:) array
 !>          with the id of each cell to which the index cell is adjacent.
 !>
@@ -630,7 +639,7 @@ subroutine calc_adjacency(self)
   allocate( self%east_cells  (ncells_y) )
   allocate( self%west_cells  (ncells_y) )
 
-  ! Capture cells on edge of domain
+  ! Capture cells on edge of domain.
   do cell=1, ncells_x
     self%north_cells(cell) = cell
     self%south_cells(cell) = cell + (ncells_y-1)*ncells_x
@@ -643,7 +652,7 @@ subroutine calc_adjacency(self)
 
   !======================================
   do cell=1, ncells
-    ! Cell default values
+    ! Cell default values.
     self%cell_next(W, cell) = cell - 1
     self%cell_next(S, cell) = cell + ncells_x
     self%cell_next(E, cell) = cell + 1
@@ -660,14 +669,14 @@ end subroutine calc_adjacency
 
 !-------------------------------------------------------------------------------
 !> @brief   Calculates the adjacency of border cells.
-!>          (private subroutine)
+!>          (private subroutine).
 !> @details Special attention is required for adjacency on border cells dependng
 !>          on whether the domain is periodic in the x and y directions.
 !>
-!> @param[in]  edge_index    The index of the edge to set on the border cells
-!> @param[in]  border_cells  Array of cell ids of those cells on the given border
+!> @param[in]  edge_index    The index of the edge to set on the border cells.
+!> @param[in]  border_cells  Array of cell ids of those cells on the given border.
 !> @param[in]  border_type   Specifies if the border is periodic of not using the
-!>                           PERIODIC or CLOSED parameters
+!>                           PERIODIC or CLOSED parameters.
 !-------------------------------------------------------------------------------
 subroutine set_border_adjacency( self, edge_index, border_cells, border_type )
 
@@ -725,7 +734,7 @@ subroutine set_border_adjacency( self, edge_index, border_cells, border_type )
   case default
     ! (Non-Periodic), As a namelist input, absent logicals are
     ! default .false., so it is consistence to make the default
-    ! border type as non-periodic
+    ! border type as non-periodic.
     do i=1, ncells_border
       self%cell_next(edge_index, border_cells(i)) = NON_PERIODIC_ID
     end do
@@ -770,10 +779,10 @@ subroutine calc_face_to_vert(self)
   verts_on_cell(:,:) = imdi
 
   !=====================================================================
-  ! FIRST ROW of panel
+  ! FIRST ROW of panel.
   !=====================================================================
 
-  ! First cell of first row
+  ! First cell of first row.
   !------------------------
   cell     = 1
   node_id  = 1
@@ -784,32 +793,32 @@ subroutine calc_face_to_vert(self)
   end do
 
 
-  ! East neighbour
+  ! East neighbour.
   if (self%cell_next(E, cell) /= NON_PERIODIC_ID ) then
     verts_on_cell(NW , self%cell_next(E, cell)) = verts_on_cell(NE, cell)
     verts_on_cell(SW , self%cell_next(E, cell)) = verts_on_cell(SE, cell)
   end if
 
-  ! South neighbour
+  ! South neighbour.
   if (self%cell_next(S, cell) /= NON_PERIODIC_ID ) then
     verts_on_cell(NW , self%cell_next(S, cell)) = verts_on_cell(SW, cell)
     verts_on_cell(NE , self%cell_next(S, cell)) = verts_on_cell(SE, cell)
   end if
 
 
-  ! Inner cells of first row
-  !-------------------------
+  ! Inner cells of first row.
+  !--------------------------
   if (edge_cells_x > 2) then
     do cell = 2, edge_cells_x-1
       verts_on_cell(SE, cell) = node_id
       verts_on_cell(NE, cell) = node_id+1
       node_id = node_id + 2
 
-      ! East neighbour
+      ! East neighbour.
       verts_on_cell(NW , self%cell_next(E, cell)) = verts_on_cell(NE, cell)
       verts_on_cell(SW , self%cell_next(E, cell)) = verts_on_cell(SE, cell)
 
-      ! South neighbour
+      ! South neighbour.
       if (self%cell_next(S, cell) /= NON_PERIODIC_ID ) then
         verts_on_cell(NW , self%cell_next(S, cell)) = verts_on_cell(SW, cell)
         verts_on_cell(NE , self%cell_next(S, cell)) = verts_on_cell(SE, cell)
@@ -822,7 +831,7 @@ subroutine calc_face_to_vert(self)
   if (edge_cells_x > 1) then
     cell = edge_cells_x
     if (self%periodic_x) then
-      ! Copy node id from left edge of domain
+      ! Copy node id from left edge of domain.
       verts_on_cell(SE, cell) = verts_on_cell(SW, cell-edge_cells_x+1)
       verts_on_cell(NE, cell) = verts_on_cell(NW, cell-edge_cells_x+1)
     else
@@ -831,55 +840,55 @@ subroutine calc_face_to_vert(self)
       node_id = node_id + 2
     end if
 
-    ! South neighbour
+    ! South neighbour.
     if (self%cell_next(S, cell) /= NON_PERIODIC_ID ) then
       verts_on_cell(NW , self%cell_next(S, cell)) = verts_on_cell(SW, cell)
       verts_on_cell(NE , self%cell_next(S, cell)) = verts_on_cell(SE, cell)
     end if
   end if
-  ! END FIRST ROW of panel
+  ! END FIRST ROW of panel.
   !=====================================================================
 
 
   !=====================================================================
-  ! INNER ROWS of panel
+  ! INNER ROWS of panel.
   !
   if (edge_cells_y > 2) then
 
     do y = 1, edge_cells_y-2
-      ! First cell in row
-      !------------------
+      ! First cell in row.
+      !-------------------
       cell = (y*edge_cells_x) + 1
       verts_on_cell(SW, cell) = node_id
       verts_on_cell(SE, cell) = node_id+1
       node_id = node_id+2
 
-      ! South neighbour
+      ! South neighbour.
       verts_on_cell(NW , self%cell_next(S, cell)) = verts_on_cell(SW, cell)
       verts_on_cell(NE , self%cell_next(S, cell)) = verts_on_cell(SE, cell)
 
-      ! East neighbour
+      ! East neighbour.
       if (edge_cells_x > 1) then
         verts_on_cell(SW , self%cell_next(E, cell)) = verts_on_cell(SE, cell)
       end if
 
-      ! Inner cells of row
-      !-------------------
+      ! Inner cells of row.
+      !--------------------
       if (edge_cells_x > 2) then
         do cell = y*edge_cells_x+2, (y+1)*edge_cells_x-1
           verts_on_cell(SE, cell) = node_id
           node_id = node_id+1
 
-          ! South neighbour
+          ! South neighbour.
           verts_on_cell(NW, self%cell_next(S, cell)) = verts_on_cell(SW, cell)
           verts_on_cell(NE, self%cell_next(S, cell)) = verts_on_cell(SE, cell)
 
-          ! East neighbour
+          ! East neighbour.
           verts_on_cell(SW , self%cell_next(E, cell)) = verts_on_cell(SE, cell)
         end do
       end if
 
-      ! Last cell of row
+      ! Last cell of row.
       !-------------------
       if (edge_cells_x > 1) then
         cell = (y+1)*edge_cells_x
@@ -890,7 +899,7 @@ subroutine calc_face_to_vert(self)
           node_id = node_id+1
         end if
 
-        ! South neighbour
+        ! South neighbour.
         verts_on_cell(NW, self%cell_next(S, cell)) = verts_on_cell(SW, cell)
         verts_on_cell(NE, self%cell_next(S, cell)) = verts_on_cell(SE, cell)
       end if
@@ -899,11 +908,11 @@ subroutine calc_face_to_vert(self)
   end if
 
   !========================
-  ! BOTTOM EDGE of Panel
+  ! BOTTOM EDGE of Panel.
   !========================
   if (self%periodic_y) then
 
-    ! Copy from top edge row
+    ! Copy from top edge row.
     do cell = ncells-edge_cells_x+1, ncells
       verts_on_cell(SW, cell) = verts_on_cell(NW, self%cell_next(S, cell) )
       verts_on_cell(SE, cell) = verts_on_cell(NE, self%cell_next(S, cell) )
@@ -914,21 +923,21 @@ subroutine calc_face_to_vert(self)
   else
 
     if (edge_cells_y > 1) then
-      ! Always do first cell in bottom row
-      ! First cell in bottom row
+      ! Always do first cell in bottom row.
+      ! First cell in bottom row.
       cell = ncells-edge_cells_x+1
       verts_on_cell(SW, cell) = node_id
       verts_on_cell(SE, cell) = node_id+1
       node_id = node_id+2
 
-      ! Inner cells in bottom row
+      ! Inner cells in bottom row.
       do cell = ncells-edge_cells_x+2, ncells-1
         verts_on_cell(SW, cell) = verts_on_cell(SE, self%cell_next(W, cell))
         verts_on_cell(SE, cell) = node_id
         node_id = node_id+1
       end do
 
-      ! Last cell in bottom row
+      ! Last cell in bottom row.
       cell = ncells
       if (edge_cells_x > 1) then
         verts_on_cell(SW, cell) = verts_on_cell(SE, self%cell_next(W, cell))
@@ -1010,22 +1019,22 @@ subroutine calc_edges(self)
   !--------------------------------------------
   ! Top panel row, cell@left panel edge (ID:1)
   !--------------------------------------------
-  ! Cell western edge
+  ! Cell western edge.
   self%edges_on_cell(W, cell)      = edge_id
   self%verts_on_edge(1, edge_id)   = self%verts_on_cell(NW, cell)
   self%verts_on_edge(2, edge_id)   = self%verts_on_cell(SW, cell)
 
-  ! Cell southern edge
+  ! Cell southern edge.
   self%edges_on_cell(S, cell)  = edge_id+1
   self%verts_on_edge(1, edge_id+1) = self%verts_on_cell(SW, cell)
   self%verts_on_edge(2, edge_id+1) = self%verts_on_cell(SE, cell)
 
-  ! Cell eastern edge
+  ! Cell eastern edge.
   self%edges_on_cell(E, cell)  = edge_id+2
   self%verts_on_edge(1, edge_id+2) = self%verts_on_cell(NE, cell)
   self%verts_on_edge(2, edge_id+2) = self%verts_on_cell(SE, cell)
 
-  ! Cell northern edge
+  ! Cell northern edge.
   self%edges_on_cell(N, cell)  = edge_id+3
   self%verts_on_edge(1, edge_id+3) = self%verts_on_cell(NW, cell)
   self%verts_on_edge(2, edge_id+3) = self%verts_on_cell(NE, cell)
@@ -1033,15 +1042,15 @@ subroutine calc_edges(self)
   edge_id = edge_id+4
 
   !-----------------------------------------------------------
-  ! Top panel row, remaining cells, i.e. IDs = 2:edge_cells_x
+  ! Top panel row, remaining cells, i.e. IDs = 2:edge_cells_x.
   !-----------------------------------------------------------
   if (edge_cells_x > 1) then
     do cell = 2, edge_cells_x
 
-      ! Cell western edge
+      ! Cell western edge.
       self%edges_on_cell(W, cell) = self%edges_on_cell(E,self%cell_next(W,cell))
 
-      ! Cell southern edge
+      ! Cell southern edge.
       self%edges_on_cell(S, cell) = edge_id
       self%verts_on_edge(1, edge_id)  = self%verts_on_cell(SW, cell)
       self%verts_on_edge(2, edge_id)  = self%verts_on_cell(SE, cell)
@@ -1060,7 +1069,7 @@ subroutine calc_edges(self)
         ! In other words, the eastern edge of this cell exists on
         ! another cell where it has already been assigned an id.
 
-        ! Cell eastern edge
+        ! Cell eastern edge.
         if (self%periodic_x) then
           self%edges_on_cell(E, cell) = self%edges_on_cell(W, self%cell_next(E,cell))
 
@@ -1071,7 +1080,7 @@ subroutine calc_edges(self)
           edge_id = edge_id + 1
         end if
 
-        ! Cell northern edge
+        ! Cell northern edge.
         self%edges_on_cell(N, cell)  = edge_id
         self%verts_on_edge(1, edge_id) = self%verts_on_cell(NW, cell)
         self%verts_on_edge(2, edge_id) = self%verts_on_cell(NE, cell)
@@ -1079,13 +1088,13 @@ subroutine calc_edges(self)
 
       else
 
-        ! Cell eastern edge
+        ! Cell eastern edge.
         self%edges_on_cell(E, cell)  = edge_id
         self%verts_on_edge(1, edge_id) = self%verts_on_cell(NE, cell)
         self%verts_on_edge(2, edge_id) = self%verts_on_cell(SE, cell)
         edge_id = edge_id+1
 
-        ! Cell northern edge
+        ! Cell northern edge.
         self%edges_on_cell(N, cell)  = edge_id
         self%verts_on_edge(1, edge_id) = self%verts_on_cell(NW, cell)
         self%verts_on_edge(2, edge_id) = self%verts_on_cell(NE, cell)
@@ -1097,27 +1106,26 @@ subroutine calc_edges(self)
   end if
 
   !-----------------------------------------
-  ! Internal panel rows
+  ! Internal panel rows.
   !-----------------------------------------
   if (edge_cells_y > 2) then
     do cell = edge_cells_x+1, ncells-edge_cells_x
 
       if (mod(cell,edge_cells_x) == 1) then
-        ! This cell is on the left-hand panel edge
+        ! This cell is on the left-hand panel edge.
         !-------------------------------------------
 
-        ! Cell western edge
+        ! Cell western edge.
         self%edges_on_cell(W, cell)  = edge_id
         self%verts_on_edge(1, edge_id)   = self%verts_on_cell(NW, cell)
         self%verts_on_edge(2, edge_id)   = self%verts_on_cell(SW, cell)
 
-
-        ! Cell southern edge
+        ! Cell southern edge.
         self%edges_on_cell(S, cell)  = edge_id+1
         self%verts_on_edge(1, edge_id+1) = self%verts_on_cell(SW, cell)
         self%verts_on_edge(2, edge_id+1) = self%verts_on_cell(SE, cell)
 
-        ! Cell eastern edge
+        ! Cell eastern edge.
         self%edges_on_cell(E, cell)  = edge_id+2
         self%verts_on_edge(1, edge_id+2) = self%verts_on_cell(NE, cell)
         self%verts_on_edge(2, edge_id+2) = self%verts_on_cell(SE, cell)
@@ -1125,7 +1133,7 @@ subroutine calc_edges(self)
         edge_id = edge_id+3
 
       else if (mod(cell,edge_cells_x) == 0) then
-        ! This cell is on the right-hand panel edge
+        ! This cell is on the right-hand panel edge.
         !--------------------------------------------
         if (edge_cells_x==1) then
           self%edges_on_cell(W, cell)  = edge_id
@@ -1133,18 +1141,18 @@ subroutine calc_edges(self)
           self%verts_on_edge(2, edge_id)   = self%verts_on_cell(SW, cell)
           edge_id = edge_id + 1
         else
-          ! Cell western edge
+          ! Cell western edge.
           self%edges_on_cell(W, cell) = self%edges_on_cell(E,self%cell_next(W,cell))
         end if
 
-        ! Cell southern edge
+        ! Cell southern edge.
         self%edges_on_cell(S, cell) = edge_id
         self%verts_on_edge(1, edge_id)  = self%verts_on_cell(SW, cell)
         self%verts_on_edge(2, edge_id)  = self%verts_on_cell(SE, cell)
 
         edge_id = edge_id+1
 
-        ! Cell eastern edge
+        ! Cell eastern edge.
         if (self%periodic_x) then
           self%edges_on_cell(E, cell) = self%edges_on_cell(W, self%cell_next(E, cell))
         else
@@ -1156,18 +1164,18 @@ subroutine calc_edges(self)
         end if
 
       else
-        ! This cell is internal to the panel
+        ! This cell is internal to the panel.
         !-------------------------------------------
 
-        ! Cell western edge
+        ! Cell western edge.
         self%edges_on_cell(W, cell) = self%edges_on_cell(E,self%cell_next(W,cell))
 
-        ! Cell southern edge
+        ! Cell southern edge.
         self%edges_on_cell(S, cell) = edge_id
         self%verts_on_edge(1, edge_id)  = self%verts_on_cell(SW, cell)
         self%verts_on_edge(2, edge_id)  = self%verts_on_cell(SE, cell)
 
-        ! Cell eastern edge
+        ! Cell eastern edge.
         self%edges_on_cell(E, cell)  = edge_id+1
         self%verts_on_edge(1, edge_id+1) = self%verts_on_cell(NE, cell)
         self%verts_on_edge(2, edge_id+1) = self%verts_on_cell(SE, cell)
@@ -1176,7 +1184,7 @@ subroutine calc_edges(self)
 
       end if
 
-      ! Cell northern edge
+      ! Cell northern edge.
       ! The northern edges on these cells exist on the cells in
       ! the row above/previous to this one. Those edges have
       ! already been assigned ids.
@@ -1186,21 +1194,21 @@ subroutine calc_edges(self)
   end if
 
   if (edge_cells_y > 1) then
-    ! Panel bottom row
+    ! Panel bottom row.
     do cell = ncells-edge_cells_x+1, ncells
 
       if (mod(cell,edge_cells_x) == 1 ) then
 
-        ! This cell is on the left-hand panel edge
+        ! This cell is on the left-hand panel edge.
         !-------------------------------------------
 
-        ! Cell western edge
+        ! Cell western edge.
         self%edges_on_cell(W, cell) = edge_id
         self%verts_on_edge(1, edge_id)  = self%verts_on_cell(NW, cell)
         self%verts_on_edge(2, edge_id)  = self%verts_on_cell(SW, cell)
         edge_id = edge_id+1
 
-        ! Cell southern edge
+        ! Cell southern edge.
         if (self%periodic_y) then
           ! For a planar panel, if the cell is on the bottom edge
           ! of the panel then the cell's southern neighbour is actually
@@ -1218,16 +1226,16 @@ subroutine calc_edges(self)
           edge_id = edge_id+1
         end if
 
-        ! Cell eastern edge
+        ! Cell eastern edge.
         self%edges_on_cell(E, cell)  = edge_id
         self%verts_on_edge(1, edge_id) = self%verts_on_cell(NE, cell)
         self%verts_on_edge(2, edge_id) = self%verts_on_cell(SE, cell)
         edge_id = edge_id+1
 
       else if (mod(cell,edge_cells_x) == 0) then
-        ! This cell is on the right-hand panel edge
+        ! This cell is on the right-hand panel edge.
         !--------------------------------------------
-        ! Cell western edge
+        ! Cell western edge.
         if (edge_cells_x == 1) then
           self%edges_on_cell(W, cell) = edge_id
           self%verts_on_edge(1, edge_id)  = self%verts_on_cell(NW, cell)
@@ -1237,7 +1245,7 @@ subroutine calc_edges(self)
           self%edges_on_cell(W, cell) = self%edges_on_cell(E,self%cell_next(W,cell))
         end if
 
-        ! Cell southern edge
+        ! Cell southern edge.
         if (self%periodic_y) then
           ! For a planar panel, if the cell is on the bottom edge
           ! of the panel then the cell's southern neighbour is actually
@@ -1255,7 +1263,7 @@ subroutine calc_edges(self)
           edge_id = edge_id+1
         end if
 
-        ! Cell eastern edge
+        ! Cell eastern edge.
         if (self%periodic_x) then
           ! For a planar panel, if the cell is on the right-hand edge
           ! of the panel then the cell's eastern neighbour is actually
@@ -1275,12 +1283,12 @@ subroutine calc_edges(self)
 
       else
 
-        ! This cell is an inner cell on the bottom row
+        ! This cell is an inner cell on the bottom row.
         !---------------------------------------------
-        ! Cell western edge
+        ! Cell western edge.
         self%edges_on_cell(W, cell) = self%edges_on_cell(E, self%cell_next(W,cell))
 
-        ! Cell southern edge
+        ! Cell southern edge.
         if (self%periodic_y) then
           ! For a planar panel, if the cell is on the bottom edge
           ! of the panel then the cell's southern neighbour is actually
@@ -1301,7 +1309,7 @@ subroutine calc_edges(self)
 
         end if
 
-        ! Cell eastern edge
+        ! Cell eastern edge.
         self%edges_on_cell(E, cell) = edge_id
         self%verts_on_edge(1, edge_id) = self%verts_on_cell(NE, cell)
         self%verts_on_edge(2, edge_id) = self%verts_on_cell(SE, cell)
@@ -1309,7 +1317,7 @@ subroutine calc_edges(self)
 
       end if
 
-      ! Cell north edge
+      ! Cell north edge.
       ! The northern edges on these cells exist on the cells in
       ! the row above/previous to this one. Those edges have
       ! already been assigned ids.
@@ -1387,7 +1395,7 @@ subroutine calc_coords(self)
 
   end select
 
-  ! The cells begin numbering in rows from NW corner of panel
+  ! The cells begin numbering in rows from NW corner of panel.
   cell=1
   do row=1, self%edge_cells_y
     do column=1, self%edge_cells_x
@@ -1398,7 +1406,7 @@ subroutine calc_coords(self)
   end do
 
   if (.not. self%periodic_x) then
-    ! Vertices on east edge of panel
+    ! Vertices on east edge of panel.
     x_coord = edge_cells_x*self%dx
     y_coord = 0.0_r_def
     do cell=1, size(self%east_cells)
@@ -1407,7 +1415,7 @@ subroutine calc_coords(self)
     end do
   end if
 
-  ! Vertices on south edge of panel
+  ! Vertices on south edge of panel.
   if (.not. self%periodic_y) then
     x_coord = 0.0_r_def
     y_coord = -1.0_r_def*edge_cells_y*self%dy
@@ -1418,7 +1426,7 @@ subroutine calc_coords(self)
     end do
   end if
 
-  ! Coords of SE panel vertex
+  ! Coords of SE panel vertex.
   if (.not. self%periodic_x .and. .not. self%periodic_y) then
     cell=ncells
     vert_coords(1, self%verts_on_cell(SE, cell)) = self%dx * self%edge_cells_x
@@ -1512,14 +1520,14 @@ subroutine calc_cell_centres(self)
 
   integer(i_def) :: ncells
 
-  ! Counters
+  ! Counters.
   integer(i_def) :: cell, base_vert,i,j
   integer(i_def), parameter :: NVERTS_PER_CELL = 4
   integer(i_def) :: cell_verts(NVERTS_PER_CELL)
 
   ncells = NPANELS*self%edge_cells_x*self%edge_cells_y
 
-  ! 1.0 Initialise the face centres
+  ! 1.0 Initialise the face centres.
   if ( .not. allocated(self%cell_coords) ) allocate( self%cell_coords(2,ncells) )
   self%cell_coords(:,:) = 0.0_r_def
 
@@ -1610,8 +1618,8 @@ end subroutine get_dimensions
 !>
 !> @param[out]  node_coordinates  The argument to receive the vert_coords data.
 !> @param[out]  cell_coordinates  The argument to receive cell centre coordinates.
-!> @param[out]  coord_units_x     Units for x-coordinates
-!> @param[out]  coord_units_y     Units for y-coordinates
+!> @param[out]  coord_units_x     Units for x-coordinates.
+!> @param[out]  coord_units_y     Units for y-coordinates.
 !-------------------------------------------------------------------------------
 subroutine get_coordinates(self, node_coordinates, &
                                  cell_coordinates, &
@@ -1625,7 +1633,6 @@ subroutine get_coordinates(self, node_coordinates, &
   real(r_def),            intent(out) :: cell_coordinates(:,:)
   character(str_def),     intent(out) :: coord_units_x
   character(str_def),     intent(out) :: coord_units_y
-
 
   node_coordinates = self%vert_coords
   cell_coordinates = self%cell_coords
@@ -1643,28 +1650,29 @@ end subroutine get_coordinates
 !>          by the ugrid writer.
 !>
 !> @param[out]  face_node_connectivity  Face-node connectivity.
-!> @param[out]  edge_node_connectivity  Edge-node connectivity.
 !> @param[out]  face_edge_connectivity  Face-edge connectivity.
 !> @param[out]  face_face_connectivity  Face-face connectivity.
+!> @param[out]  edge_node_connectivity  Edge-node connectivity.
 !-------------------------------------------------------------------------------
 subroutine get_connectivity( self,                   &
                              face_node_connectivity, &
-                             edge_node_connectivity, &
                              face_edge_connectivity, &
-                             face_face_connectivity )
+                             face_face_connectivity, &
+                             edge_node_connectivity )
 
   implicit none
 
   class(gen_planar_type), intent(in) :: self
+
   integer(i_def), intent(out) :: face_node_connectivity(:,:)
-  integer(i_def), intent(out) :: edge_node_connectivity(:,:)
   integer(i_def), intent(out) :: face_edge_connectivity(:,:)
   integer(i_def), intent(out) :: face_face_connectivity(:,:)
+  integer(i_def), intent(out) :: edge_node_connectivity(:,:)
 
   face_node_connectivity = self%verts_on_cell
-  edge_node_connectivity = self%verts_on_edge
   face_edge_connectivity = self%edges_on_cell
   face_face_connectivity = self%cell_next
+  edge_node_connectivity = self%verts_on_edge
 
   return
 end subroutine get_connectivity
@@ -1699,7 +1707,7 @@ subroutine generate(self)
     call rotate_mesh_coords(self%cell_coords, self%north_pole)
   end if
 
-  ! Convert coordinate units to degrees to be CF compliant
+  ! Convert coordinate units to degrees to be CF compliant.
   if (trim(self%coord_units_x) == 'radians') then
     self%vert_coords(1,:) = self%vert_coords(1,:) * radians_to_degrees
     self%cell_coords(1,:) = self%cell_coords(1,:) * radians_to_degrees
@@ -1795,19 +1803,21 @@ end function get_number_of_panels
 !> @details This subroutine is provided as a means to request specific metadata
 !>          from the current mesh configuration.
 !>
-!> @param[out, optional]  mesh_name           Name of mesh instance to generate
+!> @param[out, optional]  mesh_name           Name of mesh instance to generate.
 !> @param[out, optional]  geometry            Mesh domain surface type.
-!> @param[out, optional]  topology            Mesh boundary/connectivity type
+!> @param[out, optional]  topology            Mesh boundary/connectivity type.
 !> @param[out, optional]  coord_sys           Coordinate system to position nodes.
 !> @param[out, optional]  periodic_x          Periodic in E-W direction.
 !> @param[out, optional]  periodic_y          Periodic in N-S direction.
-!> @param[out, optional]  npanels             Number of panels use to describe mesh
+!> @param[out, optional]  npanels             Number of panels use to describe mesh.
 !> @param[out, optional]  edge_cells_x        Number of panel edge cells (x-axis).
 !> @param[out, optional]  edge_cells_y        Number of panel edge cells (y-axis).
 !> @param[out, optional]  constructor_inputs  Inputs used to create this mesh from
-!>                                            the mesh_generator
+!>                                            the mesh_generator.
 !> @param[out, optional]  nmaps               Number of maps to create with this mesh
-!>                                            as source mesh
+!>                                            as source mesh.
+!> @param[out, optional]  rim_depth           Rim depth of LBC mesh (LAMs).
+!> @param[out, optional]  domain_size         Size of global model domain.
 !> @param[out, optional]  target_mesh_names   Mesh names of the target meshes that
 !>                                            this mesh has maps for.
 !> @param[out, optional]  maps_edge_cells_x   Number of panel edge cells (x-axis) of
@@ -1815,9 +1825,9 @@ end function get_number_of_panels
 !> @param[out, optional]  maps_edge_cells_y   Number of panel edge cells (y-axis) of
 !>                                            target mesh(es) to create map(s) for.
 !> @param[out, optional]  north_pole          [Longitude, Latitude] of north pole
-!>                                            used for domain orientation (degrees)
+!>                                            used for domain orientation (degrees).
 !> @param[out, optional]  null_island         [Longitude, Latitude] of null island
-!>                                            used for domain orientation (degrees)
+!>                                            used for domain orientation (degrees).
 !-----------------------------------------------------------------------------
 subroutine get_metadata( self,               &
                          mesh_name,          &
@@ -1830,11 +1840,13 @@ subroutine get_metadata( self,               &
                          edge_cells_y,       &
                          constructor_inputs, &
                          nmaps,              &
+                         rim_depth,          &
+                         domain_size,        &
                          target_mesh_names,  &
                          maps_edge_cells_x,  &
                          maps_edge_cells_y,  &
                          north_pole,         &
-                         null_island    )
+                         null_island )
   implicit none
 
   class(gen_planar_type),        intent(in)  :: self
@@ -1848,6 +1860,8 @@ subroutine get_metadata( self,               &
   integer(i_def),      optional, intent(out) :: edge_cells_x
   integer(i_def),      optional, intent(out) :: edge_cells_y
   integer(i_def),      optional, intent(out) :: nmaps
+  integer(i_def),      optional, intent(out) :: rim_depth
+  real(r_def),         optional, intent(out) :: domain_size(2)
 
   character(str_longlong), optional, intent(out) :: constructor_inputs
 
@@ -1855,8 +1869,10 @@ subroutine get_metadata( self,               &
   integer(i_def),     optional, allocatable, intent(out) :: maps_edge_cells_x(:)
   integer(i_def),     optional, allocatable, intent(out) :: maps_edge_cells_y(:)
 
-  real(r_def),    optional, intent(out) :: north_pole(2)
-  real(r_def),    optional, intent(out) :: null_island(2)
+  real(r_def), optional, intent(out) :: north_pole(2)
+  real(r_def), optional, intent(out) :: null_island(2)
+
+  real(r_def) :: factor
 
   if (present(mesh_name))    mesh_name    = self%mesh_name
   if (present(geometry))     geometry     = key_from_geometry(self%geometry)
@@ -1867,6 +1883,8 @@ subroutine get_metadata( self,               &
   if (present(edge_cells_x)) edge_cells_x = self%edge_cells_x
   if (present(edge_cells_y)) edge_cells_y = self%edge_cells_y
   if (present(nmaps))        nmaps        = self%nmaps
+  if (present(rim_depth))    rim_depth    = imdi
+
   if (present(constructor_inputs)) constructor_inputs = trim(self%constructor_inputs)
 
   if (self%nmaps > 0) then
@@ -1875,9 +1893,17 @@ subroutine get_metadata( self,               &
     if (present(maps_edge_cells_y)) maps_edge_cells_y = self%target_edge_cells_y
   end if
 
-  ! Convert to degrees for cf-compliance
-  if (present(north_pole))  north_pole(:)  = self%north_pole(:)  * radians_to_degrees
-  if (present(null_island)) null_island(:) = self%null_island(:) * radians_to_degrees
+  if ( self%coord_sys == coord_sys_ll .and. &
+       self%geometry  == geometry_spherical ) then
+    ! Convert to degrees for cf-compliance if required.
+    factor = radians_to_degrees
+  else
+    factor = 1.0_r_def
+  end if
+
+  if (present(domain_size)) domain_size(:) = factor * self%domain_size(:)
+  if (present(north_pole))  north_pole(:)  = factor * self%north_pole(:)
+  if (present(null_island)) null_island(:) = factor * self%null_island(:)
 
   return
 end subroutine get_metadata
@@ -1887,7 +1913,7 @@ end subroutine get_metadata
 !> @brief  Gets the global mesh map collection which uses
 !>         this mesh as the source mesh.
 !>
-!> @return global_mesh_maps global_mesh_map_collection_type
+!> @return global_mesh_maps global_mesh_map_collection_type.
 !-------------------------------------------------------------------------------
 function get_global_mesh_maps(self) result(global_mesh_maps)
 
@@ -2083,7 +2109,7 @@ end subroutine write_mesh
 !>           etc are not calculated until the object has been "generated".
 !>           Objects such as LBC strategy require these data for themselves to
 !>           be generated. This function provides a means to inquire about
-!>           this requiremnet.
+!>           this requirement.
 !> @return   answer  Has this strategy be generated?, <<logical>>
 !-------------------------------------------------------------------------------
 function is_generated(self) result(answer)
@@ -2115,9 +2141,9 @@ end subroutine gen_planar_final
 !> @brief Sets common partition parameters to be applied to global meshes
 !>        of this type.
 !>
-!> @param[out]  xproc             Number of ranks in mesh panel x-direction
-!> @param[out]  yproc             Number of ranks in mesh panel y-direction
-!> @param[out]  partitioner_ptr   Mesh partitioning strategy
+!> @param[out]  xproc             Number of ranks in mesh panel x-direction.
+!> @param[out]  yproc             Number of ranks in mesh panel y-direction.
+!> @param[out]  partitioner_ptr   Mesh partitioning strategy.
 !>==============================================================================
 subroutine set_partition_parameters( xproc, yproc, &
                                      partitioner_ptr )
@@ -2125,7 +2151,7 @@ subroutine set_partition_parameters( xproc, yproc, &
   use partition_mod, only: partitioner_interface, &
                            partitioner_planar
 
-  ! Configuration modules
+  ! Configuration modules.
   use partitions_config_mod, only: n_partitions,               &
                                    panel_xproc, panel_yproc,   &
                                    panel_decomposition,        &
@@ -2142,7 +2168,7 @@ subroutine set_partition_parameters( xproc, yproc, &
   procedure(partitioner_interface), &
                   intent(out), pointer :: partitioner_ptr
 
-  ! Locals
+  ! Locals.
   integer(i_def) :: ranks_per_panel
   integer(i_def) :: start_factor
   integer(i_def) :: end_factor
@@ -2154,12 +2180,11 @@ subroutine set_partition_parameters( xproc, yproc, &
   partitioner_ptr => null()
 
   partitioner_ptr => partitioner_planar
-  call log_event( "Using planar partitioner",    &
-                  LOG_LEVEL_INFO )
+  call log_event( "Using planar partitioner", LOG_LEVEL_INFO )
 
   if ( n_partitions == 1 ) then
-    xproc           = 1
-    yproc           = 1
+    xproc = 1
+    yproc = 1
   else if( n_partitions > 1 )then
     select case(panel_decomposition)
     case( PANEL_DECOMPOSITION_AUTO )
@@ -2196,7 +2221,7 @@ subroutine set_partition_parameters( xproc, yproc, &
       yproc = n_partitions / NPANELS
 
     case( PANEL_DECOMPOSITION_CUSTOM )
-      ! Use the values provided from the partitioning namelist
+      ! Use the values provided from the partitions namelist.
       xproc = panel_xproc
       yproc = panel_yproc
 

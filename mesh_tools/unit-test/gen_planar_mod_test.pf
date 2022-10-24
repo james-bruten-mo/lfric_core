@@ -218,8 +218,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual(this%nodes_on_face(:,1), (/  1, 2, 3, 4 /), "Incorrect vertex sequence on faces.")
@@ -405,8 +405,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual(this%nodes_on_face(:,1),  (/  1, 2,  3,  4 /), "Incorrect vertex sequence on faces.")
@@ -556,8 +556,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual(this%nodes_on_face(:,1),  (/  1, 2, 3, 4 /), "Incorrect vertex sequence on faces.")
@@ -695,8 +695,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity(this%nodes_on_face, this%nodes_on_edge, &
-                                this%edges_on_face, this%faces_on_face)
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual(this%nodes_on_face(:,1),  (/  1, 2, 3, 4 /), "Incorrect vertex sequence on faces.")
@@ -836,8 +836,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual(this%nodes_on_face(:,1),  (/  1, 2, 3, 4 /), "Incorrect vertex sequence on faces.")
@@ -982,9 +982,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
-
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
     ! Mesh has expected vertex values on certain faces
     @assertEqual(this%nodes_on_face(:,1), (/ 1, 2, 3, 4 /), "Incorrect vertex sequence on faces.")
     @assertEqual(this%nodes_on_face(:,2), (/ 2, 1, 4, 3 /), "Incorrect vertex sequence on faces.")
@@ -1131,8 +1130,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual(this%nodes_on_face(:,1), (/ 1, 2, 3, 4 /), "Incorrect vertex sequence on faces.")
@@ -1287,8 +1286,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual(this%nodes_on_face(:,1), (/ 1, 2, 3, 4 /), "Incorrect vertex sequence on faces.")
@@ -1447,8 +1446,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual(this%nodes_on_face(:,1), (/ 1, 2, 3, 4 /), "Incorrect vertex sequence on faces.")
@@ -1605,8 +1604,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual(this%nodes_on_face(:,1), (/ 1, 2, 3, 4 /), "Incorrect vertex sequence on faces.")
@@ -1755,8 +1754,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual( (/ 1, 2, 3, 4 /), this%nodes_on_face(:,1), "Incorrect vertex sequence on faces.")
@@ -1913,8 +1912,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual(this%nodes_on_face(:,1), (/ 1, 2, 3, 4 /), "Incorrect vertex sequence on faces.")
@@ -2079,8 +2078,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual( (/ 1, 2, 3, 4 /), this%nodes_on_face(:,1), "Incorrect vertex sequence on faces.")
@@ -2256,8 +2255,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual( (/ 1, 2, 3, 4 /), this%nodes_on_face(:,1), "Incorrect vertex sequence on faces.")
@@ -2403,8 +2402,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual( (/ 1, 2, 3, 4 /), this%nodes_on_face(:,1), "Incorrect vertex sequence on faces.")
@@ -2561,8 +2560,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual( (/ 1, 2, 3, 4 /), this%nodes_on_face(:,1), "Incorrect vertex sequence on faces.")
@@ -2722,8 +2721,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual( (/ 1, 2, 3, 4 /), this%nodes_on_face(:,1), "Incorrect vertex sequence on faces.")
@@ -2880,8 +2879,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual( (/ 1, 2, 3, 4 /), this%nodes_on_face(:,1), "Incorrect vertex sequence on faces.")
@@ -3047,8 +3046,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual( (/ 1, 2, 3, 4 /), this%nodes_on_face(:,1), "Incorrect vertex sequence on faces.")
@@ -3207,8 +3206,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual( (/ 1, 2, 3, 4 /), this%nodes_on_face(:,1), "Incorrect vertex sequence on faces.")
@@ -3377,8 +3376,8 @@ contains
     allocate( this%coords(2, nodes) )
 
     ! Retrieve mesh connectivity
-    call mesh_gen%get_connectivity( this%nodes_on_face, this%nodes_on_edge, &
-                                    this%edges_on_face, this%faces_on_face )
+    call mesh_gen%get_connectivity( this%nodes_on_face, this%edges_on_face, &
+                                    this%faces_on_face, this%nodes_on_edge )
 
     ! Mesh has expected vertex values on certain faces
     @assertEqual( (/ 1, 2, 3, 4 /), this%nodes_on_face(:,1), "Incorrect vertex sequence on faces.")

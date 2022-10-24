@@ -33,16 +33,30 @@ class local_mesh_mod::local_mesh_type {
   -halo_depth: integer
   -num_ghost: integer
   -last_ghost_cell: integer
-  -ncells_global_mesh: integer
-  -local_mesh_map_collection: local_mesh_map_collection_type <<allocatable>>
-  -npanels: integer
+  -local_mesh_maps: local_mesh_map_collection_type <<allocatable>>
 
+  -npanels: integer
+  -ncells_global_mesh: integer
+  -max_stencil_depth: integer
+  -ntarget_meshes: integer
+  -coord_units_xy: string[2]
+  -constructor_inputs: string
+  -north_pole: real[2]
+  -null_island: real[2]
+  -domain_size: real[2]
+  -rim_depth: integer
+  -vert_on_edge: integer[::] <<allocatable>>
+  -vert_on_edge_gid: integer[::] <<allocatable>>
+  -target_mesh_names: string[:] <<allocatable>>
+  
   +<<destroy>> local_mesh_destructor()
   +clear()
 
-  +initialise_full(<<in>>global_mesh: global_mesh_type, <<in>>partition: partition_type, <<in>><<optional>>mesh_name: string)
+  +initialise_full(<<in>>global_mesh: global_mesh_type, <<in>>partition: partition_type, <<in>><<optional>>name: string)
+  +initialise_lbc(\n\t<<in,pointer>>  global_lam_mesh: global_mesh_type,\n\t<<in,pointer>>  global_lbc_mesh: global_mesh_type,\n\t<<in,pointer>>  local_lam_mesh: local_mesh_type,\n\t<<in,optional>> name: string,\n\t<<out,optional,allocatable>> cell_map: integer[:],\n\t<<out,optional,allocatable>> edge_map: integer[:],\n\t<<out,optional,allocatable>> vert_map: integer[:])
+
   +initialise_unit_test()
-  +initialise() <<generic>>: initialise_full(...), initialise_unit_test(...)
+  +initialise() <<generic>>: initialise_full(...), initialise_lbc(...), initialise_unit_test(...)
   +init_cell_owner()
   +clear()
   +get_mesh_name(): string
@@ -85,4 +99,8 @@ class local_mesh_mod::local_mesh_type {
   +get_lid_from_gid(<<in>>gid: integer): integer
   +add_local_mesh_map(<<in>>target_local_mesh_id: integer, <<in>>map{:::}: integer)
   +get_local_mesh_map(<<in>>target_local_mesh_id: integer): local_mesh_map_type<<pointer>>
+
+  +get_mesh_maps(): local_mesh_map_collection_type <<pointer>>
+  +get_all_gid(): integer{:}
+  +print_it()
 }

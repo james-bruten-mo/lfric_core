@@ -8,8 +8,9 @@
 !>
 module ugrid_mesh_data_mod_test
 
-  use constants_mod,              only: r_def, i_def, str_def, l_def
-  use ugrid_mesh_data_mod,        only: ugrid_mesh_data_type
+  use constants_mod,       only: r_def, i_def, l_def, &
+                                 str_def, str_longlong
+  use ugrid_mesh_data_mod, only: ugrid_mesh_data_type
 
   use mpi_mod, only: store_comm, clear_comm
   use pFUnit_Mod
@@ -87,7 +88,6 @@ contains
     logical(l_def) :: periodic_x
     logical(l_def) :: periodic_y
     integer(i_def) :: ntarget_meshes
-    integer(i_def) :: max_stencil_depth
 
     character(str_def), allocatable :: target_global_mesh_names(:)
     real(r_def), allocatable :: node_coords(:,:)
@@ -95,6 +95,19 @@ contains
     integer(i_def), allocatable :: face_next_2d(:,:)
     integer(i_def), allocatable :: node_on_face_2d(:,:)
     integer(i_def), allocatable :: edge_on_face_2d(:,:)
+
+    integer(i_def), allocatable :: node_on_edge_2d(:,:)
+
+    integer(i_def) :: npanels
+    integer(i_def) :: rim_depth
+    real(r_def)    :: domain_size(2)
+    real(r_def)    :: north_pole(2)
+    real(r_def)    :: null_island(2)
+
+    character(str_def)      :: coord_units_xy(2)
+    character(str_longlong) :: constructor_inputs
+
+    integer(i_def) :: max_stencil_depth
 
     !-------------------------------------
     ! Test ugrid_mesh_data object
@@ -108,6 +121,7 @@ contains
                               geometry,  &
                               topology,  &
                               coord_sys, &
+                              npanels,   &
                               nnode, &
                               nedge, &
                               nface, &
@@ -121,9 +135,16 @@ contains
                               target_global_mesh_names, &
                               node_coords, &
                               face_coords, &
+                              coord_units_xy,     &
+                              north_pole,         &
+                              null_island,        &
+                              constructor_inputs, &
+                              rim_depth,          &
+                              domain_size,        &
                               face_next_2d, &
                               node_on_face_2d, &
                               edge_on_face_2d,&
+                              node_on_edge_2d, &
                               max_stencil_depth )
 
     @assertEqual(mesh_name_in, mesh_name_out)
@@ -174,6 +195,15 @@ contains
     @assertEqual( [128_i_def, 24_i_def, 121_i_def, 120_i_def], edge_on_face_2d(:,64) )
 
     call ugrid_mesh_data%clear()
+
+    if ( allocated(target_global_mesh_names) ) deallocate( target_global_mesh_names )
+
+    if ( allocated(node_coords) )     deallocate( node_coords )
+    if ( allocated(face_coords) )     deallocate( face_coords )
+    if ( allocated(face_next_2d) )    deallocate( face_next_2d )
+    if ( allocated(node_on_face_2d) ) deallocate( node_on_face_2d )
+    if ( allocated(edge_on_face_2d) ) deallocate( edge_on_face_2d )
+    if ( allocated(node_on_edge_2d) ) deallocate( node_on_edge_2d )
 
   end subroutine test_ugrid_mesh_data
 

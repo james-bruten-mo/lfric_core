@@ -64,7 +64,8 @@ module gencube_ps_mod
 
   ! For a cubesphere these panels are the 6 faces of the domain cube
   integer(i_def), parameter :: NPANELS = 6
-
+  real(r_def),    parameter :: DOMAIN_SIZE(2) = [ degrees_to_radians * 360.0_r_def, &
+                                                  degrees_to_radians * 180.0_r_def ]
   integer(i_def), parameter :: PANEL_ROTATIONS(NPANELS) = (/ 0, 0, 1, 1, -1, 0 /)
 
   ! Prefix for error messages
@@ -79,42 +80,39 @@ module gencube_ps_mod
 
     private
 
-    character(str_longlong)  :: constructor_inputs
+    character(str_def) :: mesh_name
+    integer(i_native)  :: geometry  = geometry_spherical
+    integer(i_native)  :: topology  = topology_periodic
+    integer(i_native)  :: coord_sys = emdi
+    character(str_def) :: coord_units_x
+    character(str_def) :: coord_units_y
+    integer(i_def)     :: edge_cells
+    real(r_def)        :: domain_size(2) = DOMAIN_SIZE
+    integer(i_def)     :: npanels   = NPANELS
+    real(r_def)        :: north_pole(2)
+    real(r_def)        :: null_island(2)
 
-    character(str_def)  :: mesh_name
+    character(str_longlong) :: constructor_inputs
 
-    integer(i_native)   :: geometry = geometry_spherical
-    integer(i_native)   :: topology = topology_periodic
+    integer(i_def)     :: nsmooth
+    real(r_def)        :: stretch_factor = 1.0_r_def
+    logical(l_def)     :: rotate_mesh    = .false.
 
-    character(str_def)  :: coord_units_x
-    character(str_def)  :: coord_units_y
+    ! Connectivity and coordinates
+    integer(i_def), allocatable :: cell_next(:,:)
+    integer(i_def), allocatable :: verts_on_cell(:,:)
+    integer(i_def), allocatable :: edges_on_cell(:,:)
+    integer(i_def), allocatable :: verts_on_edge(:,:)
+    real(r_def),    allocatable :: vert_coords(:,:)
+    real(r_def),    allocatable :: cell_coords(:,:)
 
-    integer(i_def)      :: edge_cells
-    integer(i_def)      :: nsmooth
-
-    integer(i_def)      :: nmaps
-
-    integer(i_def)      :: max_num_faces_per_node
-
-    real(r_def)         :: stretch_factor = 1.0_r_def
-
-    logical(l_def)      :: rotate_mesh    = .false.
-    integer(i_native)   :: coord_sys      = emdi
-
+    ! Intergrid maps
+    integer(i_def) :: nmaps
     character(str_def), allocatable :: target_mesh_names(:)
     integer(i_def),     allocatable :: target_edge_cells(:)
     type(global_mesh_map_collection_type), allocatable :: global_mesh_maps
 
-    integer(i_def),     allocatable :: cell_next(:,:)
-    integer(i_def),     allocatable :: verts_on_cell(:,:)
-    integer(i_def),     allocatable :: edges_on_cell(:,:)
-    integer(i_def),     allocatable :: verts_on_edge(:,:)
-    real(r_def),        allocatable :: vert_coords(:,:)
-    real(r_def),        allocatable :: cell_coords(:,:)
-
-    ! Information about the domain orientation
-    real(r_def) :: north_pole(2)
-    real(r_def) :: null_island(2)
+    integer(i_def) :: max_num_faces_per_node
 
   contains
     procedure :: generate
@@ -198,7 +196,6 @@ contains
   self%mesh_name  = trim(mesh_name)
   self%edge_cells = edge_cells
   self%nsmooth    = nsmooth
-
   self%nmaps      = 0
   self%coord_sys  = coord_sys
 
@@ -1224,29 +1221,28 @@ end subroutine get_coordinates
 !> @details Implements the connectivity-providing interface required
 !>          by the ugrid writer.
 !>
-!>  @param[in]   self
 !>  @param[out]  face_node_connectivity  Face-node connectivity.
-!>  @param[out]  edge_node_connectivity  Edge-node connectivity.
 !>  @param[out]  face_edge_connectivity  Face-edge connectivity.
 !>  @param[out]  face_face_connectivity  Face-face connectivity.
+!>  @param[out]  edge_node_connectivity  Edge-node connectivity.
 !-------------------------------------------------------------------------------
 subroutine get_connectivity(self, face_node_connectivity, &
-                                  edge_node_connectivity, &
                                   face_edge_connectivity, &
-                                  face_face_connectivity)
+                                  face_face_connectivity, &
+                                  edge_node_connectivity )
   implicit none
 
   class(gencube_ps_type), intent(in) :: self
 
   integer(i_def), intent(out) :: face_node_connectivity(:,:)
-  integer(i_def), intent(out) :: edge_node_connectivity(:,:)
   integer(i_def), intent(out) :: face_edge_connectivity(:,:)
   integer(i_def), intent(out) :: face_face_connectivity(:,:)
+  integer(i_def), intent(out) :: edge_node_connectivity(:,:)
 
   face_node_connectivity = self%verts_on_cell
-  edge_node_connectivity = self%verts_on_edge
   face_edge_connectivity = self%edges_on_cell
   face_face_connectivity = self%cell_next
+  edge_node_connectivity = self%verts_on_edge
 
   return
 end subroutine get_connectivity
@@ -1385,6 +1381,7 @@ subroutine write_mesh(self)
 
   use global_mesh_map_collection_mod, only: global_mesh_map_collection_type
   use global_mesh_map_mod, only: global_mesh_map_type
+
   use, intrinsic :: iso_fortran_env, only: stdout => output_unit
 
   implicit none
@@ -1476,7 +1473,7 @@ subroutine write_mesh(self)
   write(stdout,'(A)') '================================='
   do vert=1, ncells+2
     tmp_str=''
-    write(tmp_str,'(I07,A,F8.4,A,F8.4,A)')       &
+    write(tmp_str,'(I07,A,2(F10.4,A))')          &
         vert,' => ( ', self%vert_coords(1,vert), &
         ',  ', self%vert_coords(2,vert), ' )'
     write(stdout,('(A)')) trim(tmp_str)
@@ -1488,7 +1485,7 @@ subroutine write_mesh(self)
   write(stdout,'(A)') '================================='
   do cell=1, ncells
     tmp_str=''
-    write(tmp_str,'(I07,A,F8.4,A,F8.4,A)')       &
+    write(tmp_str,'(I07,A,2(F10.4,A))')          &
         cell,' => ( ', self%cell_coords(1,cell), &
         ',  ', self%cell_coords(2,cell), ' )'
     write(stdout,('(A)')) trim(tmp_str)
@@ -1781,12 +1778,16 @@ end function get_number_of_panels
 !> @param[out]  geometry           Optional, Mesh domain surface type.
 !> @param[out]  topology           Optional, Mesh boundary/connectivity type
 !> @param[out]  coord_sys          Optional, Coordinate system to position nodes.
+!> @param[out]  periodic_x         Optional, Domain periodicity in x-axis
+!> @param[out]  periodic_y         Optional, Domain periodicity in y-axis
 !> @param[out]  edge_cells_x       Optional, Number of panel edge cells (x-axis).
 !> @param[out]  edge_cells_y       Optional, Number of panel edge cells (y-axis).
 !> @param[out]  constructor_inputs Optional, Inputs used to create this mesh from
 !>                                           the this ugrid_generator_type
 !> @param[out]  nmaps              Optional, Number of maps to create with this mesh
-!>                                           as source mesh
+!>                                           as source mesh.
+!> @param[out]  rim_depth          Optional, Depth of LBC mesh rim (in cells)
+!> @param[out]  domain_size        Optional, Domain size in x/y-axes.
 !> @param[out]  target_mesh_names  Optional, Mesh names of the target meshes that
 !>                                           this mesh has maps for.
 !> @param[out]  maps_edge_cells_x  Optional, Number of panel edge cells (x-axis) of
@@ -1809,6 +1810,8 @@ subroutine get_metadata( self,               &
                          edge_cells_y,       &
                          constructor_inputs, &
                          nmaps,              &
+                         rim_depth,          &
+                         domain_size,        &
                          target_mesh_names,  &
                          maps_edge_cells_x,  &
                          maps_edge_cells_y,  &
@@ -1823,50 +1826,44 @@ subroutine get_metadata( self,               &
   character(str_def), optional, intent(out) :: geometry
   character(str_def), optional, intent(out) :: topology
   character(str_def), optional, intent(out) :: coord_sys
-
-  logical(l_def), optional, intent(out) :: periodic_x
-  logical(l_def), optional, intent(out) :: periodic_y
-
-  integer(i_def), optional, intent(out) :: edge_cells_x
-  integer(i_def), optional, intent(out) :: edge_cells_y
+  logical(l_def),     optional, intent(out) :: periodic_x
+  logical(l_def),     optional, intent(out) :: periodic_y
+  integer(i_def),     optional, intent(out) :: edge_cells_x
+  integer(i_def),     optional, intent(out) :: edge_cells_y
+  integer(i_def),     optional, intent(out) :: nmaps
+  integer(i_def),     optional, intent(out) :: rim_depth
+  real(r_def),        optional, intent(out) :: domain_size(2)
 
   character(str_longlong), optional, intent(out) :: constructor_inputs
 
-  integer(i_def),   optional,  intent(out) :: nmaps
-  character(str_def), allocatable, optional,intent(out) :: target_mesh_names(:)
-  integer(i_def),     allocatable, optional,intent(out) :: maps_edge_cells_x(:)
-  integer(i_def),     allocatable, optional,intent(out) :: maps_edge_cells_y(:)
+  character(str_def), allocatable, optional, intent(out) :: target_mesh_names(:)
+  integer(i_def),     allocatable, optional, intent(out) :: maps_edge_cells_x(:)
+  integer(i_def),     allocatable, optional, intent(out) :: maps_edge_cells_y(:)
 
   real(r_def),    optional, intent(out) :: north_pole(2)
   real(r_def),    optional, intent(out) :: null_island(2)
 
-  if (present(mesh_name)) mesh_name = trim(self%mesh_name)
-  if (present(geometry))  geometry  = key_from_geometry(self%geometry)
-  if (present(topology))  topology  = key_from_topology(self%topology)
-  if (present(coord_sys)) coord_sys = key_from_coord_sys(self%coord_sys)
-
-  if (present(edge_cells_x)) edge_cells_x = self%edge_cells
-  if (present(edge_cells_y)) edge_cells_y = self%edge_cells
+  if (present(mesh_name))    mesh_name      = trim(self%mesh_name)
+  if (present(geometry))     geometry       = key_from_geometry(self%geometry)
+  if (present(topology))     topology       = key_from_topology(self%topology)
+  if (present(coord_sys))    coord_sys      = key_from_coord_sys(self%coord_sys)
+  if (present(periodic_x))   periodic_x     = .false.
+  if (present(periodic_y))   periodic_y     = .false.
+  if (present(edge_cells_x)) edge_cells_x   = self%edge_cells
+  if (present(edge_cells_y)) edge_cells_y   = self%edge_cells
+  if (present(nmaps))        nmaps          = self%nmaps
+  if (present(rim_depth))    rim_depth      = imdi
+  if (present(domain_size))  domain_size    = radians_to_degrees * self%domain_size
+  if (present(north_pole))   north_pole(:)  = radians_to_degrees * self%north_pole(:)
+  if (present(null_island))  null_island(:) = radians_to_degrees * self%null_island(:)
 
   if (present(constructor_inputs)) constructor_inputs = trim(self%constructor_inputs)
-  if (present(nmaps)) nmaps = self%nmaps
 
   if (self%nmaps > 0) then
-    if (present(target_mesh_names)) target_mesh_names  = self%target_mesh_names
-    if (present(maps_edge_cells_x)) maps_edge_cells_x  = self%target_edge_cells
-    if (present(maps_edge_cells_x)) maps_edge_cells_y  = self%target_edge_cells
+    if (present(target_mesh_names)) target_mesh_names = self%target_mesh_names
+    if (present(maps_edge_cells_x)) maps_edge_cells_x = self%target_edge_cells
+    if (present(maps_edge_cells_x)) maps_edge_cells_y = self%target_edge_cells
   end if
-
-  ! Periodicity is meaningless for the cubedsphere, though
-  ! the for the interface to be consistent we must included them.
-  ! This should change if we make a global mesh object which the
-  ! cubdedsphere and planar mesh are extensions of.
-  if (present(periodic_x)) periodic_x = .false.
-  if (present(periodic_y)) periodic_y = .false.
-
-  ! Convert to degrees for cf-compliance
-  if (present(north_pole))  north_pole(:)  = self%north_pole(:) * radians_to_degrees
-  if (present(null_island)) null_island(:) = self%null_island(:) * radians_to_degrees
 
   return
 end subroutine get_metadata
@@ -2018,7 +2015,7 @@ subroutine set_partition_parameters( xproc, yproc, &
       yproc = n_partitions / NPANELS
 
     case( PANEL_DECOMPOSITION_CUSTOM )
-      ! Use the values provided from the partitioning namelist
+      ! Use the values provided from the partitions namelist
       xproc = panel_xproc
       yproc = panel_yproc
 

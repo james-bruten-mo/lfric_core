@@ -14,8 +14,8 @@
 module gen_lbc_mod
 !-------------------------------------------------------------------------------
 
-  use constants_mod,                  only: r_def, i_def, l_def, str_def, &
-                                            str_longlong, imdi, rmdi,     &
+  use constants_mod,                  only: r_def, i_def, l_def, str_def,   &
+                                            str_longlong, imdi, rmdi, emdi, &
                                             i_native, radians_to_degrees
   use gen_planar_mod,                 only: gen_planar_type
   use global_mesh_map_mod,            only: global_mesh_map_type
@@ -53,6 +53,21 @@ module gen_lbc_mod
              extract_coords
 
   public :: NO_CELL_INNER_ID, NO_CELL_OUTER_ID
+
+  ! Mesh Vertex directions: local aliases for reference_element_mod values
+  integer(i_def), parameter :: NW = NWB
+  integer(i_def), parameter :: NE = NEB
+  integer(i_def), parameter :: SE = SEB
+  integer(i_def), parameter :: SW = SWB
+
+  integer(i_def), parameter :: NO_CELL_OUTER_ID = -1
+  integer(i_def), parameter :: NO_CELL_INNER_ID = -2
+
+  integer(i_def), parameter :: horz_npanels = 2
+  integer(i_def), parameter :: vert_npanels = 2
+
+  ! For a lbc meshes there is only one panel
+  integer(i_def), parameter :: NPANELS = 1
 
 
 !===================================================================
@@ -194,36 +209,38 @@ module gen_lbc_mod
     private
 
     character(str_def) :: mesh_name
-    character(str_def) :: mesh_parent
+
+    integer(i_native)  :: geometry  = emdi
+    integer(i_native)  :: topology  = emdi
+    integer(i_native)  :: coord_sys = emdi
     character(str_def) :: coord_units_x
     character(str_def) :: coord_units_y
 
-    integer(i_native)  :: geometry
-    integer(i_native)  :: topology
-    integer(i_native)  :: coord_sys
+    integer(i_def) :: npanels = NPANELS
+    integer(i_def) :: nmaps = 1      !> LBC meshes will only map
+                                     !> to parent mesh
+    real(r_def)    :: domain_size(2) !> Global domain size of LAM parent
+    integer(i_def) :: outer_cells_x  !> Max number of cells in x-direction
+    integer(i_def) :: outer_cells_y  !> Max number of cells in y-direction
+
+    integer(i_def) :: rim_depth      !> Number of cells from LAM boundary to
+                                     !> include in the LBC mesh
 
     character(str_longlong) :: constructor_inputs
 
-    integer(i_def) :: outer_cells_x !> Max number of cells in x-direction
-    integer(i_def) :: outer_cells_y !> Max number of cells in y-direction
-
-    integer(i_def) :: nmaps   !> LBC meshes will only map to parent LAM
     integer(i_def) :: n_nodes !> Number of nodes in this mesh
     integer(i_def) :: n_edges !> Number of edges in this mesh
     integer(i_def) :: n_faces !> Number of faces in this mesh
 
-    integer(i_def) :: rim_depth !> Number of cells from LAM boundary to
-                                !> include in the LBC mesh
-
     !> Mesh names which this mesh has maps for
-    character(str_def), allocatable :: target_mesh_names(:)
-
+    character(str_def),                    allocatable :: target_mesh_names(:)
     type(global_mesh_map_collection_type), allocatable :: global_mesh_maps
 
     integer(i_def), allocatable :: cell_next(:,:)     ! (4, edge_cells_x*edge_cells_y)
     integer(i_def), allocatable :: nodes_on_cell(:,:) ! (4, edge_cells_x*edge_cells_y)
     integer(i_def), allocatable :: edges_on_cell(:,:) ! (4, edge_cells_x*edge_cells_y)
     integer(i_def), allocatable :: nodes_on_edge(:,:) ! (2, edge_cells_x*edge_cells_y)
+
     real(r_def),    allocatable :: node_coords(:,:)   ! (2, edge_cells_x*edge_cells_y)
     real(r_def),    allocatable :: cell_coords(:,:)   ! (2, edge_cells_x*edge_cells_y)
 
@@ -276,20 +293,7 @@ module gen_lbc_mod
 
 !-----------------------------------------------------------------------------
 
-  ! Mesh Vertex directions: local aliases for reference_element_mod values
-  integer(i_def), parameter :: NW = NWB
-  integer(i_def), parameter :: NE = NEB
-  integer(i_def), parameter :: SE = SEB
-  integer(i_def), parameter :: SW = SWB
 
-  integer(i_def), parameter :: NO_CELL_OUTER_ID = -1
-  integer(i_def), parameter :: NO_CELL_INNER_ID = -2
-
-  integer(i_def), parameter :: horz_npanels = 2
-  integer(i_def), parameter :: vert_npanels = 2
-
-  ! For a lbc meshes there is only one panel
-  integer(i_def), parameter :: NPANELS = 1
 
 contains
 
@@ -331,7 +335,7 @@ function gen_lbc_constructor( lam_strategy, rim_depth ) result( self )
 
   type(gen_lbc_type) :: self
 
-
+  character(str_def) :: mesh_parent
   character(str_def) :: geometry_key
   character(str_def) :: coord_sys_key
 
@@ -358,17 +362,18 @@ function gen_lbc_constructor( lam_strategy, rim_depth ) result( self )
                                 max_num_faces_per_node =                  &
                                              self%max_num_faces_per_node )
 
-  call lam_strategy%get_metadata                                         &
-                        ( mesh_name         = self%target_mesh_names(1), &
-                          edge_cells_x      = self%outer_cells_x,        &
-                          edge_cells_y      = self%outer_cells_y,        &
-                          geometry          = geometry_key,              &
-                          north_pole        = self%north_pole,           &
-                          null_island       = self%null_island,          &
-                          coord_sys         = coord_sys_key )
+  call lam_strategy%get_metadata                                    &
+                        ( mesh_name    = self%target_mesh_names(1), &
+                          edge_cells_x = self%outer_cells_x,        &
+                          edge_cells_y = self%outer_cells_y,        &
+                          north_pole   = self%north_pole,           &
+                          null_island  = self%null_island,          &
+                          geometry     = geometry_key,              &
+                          coord_sys    = coord_sys_key,             &
+                          domain_size  = self%domain_size )
 
-  self%mesh_parent =  trim(self%target_mesh_names(1))
-  self%mesh_name   =  trim(self%mesh_parent)//'-lbc'
+  mesh_parent    = trim(self%target_mesh_names(1))
+  self%mesh_name = trim(mesh_parent)//'-lbc'
 
   self%coord_sys   =  coord_sys_from_key(coord_sys_key)
   self%geometry    =  geometry_from_key(geometry_key)
@@ -583,29 +588,29 @@ end subroutine get_coordinates
 !>          by the ugrid writer.
 !>
 !> @param[out]  face_node_connectivity  Face-node connectivity.
-!> @param[out]  edge_node_connectivity  Edge-node connectivity.
 !> @param[out]  face_edge_connectivity  Face-edge connectivity.
 !> @param[out]  face_face_connectivity  Face-face connectivity.
+!> @param[out]  edge_node_connectivity  Edge-node connectivity.
 !-----------------------------------------------------------------------------
 subroutine get_connectivity( self,                   &
                              face_node_connectivity, &
-                             edge_node_connectivity, &
                              face_edge_connectivity, &
-                             face_face_connectivity )
+                             face_face_connectivity, &
+                             edge_node_connectivity )
 
   implicit none
 
   class(gen_lbc_type), intent(in) :: self
 
   integer(i_def), intent(out) :: face_node_connectivity(:,:)
-  integer(i_def), intent(out) :: edge_node_connectivity(:,:)
   integer(i_def), intent(out) :: face_edge_connectivity(:,:)
   integer(i_def), intent(out) :: face_face_connectivity(:,:)
+  integer(i_def), intent(out) :: edge_node_connectivity(:,:)
 
   face_node_connectivity = self%nodes_on_cell
-  edge_node_connectivity = self%nodes_on_edge
   face_edge_connectivity = self%edges_on_cell
   face_face_connectivity = self%cell_next
+  edge_node_connectivity = self%nodes_on_edge
 
   return
 end subroutine get_connectivity
@@ -688,9 +693,9 @@ subroutine generate(self)
 
   call self%lam_strategy%get_connectivity(                           &
                              face_node_connectivity = lam_face_node, &
-                             edge_node_connectivity = lam_edge_node, &
                              face_edge_connectivity = lam_face_edge, &
-                             face_face_connectivity = lam_face_face )
+                             face_face_connectivity = lam_face_face, &
+                             edge_node_connectivity = lam_edge_node )
 
   ! 2.0 Generate the LBC
   !----------
@@ -739,6 +744,7 @@ end function get_number_of_panels
 !> @brief Returns mesh metadata information.
 !> @details This subroutine is provided as a means to request specific metadata
 !>          from the current mesh configuration.
+!>
 !> @param[out] mesh_name           Optional, Name of mesh instance to generate
 !> @param[out] geometry            Optional, Mesh domain surface type.
 !> @param[out] topology            Optional, Mesh boundary/connectivity type
@@ -751,6 +757,8 @@ end function get_number_of_panels
 !>                                           the mesh_generator
 !> @param[out] nmaps               Optional, Number of maps to create with this mesh
 !>                                           as source mesh
+!> @param[out] rim_depth           Optional, Rim depth of LBC mesh (LAMs).
+!> @param[out] domain_size         Optional, Size of global model domain.
 !> @param[out] target_mesh_names   Optional, Mesh names of the target meshes that
 !>                                           this mesh has maps for.
 !> @param[out] maps_edge_cells_x   Optional, Number of panel edge cells (x-axis) of
@@ -773,11 +781,13 @@ subroutine get_metadata( self,               &
                          edge_cells_y,       &
                          constructor_inputs, &
                          nmaps,              &
+                         rim_depth,          &
+                         domain_size,        &
                          target_mesh_names,  &
                          maps_edge_cells_x,  &
                          maps_edge_cells_y,  &
                          north_pole,         &
-                         null_island     )
+                         null_island )
   implicit none
 
   class(gen_lbc_type), intent(in) :: self
@@ -787,45 +797,53 @@ subroutine get_metadata( self,               &
   character(str_def), optional, intent(out) :: topology
   character(str_def), optional, intent(out) :: coord_sys
 
-  logical(l_def),     optional, intent(out) :: periodic_x
-  logical(l_def),     optional, intent(out) :: periodic_y
-  integer(i_def),     optional, intent(out) :: edge_cells_x
-  integer(i_def),     optional, intent(out) :: edge_cells_y
-  integer(i_def),     optional, intent(out) :: nmaps
+  logical(l_def), optional, intent(out) :: periodic_x
+  logical(l_def), optional, intent(out) :: periodic_y
+  integer(i_def), optional, intent(out) :: edge_cells_x
+  integer(i_def), optional, intent(out) :: edge_cells_y
+  integer(i_def), optional, intent(out) :: nmaps
+  integer(i_def), optional, intent(out) :: rim_depth
+  real(r_def),    optional, intent(out) :: domain_size(2)
 
   character(str_longlong), optional, intent(out) :: constructor_inputs
 
-  character(str_def), optional, intent(out), allocatable :: target_mesh_names(:)
-  integer(i_def),     optional, intent(out), allocatable :: maps_edge_cells_x(:)
-  integer(i_def),     optional, intent(out), allocatable :: maps_edge_cells_y(:)
+  character(str_def), optional, allocatable, intent(out) :: target_mesh_names(:)
+  integer(i_def),     optional, allocatable, intent(out) :: maps_edge_cells_x(:)
+  integer(i_def),     optional, allocatable, intent(out) :: maps_edge_cells_y(:)
 
-  real(r_def),        optional, intent(out) :: north_pole(2)
-  real(r_def),        optional, intent(out) :: null_island(2)
+  real(r_def), optional, intent(out) :: north_pole(2)
+  real(r_def), optional, intent(out) :: null_island(2)
 
-  if (present(mesh_name)) mesh_name  = self%mesh_name
-  if (present(geometry))  geometry   = key_from_geometry(self%geometry)
-  if (present(topology))  topology   = key_from_topology(self%topology)
-  if (present(coord_sys)) coord_sys  = key_from_coord_sys(self%coord_sys)
 
-  if (present(periodic_x)) periodic_x = .false.
-  if (present(periodic_y)) periodic_y = .false.
-
-  if (present(constructor_inputs)) constructor_inputs = self%constructor_inputs
-
+  if (present(mesh_name))    mesh_name    = self%mesh_name
+  if (present(geometry))     geometry     = key_from_geometry(self%geometry)
+  if (present(topology))     topology     = key_from_topology(self%topology)
+  if (present(coord_sys))    coord_sys    = key_from_coord_sys(self%coord_sys)
+  if (present(periodic_x))   periodic_x   = .false.
+  if (present(periodic_y))   periodic_y   = .false.
   if (present(edge_cells_x)) edge_cells_x = self%outer_cells_x
   if (present(edge_cells_y)) edge_cells_y = self%outer_cells_y
   if (present(nmaps))        nmaps        = self%nmaps
+  if (present(rim_depth))    rim_depth    = self%rim_depth
+
+  if (present(constructor_inputs)) constructor_inputs = self%constructor_inputs
 
   if (self%nmaps > 0) then
-    if (present(target_mesh_names)) &
-        allocate(target_mesh_names(1), source=self%target_mesh_names)
-    if (present(maps_edge_cells_x)) &
-        allocate(maps_edge_cells_x(1), source=self%outer_cells_x)
-    if (present(maps_edge_cells_y)) &
-       allocate(maps_edge_cells_y(1), source=self%outer_cells_y)
+    if (present(target_mesh_names)) then
+      allocate(target_mesh_names(1), source=self%target_mesh_names)
+    end if
+
+    if (present(maps_edge_cells_x)) then
+      allocate(maps_edge_cells_x(1), source=self%outer_cells_x)
+    end if
+
+    if (present(maps_edge_cells_y)) then
+      allocate(maps_edge_cells_y(1), source=self%outer_cells_y)
+    end if
   end if
 
   ! These are inherited from LAM so should be in degrees for cf-compliance
+  if (present(domain_size)) domain_size(:) = self%domain_size(:)
   if (present(north_pole))  north_pole(:)  = self%north_pole(:)
   if (present(null_island)) null_island(:) = self%null_island(:)
 

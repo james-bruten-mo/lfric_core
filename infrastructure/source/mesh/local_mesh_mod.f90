@@ -12,8 +12,14 @@ module local_mesh_mod
 
   use constants_mod,   only: r_def, i_def, i_halo_index,   &
                              l_def, str_def, integer_type, &
-                             i_native, emdi
-  use global_mesh_mod, only: global_mesh_type
+                             i_native, str_longlong,       &
+                             imdi, rmdi, cmdi, emdi,       &
+                             degrees_to_radians,           &
+                             radians_to_degrees
+
+  use global_mesh_map_collection_mod, only: global_mesh_map_collection_type
+  use global_mesh_map_mod,            only: global_mesh_map_type
+  use global_mesh_mod,                only: global_mesh_type
   use halo_comms_mod,                 only: halo_routing_type, &
                                             perform_halo_exchange
   use linked_list_data_mod,           only: linked_list_data_type
@@ -21,7 +27,7 @@ module local_mesh_mod
   use local_mesh_map_mod,             only: local_mesh_map_type
   use log_mod,                        only: log_event, log_scratch_space,     &
                                             LOG_LEVEL_ERROR, LOG_LEVEL_TRACE, &
-                                            LOG_LEVEL_INFO
+                                            LOG_LEVEL_INFO, LOG_LEVEL_DEBUG
   use partition_mod,                  only: partition_type
 
   implicit none
@@ -42,90 +48,108 @@ module local_mesh_mod
 
     private
 
-  ! Tag name of mesh
+  ! Tag name of mesh.
     character(str_def) :: mesh_name
-  ! Domain surface geometry
+  ! Domain surface geometry.
     integer(i_native)  :: geometry = emdi
-  ! Domain boundaries topology
+  ! Domain boundaries topology.
     integer(i_native)  :: topology = emdi
-  ! Co-ordinate system used to specify node locations
+  ! Co-ordinate system used to specify node locations.
     integer(i_native)  :: coord_sys = emdi
-  ! number of vertices on each cell
+  ! Number of vertices on each cell.
     integer(i_def)     :: nverts_per_cell
-  ! number of vertices on each edge
+  ! Number of vertices on each edge.
     integer(i_def)     :: nverts_per_edge
-  ! number of edges on each cell
+  ! Number of edges on each cell.
     integer(i_def)     :: nedges_per_cell
-  ! number of cells in a 2d slice of the local partition
+  ! Number of cells in a 2D slice of the local partition.
   ! (not inc ghost cells).
     integer(i_def)     :: num_cells_in_layer
-  ! A List of global cell ids known to this local mesh, ordered with inner
+  ! A List of global cell IDs known to this local mesh, ordered with inner
   ! cells first followed by the edge cells and finally the halo cells ordered
-  ! by depth of halo
+  ! by depth of halo.
     integer(i_def), allocatable :: global_cell_id( : )
-  ! Number of unique vertices in the local mesh
+  ! Number of unique vertices in the local mesh.
     integer(i_def) :: n_unique_vertices
-  ! Number of unique edges in the local mesh
+  ! Number of unique edges in the local mesh.
     integer(i_def) :: n_unique_edges
-  ! Horizontal coords of vertices in local domain
+  ! Horizontal coords of vertices in local domain.
     real(r_def), allocatable    :: vert_coords(:,:)
-  ! Local ids of vertices connected to local 2d cell
+  ! Local IDs of vertices connected to local 2D cell.
     integer(i_def), allocatable :: vert_on_cell(:,:)
-  ! Local ids of edges connected to local 2d cell.
+  ! Local IDs of edges connected to local 2D cell.
     integer(i_def), allocatable :: edge_on_cell(:,:)
-  ! Global ids of vertices connected to local 2d cell
+  ! Global IDs of vertices connected to local 2D cell.
     integer(i_def), allocatable :: vert_on_cell_gid(:,:)
-  ! Global ids of edges connected to local 2d cell.
+  ! Global IDs of edges connected to local 2D cell.
     integer(i_def), allocatable :: edge_on_cell_gid(:,:)
-  ! Cell that "owns" each vertex
+  ! Cell that "owns" each vertex.
     integer(i_def), allocatable :: vert_cell_owner(:)
-  ! Cell that "owns" each edge
+  ! Cell that "owns" each edge.
     integer(i_def), allocatable :: edge_cell_owner(:)
-  ! Local domain cell to cell lid connectivities
+  ! Local domain cell to cell lid connectivities.
     integer(i_def), allocatable :: cell_next(:,:)
   ! A list of the ranks that own all the cells known to this partition
   ! held in the order of cells in the <code>global_cell_id</code> array
     integer(i_def), allocatable :: cell_owner( : )
   ! The number of "inner" cells in the <code>global_cell_id</code> list -
-  ! one entry for each depth of inner halo
+  ! one entry for each depth of inner halo.
     integer(i_def), allocatable :: num_inner( : )
   ! The index of the last "inner" cell in the <code>global_cell_id</code> list -
-  ! one entry for each depth of inner halo
+  ! one entry for each depth of inner halo.
     integer(i_def), allocatable :: last_inner_cell( : )
-  ! The depth to which inner halos are generated
+  ! The depth to which inner halos are generated.
     integer(i_def)              :: inner_depth
-  ! The number of "edge" cells in the <code>global_cell_id</code> list
+  ! The number of "edge" cells in the <code>global_cell_id</code> list.
     integer(i_def)              :: num_edge
-  ! The index of the last "edge" cell in the <code>global_cell_id</code> list
+  ! The index of the last "edge" cell in the <code>global_cell_id</code> list.
     integer(i_def)              :: last_edge_cell
   ! The number of "halo" cells in the <code>global_cell_id</code> list -
-  ! one entry for each depth of halo
+  ! one entry for each depth of halo.
     integer(i_def), allocatable :: num_halo( : )
   ! The index of the last "halo" cell in the <code>global_cell_id</code> list -
-  ! one entry for each depth of halo
+  ! one entry for each depth of halo.
     integer(i_def), allocatable :: last_halo_cell( : )
-  ! The depth to which halos are generated
+  ! The depth to which halos are generated.
     integer(i_def)              :: halo_depth
-  ! The number of "ghost" cells in the <code>global_cell_id</code> list
+  ! The number of "ghost" cells in the <code>global_cell_id</code> list.
     integer(i_def)              :: num_ghost
-  ! The index of the last "ghost" cell in the <code>global_cell_id</code> lis
+  ! The index of the last "ghost" cell in the <code>global_cell_id</code> list.
     integer(i_def)              :: last_ghost_cell
-  ! Collection of local mesh maps associated with this mesh
+  ! Collection of local mesh maps associated with this mesh.
     type(local_mesh_map_collection_type), allocatable :: &
-                                   local_mesh_map_collection
-  ! Number of panels in the global mesh
+                                   local_mesh_maps
+  ! Number of panels in the global mesh.
     integer(i_def)              :: npanels
 
-  ! Number of cells in the global mesh
+  ! Number of cells in the global mesh.
     integer(i_def)              :: ncells_global_mesh
 
-  ! Max stencil depth supported by this mesh partition
-    integer(i_def)              :: max_stencil_depth
+  ! Max stencil depth supported by this mesh partition.
+    integer(i_def)           :: max_stencil_depth = imdi
+
+    integer(i_def)           :: ntarget_meshes
+    character(str_def)       :: coord_units_xy(2) = cmdi
+    character(str_longlong)  :: constructor_inputs
+
+    real(r_def)              :: north_pole(2)  = rmdi
+    real(r_def)              :: null_island(2) = rmdi
+
+    real(r_def)              :: domain_size(2) = rmdi
+    integer(i_def)           :: rim_depth      = imdi
+
+  ! Local IDs of vertices connected to local 2D edge.
+    integer(i_def), allocatable :: vert_on_edge(:,:)
+    integer(i_def), allocatable :: vert_on_edge_gid(:,:)
+
+    character(str_def), allocatable :: target_mesh_names(:)
 
   contains
     procedure, public  :: initialise_full
+    procedure, public  :: initialise_lbc
     procedure, public  :: initialise_unit_test
     generic            :: initialise => initialise_full, &
+                                        initialise_lbc,  &
                                         initialise_unit_test
     procedure, public  :: init_cell_owner
     procedure, public  :: clear
@@ -162,6 +186,7 @@ module local_mesh_mod
     procedure, public  :: get_lid_from_gid
     procedure, public  :: add_local_mesh_map
     procedure, public  :: get_local_mesh_map
+    procedure, public  :: get_mesh_maps
 
     procedure, public :: is_geometry_spherical
     procedure, public :: is_geometry_planar
@@ -171,39 +196,40 @@ module local_mesh_mod
     procedure, public :: is_coord_sys_xyz
     procedure, public :: is_coord_sys_ll
 
+    procedure, public :: get_all_gid
+
     final :: local_mesh_destructor
   end type local_mesh_type
 
-  !> Counter variable to keep track of the next local mesh id number to uniquely
+  !> Counter variable to keep track of the next local mesh ID number to uniquely
   !! identify each different mesh
-  integer(i_def), save :: local_mesh_id_counter = 0
+  integer(i_def), save :: local_mesh_id_counter = 0_i_def
 
 contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !> @brief Initialises a local mesh object from global mesh and partition
-  !>        objects
+  !>        objects.
   !>
   !> This local mesh object holds the connectivities which fully describe
   !> the 2D topology of the local (partitionied) mesh.
   !>
   !> @param [in] global_mesh   Global mesh object on which the partition is
-  !>                           applied
-  !> @param [in] partition     Partition object to base the local Mesh on
-  !> @param [in, optional]
-  !>             mesh_name     Mesh tag name to use for this mesh. If omitted,
-  !>                           the global mesh name it is based on will be used.
-  !> @return New local_mesh_type object.
-  !>
+  !>                           applied.
+  !> @param [in] partition     Partition object to base the local mesh on.
+  !> @param [in] name          Optional: Name to use for this mesh. If omitted,
+  !>                                     the name of the global mesh it is based
+  !>                                     on will be used.
   subroutine initialise_full ( self,        &
                                global_mesh, &
                                partition,   &
-                               mesh_name )
+                               name )
     implicit none
+
     class(local_mesh_type), intent(out)          :: self
     type(global_mesh_type), intent(in), pointer  :: global_mesh
     type(partition_type),   intent(in)           :: partition
-    character(str_def),     intent(in), optional :: mesh_name
+    character(str_def),     intent(in), optional :: name
 
     integer(i_def)                               :: depth
     integer(i_def)                               :: cell_lid
@@ -215,19 +241,24 @@ contains
     integer(i_def), allocatable                  :: vert_lid_gid_map(:)
     integer(i_def), allocatable                  :: edge_lid_gid_map(:)
     integer(i_def)                               :: vert_gid
+    integer(i_def)                               :: edge_gid
 
     logical (l_def)                              :: new_unique_vertex
     logical (l_def)                              :: new_unique_edge
 
-    ! Set name from either the given name - or the name of the global mesh
-    if (present(mesh_name)) then
-      self%mesh_name = mesh_name
+    integer(i_def)                               :: local_vertex
+
+    integer(i_def), allocatable :: tmp_edge_lid_gid_map(:)
+    integer(i_def), allocatable :: tmp_vert_on_edge_gid(:,:)
+
+    ! Set name from either the given name - or the name of the global mesh.
+    if (present(name)) then
+      self%mesh_name = trim(name)
     else
       self%mesh_name = global_mesh%get_mesh_name()
     end if
 
-
-    ! Inherit mesh properties from the parent global mesh
+    ! Inherit mesh properties from the parent global mesh.
     if (global_mesh%is_geometry_spherical()) then
       self%geometry = spherical_domain
     else if (global_mesh%is_geometry_planar()) then
@@ -248,15 +279,19 @@ contains
       self%coord_sys = lon_lat_coords
     end if
 
+    self%domain_size = global_mesh%get_domain_size()
+    self%north_pole  = global_mesh%get_north_pole()
+    self%null_island = global_mesh%get_null_island()
 
     ! Extract the info that makes up a local mesh from the
-    ! global mesh and partition
+    ! global mesh and partition.
     local_mesh_id_counter = local_mesh_id_counter + 1
     call self%set_id( local_mesh_id_counter )
 
-    self%nverts_per_cell = global_mesh%get_nverts_per_cell()
-    self%nverts_per_edge = global_mesh%get_nverts_per_edge()
-    self%nedges_per_cell = global_mesh%get_nedges_per_cell()
+    self%constructor_inputs = global_mesh%get_constructor_inputs()
+    self%nverts_per_cell    = global_mesh%get_nverts_per_cell()
+    self%nverts_per_edge    = global_mesh%get_nverts_per_edge()
+    self%nedges_per_cell    = global_mesh%get_nedges_per_cell()
     self%num_cells_in_layer = partition%get_num_cells_in_layer()
     self%max_stencil_depth  = partition%get_max_stencil_depth()
 
@@ -285,21 +320,21 @@ contains
     self%num_ghost = partition%get_num_cells_ghost()
     self%last_ghost_cell = self%last_halo_cell(self%halo_depth) + self%num_ghost
 
-    ! Allocate and init arrays to hold entity connectivities
+    ! Allocate and initialise arrays to hold entity connectivities.
 
-    ! Cells next to a cell
+    ! Cells next to a cell.
     allocate( self%cell_next(self%nedges_per_cell, self%last_ghost_cell) )
     do cell_lid = 1, self%last_ghost_cell
       cell_gid = self%get_gid_from_lid(cell_lid)
       call global_mesh%get_cell_next( cell_gid, self%cell_next(:,cell_lid) )
-      ! Convert the cell_next gids into lids
+      ! Convert the cell_next GIDs into LIDs.
       do edge = 1, self%nedges_per_cell
         if (self%get_lid_from_gid(self%cell_next(edge,cell_lid)) > 0) then
           self%cell_next(edge,cell_lid) = &
                  self%get_lid_from_gid(self%cell_next(edge,cell_lid))
         else
-          ! If lid is zero (or -ve) cell next is outside domain - so set to zero
-          self%cell_next(edge,cell_lid) = 0
+          ! If lid is zero (or -ve) cell next is outside domain - so set to zero.
+          self%cell_next(edge,cell_lid) = 0_i_def
         end if
       end do
     end do
@@ -308,7 +343,7 @@ contains
     allocate( self%vert_on_cell_gid(self%nverts_per_cell, self%last_ghost_cell) )
     allocate( self%vert_on_cell(self%nverts_per_cell, self%last_ghost_cell) )
     allocate( tmp_list(self%last_ghost_cell*self%nverts_per_cell) )
-    self%n_unique_vertices = 0
+    self%n_unique_vertices = 0_i_def
     do cell_lid = 1, self%last_ghost_cell
       cell_gid = self%get_gid_from_lid(cell_lid)
       call global_mesh%get_vert_on_cell( cell_gid, &
@@ -334,37 +369,69 @@ contains
     vert_lid_gid_map(:) = tmp_list(1:self%n_unique_vertices)
     deallocate(tmp_list)
 
-    ! Edges on a cell
-    allocate( self%edge_on_cell_gid(self%nedges_per_cell, self%last_ghost_cell) )
-    allocate( self%edge_on_cell(self%nedges_per_cell, self%last_ghost_cell) )
-    allocate( tmp_list(self%last_ghost_cell*self%nedges_per_cell) )
-    self%n_unique_edges = 0
+    ! Generate edge LIDS on local cells.
+    !
+    allocate( self%edge_on_cell_gid( self%nedges_per_cell,self%last_ghost_cell ) )
+    allocate( self%edge_on_cell    ( self%nedges_per_cell,self%last_ghost_cell ) )
+
+    allocate( tmp_edge_lid_gid_map(   self%last_ghost_cell*self%nedges_per_cell ) )
+    allocate( tmp_vert_on_edge_gid( 2,self%last_ghost_cell*self%nedges_per_cell ) )
+
+    self%n_unique_edges = 0_i_def
+
     do cell_lid = 1, self%last_ghost_cell
+
       cell_gid = self%get_gid_from_lid(cell_lid)
       call global_mesh%get_edge_on_cell( cell_gid, &
                                          self%edge_on_cell_gid(:,cell_lid) )
       do edge = 1, self%nedges_per_cell
+
         new_unique_edge = .true.
+
+        ! Check to see if this edge lid has been registered already.
         do counter = 1, self%n_unique_edges
-          if (tmp_list(counter) == self%edge_on_cell_gid(edge,cell_lid)) then
-            new_unique_edge = .false.
+          if ( tmp_edge_lid_gid_map(counter) == self%edge_on_cell_gid(edge,cell_lid) ) then
             self%edge_on_cell(edge,cell_lid) = counter
+            new_unique_edge = .false.
             exit
           end if
         end do
+
         if ( new_unique_edge ) then
+          ! New unique edge identified.
           self%n_unique_edges = self%n_unique_edges + 1
-          tmp_list(self%n_unique_edges) = &
-                             self%edge_on_cell_gid(edge, cell_lid)
           self%edge_on_cell(edge,cell_lid) = self%n_unique_edges
+
+          ! Extract the GIDs of nodes attached to the edge (using LID).
+          edge_gid = self%edge_on_cell_gid(edge, cell_lid)
+          tmp_edge_lid_gid_map(self%n_unique_edges) = edge_gid
+          tmp_vert_on_edge_gid(:,self%n_unique_edges) = &
+                                              global_mesh%get_vert_on_edge(edge_gid)
         end if
+
+      end do  ! edge
+    end do  ! cell_lid
+
+    allocate( edge_lid_gid_map, source=tmp_edge_lid_gid_map(1:self%n_unique_edges) )
+    deallocate( tmp_edge_lid_gid_map )
+
+    ! Populate verts on edges (LIDS).
+    allocate( self%vert_on_edge_gid, source=tmp_vert_on_edge_gid(:,1:self%n_unique_edges) )
+    deallocate(tmp_vert_on_edge_gid)
+
+    allocate( self%vert_on_edge(2,self%n_unique_edges) )
+    do edge=1, self%n_unique_edges
+      do vertex=1,2
+        do local_vertex=1, self%n_unique_vertices
+          if ( self%vert_on_edge_gid(vertex, edge) == vert_lid_gid_map(local_vertex) ) then
+            self%vert_on_edge(vertex, edge) = local_vertex
+            exit
+          end if
+        end do
       end do
     end do
-    allocate(edge_lid_gid_map(self%n_unique_edges))
-    edge_lid_gid_map(:) = tmp_list(1:self%n_unique_edges)
-    deallocate(tmp_list)
 
-    ! Set cell ownership for each vertex
+    ! Set cell ownership for each vertex.
     allocate( self%vert_cell_owner(self%n_unique_vertices) )
     do vertex=1,self%n_unique_vertices
       self%vert_cell_owner(vertex) = &
@@ -372,7 +439,7 @@ contains
             global_mesh%get_vert_cell_owner(vert_lid_gid_map(vertex)) )
     end do
 
-    ! Set cell ownership for each edge
+    ! Set cell ownership for each edge.
     allocate( self%edge_cell_owner(self%n_unique_edges) )
     do edge=1,self%n_unique_edges
       self%edge_cell_owner(edge) = &
@@ -380,28 +447,562 @@ contains
             global_mesh%get_edge_cell_owner(edge_lid_gid_map(edge)) )
     end do
 
+    ! Get coords of vertices.
     allocate( self%vert_coords(3,self%n_unique_vertices) )
+    self%vert_coords = 0.0_r_def
     do vertex = 1, self%n_unique_vertices
-      ! Get coords of vertices
       vert_gid = vert_lid_gid_map(vertex)
       call global_mesh%get_vert_coords( vert_gid, self%vert_coords(:,vertex) )
     end do
 
-    if (.not. allocated(self%local_mesh_map_collection) ) &
-        allocate ( self%local_mesh_map_collection,        &
-              source = local_mesh_map_collection_type() )
+    ! Internally held spherical coordinates should be in radians
+    ! and only in degrees for output.
+    self%coord_units_xy = global_mesh%get_coord_units()
+    if ( self%is_coord_sys_ll() ) then
+      if ( any(self%coord_units_xy /= 'radians') ) then
+        ! Scale the vertex coords so that they are in radians.
+        self%coord_units_xy(:) = 'radians'
+        self%vert_coords(:,:)  = self%vert_coords(:,:) * degrees_to_radians
+      end if
+    end if
 
-    self%npanels = partition%get_num_panels_global_mesh()
-
+    self%npanels            = partition%get_num_panels_global_mesh()
     self%ncells_global_mesh = global_mesh%get_ncells()
+
+    self%ntarget_meshes     = global_mesh%get_nmaps()
+    if (self%ntarget_meshes > 0) then
+      call global_mesh%get_target_mesh_names(self%target_mesh_names)
+      if (.not. allocated(self%local_mesh_maps) ) then
+        allocate( self%local_mesh_maps, source=local_mesh_map_collection_type() )
+      end if
+    end if
 
     deallocate( vert_lid_gid_map )
     deallocate( edge_lid_gid_map )
 
   end subroutine initialise_full
 
+
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !> @brief Initialises a local mesh object for use in unit testing
+  !> @brief Initialises a local mesh object for global LBC mesh cells
+  !>        present in the partition relating to the corresponding
+  !>        local_lam_mesh.
+  !>
+  !> @details This local mesh object holds the connectivities
+  !>          which fully describes the 2D topology of the local LBC mesh.
+  !>          This local LBC mesh is only valid for mapping to the
+  !>          last edge cell of the corresponding local LAM partition,
+  !>          i.e. there are no halo or ghost cells included.
+  !>
+  !> @param [in] global_lam_mesh  Global LAM mesh object.
+  !> @param [in] global_lbc_mesh  Global LBC mesh object.
+  !> @param [in] local_lam_mesh   Parent local mesh used to
+  !>                              locate/spawn local LBC mesh from
+  !> @param [in] name             Optional: Mesh tag name to use for this mesh.
+  !>                              If omitted, the global mesh name it is based
+  !>                              on will be used.
+  !> @param [out] cell_map        Optional: Local LBC:LAM cell map.
+  !>                              Provided so cell map can be added to local LBC
+  !>                              mesh after initialisation.
+  !> @param [out] edge_map        Optional: Local LBC:LAM edge map.
+  !>                              Provided so edge map can be added to local LBC
+  !>                              mesh after initialisation.
+  !> @param [out] vert_map        Optional: Local LBC:LAM vert map.
+  !>                              Provided so vert map can be added to local LBC
+  !>                              mesh after initialisation.
+  !>
+  !> @todo Optional args, cell_map, edge_map, vert_map should really be part of
+  !>       the initialisation routine, however due to a scoping issue the arrays
+  !>       must be passed back and applied outside this routine. This should be
+  !>       be addressed in future work. #3491 Should remove the need for this.
+  subroutine initialise_lbc ( self,             &
+                              global_lam_mesh,  &
+                              global_lbc_mesh,  &
+                              local_lam_mesh,   &
+                              name,             &
+                              cell_map,         &
+                              edge_map,         &
+                              vert_map )
+
+  implicit none
+
+  class(local_mesh_type), intent(out)          :: self
+
+  type(global_mesh_type), intent(in), pointer  :: global_lam_mesh
+  type(global_mesh_type), intent(in), pointer  :: global_lbc_mesh
+
+  type(local_mesh_type),  intent(in), pointer  :: local_lam_mesh
+  character(str_def),     intent(in), optional :: name
+
+  integer(i_def), allocatable, intent(out), optional :: cell_map(:)
+  integer(i_def), allocatable, intent(out), optional :: edge_map(:)
+  integer(i_def), allocatable, intent(out), optional :: vert_map(:)
+
+  ! Local vars
+  integer(i_def), allocatable :: tmp_global_lbc_lam_map(:,:,:)
+  integer(i_def), allocatable :: tmp_lam_lids(:)
+  integer(i_def), allocatable :: tmp_lbc_gids(:)
+  integer(i_def), allocatable :: tmp_cell_next(:)
+
+  integer(i_def), allocatable :: unique_list(:)
+
+  integer(i_def), allocatable :: edge_lbc_lid_gid_map(:)
+  integer(i_def), allocatable :: vert_lbc_lid_gid_map(:)
+
+  type(global_mesh_map_collection_type), pointer :: global_lbc_mesh_maps => null()
+  type(global_mesh_map_type),            pointer :: global_lbc_mesh_map  => null()
+
+  integer(i_def) :: global_lbc_ncells
+  integer(i_def), allocatable :: global_lbc_lam_map(:)
+  integer(i_def), allocatable :: local_lam_gids(:)
+
+  integer(i_def), allocatable :: cell_lam_lbc_map(:)
+
+  integer(i_def), allocatable :: cell_lbc_lam_map(:)
+  integer(i_def), allocatable :: vert_lbc_lam_map(:)
+  integer(i_def), allocatable :: edge_lbc_lam_map(:)
+
+  integer(i_def) :: local_lam_last_edge_cell
+  integer(i_def) :: n_layer_cells
+  integer(i_def) :: n_ghost_cells
+  real(r_def)    :: factor
+
+  ! Counters
+  integer(i_def) :: global_lbc_id
+  integer(i_def) :: local_lbc_id
+  integer(i_def) :: local_lbc_vert_id
+  integer(i_def) :: local_lbc_edge_id
+  integer(i_def) :: local_lbc_vert_gid
+  integer(i_def) :: local_lbc_edge_gid
+  integer(i_def) :: local_lam_id
+
+  integer(i_def) :: i, vert, edge, vert_count, edge_count
+
+  integer(i_def), parameter :: LAM_NO_CELL_NEXT = 0_i_def
+
+  ! NO_CELL_NEXT parameter will indicate there is no
+  ! cell at the given location. It also implies that
+  ! the looping cell is on adjacent to the inner domain
+  ! as a 0 (from the LAM cell next) will indicate the looping
+  ! cell is on the outer edge of domain.
+  integer(i_def), parameter :: NO_CELL_NEXT = -10_i_def
+
+  !     0000000000000000000000
+  !     0+------------------+0
+  !     0|  LBC Rim Cells   |0
+  !     0| +--------------+ |0
+  !     0| | NO_CELL_NEXT | |0
+
+
+  ! All local meshes to have a unique id, note:
+  ! This id is only valid for the program duration.
+  local_mesh_id_counter = local_mesh_id_counter + 1
+  call self%set_id( local_mesh_id_counter )
+
+  !==============================================
+
+  ! 1.1 Set the LBC mesh name
+  !     Appends '-lbc' to the specified mesh name if
+  !     present else use the name local mesh parent
+  !     provided.
+  if (present(name)) then
+    self%mesh_name = trim(name)//'-lbc'
+  else
+    self%mesh_name = trim(local_lam_mesh%get_mesh_name())//'-lbc'
+  end if
+
+  ! 1.2 Set co-ordinate conversion factor.
+  factor = 1.0_r_def
+  if ( local_lam_mesh%is_coord_sys_ll() ) then
+    ! For spherical co-ord system, internal
+    ! units should be in radians.
+    factor = radians_to_degrees
+  end if
+
+  ! 2.0 Initialise variables
+  !==============================================
+  !     These may be updated depending on the number of
+  !     overlapping Local LBC/LAM cells.
+  !
+  self%last_ghost_cell    = imdi
+  self%num_ghost          = 0_i_def
+  self%ncells_global_mesh = global_lam_mesh%get_ncells()
+
+  self%nedges_per_cell    = local_lam_mesh%get_nedges_per_cell()
+  self%nverts_per_cell    = local_lam_mesh%get_nverts_per_cell()
+  self%nverts_per_edge    = local_lam_mesh%get_nverts_per_edge()
+
+  self%geometry  = local_lam_mesh%geometry
+  self%coord_sys = local_lam_mesh%coord_sys
+  self%topology  = non_periodic_domain
+
+  self%npanels            = 1_i_def
+  self%max_stencil_depth  = 0_i_def
+  self%inner_depth        = 0_i_def
+  self%halo_depth         = 0_i_def
+
+  allocate(self%num_inner(self%inner_depth))
+  self%num_inner = 0
+
+  self%constructor_inputs = global_lam_mesh%get_constructor_inputs()
+  self%rim_depth          = global_lbc_mesh%get_rim_depth()
+  self%north_pole         = global_lbc_mesh%get_north_pole()
+  self%null_island        = global_lbc_mesh%get_null_island()
+  self%ntarget_meshes     = 1_i_def
+  self%coord_units_xy     = global_lbc_mesh%get_coord_units()
+  self%domain_size        = global_lam_mesh%get_domain_size()
+
+  if (allocated(self%local_mesh_maps)) deallocate(self%local_mesh_maps)
+  allocate(self%local_mesh_maps)
+
+  !===============================================================
+  ! 3.0 Determine if this local partition contains any
+  !     LBC cells. I.e. last_edge_cell > 0
+  !===============================================================
+  ! While looping here capture the local LBC maps:
+  ! *) local LBC -> local  LAM map  (Local LBC id - Local mesh id)
+  ! *) local LBC -> global LAM map  (Local LBC id - Global mesh id)
+  !
+  global_lbc_ncells    =  global_lbc_mesh%get_ncells()
+  global_lbc_mesh_maps => global_lbc_mesh%get_mesh_maps()
+  global_lbc_mesh_map  => global_lbc_mesh_maps%get_global_mesh_map(1,2)
+
+
+  ! 3.1 Extract the global LBC-LAM cell map.
+  !     LBC-LAM intergrid maps are always a 1:1 map, though are
+  !     returned as a [1,1,ncells] array.
+  call global_lbc_mesh_map%get_cell_map(tmp_global_lbc_lam_map)
+  global_lbc_lam_map = reshape(tmp_global_lbc_lam_map, [global_lbc_ncells])
+  if ( allocated(tmp_global_lbc_lam_map) ) deallocate(tmp_global_lbc_lam_map)
+
+
+  ! 3.2 Determine the number of overlapping cells and maps.
+  local_lam_gids           = local_lam_mesh%get_all_gid()
+  local_lam_last_edge_cell = local_lam_mesh%get_last_edge_cell()
+  n_layer_cells            = local_lam_mesh%get_num_cells_in_layer()
+  n_ghost_cells            = local_lam_mesh%get_num_cells_ghost()
+
+  allocate(tmp_lbc_gids(local_lam_last_edge_cell))
+  allocate(tmp_lam_lids(local_lam_last_edge_cell))
+  allocate(cell_lam_lbc_map(n_layer_cells + n_ghost_cells))
+
+  cell_lam_lbc_map = NO_CELL_NEXT
+
+  local_lbc_id = 0_i_def
+
+  do local_lam_id=1, local_lam_last_edge_cell
+    ! Use global_LBC_LAM_map to check if the local LAM cell gid
+    ! to see if it present on the LBC rim.
+    if ( ANY( global_lbc_lam_map == local_lam_gids(local_lam_id)) ) then
+
+      local_lbc_id = local_lbc_id + 1_i_def
+
+      ! Loop over the global_lbc_lam_map to capture the
+      ! global_lam IDs corresponding to the local LBC IDs
+      ! on this partition.
+      do global_lbc_id=1, global_lbc_ncells
+        if ( local_lam_gids(local_lam_id) == global_lbc_lam_map(global_lbc_id) ) then
+          tmp_lbc_gids(local_lbc_id) = global_lbc_id  ! Capture local lbc_id -> global lbc_id map
+        end if
+      end do
+
+      tmp_lam_lids(local_lbc_id)     = local_lam_id   ! Capture local lbc_id -> local lam_id map
+      cell_lam_lbc_map(local_lam_id) = local_lbc_id   ! Capture local lam_id -> local lbc_id map
+    end if
+
+  end do
+
+  self%last_edge_cell     = local_lbc_id
+  self%num_cells_in_layer = self%last_edge_cell
+
+  if ( self%last_edge_cell > 0_i_def ) then
+
+    self%npanels            = 1_i_def
+    self%ntarget_meshes     = 1_i_def
+
+     if ( allocated(self%target_mesh_names) ) then
+      deallocate(self%target_mesh_names)
+    end if
+    allocate(self%target_mesh_names(1))
+    self%target_mesh_names(1) = global_lam_mesh%get_mesh_name()
+
+    self%domain_size    = global_lam_mesh%get_domain_size()
+    self%north_pole     = global_lam_mesh%get_north_pole()
+    self%null_island    = global_lam_mesh%get_null_island()
+    self%coord_units_xy = global_lam_mesh%get_coord_units()
+
+  else
+
+    self%npanels            = 0_i_def
+    self%ntarget_meshes     = 0_i_def
+    self%n_unique_vertices  = 0_i_def
+    self%n_unique_edges     = 0_i_def
+    self%num_edge           = 0_i_def
+
+    self%coord_units_xy(:)  = 'N/A'
+    self%constructor_inputs = 'N/A'
+
+    deallocate(tmp_lam_lids, tmp_lbc_gids)
+
+    return
+
+  end if
+
+  allocate( cell_lbc_lam_map,    source=tmp_lam_lids(1:self%last_edge_cell) )
+  allocate( self%global_cell_id, source=tmp_lbc_gids(1:self%last_edge_cell) )
+  deallocate(tmp_lam_lids, tmp_lbc_gids)
+
+
+  !==============================================================
+  ! 4.0 Sets variable that are only relevant if there are
+  !     LBC cells in this partition.
+  !==============================================================
+
+  ! 4.1 Generate Local LBC cell_next.
+  !----------------------------------
+  allocate( tmp_cell_next(self%nedges_per_cell) )
+  allocate( self%cell_next(self%nedges_per_cell, self%last_edge_cell) )
+  self%num_edge = 0_i_def
+
+  do local_lbc_id=1, self%last_edge_cell
+
+    local_lam_id = cell_lbc_lam_map(local_lbc_id)
+    call local_lam_mesh%get_cell_next( local_lam_id, tmp_cell_next )
+
+    do i=1, self%nedges_per_cell
+      if (tmp_cell_next(i) == LAM_NO_CELL_NEXT) then
+        tmp_cell_next(i) = NO_CELL_NEXT
+      else
+        tmp_cell_next(i) = cell_lam_lbc_map( tmp_cell_next(i) )
+      end if
+    end do
+
+    self%cell_next(:,local_lbc_id) = tmp_cell_next(:)
+
+    ! 4.2 Capture number of cells on the edge of partition.
+    !------------------------------------------------------
+    ! If any cell has a NO_CELL_NEXT it is then an
+    ! edge cell as the LBC local has no halos.
+    if ( any(self%cell_next(:,local_lbc_id) == NO_CELL_NEXT) ) then
+      self%num_edge = self%num_edge + 1
+    end if
+
+  end do
+
+  deallocate( tmp_cell_next )
+
+
+  !======================================================================================
+  ! 4.2 Generate Local LBC vert_on_cells.
+  !======================================================================================
+  allocate( self%vert_on_cell_gid( self%nverts_per_cell, &
+                                   self%last_edge_cell ) )
+  allocate( unique_list( self%last_edge_cell * self%nverts_per_cell ) )
+
+  unique_list = -20
+  vert_count  = 0_i_def
+
+  do local_lbc_id=1, self%last_edge_cell
+    call global_lbc_mesh%get_vert_on_cell( self%global_cell_id(local_lbc_id), &
+                                           self%vert_on_cell_gid(:, local_lbc_id) )
+
+    do vert=1, self%nverts_per_cell
+      local_lbc_vert_gid = self%vert_on_cell_gid(vert, local_lbc_id)
+      if ( .not. any(unique_list(:) == local_lbc_vert_gid) ) then
+        vert_count = vert_count + 1_i_def
+        unique_list(vert_count) = local_lbc_vert_gid
+      end if
+    end do
+  end do
+
+  self%n_unique_vertices = vert_count
+  allocate( vert_lbc_lid_gid_map, &
+            source=unique_list(1:self%n_unique_vertices) )
+  deallocate(unique_list)
+
+  ! Convert the LBC vert_on_cells GIDs to LIDs.
+  allocate( self%vert_on_cell( self%nverts_per_cell, &
+                               self%last_edge_cell ) )
+  do local_lbc_id=1, self%last_edge_cell
+    do vert=1, self%nverts_per_cell
+      do i=1, self%n_unique_vertices
+        if ( self%vert_on_cell_gid(vert, local_lbc_id) == vert_lbc_lid_gid_map(i) ) then
+          self%vert_on_cell(vert, local_lbc_id) = i
+          exit
+        end if
+      end do
+    end do
+  end do
+
+
+  !======================================================================================
+  ! 4.3 Generate Local LBC edge_on_cells.
+  !======================================================================================
+  allocate( self%edge_on_cell_gid( self%nedges_per_cell, &
+                                   self%last_edge_cell ) )
+  allocate( unique_list( self%last_edge_cell * self%nedges_per_cell ) )
+
+  unique_list = -20_i_def
+  edge_count  = 0_i_def
+
+  do local_lbc_id=1, self%last_edge_cell
+    call global_lbc_mesh%get_edge_on_cell( self%global_cell_id(local_lbc_id), &
+                                           self%edge_on_cell_gid(:,local_lbc_id) )
+
+    do edge=1, self%nedges_per_cell
+      local_lbc_edge_gid = self%edge_on_cell_gid(edge, local_lbc_id)
+      if ( .not. any(unique_list(:) == local_lbc_edge_gid) ) then
+        edge_count = edge_count + 1_i_def
+        unique_list(edge_count) = self%edge_on_cell_gid(edge,local_lbc_id)
+      end if
+    end do
+  end do
+
+  self%n_unique_edges = edge_count
+  allocate( edge_lbc_lid_gid_map, &
+            source=unique_list(1:self%n_unique_edges) )
+  deallocate(unique_list)
+
+  ! Convert the LBC edge_on_cells GIDs to LIDs.
+  allocate( self%edge_on_cell( self%nedges_per_cell, &
+                               self%last_edge_cell ) )
+  do local_lbc_id=1, self%last_edge_cell
+    do edge=1, self%nedges_per_cell
+      local_lbc_edge_gid = self%edge_on_cell_gid(edge, local_lbc_id)
+      do i=1, self%n_unique_edges
+        if ( edge_lbc_lid_gid_map(i) == local_lbc_edge_gid ) then
+          self%edge_on_cell(edge, local_lbc_id) = i
+          exit
+        end if
+      end do
+    end do
+  end do
+
+
+  !======================================================================================
+  ! 4.4 Generate Local LBC vert on edges.
+  !======================================================================================
+  allocate( self%vert_on_edge_gid (2,self%n_unique_edges) )
+  allocate( self%vert_on_edge     (2,self%n_unique_edges) )
+
+  do local_lbc_edge_id=1, self%n_unique_edges
+
+    self%vert_on_edge_gid(:, local_lbc_edge_id) = &
+        global_lbc_mesh%get_vert_on_edge( edge_lbc_lid_gid_map(local_lbc_edge_id) )
+
+    ! Convert the lbc vert_on_edge GIDs to LIDs
+    do vert=1, 2
+      local_lbc_vert_gid = self%vert_on_edge_gid(vert, local_lbc_edge_id)
+
+      do i=1, self%n_unique_vertices
+        if ( vert_lbc_lid_gid_map(i) == local_lbc_vert_gid ) then
+          self%vert_on_edge(vert, local_lbc_edge_id) = i
+          exit
+        end if
+      end do
+    end do ! vert
+
+  end do ! edge
+
+
+  !======================================================================================
+  ! 5.0 Assign coords to nodes.
+  !======================================================================================
+  allocate( self%vert_coords(3, self%n_unique_vertices) )
+  self%vert_coords = 0.0_r_def
+  do local_lbc_vert_id=1, self%n_unique_vertices
+    call global_lbc_mesh%get_vert_coords( vert_lbc_lid_gid_map(local_lbc_vert_id), &
+                                          self%vert_coords(:,local_lbc_vert_id) )
+  end do
+
+  ! Internal coords of spherical units should be in radians
+  ! and only output in degrees.
+  if ( self%is_coord_sys_ll() ) then
+    if ( any(self%coord_units_xy /= 'radians') ) then
+      ! Scale the vertex coords so that they are in radians.
+      self%coord_units_xy(:) = 'radians'
+      self%vert_coords(:,:)  = self%vert_coords(:,:) * degrees_to_radians
+    end if
+  end if
+
+
+  !======================================================================================
+  ! 6.0 Generate cell ownership in terms of local IDs
+  ! NOTE: -1 means that the global cell that owns this vert/edge cell is not on this
+  !       local LBC mesh.
+  !======================================================================================
+  allocate( self%vert_cell_owner(self%n_unique_vertices) )
+  do vert=1, self%n_unique_vertices
+    self%vert_cell_owner( vert ) = &
+        self%get_lid_from_gid(     &
+            global_lbc_mesh%get_vert_cell_owner( vert_lbc_lid_gid_map( vert ) ) )
+  end do
+
+  allocate( self%edge_cell_owner(self%n_unique_edges) )
+  do edge=1, self%n_unique_edges
+    self%edge_cell_owner(edge) = &
+        self%get_lid_from_gid(   &
+            global_lbc_mesh%get_edge_cell_owner( edge_lbc_lid_gid_map(edge) ) )
+  end do
+
+
+  !======================================================================================
+  ! 7.0 Extract cell/edge/vert LBC_LAM_maps (lid-lid) (if requested).
+  !======================================================================================
+
+  ! 7.1 Local LBC -> LAM cell map.
+  !------------------------------------------
+  if ( present(cell_map) ) then
+    if (allocated(cell_map)) deallocate(cell_map)
+    allocate( cell_map, source=cell_lbc_lam_map )
+  end if
+
+  ! 7.2 Local LBC -> LAM edge map.
+  !------------------------------------------
+  if ( present(edge_map) ) then
+
+    allocate( edge_lbc_lam_map(self%n_unique_edges) )
+
+    do local_lbc_id=1, self%last_edge_cell
+      do edge=1, self%nedges_per_cell
+        local_lbc_edge_id = self%edge_on_cell(edge,local_lbc_id)
+        edge_lbc_lam_map( local_lbc_edge_id ) =    &
+                local_lam_mesh%edge_on_cell( edge, &
+                                             cell_lbc_lam_map(local_lbc_id) )
+      end do
+    end do
+
+    if ( allocated(edge_map) ) deallocate(edge_map)
+    allocate( edge_map, source=edge_lbc_lam_map )
+
+    deallocate( edge_lbc_lam_map )
+
+  end if
+
+  ! 7.3 Local LBC -> LAM vertex map.
+  !------------------------------------------
+  if ( present(vert_map) ) then
+
+    allocate( vert_lbc_lam_map(self%n_unique_vertices) )
+
+    do local_lbc_id=1, self%last_edge_cell
+      do vert=1, self%nverts_per_cell
+        local_lbc_vert_id = self%vert_on_cell(vert,local_lbc_id)
+        vert_lbc_lam_map( local_lbc_vert_id ) =    &
+                local_lam_mesh%vert_on_cell( vert, &
+                                             cell_lbc_lam_map(local_lbc_id) )
+      end do
+    end do
+
+    if ( allocated(vert_map) ) deallocate(vert_map)
+    allocate( vert_map, source=vert_lbc_lam_map )
+
+  end if
+
+  end subroutine initialise_lbc
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !> @brief Initialises a local mesh object for use in unit testing.
   !>
   !> @return New local_mesh_type object.
   !>
@@ -441,112 +1042,113 @@ contains
     local_mesh_id_counter = local_mesh_id_counter + 1
     call self%set_id( local_mesh_id_counter )
 
-    self%nverts_per_cell = 4
-    self%nverts_per_edge = 2
-    self%nedges_per_cell = 4
-    self%num_cells_in_layer = 9
-    self%n_unique_vertices = 16
-    self%n_unique_edges = 24
+    self%nverts_per_cell    =  4_i_def
+    self%nverts_per_edge    =  2_i_def
+    self%nedges_per_cell    =  4_i_def
+    self%num_cells_in_layer =  9_i_def
+    self%n_unique_vertices  = 16_i_def
+    self%n_unique_edges     = 24_i_def
 
     allocate( self%global_cell_id(9) )
     self%global_cell_id = [1,2,3,4,5,6,7,8,9]
 
-    self%inner_depth = 1
+    self%inner_depth = 1_i_def
     allocate( self%num_inner(self%inner_depth) )
     allocate( self%last_inner_cell(self%inner_depth) )
-    self%num_inner(1) = 9
-    self%last_inner_cell(1) = 9
 
-    self%num_edge = 0
-    self%last_edge_cell = 9
+    self%num_inner(1)       = 9_i_def
+    self%last_inner_cell(1) = 9_i_def
 
-    self%halo_depth  = 3
+    self%num_edge       = 0_i_def
+    self%last_edge_cell = 9_i_def
+
+    self%halo_depth  = 3_i_def
     allocate( self%num_halo(self%halo_depth) )
-    self%num_halo(1) = 0
-    self%num_halo(2) = 0
-    self%num_halo(3) = 0
+    self%num_halo(1) = 0_i_def
+    self%num_halo(2) = 0_i_def
+    self%num_halo(3) = 0_i_def
     allocate( self%last_halo_cell(self%halo_depth) )
-    self%last_halo_cell(1) = 9
-    self%last_halo_cell(2) = 9
-    self%last_halo_cell(3) = 9
+    self%last_halo_cell(1) = 9_i_def
+    self%last_halo_cell(2) = 9_i_def
+    self%last_halo_cell(3) = 9_i_def
 
-    self%num_ghost = 0
+    self%num_ghost = 0_i_def
 
     allocate( self%vert_cell_owner(self%n_unique_vertices) )
-    self%vert_cell_owner(:) = [ 8, 9, 6, 1, &
-                                5, 3, 2, 4, &
-                                6, 4, 7, 9, &
-                                7, 8, 9, 9 ]
+    self%vert_cell_owner(:) = [ 8_i_def, 9_i_def, 6_i_def, 1_i_def, &
+                                5_i_def, 3_i_def, 2_i_def, 4_i_def, &
+                                6_i_def, 4_i_def, 7_i_def, 9_i_def, &
+                                7_i_def, 8_i_def, 9_i_def, 9 ]
     allocate( self%edge_cell_owner(self%n_unique_edges) )
-    self%edge_cell_owner(:) = [ 1, 8, 6, 1, 2, 5, &
-                                3, 2, 4, 3, 6, 4, &
-                                4, 5, 7, 9, 6, 7, &
-                                7, 8, 8, 9, 9, 9 ]
+    self%edge_cell_owner(:) = [ 1_i_def, 8_i_def, 6_i_def, 1_i_def, 2_i_def, 5_i_def, &
+                                3_i_def, 2_i_def, 4_i_def, 3_i_def, 6_i_def, 4_i_def, &
+                                4_i_def, 5_i_def, 7_i_def, 9_i_def, 6_i_def, 7_i_def, &
+                                7_i_def, 8_i_def, 8_i_def, 9_i_def, 9_i_def, 9 ]
 
     allocate( self%cell_next(self%nedges_per_cell, self%num_cells_in_layer) )
-    self%cell_next(:,1) = [3, 7, 2, 4]
-    self%cell_next(:,2) = [1, 8, 3, 5]
-    self%cell_next(:,3) = [2, 9, 1, 6]
-    self%cell_next(:,4) = [6, 1, 5, 7]
-    self%cell_next(:,5) = [4, 2, 6, 8]
-    self%cell_next(:,6) = [5, 3, 4, 9]
-    self%cell_next(:,7) = [9, 4, 8, 1]
-    self%cell_next(:,8) = [7, 5, 9, 2]
-    self%cell_next(:,9) = [8, 6, 7, 3]
+    self%cell_next(:,1) = [3_i_def, 7_i_def, 2_i_def, 4_i_def]
+    self%cell_next(:,2) = [1_i_def, 8_i_def, 3_i_def, 5_i_def]
+    self%cell_next(:,3) = [2_i_def, 9_i_def, 1_i_def, 6_i_def]
+    self%cell_next(:,4) = [6_i_def, 1_i_def, 5_i_def, 7_i_def]
+    self%cell_next(:,5) = [4_i_def, 2_i_def, 6_i_def, 8_i_def]
+    self%cell_next(:,6) = [5_i_def, 3_i_def, 4_i_def, 9_i_def]
+    self%cell_next(:,7) = [9_i_def, 4_i_def, 8_i_def, 1_i_def]
+    self%cell_next(:,8) = [7_i_def, 5_i_def, 9_i_def, 2_i_def]
+    self%cell_next(:,9) = [8_i_def, 6_i_def, 7_i_def, 3_i_def]
 
     allocate( self%vert_on_cell(self%nverts_per_cell, self%num_cells_in_layer) )
-    self%vert_on_cell(:, 1) = [ 1,  2,  3,  4]
-    self%vert_on_cell(:, 2) = [ 2,  5,  6,  3]
-    self%vert_on_cell(:, 3) = [ 5,  1,  4,  6]
-    self%vert_on_cell(:, 4) = [ 4,  3,  7,  8]
-    self%vert_on_cell(:, 5) = [ 3,  6,  9,  7]
-    self%vert_on_cell(:, 6) = [ 6,  4,  8,  9]
-    self%vert_on_cell(:, 7) = [ 8,  7,  2,  1]
-    self%vert_on_cell(:, 8) = [ 7,  9,  5,  2]
-    self%vert_on_cell(:, 9) = [ 9,  8,  1,  5]
+    self%vert_on_cell(:, 1) = [ 1_i_def,  2_i_def,  3_i_def,  4_i_def]
+    self%vert_on_cell(:, 2) = [ 2_i_def,  5_i_def,  6_i_def,  3_i_def]
+    self%vert_on_cell(:, 3) = [ 5_i_def,  1_i_def,  4_i_def,  6_i_def]
+    self%vert_on_cell(:, 4) = [ 4_i_def,  3_i_def,  7_i_def,  8_i_def]
+    self%vert_on_cell(:, 5) = [ 3_i_def,  6_i_def,  9_i_def,  7_i_def]
+    self%vert_on_cell(:, 6) = [ 6_i_def,  4_i_def,  8_i_def,  9_i_def]
+    self%vert_on_cell(:, 7) = [ 8_i_def,  7_i_def,  2_i_def,  1_i_def]
+    self%vert_on_cell(:, 8) = [ 7_i_def,  9_i_def,  5_i_def,  2_i_def]
+    self%vert_on_cell(:, 9) = [ 9_i_def,  8_i_def,  1_i_def,  5_i_def]
 
     allocate( self%edge_on_cell(self%nedges_per_cell, self%num_cells_in_layer) )
-    self%edge_on_cell(:, 1) = [ 1,  2,  3,  4]
-    self%edge_on_cell(:, 2) = [ 3,  5,  6,  7]
-    self%edge_on_cell(:, 3) = [ 6,  8,  1,  9]
-    self%edge_on_cell(:, 4) = [10,  4, 11, 12]
-    self%edge_on_cell(:, 5) = [11,  7, 13, 14]
-    self%edge_on_cell(:, 6) = [13,  9, 10, 15]
-    self%edge_on_cell(:, 7) = [16, 12, 17,  2]
-    self%edge_on_cell(:, 8) = [17, 14, 18,  5]
-    self%edge_on_cell(:, 9) = [18, 15, 16,  8]
+    self%edge_on_cell(:, 1) = [ 1_i_def,  2_i_def,  3_i_def,  4_i_def]
+    self%edge_on_cell(:, 2) = [ 3_i_def,  5_i_def,  6_i_def,  7_i_def]
+    self%edge_on_cell(:, 3) = [ 6_i_def,  8_i_def,  1_i_def,  9_i_def]
+    self%edge_on_cell(:, 4) = [10_i_def,  4_i_def, 11_i_def, 12_i_def]
+    self%edge_on_cell(:, 5) = [11_i_def,  7_i_def, 13_i_def, 14_i_def]
+    self%edge_on_cell(:, 6) = [13_i_def,  9_i_def, 10_i_def, 15_i_def]
+    self%edge_on_cell(:, 7) = [16_i_def, 12_i_def, 17_i_def,  2_i_def]
+    self%edge_on_cell(:, 8) = [17_i_def, 14_i_def, 18_i_def,  5_i_def]
+    self%edge_on_cell(:, 9) = [18_i_def, 15_i_def, 16_i_def,  8_i_def]
 
     allocate( self%vert_on_cell_gid(self%nverts_per_cell, self%num_cells_in_layer) )
-    self%vert_on_cell_gid(:, 1) = [ 1,  2,  3,  4]
-    self%vert_on_cell_gid(:, 2) = [ 2,  5,  6,  3]
-    self%vert_on_cell_gid(:, 3) = [ 5,  1,  4,  6]
-    self%vert_on_cell_gid(:, 4) = [ 4,  3,  7,  8]
-    self%vert_on_cell_gid(:, 5) = [ 3,  6,  9,  7]
-    self%vert_on_cell_gid(:, 6) = [ 6,  4,  8,  9]
-    self%vert_on_cell_gid(:, 7) = [ 8,  7,  2,  1]
-    self%vert_on_cell_gid(:, 8) = [ 7,  9,  5,  2]
-    self%vert_on_cell_gid(:, 9) = [ 9,  8,  1,  5]
+    self%vert_on_cell_gid(:, 1) = [1_i_def,  2_i_def,  3_i_def,  4_i_def]
+    self%vert_on_cell_gid(:, 2) = [2_i_def,  5_i_def,  6_i_def,  3_i_def]
+    self%vert_on_cell_gid(:, 3) = [5_i_def,  1_i_def,  4_i_def,  6_i_def]
+    self%vert_on_cell_gid(:, 4) = [4_i_def,  3_i_def,  7_i_def,  8_i_def]
+    self%vert_on_cell_gid(:, 5) = [3_i_def,  6_i_def,  9_i_def,  7_i_def]
+    self%vert_on_cell_gid(:, 6) = [6_i_def,  4_i_def,  8_i_def,  9_i_def]
+    self%vert_on_cell_gid(:, 7) = [8_i_def,  7_i_def,  2_i_def,  1_i_def]
+    self%vert_on_cell_gid(:, 8) = [7_i_def,  9_i_def,  5_i_def,  2_i_def]
+    self%vert_on_cell_gid(:, 9) = [9_i_def,  8_i_def,  1_i_def,  5_i_def]
 
     allocate( self%edge_on_cell_gid(self%nedges_per_cell, self%num_cells_in_layer) )
-    self%edge_on_cell_gid(:, 1) = [ 1,  2,  3,  4]
-    self%edge_on_cell_gid(:, 2) = [ 3,  5,  6,  7]
-    self%edge_on_cell_gid(:, 3) = [ 6,  8,  1,  9]
-    self%edge_on_cell_gid(:, 4) = [10,  4, 11, 12]
-    self%edge_on_cell_gid(:, 5) = [11,  7, 13, 14]
-    self%edge_on_cell_gid(:, 6) = [13,  9, 10, 15]
-    self%edge_on_cell_gid(:, 7) = [16, 12, 17,  2]
-    self%edge_on_cell_gid(:, 8) = [17, 14, 18,  5]
-    self%edge_on_cell_gid(:, 9) = [18, 15, 16,  8]
+    self%edge_on_cell_gid(:, 1) = [ 1_i_def,  2_i_def,  3_i_def,  4_i_def]
+    self%edge_on_cell_gid(:, 2) = [ 3_i_def,  5_i_def,  6_i_def,  7_i_def]
+    self%edge_on_cell_gid(:, 3) = [ 6_i_def,  8_i_def,  1_i_def,  9_i_def]
+    self%edge_on_cell_gid(:, 4) = [10_i_def,  4_i_def, 11_i_def, 12_i_def]
+    self%edge_on_cell_gid(:, 5) = [11_i_def,  7_i_def, 13_i_def, 14_i_def]
+    self%edge_on_cell_gid(:, 6) = [13_i_def,  9_i_def, 10_i_def, 15_i_def]
+    self%edge_on_cell_gid(:, 7) = [16_i_def, 12_i_def, 17_i_def,  2_i_def]
+    self%edge_on_cell_gid(:, 8) = [17_i_def, 14_i_def, 18_i_def,  5_i_def]
+    self%edge_on_cell_gid(:, 9) = [18_i_def, 15_i_def, 16_i_def,  8_i_def]
 
     allocate( self%cell_owner(self%num_cells_in_layer+self%num_ghost) )
-    self%cell_owner = 0
+    self%cell_owner = 0_i_def
 
-    self%npanels = 1
+    self%npanels = 1_i_def
 
   end subroutine initialise_unit_test
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !> @brief Calculate ownership of all cells known to this local mesh
+  !> @brief Calculate ownership of all cells known to this local mesh.
   !>
   !> An array representing all cells known to the local mesh has all the
   !> owned cells filled with the local rank ID (on every processor in
@@ -570,27 +1172,28 @@ contains
     integer(i_def) :: local_rank
 
     allocate( self%cell_owner(self%num_cells_in_layer+self%num_ghost) )
+    self%cell_owner = 0_i_def
 
-    ! Halo routines expect a 64-bit integer index - so convert global_cell_id
+    ! Halo routines expect a 64-bit integer index - so convert global_cell_id.
     allocate( cell_id(size(self%global_cell_id)) )
     do i = 1, size(self%global_cell_id)
       cell_id(i) = self%global_cell_id(i)
     end do
 
-    ! Work out the boundary between owned and halo cells
+    ! Work out the boundary between owned and halo cells.
     total_inners=0
     do i=1,self%inner_depth
       total_inners=total_inners+self%num_inner(i)
     end do
     last_owned_cell = total_inners+self%num_edge
-    halo_start(1)  = last_owned_cell + 1
+    halo_start(1)  = last_owned_cell + 1_i_def
     halo_finish(1) = self%get_num_cells_in_layer()+self%get_num_cells_ghost()
     ! The above assumes there is a halo cell following the last owned cell.
     ! This might not be true (e.g. in a serial run), so fix the start/finish
-    ! points when that happens
+    ! points when that happens.
     if(halo_start(1) > self%get_num_cells_in_layer())then
       halo_start(1)  = self%get_num_cells_in_layer()
-      halo_finish(1) = self%get_num_cells_in_layer() - 1
+      halo_finish(1) = self%get_num_cells_in_layer() - 1_i_def
     end if
 
     ! Set up a halo routing table for the cell owners data. Note this is
@@ -600,7 +1203,7 @@ contains
     ! as this is a one-use routing table. But to complete the argument list
     ! the closest description of this data is that it is lowest order,
     ! non-multidata, 32-bit integer, W3 data. As this is mesh data it's not
-    !'on' a mesh as such - so just pass a mesh_id of zero
+    !'on' a mesh as such - so just pass a mesh_id of zero.
     allocate(halo_routing)
     halo_routing = halo_routing_type( global_dof_id  = cell_id, &
                                       last_owned_dof = last_owned_cell, &
@@ -616,13 +1219,13 @@ contains
     deallocate(cell_id)
 
     ! Set ownership of all inner and edge cells to the local rank id
-    ! - halo cells are unset
+    ! - halo cells are unset.
     local_rank = get_comm_rank()
     do cell = 1,total_inners+self%num_edge
       self%cell_owner(cell)=local_rank
     end do
 
-    ! Perform the halo swap to depth 1
+    ! Perform the halo swap to depth 1.
     cell_owner_ptr => self%cell_owner
     call perform_halo_exchange( cell_owner_ptr, &
                                 halo_routing, &
@@ -632,7 +1235,7 @@ contains
   end subroutine init_cell_owner
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !> @brief Fortran destructor, called when object goes out of scope
+  !> @brief Fortran destructor, called when object goes out of scope.
   !>
   subroutine local_mesh_destructor(self)
     implicit none
@@ -649,21 +1252,23 @@ contains
     implicit none
     class (local_mesh_type), intent(inout) :: self
 
-    if( allocated( self%global_cell_id ) )  deallocate( self%global_cell_id )
-    if( allocated( self%cell_next ) )       deallocate( self%cell_next )
-    if( allocated( self%cell_owner ) )      deallocate( self%cell_owner )
-    if( allocated( self%num_inner ) )       deallocate( self%num_inner )
-    if( allocated( self%last_inner_cell ) ) deallocate( self%last_inner_cell )
-    if( allocated( self%num_halo ) )        deallocate( self%num_halo )
-    if( allocated( self%last_halo_cell ) )  deallocate( self%last_halo_cell )
-    if( allocated( self%vert_cell_owner) )  deallocate( self%vert_cell_owner)
-    if( allocated( self%edge_cell_owner) )  deallocate( self%edge_cell_owner)
+    if ( allocated( self%global_cell_id ) )  deallocate( self%global_cell_id )
+    if ( allocated( self%cell_next ) )       deallocate( self%cell_next )
+    if ( allocated( self%cell_owner ) )      deallocate( self%cell_owner )
+    if ( allocated( self%num_inner ) )       deallocate( self%num_inner )
+    if ( allocated( self%last_inner_cell ) ) deallocate( self%last_inner_cell )
+    if ( allocated( self%num_halo ) )        deallocate( self%num_halo )
+    if ( allocated( self%last_halo_cell ) )  deallocate( self%last_halo_cell )
+    if ( allocated( self%vert_cell_owner) )  deallocate( self%vert_cell_owner)
+    if ( allocated( self%edge_cell_owner) )  deallocate( self%edge_cell_owner)
+    if ( allocated( self%local_mesh_maps ) ) deallocate( self%local_mesh_maps )
+
     return
   end subroutine clear
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !> @brief  Returns mesh tag name.
-  !> @return mesh_name  Tag name of mesh
+  !> @return mesh_name  Tag name of mesh.
   !>
   function get_mesh_name( self ) result ( mesh_name )
     implicit none
@@ -676,9 +1281,9 @@ contains
 
 
   !---------------------------------------------------------------------------
-  !> @brief  Queries if the local mesh domain geometry is spherical
+  !> @brief  Queries if the local mesh domain geometry is spherical.
   !>
-  !> @return answer .true. for a spherical domain surface
+  !> @return answer .true. for a spherical domain surface.
   !>
   function is_geometry_spherical( self ) result ( answer )
 
@@ -696,7 +1301,7 @@ contains
   !---------------------------------------------------------------------------
   !> @brief  Queries if the local mesh domain geometry is a flat surface.
   !>
-  !> @return answer .true. for a flat domain surface
+  !> @return answer .true. for a flat domain surface.
   !>
   function is_geometry_planar( self ) result ( answer )
 
@@ -715,7 +1320,7 @@ contains
   !> @brief  Queries if the local mesh topology specifies a domain where all the
   !>         boundaries are closed.
   !>
-  !> @return answer .true. for a domain which is non-periodic
+  !> @return answer .true. for a domain which is non-periodic.
   !>
   function is_topology_non_periodic( self ) result ( answer )
 
@@ -732,7 +1337,7 @@ contains
 
   !---------------------------------------------------------------------------
   !> @brief  Queries if the local mesh topology specifies a domain where there
-  !>         is only one pair of entry/exit boundaries
+  !>         is only one pair of entry/exit boundaries.
   !>
   !> @return answer .true. for a domain which forms a channel.
   !>
@@ -753,7 +1358,7 @@ contains
   !> @brief  Queries if the local mesh topology specifies a domain where all
   !>         domain boundaries are periodic.
   !>
-  !> @return answer .true. for a domain which is periodic
+  !> @return answer .true. for a domain which is periodic.
   !>
   function is_topology_periodic( self ) result ( answer )
 
@@ -772,7 +1377,7 @@ contains
   !> @brief  Queries if the local mesh nodes are specified using Cartesian
   !>         co-ordinates (x,y,z).
   !>
-  !> @return answer .true. if nodes are specified in Cartesian co-ordinates
+  !> @return answer .true. if nodes are specified in Cartesian co-ordinates.
   !>
   function is_coord_sys_xyz( self ) result ( answer )
 
@@ -790,7 +1395,7 @@ contains
   !> @brief  Queries if the local mesh nodes are specified using Spherical
   !>         co-ordinates (longitude, latitude).
   !>
-  !> @return answer .true. if nodes are specified in spherical co-ordinates
+  !> @return answer .true. if nodes are specified in spherical co-ordinates.
   !>
   function is_coord_sys_ll( self ) result ( answer )
 
@@ -869,39 +1474,35 @@ contains
 
   end function get_num_cells_in_layer
 
-  !> @details Returns the global edge id on the local cell
-  !> @param [in] iedge    The index of the edge whose global id is requested
-  !> @param [in] icell    The local id of the cell on which the edge is located
-  !> @return              Global id of the selected edge
+  !> @details Returns the global edge id on the local cell.
+  !> @param [in] iedge    The index of the edge whose global id is requested.
+  !> @param [in] icell    The local id of the cell on which the edge is located.
+  !> @return              Global id of the selected edge.
   !>
   function get_edge_gid_on_cell(self, iedge, icell) result (edge_gid)
 
-    ! Return global edge id on local cell
-
     implicit none
     class(local_mesh_type), intent(in) :: self
-    integer(i_def),         intent(in) :: iedge   ! Index of edge required
-    integer(i_def),         intent(in) :: icell   ! Local cell id
+    integer(i_def),         intent(in) :: iedge   ! Index of edge required.
+    integer(i_def),         intent(in) :: icell   ! Local cell id.
     integer(i_def)                     :: edge_gid
 
     edge_gid = self%edge_on_cell_gid(iedge, icell)
 
   end function get_edge_gid_on_cell
 
-  !> @details Returns the global vertex id on the local cell
-  !> @param [in] ivert    The index of the vertex whose global id is requested
+  !> @details Returns the global vertex id on the local cell.
+  !> @param [in] ivert    The index of the vertex whose global id is requested.
   !> @param [in] icell    The local id of the cell on which the vertex
-  !>                      is located
-  !> @return              Global id of the selected vertex
+  !>                      is located.
+  !> @return              Global id of the selected vertex.
   !>
   function get_vert_gid_on_cell(self, ivert, icell) result (vert_gid)
 
-    ! Returns global vertex id on local cell
-
     implicit none
     class(local_mesh_type), intent(in) :: self
-    integer(i_def),         intent(in) :: ivert   ! Index of vertex required
-    integer(i_def),         intent(in) :: icell   ! Local cell id
+    integer(i_def),         intent(in) :: ivert   ! Index of vertex required.
+    integer(i_def),         intent(in) :: icell   ! Local cell id.
     integer(i_def)                     :: vert_gid
 
     vert_gid = self%vert_on_cell_gid(ivert, icell)
@@ -926,9 +1527,9 @@ contains
   end subroutine get_vert_coords
 
   !---------------------------------------------------------------------------
-  !> @brief Gets the number of unique vertices in the local domain
+  !> @brief Gets the number of unique vertices in the local domain.
   !>
-  !> @return The number of unique vertices in the local domain
+  !> @return The number of unique vertices in the local domain.
   function get_n_unique_vertices( self ) result ( n_unique_vertices )
 
     implicit none
@@ -942,9 +1543,9 @@ contains
   end function get_n_unique_vertices
 
   !---------------------------------------------------------------------------
-  !> @brief Gets the number of unique edges in the local domain
+  !> @brief Gets the number of unique edges in the local domain.
   !>
-  !> @return The number of unique edges in the local domain
+  !> @return The number of unique edges in the local domain.
   function get_n_unique_edges( self ) result ( n_unique_edges )
 
     implicit none
@@ -957,14 +1558,12 @@ contains
 
   end function get_n_unique_edges
 
-  !> @details Returns the local edge id on the local cell
-  !> @param [in] iedge    The index of the edge whose local id is requested
-  !> @param [in] icell    The local id of the cell on which the edge is located
-  !> @return              Local id of the select edge
+  !> @details Returns the local edge id on the local cell.
+  !> @param [in] iedge    The index of the edge whose local id is requested.
+  !> @param [in] icell    The local id of the cell on which the edge is located.
+  !> @return              Local id of the select edge.
   !>
   function get_edge_on_cell(self, iedge, icell) result (edge_lid)
-
-    ! Return local edge id on local cell
 
     implicit none
     class(local_mesh_type), intent(in) :: self
@@ -976,15 +1575,13 @@ contains
 
   end function get_edge_on_cell
 
-  !> @details Returns the local vertex id on the local cell
-  !> @param [in] ivert    The index of the vertex whose local id is requested
+  !> @details Returns the local vertex id on the local cell.
+  !> @param [in] ivert    The index of the vertex whose local id is requested.
   !> @param [in] icell    The local id of the cell on which the vertex
-  !>                      is located
-  !> @return              Local id of the selected vertex
+  !>                      is located.
+  !> @return              Local id of the selected vertex.
   !>
   function get_vert_on_cell(self, ivert, icell) result (vert_lid)
-
-    ! Returns local vertex id on local cell
 
     implicit none
     class(local_mesh_type), intent(in) :: self
@@ -997,11 +1594,11 @@ contains
   end function get_vert_on_cell
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !> @brief Gets the cell that a vertex has been allocated to
+  !> @brief Gets the cell that a vertex has been allocated to.
   !>
-  !> @param[in] vert Local ID of the vertex
+  !> @param[in] vert Local ID of the vertex.
   !>
-  !> @return Local cell ID that the vertex has been allocated to
+  !> @return Local cell ID that the vertex has been allocated to.
   !>
   function get_vert_cell_owner ( self, vert ) result ( cell )
 
@@ -1015,11 +1612,11 @@ contains
   end function get_vert_cell_owner
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !> @brief Gets the cell that an edge has been allocated to
+  !> @brief Gets the cell that an edge has been allocated to.
   !>
-  !> @param[in] edge Local ID of the edge
+  !> @param[in] edge Local ID of the edge.
   !>
-  !> @return Local cell ID that the edge has been allocated to
+  !> @return Local cell ID that the edge has been allocated to.
   !>
   function get_edge_cell_owner ( self, edge ) result ( cell )
 
@@ -1033,7 +1630,7 @@ contains
   end function get_edge_cell_owner
 
   !---------------------------------------------------------------------------
-  !> @brief Gets the local ids of the cells adjacent to a cell.
+  !> @brief Gets the local IDs of the cells adjacent to a cell.
   !>
   !> @param[in]  cell_lid  Local ID of a cell.
   !> @param[out] cell_next Local IDs of the cells adjacent to cell cell_lid.
@@ -1070,7 +1667,7 @@ contains
   !> @brief Gets number of cells in an inner halo.
   !>
   !> @details Returns the total number of inner halo cells in a particular
-  !>          depth of inner halo in a 2d slice on the local partition.
+  !>          depth of inner halo in a 2D slice on the local partition.
   !>
   !> @param[in] depth The level of inner halo being queried.
   !>
@@ -1099,7 +1696,7 @@ contains
   !> @brief Gets the index of the last cell in an inner halo.
   !>
   !> @details Returns the index of the last cell in a particular depth of
-  !>          inner halo in a 2d slice on the local partition.
+  !>          inner halo in a 2D slice on the local partition.
   !>
   !> @param[in] depth The level of inner halo being queried.
   !>
@@ -1119,7 +1716,7 @@ contains
       last_inner_cell = 0
     else if( depth == 0 )then
       ! The zeroth depth inner halo has no size, so its last cell is in the
-      ! same place as the inner halo before it in memory: inner(1)
+      ! same place as the inner halo before it in memory: inner(1).
       last_inner_cell = self%last_inner_cell(1)
     else
       last_inner_cell = self%last_inner_cell(depth)
@@ -1128,7 +1725,7 @@ contains
   end function get_last_inner_cell
 
   !---------------------------------------------------------------------------
-  !> @brief Gets the total number of edge cells in a 2d slice on the local
+  !> @brief Gets the total number of edge cells in a 2D slice on the local
   !>        partition.
   !>
   !> @return Total number of "edge" cells on the local partition.
@@ -1146,7 +1743,7 @@ contains
   end function get_num_cells_edge
 
   !---------------------------------------------------------------------------
-  !> @brief Gets the index of the last edge cell in a 2d slice on the local
+  !> @brief Gets the index of the last edge cell in a 2D slice on the local
   !>        partition.
   !>
   !> @return Index of the last of "edge" cell on the local partition.
@@ -1185,7 +1782,7 @@ contains
   !> @brief Gets number of cells in a halo.
   !>
   !> @details Returns the total number of halo cells in a particular depth
-  !>          of halo in a 2d slice on the local partition.
+  !>          of halo in a 2D slice on the local partition.
   !>
   !> @param[in] depth The depth of the halo being queried.
   !>
@@ -1213,7 +1810,7 @@ contains
   !> @brief Gets the index of the last cell in a halo.
   !>
   !> @details Returns the index of the last cell in a particular depth of halo
-  !>          in a 2d slice on the local partition.
+  !>          in a 2D slice on the local partition.
   !>
   !> @param[in] depth The depth of the halo being queried.
   !>
@@ -1233,7 +1830,7 @@ contains
       last_halo_cell = 0
     else if (depth == 0) then
       ! The zeroth depth halo has no size, so its last cell is in the
-      ! same place as the last edge cell
+      ! same place as the last edge cell.
       last_halo_cell = self%get_last_edge_cell()
     else
       last_halo_cell = self%last_halo_cell(depth)
@@ -1321,7 +1918,7 @@ contains
   !---------------------------------------------------------------------------
   !> @brief Gets the number cells in the global mesh.
   !>
-  !> @return Number of cells in the global mesh
+  !> @return Number of cells in the global mesh.
   !>
   function get_ncells_global_mesh ( self ) result ( ncells_global_mesh )
 
@@ -1356,6 +1953,25 @@ contains
   end function get_gid_from_lid
 
   !---------------------------------------------------------------------------
+  !> @brief Gets the whole LID-GID map for cells on this partition.
+  !>
+  !> @return gids Integer array of LID-GID map, index is local cell ID, value is
+  !>              corresponding global ID of the same cell.
+  !>
+  function get_all_gid( self) result ( gids )
+
+    implicit none
+
+    class(local_mesh_type), intent(in) :: self
+
+    integer(i_def), allocatable :: gids(:)
+
+    if (allocated(gids)) deallocate(gids)
+    allocate( gids, source=self%global_cell_id )
+
+  end function get_all_gid
+
+  !---------------------------------------------------------------------------
   !> @brief Gets the local index of the cell on the local partition that
   !>        corresponds to the given global index.
   !>
@@ -1363,7 +1979,7 @@ contains
   !>
   !> @return Local index that corresponds to the given global index or -1 if
   !>         the cell with the given global index is not present of the local
-  !>         partition
+  !>         partition.
   !>
   function get_lid_from_gid( self, gid ) result ( lid )
   !
@@ -1375,19 +1991,19 @@ contains
   ! the ghost cells. The cells are numerically ordered within the different
   ! groups so a binary search can be used, but not between groups, so need to do
   ! separate binary searches through the inner, edge, halo and ghost cells and
-  ! exit if a match is found
+  ! exit if a match is found.
   !
     implicit none
 
     class(local_mesh_type), intent(in) :: self
     integer(i_def),         intent(in) :: gid  ! global index
 
-    integer(i_def) :: lid                     ! local index (returned)
+    integer(i_def) :: lid                      ! local index (returned)
 
-    integer(i_def) :: num_searched            ! Num cells alreadt searched
-    integer(i_def) :: depth                   ! loop counter over halo depths
-    integer(i_def) :: start_search            ! start point for a search
-    integer(i_def) :: end_search              ! end point for a search
+    integer(i_def) :: num_searched             ! Num cells alreadt searched
+    integer(i_def) :: depth                    ! loop counter over halo depths
+    integer(i_def) :: start_search             ! start point for a search
+    integer(i_def) :: end_search               ! end point for a search
 
     ! Set the default return code
     lid = -1
@@ -1409,7 +2025,7 @@ contains
       num_searched = num_searched + self%num_inner(depth)
     end do
 
-    ! Search though edge cells - looking for the gid
+    ! Search though edge cells - looking for the gid.
     start_search = end_search + 1
     end_search = start_search + self%num_edge - 1
 
@@ -1420,7 +2036,7 @@ contains
     end if
     num_searched = num_searched + self%num_edge
 
-    ! Search though halo cells - looking for the gid
+    ! Search though halo cells - looking for the gid.
     do depth = 1,self%halo_depth + 1
       start_search = end_search + 1
       if(depth <= self%halo_depth) then
@@ -1447,15 +2063,15 @@ contains
 
   !==============================================================================
   !> @brief     Adds a local_mesh_map object to the mesh map collection
-  !.            held in this local mesh
-  !> @param[in] target_local_mesh_id ID of the target local mesh
+  !.            held in this local mesh.
+  !> @param[in] target_local_mesh_id  ID of the target local mesh
   !>                                  object for this local mesh map object.
   !> @param[in] map
-  !>            Local cell ids of the target local mesh object which
+  !>            Local cell IDs of the target local mesh object which
   !>            overlap with source local mesh cells. This array
   !>            should have dimensions of
   !>            [number of target cells for each source cell,
-  !>             number of source cells]
+  !>             number of source cells].
   subroutine add_local_mesh_map( self,                  &
                                  target_local_mesh_id, &
                                  map )
@@ -1470,7 +2086,7 @@ contains
 
     source_local_mesh_id = self%get_id()
 
-    call self%local_mesh_map_collection% &
+    call self%local_mesh_maps% &
                           add_local_mesh_map( source_local_mesh_id, &
                                               target_local_mesh_id, &
                                               map )
@@ -1479,15 +2095,13 @@ contains
 
   !==============================================================================
   !> @brief     Returns a pointer to a local_mesh_map object which maps local
-  !>            cell ids in the target local mesh to local cell ids in the
+  !>            cell IDs in the target local mesh to local cell IDs in the
   !>            source local mesh.
-  !> @param[in] source_local_mesh_id ID of source local mesh
-  !>                                  object of requested local_mesh_map
-  !>                                  object.
-  !> @param[in] target_local_mesh_id ID of target local mesh
-  !>                                  object of requested local_mesh_map
-  !>                                  object.
-  !> @return    local_mesh_map_type A pointer to a local_mesh_map object
+  !> @param[in] source_local_mesh_id  ID of source local mesh object of
+  !>                                  requested local_mesh_map object.
+  !> @param[in] target_local_mesh_id  ID of target local mesh object of
+  !>                                  requested local_mesh_map object.
+  !> @return    local_mesh_map_type   A pointer to a local_mesh_map object.
   function get_local_mesh_map( self,                  &
                                target_local_mesh_id ) &
                        result( local_mesh_map )
@@ -1502,11 +2116,33 @@ contains
 
     source_local_mesh_id = self%get_id()
 
-    local_mesh_map => self%local_mesh_map_collection% &
+    local_mesh_map => self%local_mesh_maps% &
                           get_local_mesh_map( source_local_mesh_id, &
                                               target_local_mesh_id )
 
   end function get_local_mesh_map
+
+
+  !==============================================================================
+  !> @brief     Returns a pointer to the local_mesh_map collection object
+  !>            contained in this local mesh object.
+  !> @return    local_mesh_maps  Pointer to mesh_map_collection
+  !>                             which contains intergrid maps where
+  !>                             this mesh is the source mesh.
+  !>
+  function get_mesh_maps( self ) result( local_mesh_maps )
+
+    implicit none
+
+    class(local_mesh_type), intent(in),   target  :: self
+    type(local_mesh_map_collection_type), pointer :: local_mesh_maps
+
+    nullify(local_mesh_maps)
+
+    local_mesh_maps => self%local_mesh_maps
+
+  end function get_mesh_maps
+
 
   !-------------------------------------------------------------------------------
   ! Performs a binary search through the given integer array. PRIVATE function.

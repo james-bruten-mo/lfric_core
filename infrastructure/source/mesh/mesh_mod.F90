@@ -445,6 +445,7 @@ contains
     ! Get partition vertices lat-lon-z coords, Note z=surface height
     !--------------------------------------------------------------------------
     allocate(vertex_coords_2d(3,self%nverts_2d))
+    vertex_coords_2d = 0.0_r_def
     do i=1, self%nverts_2d
       ! Get coords of vertices
       call local_mesh%get_vert_coords(i,vertex_coords_2d(:,i))
