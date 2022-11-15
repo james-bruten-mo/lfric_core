@@ -32,11 +32,13 @@ implicit none
 
 type, public, extends(kernel_type) :: radaer_kernel_type
   private
-  type(arg_type) :: meta_args(68) = (/                &
+  type(arg_type) :: meta_args(69) = (/                &
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! theta_in_wth
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! exner_in_wth
-       !trop_level
+       ! trop_level
        arg_type(GH_FIELD, GH_INTEGER, GH_READ,  ANY_DISCONTINUOUS_SPACE_1), &
+       ! lit_fraction
+       arg_type(GH_FIELD, GH_REAL, GH_READ,  ANY_DISCONTINUOUS_SPACE_1), &
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! n_ait_sol
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! ait_sol_su
        arg_type(GH_FIELD, GH_REAL, GH_READ,  WTHETA), & ! ait_sol_bc
@@ -125,6 +127,7 @@ contains
 !> @param[in]     exner_in_wth       Exner pressure
 !>                                    in potential temperature space
 !> @param[in]     trop_level         Level of tropopause
+!> @param[in]     lit_fraction       Fraction of radiation timestep lit by SW
 !> @param[in]     n_ait_sol          Climatology aerosol field
 !> @param[in]     ait_sol_su         Climatology aerosol field
 !> @param[in]     ait_sol_bc         Climatology aerosol field
@@ -213,6 +216,7 @@ subroutine radaer_code( nlayers,                                               &
                         theta_in_wth,                                          &
                         exner_in_wth,                                          &
                         trop_level,                                            &
+                        lit_fraction,                                          &
                         n_ait_sol,                                             &
                         ait_sol_su,                                            &
                         ait_sol_bc,                                            &
@@ -346,6 +350,7 @@ subroutine radaer_code( nlayers,                                               &
   real(kind=r_def), intent(in),    dimension(undf_wth)   :: theta_in_wth
   real(kind=r_def), intent(in),    dimension(undf_wth)   :: exner_in_wth
   integer(kind=i_def), intent(in), dimension(undf_2d)    :: trop_level
+  real(kind=r_def), intent(in),    dimension(undf_2d)    :: lit_fraction
   real(kind=r_def), intent(in),    dimension(undf_wth)   :: n_ait_sol
   real(kind=r_def), intent(in),    dimension(undf_wth)   :: ait_sol_su
   real(kind=r_def), intent(in),    dimension(undf_wth)   :: ait_sol_bc
@@ -762,75 +767,98 @@ subroutine radaer_code( nlayers,                                               &
     end do
   end do
 
-  ! !Short wave (e.g. ip_solar )
-  call ukca_radaer_band_average(                                               &
-    ! Fixed array dimensions (input)
-    npd_profile,                                                               &
-    nlayers,                                                                   &
-    n_aer_mode,                                                                &
-    n_sw_band,                                                                 &
-    npd_exclude_sw,                                                            &
-    ! Spectral information (input)
-    n_sw_band,                                                                 &
-    ip_solar,                                                                  &
-    l_exclude_sw,                                                              &
-    sw_n_band_exclude,                                                         &
-    sw_index_exclude,                                                          &
-    ! Actual array dimensions (input)
-    npd_profile,                                                               &
-    nlayers,                                                                   &
-    n_ukca_mode,                                                               &
-    n_ukca_cpnt,                                                               &
-    ! UKCA_RADAER structure (input)
-    nmodes,                                                                    &
-    ncp_max,                                                                   &
-    ncp_max_x_nmodes,                                                          &
-    i_cpnt_index,                                                              &
-    i_cpnt_type,                                                               &
-    i_mode_type,                                                               &
-    l_nitrate,                                                                 &
-    l_soluble,                                                                 &
-    l_sustrat,                                                                 &
-    n_cpnt_in_mode,                                                            &
-    ! Modal mass-mixing ratios (input)
-    ukca_mode_mix_ratio_um,                                                    &
-    ! Modal number concentrations (input)
-    ukca_modal_number_um,                                                      &
-    ! Modal diameters from UKCA module (input)
-    ukca_dry_diam_um,                                                          &
-    ukca_wet_diam_um,                                                          &
-    ! Other inputs from UKCA module (input)
-    ukca_comp_vol_um,                                                          &
-    ukca_modal_vol_um,                                                         &
-    ukca_modal_rho_um,                                                         &
-    ukca_modal_wtv_um,                                                         &
-    ! Logical to describe orientation
-    l_inverted,                                                                &
-    ! Model level of the tropopause (input)
-    trindxrad_um,                                                              &
-    ! Maxwell-Garnett mixing approach logical control switches
-    l_ukca_tune_bc, l_glomap_clim_tune_bc,                                     &
-    ! Band-averaged optical properties (output)
-    aer_sw_absorption_um,                                                      &
-    aer_sw_scattering_um,                                                      &
-    aer_sw_asymmetry_um                                                        &
-  )
+  ! Only calculate SW on lit points
+  if (lit_fraction(map_2d(1)) > 0.0_r_def) then
 
-  ! MODE aerosol optical properties in bands
-  i_rmode = 0
-  do i_band = 1, n_sw_band
-    do i_mode = 1, n_aer_mode
-      i_rmode = i_rmode + 1
-      do k = 1, nlayers
-        aer_sw_absorption(map_rmode_sw(1) + ((i_rmode-1)*(nlayers+1)) + k ) =  &
-                                  aer_sw_absorption_um( 1, k, i_mode, i_band )
-        aer_sw_scattering(map_rmode_sw(1) + ((i_rmode-1)*(nlayers+1)) + k ) =  &
-                                  aer_sw_scattering_um( 1, k, i_mode, i_band )
-        aer_sw_asymmetry( map_rmode_sw(1) + ((i_rmode-1)*(nlayers+1)) + k ) =  &
-                                  aer_sw_asymmetry_um(  1, k, i_mode, i_band )
+    ! Short wave (e.g. ip_solar )
+    call ukca_radaer_band_average(                                             &
+         ! Fixed array dimensions (input)
+         npd_profile,                                                          &
+         nlayers,                                                              &
+         n_aer_mode,                                                           &
+         n_sw_band,                                                            &
+         npd_exclude_sw,                                                       &
+         ! Spectral information (input)
+         n_sw_band,                                                            &
+         ip_solar,                                                             &
+         l_exclude_sw,                                                         &
+         sw_n_band_exclude,                                                    &
+         sw_index_exclude,                                                     &
+         ! Actual array dimensions (input)
+         npd_profile,                                                          &
+         nlayers,                                                              &
+         n_ukca_mode,                                                          &
+         n_ukca_cpnt,                                                          &
+         ! UKCA_RADAER structure (input)
+         nmodes,                                                               &
+         ncp_max,                                                              &
+         ncp_max_x_nmodes,                                                     &
+         i_cpnt_index,                                                         &
+         i_cpnt_type,                                                          &
+         i_mode_type,                                                          &
+         l_nitrate,                                                            &
+         l_soluble,                                                            &
+         l_sustrat,                                                            &
+         n_cpnt_in_mode,                                                       &
+         ! Modal mass-mixing ratios (input)
+         ukca_mode_mix_ratio_um,                                               &
+         ! Modal number concentrations (input)
+         ukca_modal_number_um,                                                 &
+         ! Modal diameters from UKCA module (input)
+         ukca_dry_diam_um,                                                     &
+         ukca_wet_diam_um,                                                     &
+         ! Other inputs from UKCA module (input)
+         ukca_comp_vol_um,                                                     &
+         ukca_modal_vol_um,                                                    &
+         ukca_modal_rho_um,                                                    &
+         ukca_modal_wtv_um,                                                    &
+         ! Logical to describe orientation
+         l_inverted,                                                           &
+         ! Model level of the tropopause (input)
+         trindxrad_um,                                                         &
+         ! Maxwell-Garnett mixing approach logical control switches
+         l_ukca_tune_bc, l_glomap_clim_tune_bc,                                &
+         ! Band-averaged optical properties (output)
+         aer_sw_absorption_um,                                                 &
+         aer_sw_scattering_um,                                                 &
+         aer_sw_asymmetry_um                                                   &
+         )
+
+    ! MODE aerosol optical properties in bands
+    i_rmode = 0
+    do i_band = 1, n_sw_band
+      do i_mode = 1, n_aer_mode
+        i_rmode = i_rmode + 1
+        do k = 1, nlayers
+          aer_sw_absorption(map_rmode_sw(1) + ((i_rmode-1)*(nlayers+1)) + k ) &
+                                =  aer_sw_absorption_um( 1, k, i_mode, i_band )
+          aer_sw_scattering(map_rmode_sw(1) + ((i_rmode-1)*(nlayers+1)) + k ) &
+                                =  aer_sw_scattering_um( 1, k, i_mode, i_band )
+          aer_sw_asymmetry( map_rmode_sw(1) + ((i_rmode-1)*(nlayers+1)) + k ) &
+                                =  aer_sw_asymmetry_um(  1, k, i_mode, i_band )
+        end do
       end do
     end do
-  end do
+
+  else ! unlit points
+
+    ! Dummy values to avoid problems in radiation code
+    i_rmode = 0
+    do i_band = 1, n_sw_band
+      do i_mode = 1, n_aer_mode
+        i_rmode = i_rmode + 1
+        do k = 1, nlayers
+          aer_sw_absorption(map_rmode_sw(1) + ((i_rmode-1)*(nlayers+1)) + k ) &
+                                =  1.0_r_def
+          aer_sw_scattering(map_rmode_sw(1) + ((i_rmode-1)*(nlayers+1)) + k ) &
+                                =  1.0_r_def
+          aer_sw_asymmetry( map_rmode_sw(1) + ((i_rmode-1)*(nlayers+1)) + k ) &
+                                =  1.0_r_def
+        end do
+      end do
+    end do
+
+  end if ! lit points
 
 end subroutine radaer_code
 

@@ -41,6 +41,7 @@ contains
   !>@param[in]     timestep              Current timestep number
 
   subroutine radaer_alg( aerosol_fields,                                       &
+                         radiation_fields,                                     &
                          theta_in_wth,                                         &
                          exner_in_wth,                                         &
                          trop_level,                                           &
@@ -56,6 +57,7 @@ contains
 
     ! Arguments
     type( field_collection_type ), intent( in )    :: aerosol_fields
+    type( field_collection_type ), intent( in )    :: radiation_fields
     type( field_type ), intent( in )               :: theta_in_wth
     type( field_type ), intent( in )               :: exner_in_wth
     type( integer_field_type ), intent( in )       :: trop_level
@@ -128,6 +130,8 @@ contains
     type( field_type ), pointer :: pvol_du_acc_ins => null()
     type( field_type ), pointer :: pvol_du_cor_ins => null()
 
+    type( field_type ), pointer :: lit_fraction_rts => null()
+
     if ( subroutine_timers ) call timer('radaer_alg')
 
     ! Call on radiation time steps only
@@ -193,9 +197,12 @@ contains
       call aerosol_fields%get_field('pvol_du_acc_ins', pvol_du_acc_ins)
       call aerosol_fields%get_field('pvol_du_cor_ins', pvol_du_cor_ins)
 
+      call radiation_fields%get_field('lit_fraction_rts', lit_fraction_rts)
+
       call invoke( radaer_kernel_type( theta_in_wth,                           &
                                        exner_in_wth,                           &
                                        trop_level,                             &
+                                       lit_fraction_rts,                       &
                                        n_ait_sol,                              &
                                        ait_sol_su,                             &
                                        ait_sol_bc,                             &

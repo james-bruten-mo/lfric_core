@@ -334,7 +334,7 @@ contains
         if (glomap_mode == glomap_mode_climatology .and.                       &
             (activation_scheme == activation_scheme_jones .or. l_radaer)) then
           call glomap_aerosol_alg ( aerosol_fields, cloud_fields, theta,       &
-                                    exner_in_wth, mr_n )
+                                    exner_in_wth, mr_n, clock%get_step() )
         end if
 
         !--------------------------------------------------------------------
@@ -374,6 +374,9 @@ contains
     if (radiation == radiation_socrates .and. &
         radiation_placement == radiation_placement_slow) then
 
+      call illuminate_alg( radiation_fields, clock%get_step(), &
+                           clock%get_seconds_per_step() )
+
       !--------------------------------------------------------------------
       ! UM radaer scheme
       !--------------------------------------------------------------------
@@ -396,6 +399,7 @@ contains
              ( glomap_mode == glomap_mode_radaer_test) ) .and.                 &
            l_radaer ) then
         call radaer_alg( aerosol_fields,                                       &
+                         radiation_fields,                                     &
                          theta,                                                &
                          exner_in_wth,                                         &
                          trop_level,                                           &
@@ -404,9 +408,6 @@ contains
                          aer_lw_absorption,aer_lw_scattering,aer_lw_asymmetry, &
                          clock%get_step() )
       end if
-
-      call illuminate_alg( radiation_fields, clock%get_step(), &
-                           clock%get_seconds_per_step() )
 
       ! Switch UM to running i-first on whole domain
       ncells = mesh%get_last_edge_cell()

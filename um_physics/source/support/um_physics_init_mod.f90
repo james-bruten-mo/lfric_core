@@ -244,7 +244,7 @@ contains
     use electric_inputs_mod, only: electric_method, no_lightning
     use fsd_parameters_mod, only: fsd_eff_lam, fsd_eff_phi, f_cons
     use glomap_clim_option_mod, only: i_glomap_clim_setup,                 &
-         i_gc_sussocbcdu_7mode, l_glomap_clim_aie2
+         i_gc_sussocbcdu_7mode, l_glomap_clim_aie2, l_glomap_clim_radaer
     use g_wave_input_mod, only: ussp_launch_factor, wavelstar, l_add_cgw,  &
          cgw_scale_factor, i_moist, scale_aware, middle, var
     use mphys_bypass_mod, only: mphys_mod_top
@@ -309,6 +309,8 @@ contains
           ! l_glomap_clim_aie1 is not used in LFRic. The 1st indirect effect is
           ! controlled through the radiation namelist: droplet_effective_radius
           l_glomap_clim_aie2 = .true.
+          ! This fixes a negative number in field value ( see um:#4383 )
+          l_glomap_clim_radaer = .true.
           ! Set up the correct mode and components for GLOMAP-mode:
           ! 5 mode with SU SS OM BC components
           i_glomap_clim_setup = i_gc_sussocbcdu_7mode
