@@ -6,7 +6,8 @@
 !> @brief Computes cell integrated energy.
 !>
 !> @details The kernel computes the cell integrated energy,
-!> \f[ \int( \rho * [ 1/2*u.u + \Phi + Cv*T])dV \f]
+!> \f[ \int( \rho * [ 1/2*u.u + \Phi + Cv*T - Lv*(m_{cl} + m_r)
+!>                    - (Lv + Lf)*(m_{ci} + m_s + m_g) ])dV \f]
 !>
 module compute_total_energy_kernel_mod
 
@@ -18,6 +19,9 @@ module compute_total_energy_kernel_mod
                                 GH_SCALAR,                   &
                                 CELL_COLUMN, GH_QUADRATURE_XYoZ
   use constants_mod,     only : r_def, i_def
+  use driver_water_constants_mod,                                   &
+                         only : Lv => latent_heat_h2o_condensation, &
+                                Lf => latent_heat_h2o_fusion
   use fs_continuity_mod, only : W2, W3, Wtheta
   use kernel_mod,        only : kernel_type
 
@@ -33,12 +37,13 @@ module compute_total_energy_kernel_mod
 !>
 type, public, extends(kernel_type) :: compute_total_energy_kernel_type
   private
-  type(arg_type) :: meta_args(9) = (/                                      &
+  type(arg_type) :: meta_args(10) = (/                                     &
        arg_type(GH_FIELD,   GH_REAL, GH_WRITE, W3),                        &
        arg_type(GH_FIELD,   GH_REAL, GH_READ,  W2),                        &
        arg_type(GH_FIELD,   GH_REAL, GH_READ,  W3),                        &
        arg_type(GH_FIELD,   GH_REAL, GH_READ,  W3),                        &
        arg_type(GH_FIELD,   GH_REAL, GH_READ,  Wtheta),                    &
+       arg_type(GH_FIELD*6, GH_REAL, GH_READ,  Wtheta),                    &
        arg_type(GH_FIELD,   GH_REAL, GH_READ,  W3),                        &
        arg_type(GH_FIELD*3, GH_REAL, GH_READ,  ANY_SPACE_9),               &
        arg_type(GH_FIELD,   GH_REAL, GH_READ,  ANY_DISCONTINUOUS_SPACE_3), &
@@ -69,6 +74,12 @@ contains
 !! @param[in] rho The density
 !! @param[in] exner The Exner Pressure
 !! @param[in] theta Potential temperature
+!! @param[in] mr_v  Water vapour mixing ratio
+!! @param[in] mr_cl Liquid cloud mixing ratio
+!! @param[in] mr_r  Rain mixing ratio
+!! @param[in] mr_ci Ice cloud mixing ratio
+!! @param[in] mr_s  Snow mixing ratio
+!! @param[in] mr_g  Graupel mixing ratio
 !! @param[in] phi The geopotential
 !! @param[in] chi_1 1st coordinate field in Wchi
 !! @param[in] chi_2 2nd coordinate field in Wchi
@@ -102,7 +113,8 @@ contains
 subroutine compute_total_energy_code(                                            &
                                      nlayers,                                    &
                                      energy,                                     &
-                                     u, rho, exner, theta, phi,                  &
+                                     u, rho, exner, theta,                       &
+                                     mr_v, mr_cl, mr_r, mr_ci, mr_s, mr_g, phi,  &
                                      chi_1, chi_2, chi_3, panel_id,              &
                                      cv,                                         &
                                      ndf_w3, undf_w3, map_w3, w3_basis,          &
@@ -140,6 +152,8 @@ subroutine compute_total_energy_code(                                           
   real(kind=r_def), dimension(undf_w2),     intent(in)    :: u
   real(kind=r_def), dimension(undf_w3),     intent(in)    :: rho, exner
   real(kind=r_def), dimension(undf_wtheta), intent(in)    :: theta
+  real(kind=r_def), dimension(undf_wtheta), intent(in)    :: mr_v, mr_cl, mr_r
+  real(kind=r_def), dimension(undf_wtheta), intent(in)    :: mr_ci, mr_s, mr_g
   real(kind=r_def), dimension(undf_w3),     intent(in)    :: phi
   real(kind=r_def), dimension(undf_chi),    intent(in)    :: chi_1, chi_2, chi_3
   real(kind=r_def), dimension(undf_pid),    intent(in)    :: panel_id
@@ -159,12 +173,15 @@ subroutine compute_total_energy_code(                                           
   real(kind=r_def), dimension(ndf_w3)          :: rho_e, energy_e, exner_e
   real(kind=r_def), dimension(ndf_w2)          :: u_e
   real(kind=r_def), dimension(ndf_wtheta)      :: theta_e
+  real(kind=r_def), dimension(ndf_wtheta)      :: mr_cl_e, mr_r_e
+  real(kind=r_def), dimension(ndf_wtheta)      :: mr_ci_e, mr_s_e, mr_g_e
   real(kind=r_def), dimension(ndf_w3)          :: phi_e
 
   real(kind=r_def) :: u_at_quad(3), &
                       phi_at_quad
   real(kind=r_def) :: exner_at_quad, rho_at_quad, theta_at_quad, &
-                      ke_term, temperature_term
+                      mr_l_at_quad, mr_i_at_quad
+  real(kind=r_def) :: ke_term, temperature_term, moisture_term
 
   ipanel = int(panel_id(map_pid(1)), i_def)
 
@@ -185,6 +202,13 @@ subroutine compute_total_energy_code(                                           
     do df = 1, ndf_wtheta
       theta_e(df) = theta( map_wtheta(df) + k )
     end do
+    do df = 1, ndf_wtheta
+      mr_cl_e(df) = mr_cl( map_wtheta(df) + k )
+      mr_r_e(df)  = mr_r( map_wtheta(df) + k )
+      mr_ci_e(df) = mr_ci( map_wtheta(df) + k )
+      mr_s_e(df)  = mr_s( map_wtheta(df) + k )
+      mr_g_e(df)  = mr_g( map_wtheta(df) + k )
+    end do
     do df = 1, ndf_w3
       rho_e(df)   = rho( map_w3(df) + k )
       exner_e(df) = exner( map_w3(df) + k )
@@ -203,16 +227,25 @@ subroutine compute_total_energy_code(                                           
           exner_at_quad  = exner_at_quad + exner_e(df)*w3_basis(1,df,qp1,qp2)
         end do
         theta_at_quad = 0.0_r_def
+        mr_l_at_quad  = 0.0_r_def
+        mr_i_at_quad  = 0.0_r_def
         phi_at_quad   = 0.0_r_def
         do df = 1, ndf_w3
           phi_at_quad = phi_at_quad + phi_e(df)*w3_basis(1,df,qp1,qp2)
         end do
         do df = 1, ndf_wtheta
-          theta_at_quad   = theta_at_quad                                      &
-                          + theta_e(df)*wtheta_basis(1,df,qp1,qp2)
+          theta_at_quad = theta_at_quad                                &
+                          + theta_e(df) * wtheta_basis(1,df,qp1,qp2)
+          mr_l_at_quad = mr_l_at_quad + ( mr_cl_e(df) + mr_r_e(df) ) * &
+                                        wtheta_basis(1,df,qp1,qp2)
+          mr_i_at_quad = mr_i_at_quad                                  &
+                         + ( mr_ci_e(df) + mr_s_e(df) + mr_g_e(df) ) * &
+                           wtheta_basis(1,df,qp1,qp2)
         end do
         ! Temperature term
         temperature_term = cv*exner_at_quad*theta_at_quad
+        ! Moisture term
+        moisture_term = - ( Lv * mr_l_at_quad + (Lv + Lf) * mr_i_at_quad )
         ! k.e term
         u_at_quad(:) = 0.0_r_def
         do df = 1, ndf_w2
@@ -222,8 +255,9 @@ subroutine compute_total_energy_code(                                           
         ke_term = 0.5_r_def*dot_product(matmul(jac(:,:,qp1,qp2),u_at_quad), &
                                         matmul(jac(:,:,qp1,qp2),u_at_quad))/(dj(qp1,qp2)**2)
         do df = 1, ndf_w3
-          energy_e(df) = energy_e(df) + wqp_h(qp1)*wqp_v(qp2)*rho_at_quad &
-                  *(ke_term + phi_at_quad + temperature_term)*dj(qp1,qp2)
+          energy_e(df) = energy_e(df) + wqp_h(qp1) * wqp_v(qp2) * rho_at_quad        &
+                                        * (ke_term + phi_at_quad + temperature_term  &
+                                           + moisture_term) * dj(qp1,qp2)
         end do
       end do
     end do

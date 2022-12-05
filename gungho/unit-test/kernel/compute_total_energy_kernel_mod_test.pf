@@ -9,6 +9,9 @@
 module compute_total_energy_kernel_mod_test
 
   use constants_mod,                       only : i_def, r_def
+  use driver_water_constants_mod,                                                     &
+                                           only : Lv => latent_heat_h2o_condensation, &
+                                                  Lf => latent_heat_h2o_fusion
   use get_unit_test_m3x3_q3x3x3_sizes_mod, only : get_w0_m3x3_q3x3x3_size, &
                                                   get_w2_m3x3_q3x3x3_size, &
                                                   get_w3_m3x3_q3x3x3_size
@@ -124,10 +127,12 @@ contains
     real(r_def), allocatable :: rho(:)
     real(r_def), allocatable :: exner(:)
     real(r_def), allocatable :: theta(:)
+    real(r_def), allocatable :: mr_v(:), mr_cl(:), mr_r(:)
+    real(r_def), allocatable :: mr_ci(:), mr_s(:), mr_g(:)
     real(r_def), allocatable :: energy(:)
     real(r_def), allocatable :: phi(:)
 
-    real(kind=r_def) :: t
+    real(kind=r_def) :: t, m
     real(r_def) :: cv, chi3_av
 
     nlayers=3
@@ -189,11 +194,19 @@ contains
     allocate(rho(undf_w3))
     allocate(exner(undf_w3))
     allocate(theta(undf_w0))
+    allocate(mr_v(undf_w0), mr_cl(undf_w0), mr_r(undf_w0))
+    allocate(mr_ci(undf_w0), mr_s(undf_w0), mr_g(undf_w0))
     allocate(energy(undf_w3))
     u(:) = 0.0_r_def
     rho(:) = 1.0_r_def
     exner(:) = 0.8_r_def
     theta(:) = 300.0_r_def
+    mr_v(:) = 0.01_r_def
+    mr_cl(:) = 0.005_r_def
+    mr_r(:) = 0.003_r_def
+    mr_ci(:) = 0.01_r_def
+    mr_s(:) = 0.002_r_def
+    mr_g(:) = 0.001_r_def
     energy(:) = 0.0_r_def
 
     cv = cp - rd
@@ -206,6 +219,8 @@ contains
                                    rho,                            &
                                    exner,                          &
                                    theta,                          &
+                                   mr_v, mr_cl, mr_r,              &
+                                   mr_ci, mr_s, mr_g,              &
                                    phi,                            &
                                    chi1,                           &
                                    chi2,                           &
@@ -226,9 +241,11 @@ contains
                                    nqp_h, nqp_v, wh, wv            &
                                    )
 
-    ! This is only testing the vertical component of vorticity
+    ! Internal energy
     t = cv*theta(1)*exner(1)
-    answer = rho(1)*(gravity*0.5_r_def*dz + t) * dx*dy*dz
+    ! Latent heat of water
+    m = Lv * (mr_cl(1) + mr_r(1)) + (Lv + Lf) * (mr_ci(1) + mr_s(1) + mr_g(1))
+    answer = rho(1)*(gravity*0.5_r_def*dz + t - m) * dx*dy*dz
     if ( r_def == real64 ) then
       use_tol = tol
     else
@@ -255,6 +272,8 @@ contains
     deallocate(rho)
     deallocate(exner)
     deallocate(theta)
+    deallocate(mr_v, mr_cl, mr_r)
+    deallocate(mr_ci, mr_s, mr_g)
     deallocate(energy)
     deallocate(phi)
 

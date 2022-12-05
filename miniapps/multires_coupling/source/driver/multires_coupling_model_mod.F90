@@ -414,6 +414,7 @@ contains
          call conservation_algorithm( dynamics_rho,     &
                                       dynamics_u,       &
                                       dynamics_theta,   &
+                                      dynamics_mr,      &
                                       dynamics_exner )
          if ( moisture_formulation /= moisture_formulation_dry ) &
            call moisture_conservation_alg( dynamics_rho,         &
@@ -428,6 +429,7 @@ contains
          call conservation_algorithm( dynamics_rho,     &
                                       dynamics_u,       &
                                       dynamics_theta,   &
+                                      dynamics_mr,      &
                                       dynamics_exner )
          if ( moisture_formulation /= moisture_formulation_dry ) &
            call moisture_conservation_alg( dynamics_rho,         &

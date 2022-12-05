@@ -129,6 +129,7 @@ module linear_step_mod
       call conservation_algorithm( rho,              &
                                    u,                &
                                    theta,            &
+                                   mr,               &
                                    exner )
       if ( moisture_formulation /= moisture_formulation_dry ) then
         call moisture_conservation_alg( rho,              &

@@ -400,6 +400,7 @@ contains
          call conservation_algorithm( rho,              &
                                       u,                &
                                       theta,            &
+                                      mr,               &
                                       exner )
          if ( use_moisture ) &
            call moisture_conservation_alg( rho,              &
@@ -413,6 +414,7 @@ contains
          call conservation_algorithm( rho,              &
                                       u,                &
                                       theta,            &
+                                      mr,               &
                                       exner )
          if ( use_moisture ) &
            call moisture_conservation_alg( rho,              &

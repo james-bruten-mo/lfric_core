@@ -216,6 +216,7 @@ module gungho_step_mod
       call conservation_algorithm( rho,              &
                                    u,                &
                                    theta,            &
+                                   mr,               &
                                    exner )
       if ( use_moisture ) then
         call moisture_conservation_alg( rho,              &
