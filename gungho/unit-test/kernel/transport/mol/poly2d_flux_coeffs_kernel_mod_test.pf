@@ -99,7 +99,7 @@ contains
     real(r_def), dimension(ndf_wx,nqp_e,4) :: face_basis_wx
     real(r_def), dimension(nqp_h)            :: wqp_h
     real(r_def), dimension(nqp_v), parameter :: wqp_v = (/ 1.0_r_def /)
-    real(r_def), dimension(nqp_e), parameter :: wqp_e = (/ 1.0_r_def /)
+    real(r_def), dimension(nqp_e,nfaces), parameter :: wqp_e = 1.0_r_def
 
     real(r_def), dimension(undf_c)   :: coeff
     real(r_def), dimension(undf_w3)  :: mdw3

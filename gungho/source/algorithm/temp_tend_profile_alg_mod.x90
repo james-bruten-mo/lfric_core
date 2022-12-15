@@ -92,8 +92,8 @@ else
 !>       When PSyclone supports passing of arrays into kernels (issue #1312),
 !>       these data should be passed through the argument list of the invoke.
   profile_size    = temp_tend_size
-  profile_data    = temp_tend_data
-  profile_heights = temp_tend_heights
+  profile_data(1:profile_size)    = temp_tend_data(1:profile_size)
+  profile_heights(1:profile_size) = temp_tend_heights(1:profile_size)
 
   if (pressure_coord) then
     ! Interpolation is linear in exner

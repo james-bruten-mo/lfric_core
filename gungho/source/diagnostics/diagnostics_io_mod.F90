@@ -244,7 +244,7 @@ subroutine write_vector_diagnostic( field_name, field, &
                                            mesh, .false.)
 
          ! Call write routine
-         call nodal_write_field(nodal_coordinates, level, output_field(i), &
+         call nodal_write_field(nodal_coordinates, level, output_field, &
                                 1, nodal_output_unit, fname)
        end do
 

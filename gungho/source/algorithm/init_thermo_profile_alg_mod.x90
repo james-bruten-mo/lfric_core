@@ -69,8 +69,8 @@ panel_id => get_panel_id(mesh_id)
 height_wth => get_height(Wtheta, mesh_id)
 
 profile_size    = temp_prof_size
-profile_data    = temp_prof_data
-profile_heights = temp_prof_heights
+profile_data(1:profile_size)    = temp_prof_data(1:profile_size)
+profile_heights(1:profile_size) = temp_prof_heights(1:profile_size)
 if ( profile_size == 1) then
   call invoke( setval_c( theta, profile_data(1) ) )
 else
@@ -79,8 +79,8 @@ end if
 
 if ( moisture_formulation /= moisture_formulation_dry ) then
   profile_size    = vapour_prof_size
-  profile_data    = vapour_prof_data
-  profile_heights = vapour_prof_heights
+  profile_data(1:profile_size)    = vapour_prof_data(1:profile_size)
+  profile_heights(1:profile_size) = vapour_prof_heights(1:profile_size)
   if ( profile_size == 1) then
     call invoke( setval_c( mr_v, profile_data(1) ) )
   else
