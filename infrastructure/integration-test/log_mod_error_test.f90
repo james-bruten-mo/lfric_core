@@ -25,7 +25,7 @@ program log_mod_error_test
   call store_comm(comm)
   total_ranks = get_comm_size()
   local_rank  = get_comm_rank()
-  call initialise_logging(local_rank, total_ranks, 'log_mod_error_test')
+  call initialise_logging( comm, 'log_mod_error_test' )
 
   ! Testing an error occurring on rank 0 of a parallel
   ! application. The choice of rank needs to be consistent with the

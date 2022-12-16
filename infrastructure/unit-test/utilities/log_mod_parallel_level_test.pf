@@ -1,0 +1,515 @@
+!-----------------------------------------------------------------------------
+! (C) Crown copyright 2022 Met Office. All rights reserved.
+! The file LICENCE, distributed with this code, contains details of the terms
+! under which the code may be used.
+!-----------------------------------------------------------------------------
+!> Tests parallel log level handling.
+!>
+!> @todo pFUnit does not seem very flexible around mixing MPI and none MPI
+!>       tests or MPI and parameterised tests. Hence doing it manually.
+!>
+module log_mod_parallel_level_test
+
+  use constants_mod, only: i_def, i_native, str_long
+  use log_mod,       only: finalise_logging, initialise_logging, log_event, &
+                           log_level_debug, log_level_error,                &
+                           log_level_info, log_level_trace,                 &
+                           log_level_warning, log_set_alert_stream,         &
+                           log_set_level, log_set_info_stream
+  use pFUnit_Mod
+
+  implicit none
+
+  private
+
+  !> @todo We shouldn't have to explicitly export setUp and tearDown but
+  !>       it's a requirement of pFUnit.
+  public log_level_test_single_trace, log_level_test_single_debug,    &
+         log_level_test_single_info, log_level_test_single_warning,   &
+         log_level_test_trace, log_level_test_debug,                  &
+         log_level_test_info, log_level_test_warning,                 &
+         log_output_test_single_trace, log_output_test_single_debug,  &
+         log_output_test_single_info, log_output_test_single_warning, &
+         log_output_test_trace, log_output_test_debug,                &
+         log_output_test_info, log_output_test_warning,               &
+         setUp, tearDown
+
+  integer(i_native), parameter  :: log_unit = 11
+
+  @testCase
+  type, public, extends(MpiTestCase) :: log_test_type
+    character(:), allocatable :: pet_file
+  contains
+    procedure :: log_output_test_single_trace
+    procedure :: log_output_test_single_debug
+    procedure :: log_output_test_single_info
+    procedure :: log_output_test_single_warning
+    procedure :: log_output_test_trace
+    procedure :: log_output_test_debug
+    procedure :: log_output_test_info
+    procedure :: log_output_test_warning
+    procedure :: log_level_test_single_trace
+    procedure :: log_level_test_single_debug
+    procedure :: log_level_test_single_info
+    procedure :: log_level_test_single_warning
+    procedure :: log_level_test_trace
+    procedure :: log_level_test_debug
+    procedure :: log_level_test_info
+    procedure :: log_level_test_warning
+    procedure :: setUp
+    procedure :: tearDown
+  end type log_test_type
+
+  character(*), parameter :: name = 'log_mod_unit_test'
+
+contains
+
+  subroutine setUp( this )
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    character(str_long) :: filename
+    integer(i_native)   :: status
+
+    if (this%getNumProcesses() > 1) then
+      write( filename, &
+             '("PET", I0, ".", A, ".Log")') this%getProcessRank(), name
+      this%pet_file = filename
+
+      open( log_unit, file=this%pet_file, action='write', iostat=status )
+      if (status == 0) close( log_unit, status='delete' )
+    end if
+
+  end subroutine setUp
+
+
+  subroutine tearDown( this )
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    integer(i_native) :: status
+
+    if (allocated(this%pet_file)) then
+      open( log_unit, file=this%pet_file, action='write', iostat=status )
+      if (status == 0) close( log_unit, status='delete' )
+    end if
+
+  end subroutine tearDown
+
+
+  @test(npes=[1])
+  subroutine log_output_test_single_trace( this )
+
+    use log_mod_serial_level_test, only : log_output_test_serial
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_output_test_serial( log_level_trace, ':TRACE:' )
+    call finalise_logging()
+
+  end subroutine log_output_test_single_trace
+
+
+  @test(npes=[1])
+  subroutine log_output_test_single_debug( this )
+
+    use log_mod_serial_level_test, only : log_output_test_serial
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_output_test_serial( log_level_debug, ':DEBUG:' )
+    call finalise_logging()
+
+  end subroutine log_output_test_single_debug
+
+
+  @test(npes=[1])
+  subroutine log_output_test_single_info( this )
+
+    use log_mod_serial_level_test, only : log_output_test_serial
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_output_test_serial( log_level_info, ':INFO :' )
+    call finalise_logging()
+
+  end subroutine log_output_test_single_info
+
+
+  @test(npes=[1])
+  subroutine log_output_test_single_warning( this )
+
+    use log_mod_serial_level_test, only : log_output_test_serial
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_output_test_serial( log_level_warning, ':WARN :' )
+    call finalise_logging()
+
+  end subroutine log_output_test_single_warning
+
+
+  @test(npes=[2, 3, 4])
+  subroutine log_output_test_trace( this )
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_output_test( this%getProcessRank(), log_level_trace, ':TRACE:' )
+
+  end subroutine log_output_test_trace
+
+
+  @test(npes=[2, 3, 4])
+  subroutine log_output_test_debug( this )
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_output_test( this%getProcessRank(), log_level_debug, ':DEBUG:' )
+
+  end subroutine log_output_test_debug
+
+
+  @test(npes=[2, 3, 4])
+  subroutine log_output_test_info( this )
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_output_test( this%getProcessRank(), log_level_info, ':INFO :' )
+
+  end subroutine log_output_test_info
+
+
+  @test(npes=[2, 3, 4])
+  subroutine log_output_test_warning( this )
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_output_test( this%getProcessRank(), log_level_warning, ':WARN :' )
+
+  end subroutine log_output_test_warning
+
+
+  !> Test the default behaviour of the logger.
+  !>
+  !> As part of the test system redirecting the output to alternate units is
+  !> also tested.
+  !>
+  subroutine log_output_test( thread, level, expected_tag )
+
+    use, intrinsic :: iso_fortran_env, only : iostat_end
+
+    implicit none
+
+    integer(i_native), intent(in) :: thread
+    integer(i_native), intent(in) :: level
+    character(*),      intent(in) :: expected_tag
+
+    ! Must hold 14 digits:
+    integer(i_native), parameter :: i_time = selected_int_kind( 14 )
+
+    integer(i_time)   :: current_stamp
+    character(28)     :: current_date_string
+    integer(i_def)    :: current_subseconds
+    integer(i_def)    :: current_zone
+    character(3)      :: expected_proc
+    integer(i_time)   :: found_stamp
+    character         :: found_point
+    integer(i_def)    :: found_subseconds
+    integer(i_def)    :: found_zone
+    character(3)      :: found_proc
+    character(8)      :: found_tag
+    character(80)     :: found_message
+    integer(i_native) :: status
+    character(40)     :: filename
+
+    call date_and_time( date=current_date_string(1:8), &
+                        time=current_date_string(9:18), &
+                        zone=current_date_string(19:) )
+    read( current_date_string, "(I14,1X,I3,I5)" ) current_stamp, &
+                                                  current_subseconds, &
+                                                  current_zone
+
+    call log_set_level( log_level_info )
+
+    call log_event('cheese', level)
+
+    call finalise_logging()
+
+    write( filename, '("PET", I0, ".", A, ".Log")') thread, name
+    open( log_unit, file=filename, action='read', iostat=status )
+    @assertEqual( 0, status )
+    rewind(log_unit)
+
+    write( expected_proc, '(":P", I0)' ) thread
+
+    read( log_unit, '(I14,A1,I3,I5,A3,A8,A)', iostat = status ) &
+        found_stamp, found_point, found_subseconds, found_zone, &
+        found_proc, found_tag, found_message
+    if ( level >= LOG_LEVEL_INFO ) then
+      @assertEqual( 0,             status )
+      @assertEqual( '.',           found_point )
+      @assertEqual( expected_proc, found_proc )
+      @assertEqual( expected_tag,  found_tag )
+      @assertEqual( 'cheese',      found_message )
+      @assertTrue( current_stamp <= found_stamp )
+      @assertEqual( current_zone,  found_zone )
+    else
+      @assertEqual( iostat_end,   status )
+    end if
+
+    close( log_unit, status='delete' )
+
+  end subroutine log_output_test
+
+
+  @test(npes=[1])
+  subroutine log_level_test_single_trace( this )
+
+    use log_mod_serial_level_test, only : log_level_test_serial
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_level_test_serial( log_level_trace )
+    call finalise_logging()
+
+  end subroutine log_level_test_single_trace
+
+
+  @test(npes=[1])
+  subroutine log_level_test_single_debug( this )
+
+    use log_mod_serial_level_test, only : log_level_test_serial
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_level_test_serial( log_level_debug )
+    call finalise_logging()
+
+  end subroutine log_level_test_single_debug
+
+
+  @test(npes=[1])
+  subroutine log_level_test_single_info( this )
+
+    use log_mod_serial_level_test, only : log_level_test_serial
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_level_test_serial( log_level_info )
+    call finalise_logging()
+
+  end subroutine log_level_test_single_info
+
+
+  @test(npes=[1])
+  subroutine log_level_test_single_warning( this )
+
+    use log_mod_serial_level_test, only : log_level_test_serial
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_level_test_serial( log_level_warning )
+    call finalise_logging()
+
+  end subroutine log_level_test_single_warning
+
+
+  @test(npes=[2, 3, 4])
+  subroutine log_level_test_trace( this )
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_level_test( this%getProcessRank(), log_level_trace )
+
+  end subroutine log_level_test_trace
+
+
+  @test(npes=[2, 3, 4])
+  subroutine log_level_test_debug( this )
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_level_test( this%getProcessRank(), log_level_debug )
+
+  end subroutine log_level_test_debug
+
+
+  @test(npes=[2, 3, 4])
+  subroutine log_level_test_info( this )
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_level_test( this%getProcessRank(), log_level_info )
+
+  end subroutine log_level_test_info
+
+
+  @test(npes=[2, 3, 4])
+  subroutine log_level_test_warning( this )
+
+    implicit none
+
+    class(log_test_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), name )
+    call log_level_test( this%getProcessRank(), log_level_warning )
+
+  end subroutine log_level_test_warning
+
+
+  !> Test the correct things are logged for each log level.
+  !>
+  subroutine log_level_test( thread, level )
+
+    use, intrinsic :: iso_fortran_env, only : iostat_end
+
+    implicit none
+
+    integer(i_native), intent(in) :: thread
+    integer(i_native), intent(in) :: level
+
+    character(110)    :: buffer
+    character(3)      :: expected_process
+    integer(i_def)    :: level_index
+    character(3)      :: process
+    character(7)      :: tag
+    character(80)     :: message
+    integer(i_native) :: status
+    character(40)     :: filename
+    integer(i_def), allocatable :: levels(:)
+    character(22),  allocatable :: messages(:)
+
+    levels  = [ LOG_LEVEL_TRACE, LOG_LEVEL_DEBUG, &
+                LOG_LEVEL_INFO, LOG_LEVEL_WARNING ]
+    messages  = [ 'kraft cheeselike slice', &
+                  'generic cheddar       ', &
+                  'wensleydale           ', &
+                  'double gloucester     ']
+
+    call log_set_level( level )
+
+    log_loop: do level_index = 1, size(levels)
+      call log_event( trim( messages(level_index) ), levels(level_index) )
+    end do log_loop
+
+    call finalise_logging()
+
+    write( filename, '("PET", I0, ".", A, ".Log")') thread, name
+    open( log_unit, file=filename, action='read', iostat=status )
+    @assertEqual( 0, status )
+
+    write( expected_process, '(":P", I0)' ) thread
+
+    read_loop: do level_index = 1, size(levels)
+      if ( levels(level_index) >= level ) then
+        process = ""
+        tag = ""
+        message = ""
+        read( log_unit, '(A)' ) buffer
+        read( buffer, '(23X,A3,A7,A)', iostat=status ) process, tag, message
+
+        @assertEqual( expected_process, process )
+        select case (levels(level_index))
+          case (LOG_LEVEL_TRACE)
+            @assertEqual( ':TRACE:', tag )
+          case (LOG_LEVEL_DEBUG)
+            @assertEqual( ':DEBUG:', tag )
+          case (LOG_LEVEL_INFO)
+            @assertEqual( ':INFO :', tag )
+          case (LOG_LEVEL_WARNING)
+            @assertEqual( ':WARN :', tag )
+          case default
+            @assertTrue( .false., "Unexpected logging level" )
+        end select
+        @assertEqual( messages(level_index), message )
+      end if
+    end do read_loop
+
+    close( log_unit, status='delete' )
+
+  end subroutine log_level_test
+
+! This test should be instated once we have refactored the logging framework
+! to allow it. Currently logging an error calls the "exit" intrinsic which
+! stops everything including the unit testing framework. This is a shortcoming
+! in the unit testing framework but not one anyone seems in a rush to fix.
+!
+!   !> Test error logging behaviour. Because errors cause a "STOP" they can not
+!   !> be tested with the others. Or at all at the moment.
+!   @test
+!   subroutine error_test( this )
+!
+!     implicit none
+!
+!     class ( log_test_type ), intent( inout ) :: this
+!
+!     character(  8 ) :: tag
+!     character( 80 ) :: message
+!
+!     call log_set_info_stream( INFO_UNIT )
+!     call log_set_alert_stream( ALERT_UNIT )
+!
+!     call log_event( 'stilton', LOG_LEVEL_ERROR )
+!
+!     rewind( INFO_UNIT )
+!     read( INFO_UNIT, '(23X,A8,A)' ) tag, message
+!     @assertEqual( ':ERROR:', tag )
+!     @assertEqual( 'stilton', message )
+!
+!     rewind( ALERT_UNIT )
+!     read( ALERT_UNIT, '(23X,A8,A)' ) tag, message
+!     @assertEqual( ':ERROR:', tag )
+!     @assertEqual( 'stilton', message )
+!
+!   end subroutine error_test
+
+end module log_mod_parallel_level_test

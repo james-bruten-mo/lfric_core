@@ -5,11 +5,13 @@
 PROGRAM skeleton
 
 ! lfricinputs modules
-USE lfricinp_finalise_lfric_mod, ONLY: lfricinp_finalise_lfric
 USE lfricinp_read_command_line_args_mod, ONLY: lfricinp_read_command_line_args
 USE lfricinp_create_lfric_fields_mod,  ONLY: lfricinp_create_lfric_fields
-USE lfricinp_lfric_driver_mod, ONLY: lfricinp_initialise_lfric, mesh, &
-     twod_mesh, lfric_fields
+USE lfricinp_lfric_driver_mod, ONLY: lfricinp_initialise_lfric, &
+                                     lfricinp_finalise_lfric,   &
+                                     mesh,                      &
+                                     twod_mesh,                 &
+                                     lfric_fields
 USE lfricinp_initialise_um_mod, ONLY: lfricinp_initialise_um, um_input_file
 USE lfricinp_um_grid_mod, ONLY: um_grid
 USE lfricinp_regrid_options_mod, ONLY: lfricinp_init_regrid_options

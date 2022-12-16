@@ -88,7 +88,7 @@ contains
     call get_initial_filename( filename )
     call load_configuration(filename)
 
-    call init_logger(get_comm_rank(), get_comm_size(), program_name)
+    call init_logger( model_communicator, program_name )
 
     !----------------------------------------------------------------------
     ! Model init
@@ -207,12 +207,14 @@ contains
     ! Finalise namelist configurations
     call final_configuration()
 
-    call final_comm()
-
     call log_event(program_name // ' completed.', LOG_LEVEL_ALWAYS)
 
-    ! Finalise the logging system
+    ! Finalise the logging system. This must be done before finalising MPI as
+    ! Logging is an MPI process.
+    !
     call final_logger(program_name)
+
+    call final_comm()
 
   end subroutine finalise
 

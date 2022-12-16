@@ -23,6 +23,8 @@ USE halo_comms_mod,             ONLY: initialise_halo_comms
 USE mod_wait,                   ONLY: init_wait
 USE model_clock_mod,            ONLY: model_clock_type
 USE lfric_xios_context_mod,     ONLY: lfric_xios_context_type
+USE lfric_xios_driver_mod,      ONLY: lfric_xios_initialise, &
+                                      lfric_xios_finalise
 USE lfricinp_setup_io_mod,      ONLY: init_lfricinp_files
 USE linked_list_mod,            ONLY: linked_list_type
 USE mesh_mod,                   ONLY: mesh_type
@@ -33,8 +35,6 @@ USE step_calendar_mod,          ONLY: step_calendar_type
 USE mpi_mod,                    ONLY: initialise_comm, store_comm,             &
                                       get_comm_size, get_comm_rank,            &
                                       finalise_comm
-! External libs
-USE xios,                       ONLY: xios_finalize, xios_initialize
 
 ! lfricinp modules
 USE lfricinp_um_parameters_mod, ONLY: fnamelen
@@ -66,7 +66,7 @@ TYPE(mesh_type), PUBLIC, pointer :: twod_mesh => null()
 ! Container for all input fields
 TYPE(field_collection_type) :: lfric_fields
 
-type(lfric_xios_context_type) :: io_context
+type(lfric_xios_context_type), allocatable :: io_context
 
 CONTAINS
 
@@ -103,10 +103,9 @@ xios_id = TRIM(program_name) // "_client"
 
 ! Initialise MPI and create the default communicator: mpi_comm_world
 CALL initialise_comm(comm)
-CALL init_wait()
 
 ! Initialise xios
-CALL xios_initialize(xios_id, return_comm = comm)
+call lfric_xios_initialise( program_name, comm, .false. )
 
 ! Save LFRic's part of the split communicator for later use, and
 ! set the total number of ranks and the local rank of the split
@@ -121,7 +120,7 @@ CALL initialise_halo_comms( comm )
 CALL load_configuration(lfric_nl_fname, required_lfric_namelists)
 
 ! Initialise logging system
-CALL init_logger(local_rank, total_ranks, program_name)
+CALL init_logger( comm, program_name )
 
 WRITE(log_scratch_space, '(2(A,I0))') 'total ranks = ', total_ranks,           &
                             ', local_rank = ', local_rank
@@ -147,6 +146,7 @@ model_calendar = step_calendar_type(time_origin)
 model_clock = model_clock_type( first_step, last_step, seconds_per_step, &
                                 spinup_period )
 
+allocate( io_context )
 file_list => io_context%get_filelist()
 CALL init_lfricinp_files(file_list)
 CALL io_context%initialise( xios_ctx, comm, chi, panel_id, model_clock, &
@@ -223,13 +223,17 @@ IMPLICIT NONE
 
 CALL log_event( 'Calling lfric finalise routines', LOG_LEVEL_INFO )
 
-! Finalise halos, XIOS, MPI, etc.
+! Finalise halos, XIOS, etc.
 CALL finalise_halo_comms()
-CALL xios_finalize()
-CALL finalise_comm()
+deallocate( io_context )
+CALL lfric_xios_finalise()
 
-! Finalise the logging system
+! Finalise the logging system. This has to be done before finallising MPI
+! as logging is an MPI process.
+!
 CALL final_logger(program_name)
+
+CALL finalise_comm()
 
 END SUBROUTINE lfricinp_finalise_lfric
 

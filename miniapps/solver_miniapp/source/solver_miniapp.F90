@@ -71,7 +71,7 @@ program solver_miniapp
   call load_configuration( filename )
   deallocate( filename )
 
-  call init_logger(total_ranks, local_rank, program_name)
+  call init_logger( comm, program_name )
 
   write(log_scratch_space,'(A)')                        &
       'Application built with '//trim(PRECISION_REAL)// &

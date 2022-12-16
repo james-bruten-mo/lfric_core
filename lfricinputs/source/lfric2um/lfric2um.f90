@@ -6,7 +6,6 @@
 PROGRAM lfric2um
 
 ! lfricinputs modules
-USE lfricinp_finalise_lfric_mod, ONLY: lfricinp_finalise_lfric
 USE lfricinp_read_command_line_args_mod, ONLY: lfricinp_read_command_line_args
 USE lfricinp_create_lfric_fields_mod,  ONLY: lfricinp_create_lfric_fields
 USE lfricinp_setup_io_mod,  ONLY: init_io_setup
@@ -14,8 +13,10 @@ USE lfricinp_setup_io_mod,  ONLY: init_io_setup
 ! lfric2um modules
 USE lfric2um_namelists_mod, ONLY: lfric2um_nl_fname, lfric_nl_fname,           &
      io_nl_fname, lfric2um_config, required_lfric_namelists
-USE lfricinp_lfric_driver_mod, ONLY: lfricinp_initialise_lfric, mesh, &
-     twod_mesh, lfric_fields
+USE lfricinp_lfric_driver_mod, ONLY: lfricinp_initialise_lfric,     &
+                                     lfricinp_finalise_lfric, mesh, &
+                                     twod_mesh,                     &
+                                     lfric_fields
 USE lfric2um_initialise_um_mod, ONLY: lfric2um_initialise_um, um_output_file
 USE lfric2um_initialise_lfric2um_mod, ONLY: lfric2um_initialise_lfric2um
 USE lfric2um_main_loop_mod, ONLY: lfric2um_main_loop

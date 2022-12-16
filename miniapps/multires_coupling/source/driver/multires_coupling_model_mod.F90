@@ -183,7 +183,7 @@ contains
     call get_initial_filename( filename )
     call load_configuration( filename )
 
-    call init_logger( get_comm_size(), get_comm_rank(), program_name )
+    call init_logger( communicator, program_name )
 
     write(log_scratch_space,'(A)')                        &
         'Application built with '//trim(PRECISION_REAL)// &

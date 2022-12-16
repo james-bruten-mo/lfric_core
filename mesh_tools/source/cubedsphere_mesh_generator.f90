@@ -154,7 +154,7 @@ program cubedsphere_mesh_generator
 
   total_ranks = get_comm_size()
   local_rank  = get_comm_rank()
-  call initialise_logging(local_rank, total_ranks, "cubedsphere")
+  call initialise_logging( communicator, "cubedsphere" )
 
   !===================================================================
   ! 3.0 Read in the control namelists from file.

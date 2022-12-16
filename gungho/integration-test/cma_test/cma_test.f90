@@ -128,7 +128,7 @@ program cma_test
   total_ranks = get_comm_size()
   local_rank  = get_comm_rank()
 
-  call initialise_logging(local_rank, total_ranks, 'cma_test')
+  call initialise_logging( comm, 'cma_test' )
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !

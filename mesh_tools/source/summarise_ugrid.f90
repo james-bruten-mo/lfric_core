@@ -65,7 +65,7 @@ program summarise_ugrid
   call store_comm(comm)
   total_ranks = get_comm_size()
   local_rank  = get_comm_rank()
-  call initialise_logging(local_rank, total_ranks, "summarise")
+  call initialise_logging( comm, "summarise" )
 
   ! Get filename from command line
   call get_initial_filename( filename, 'UGRID mesh file' )

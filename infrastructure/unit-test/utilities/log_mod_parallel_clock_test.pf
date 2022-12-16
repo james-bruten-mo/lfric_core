@@ -1,0 +1,180 @@
+!-----------------------------------------------------------------------------
+! (C) Crown copyright 2022 Met Office. All rights reserved.
+! The file LICENCE, distributed with this code, contains details of the terms
+! under which the code may be used.
+!-----------------------------------------------------------------------------
+!> Tests parallel logging with a clock.
+!>
+module log_mod_parallel_clock_test
+
+  use constants_mod, only : i_native, i_timestep
+  use log_mod,       only : finalise_logging,     &
+                            initialise_logging,   &
+                            log_event,            &
+                            log_level_warning,    &
+                            log_level_info,       &
+                            log_set_timestep,     &
+                            log_forget_timestep,  &
+                            log_set_level
+  use pFUnit_Mod
+
+  implicit none
+
+  private
+  public :: log_clock_single_test, log_clock_parallel_test
+
+  @testCase
+  type, public, extends(MpiTestCase) :: log_test_clock_parallel_type
+    private
+  contains
+    private
+    procedure, public :: log_clock_single_test
+    procedure, public :: log_clock_parallel_test
+  end type log_test_clock_parallel_type
+
+contains
+
+  @test([npes=1])
+  subroutine log_clock_single_test( this )
+
+    use log_mod_serial_clock_test, only : log_clock_serial_test
+
+    implicit none
+
+    class(log_test_clock_parallel_type), intent(inout) :: this
+
+    call initialise_logging( this%getMpiCommunicator(), 'cheese_wiggles' )
+    call log_clock_serial_test()
+    call finalise_logging()
+
+  end subroutine log_clock_single_test
+
+
+  !> Tests addition and removal of a clock in a parallel environment.
+  !>
+  @test(npes=[2, 3, 4])
+  subroutine log_clock_parallel_test( this )
+
+    implicit none
+
+    class(log_test_clock_parallel_type), intent(inout) :: this
+
+    integer, parameter  :: log_unit = 11
+
+    integer(i_native)   :: condition
+    character(40)       :: filename
+    character(8)        :: level_tag
+    character(80)       :: message
+    character(2)        :: proc_tag, step_tag
+    integer(i_timestep) :: step
+    integer(i_native)   :: proc_rank
+
+    character(*), parameter :: name = 'log_mod_parallel_clock_test'
+
+    call initialise_logging( this%getMpiCommunicator(),  name )
+    call log_set_level( log_level_info )
+    call log_forget_timestep()
+
+    call log_event( "No clock", log_level_info )
+    call log_event( "Clock none", log_level_warning )
+
+    call log_set_timestep( 1 )
+
+    call log_event( "First step", log_level_info )
+    call log_event( "Step the first", log_level_warning )
+
+    call log_set_timestep( 2 )
+
+    call log_event( "Second step", log_level_info )
+    call log_event( "Step the second", log_level_warning )
+
+    call log_forget_timestep()
+
+    call log_event( "No clock", log_level_info )
+    call log_event( "Clock none", log_level_warning )
+
+    call finalise_logging()
+
+    write( filename, &
+           '("PET", I0, ".", A, ".Log")') this%getProcessRank(), name
+    open( log_unit, file=filename, action='read', iostat=condition )
+    @assertEqual( 0, condition )
+    rewind(log_unit)
+
+    read( log_unit,  '(23X,A2,I1,A8,A)' ) proc_tag, proc_rank, &
+                                          level_tag, message
+    @assertEqual( ':P', proc_tag )
+    @assertEqual( this%getProcessRank(), proc_rank )
+    @assertEqual( ':INFO :', level_tag )
+    @assertEqual( "No clock", message )
+
+    read( log_unit,  '(23X,A2,I1,A8,A)' ) proc_tag, proc_rank, &
+                                          level_tag, message
+    @assertEqual( ':P', proc_tag )
+    @assertEqual( this%getProcessRank(), proc_rank )
+    @assertEqual( ':WARN :', level_tag )
+    @assertEqual( "Clock none", message )
+
+    read( log_unit,  &
+          '(23X,A2,I1,A2,I1,A8,A)' ) proc_tag, proc_rank, &
+                                     step_tag, step, &
+                                     level_tag, message
+    @assertEqual( ':P', proc_tag )
+    @assertEqual( this%getProcessRank(), proc_rank )
+    @assertEqual( ':S', step_tag )
+    @assertEqual( 1, step )
+    @assertEqual( ':INFO :', level_tag )
+    @assertEqual( "First step", message )
+
+    read( log_unit,  &
+          '(23X,A2,I1,A2,I1,A8,A)' ) proc_tag, proc_rank, &
+                                     step_tag, step, &
+                                     level_tag, message
+    @assertEqual( ':P', proc_tag )
+    @assertEqual( this%getProcessRank(), proc_rank )
+    @assertEqual( ':S', step_tag )
+    @assertEqual( 1, step )
+    @assertEqual( ':WARN :', level_tag )
+    @assertEqual( "Step the first", message )
+
+    read( log_unit,  &
+          '(23X,A2,I1,A2,I1,A8,A)' ) proc_tag, proc_rank, &
+                                     step_tag, step, &
+                                     level_tag, message
+    @assertEqual( ':P', proc_tag )
+    @assertEqual( this%getProcessRank(), proc_rank )
+    @assertEqual( ':S', step_tag )
+    @assertEqual( 2, step )
+    @assertEqual( ':INFO :', level_tag )
+    @assertEqual( "Second step", message )
+
+    read( log_unit,  &
+          '(23X,A2,I1,A2,I1,A8,A)' ) proc_tag, proc_rank, &
+                                     step_tag, step, &
+                                     level_tag, message
+    @assertEqual( ':P', proc_tag )
+    @assertEqual( this%getProcessRank(), proc_rank )
+    @assertEqual( ':S', step_tag )
+    @assertEqual( 2, step )
+    @assertEqual( ':WARN :', level_tag )
+    @assertEqual( "Step the second", message )
+
+    read( log_unit,  '(23X,A2,I1,A8,A)' ) proc_tag, proc_rank, &
+                                          level_tag, message
+    @assertEqual( ':P', proc_tag )
+    @assertEqual( this%getProcessRank(), proc_rank )
+    @assertEqual( ':INFO :', level_tag )
+    @assertEqual( "No clock", message )
+
+    read( log_unit,  '(23X,A2,I1,A8,A)' ) proc_tag, proc_rank, &
+                                          level_tag, message
+    @assertEqual( ':P', proc_tag )
+    @assertEqual( this%getProcessRank(), proc_rank )
+    @assertEqual( ':WARN :', level_tag )
+    @assertEqual( "Clock none", message )
+
+    close( log_unit, status='delete' )
+
+  end subroutine log_clock_parallel_test
+
+end module log_mod_parallel_clock_test

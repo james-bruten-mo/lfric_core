@@ -123,7 +123,7 @@ contains
     call get_initial_filename( filename )
     call transport_load_configuration( filename )
 
-    call init_logger( get_comm_rank(), get_comm_size(), program_name )
+    call init_logger( model_communicator, program_name )
 
     call log_event( program_name//': Runtime default precision set as:', LOG_LEVEL_ALWAYS )
     write(log_scratch_space, '(I1)') kind(1.0_r_def)
@@ -337,13 +337,15 @@ contains
     ! Finalise namelist configurations
     call final_configuration()
 
-    !----------------------------------------------------------------------------
+    !--------------------------------------------------------------------------
     ! Driver layer finalise
-    !----------------------------------------------------------------------------
-    call final_comm()
-
-    ! Finalise the logging system
+    !--------------------------------------------------------------------------
+    ! Finalise the logging system. This has to be done before finalising MPI as
+    ! logging is an MPI process.
+    !
     call final_logger(program_name)
+
+    call final_comm()
 
   end subroutine finalise_transport
 

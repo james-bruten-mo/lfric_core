@@ -28,16 +28,21 @@ private
 
 contains
 
-subroutine init_logger(total_ranks, local_rank, program_name)
+!> @brief Initialises the logging system from a namelist.
+!>
+!> @param[in] communicator MPI communicator to use for logging.
+!> @param[in] program_name Identifies the running program.
+!>
+subroutine init_logger(communicator, program_name)
 
   implicit none
 
   character(len=*),  intent(in) :: program_name
-  integer(i_native), intent(in) :: total_ranks, local_rank
+  integer(i_native), intent(in) :: communicator
 
   integer(i_native) :: log_level
 
-  call initialise_logging(local_rank, total_ranks, program_name)
+  call initialise_logging( communicator, program_name )
 
   select case (run_log_level)
   case( RUN_LOG_LEVEL_ERROR )

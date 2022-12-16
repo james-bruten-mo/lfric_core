@@ -1,145 +1,181 @@
 #!/usr/bin/env python3
 ##############################################################################
-# Copyright (c) 2017,  Met Office, on behalf of HMSO and Queen's Printer
+# Copyright (c) 2017,    Met Office, on behalf of HMSO and Queen's Printer
 # For further details please refer to the file LICENCE.original which you
 # should have received as part of this distribution.
 ##############################################################################
-'''
+"""
 The Fortran logging module terminates on error. This cannot be tested by the
 unit testing framework as it terminates the unit tests as well.
-'''
+"""
 import datetime
 import re
 
 from testframework import LFRicLoggingTest, MpiTest, TestEngine, TestFailed
 
+
+###############################################################################
+class LogModErrorSerialTest(MpiTest):  # pylint: disable=too-few-public-methods
+    """
+    Tests logging in serial scenarios.
+    """
+    def __init__(self):
+        super().__init__(processes=1)
+
+        self._minimum_timestamp = datetime.datetime.utcnow()
+
+    def test(self, returncode: int, out: str, err: str):
+        """
+        Tests that loggin an error ends execution.
+        """
+        expected_level = 'ERROR'
+        expected_message = ' An error was logged.'
+
+        if returncode == 0:  # pylint: disable=no-else-raise
+            message = "Logging an error did not cause termination to end"
+            raise TestFailed(message)
+        elif returncode == 127:
+            raise TestFailed('Test executable not found')
+        elif returncode > 128:
+            raise TestFailed('Execution fault such as segmentation fault')
+
+        if out != '':
+            message = 'Expected no output on standard out:\n' \
+                      + f'Standard out: {out}'
+            raise TestFailed(message)
+
+        try:
+            timestamp_string, level, report = err.split(':', 2)
+            timestamp_without_timezone = timestamp_string[:-5]
+
+            timestamp = datetime.datetime.strptime(timestamp_without_timezone,
+                                                   '%Y%m%d%H%M%S.%f')
+        except Exception as ex:
+            message = f"Unable to get timestamp from message: {err}"
+            raise TestFailed(message) from ex
+
+        if timestamp < self._minimum_timestamp:
+            message = f"Expected a timestamp after {self._minimum_timestamp}" \
+                      f" but read {timestamp}"
+            raise TestFailed(message)
+
+        if level != expected_level:
+            message = 'Expected "{}" but read "{}"'
+            raise TestFailed(message.format(expected_level, level))
+
+        # We only check the first line as compilers tend to print the return
+        # code as well. This will remain true until we can use Fortran 2008 and
+        # "stop error".
+        #
+        first, _, _ = report.partition('\n')
+        if first != expected_message:
+            message = 'Expected "{}" but read "{}"'
+            raise TestFailed(message.format(expected_message, first))
+
+        message = 'Logging an error caused exit as expected with code {code}'
+        return message.format(code=returncode)
+
+
 ##############################################################################
-class log_mod_error_serial_test( MpiTest ):
-  '''
-  Tests that logging an error terminates execution when run serially.
-  '''
-  def __init__( self ):
-    super(log_mod_error_serial_test, self).__init__( processes=1 )
+class LogModErrorParallelTest(LFRicLoggingTest):
+    """
+    Tests logging in MPI parallel scenarios.
+    """
+    # pylint: disable=too-few-public-methods
+    def __init__(self):
+        super().__init__(processes=2)
 
-    self._minimumTimestamp = datetime.datetime.utcnow()
+        self._minimum_timestamp = datetime.datetime.now(datetime.timezone.utc)
+        line_pattern_string = r'(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)' \
+                              r'\.(\d{3})([+-])(\d\d)(\d\d):P(\d+):\s*(\w+)' \
+                              r':\s+(.+)'
+        self._line_pattern = re.compile(line_pattern_string)
 
-  def test( self, returncode, out, err ):
-    expectedLevel = 'ERROR'
-    expectedMessage = ' An error was logged.'
+    def test(self, returncode: int, out: str, err: str):
+        """
+        Tests that logging an error terminates execution when run in parallel.
+        """
+        # pylint: disable=too-many-locals
+        expected_level = 'ERROR'
+        expected_message = "An error was logged."
 
-    if returncode == 0:
-        raise TestFailed('Logging an error did not cause termination to end')
-    elif returncode == 127:
-        raise TestFailed('Test executable not found')
-    elif returncode > 128:
-        raise TestFailed('Execution fault such as segmentation fault')
+        if returncode == 0:
+            message = "Logging an error did not cause termination to end"
+            raise TestFailed(message)
 
-    try:
-      timestampString, level, report = err.split( ':', 2 )
-      timestampWithoutTimezone = timestampString[:-5]
+        if out != '':
+            message = 'Expected no output on standard out:\n' \
+                      + f'Standard out: {out}'
+            raise TestFailed(message)
 
-      timestamp = datetime.datetime.strptime( timestampWithoutTimezone, \
-                                              '%Y%m%d%H%M%S.%f' )
-    except Exception as ex:
-      raise TestFailed( f"Unable to get timestamp from message: {err}", ex )
+        # ToDo: Ideally we would test for stderr output here but whether some
+        # is generated or not is dependent on whether the compiler in use
+        # supports generating a backtrace for warnings. Rather than trying to
+        # solve that problem we'll leave it as an exercise for later.
+        #
+        # In light of this we will just ignore the "err" argument we are
+        # passed as part of the LFRicLoggingTest interface.
 
-    if timestamp < self._minimumTimestamp:
-      message = 'Expected a timestamp after {} but read {}'
-      raise TestFailed( message.format( minimumTimestamp, timestamp ) )
+        pet_log = self.getLFRicLoggingLog()
+        pet_log = '\n'.join(pet_log.splitlines())
 
-    if level != expectedLevel:
-      message = 'Expected "{}" but read "{}"'
-      raise TestFailed( message.format( expectedLevel, level ) )
+        match = self._line_pattern.match(pet_log)
+        if match:
+            try:
+                tzsign = -1 if match.group(8) == '-' else 1
+                tzhours = int(match.group(9))
+                tzmins = int(match.group(10))
+                timezone = datetime.timezone(
+                    tzsign * datetime.timedelta(hours=tzhours,
+                                                minutes=tzmins)
+                )
+                timestamp = datetime.datetime(
+                    int(match.group(1)),  # Year
+                    int(match.group(2)),  # Month
+                    int(match.group(3)),  # Day
+                    int(match.group(4)),  # Hour
+                    int(match.group(5)),  # Minute
+                    int(match.group(6)),  # Second
+                    int(match.group(7)) * 1000,  # Microseconds
+                    timezone  # Timezone
+                )
+            except Exception as ex:
+                message = f"Bad timestamp format: {pet_log}"
+                raise TestFailed(message) from ex
+            process = int(match.group(11))
+            level = match.group(12)
+            report = match.group(13)
+        else:
+            message = f"Unexpected log message: {pet_log}"
+            raise TestFailed(message)
 
-    # We only check the first line as compilers tend to print the return code
-    # as well. This will remain true until we can use Fortran 2008 and
-    # "stop error".
-    #
-    first, newline, rest = report.partition( '\n' )
-    if first != expectedMessage:
-      message = 'Expected "{}" but read "{}"'
-      raise TestFailed( message.format( expectedMessage, first ) )
+        if timestamp < self._minimum_timestamp:
+            message = f"Expected a timestamp after {self._minimum_timestamp}" \
+                      f" but read {timestamp}"
+            raise TestFailed(message)
 
-    message = 'Logging an error caused exit as expected with code {code}'
-    return message.format( code=returncode )
+        if process < 0:
+            message = "Process number went negative"
+            raise TestFailed(message)
 
-##############################################################################
-class log_mod_error_parallel_test( LFRicLoggingTest ):
-  '''
-  Tests that logging an error terminates execution when run in parallel.
-  '''
-  def __init__( self ):
-    super(log_mod_error_parallel_test, self).__init__( processes=2 )
+        if level != expected_level:
+            message = "Expected '{}' but read '{}'"
+            raise TestFailed(message.format(expected_level, level))
 
-    self._minimumTimestamp = datetime.datetime.now(datetime.timezone.utc)
-    self._linePattern = re.compile( r'(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)\.(\d{3})([+-])(\d\d)(\d\d):P(\d+):\s*(\w+):\s+(.+)' )
+        # We only check the first line as compilers tend to print the return
+        # code as well. This will remain true until we can use Fortran 2008 and
+        # "stop error".
+        #
+        first, _, _ = report.partition('\n')
+        if first != expected_message:
+            message = 'Expected "{}" but read "{}"'
+            raise TestFailed(message.format(expected_message, first))
 
-  def test( self, returncode, out, err ):
-    expectedLevel = 'ERROR'
-    expectedMessage = 'An error was logged.'
+        message = 'Logging an error caused exit as expected with code {code}'
+        return message.format(code=returncode)
 
-    if returncode == 0:
-      raise TestFailed( 'Logging an error did not cause termination to end' )
-
-    if out != '':
-      message = 'Expected no output on standard out:\n' \
-                 + 'Standard out: {out}'
-      raise TestFailed( message.format( out=out, err=err ) )
-
-    # We remove the first line as it will be a spin-up message.
-    petLog = self.getLFRicLoggingLog()
-    petLog = '\n'.join( petLog.splitlines()[1:] )
-
-    match = self._linePattern.match( petLog )
-    if match:
-      try:
-        tzsign = -1 if match.group(8) == '-' else 1
-        tzhours = int(match.group(9))
-        tzmins = int(match.group(10))
-        timezone = datetime.timezone(tzsign
-                                     * datetime.timedelta(hours=tzhours,
-                                                          minutes=tzmins))
-        timestamp = datetime.datetime( int(match.group(1)), # Year
-                                       int(match.group(2)), # Month
-                                       int(match.group(3)), # Day
-                                       int(match.group(4)), # Hour
-                                       int(match.group(5)), # Minute
-                                       int(match.group(6)), # Second
-                                    int(match.group(7)) * 1000, # Microseconds
-                                       timezone ) # Timezone
-      except Exception as ex:
-        raise TestFailed( 'Bad timestamp format: {}'.format( petLog ), ex )
-      process = int(match.group(11))
-      level = match.group(12)
-      report = match.group(13)
-    else:
-      raise TestFailed( 'Unexpected log message: {}'.format( petLog ) )
-
-    if timestamp < self._minimumTimestamp:
-      message = 'Expected a timestamp after {} but read {}'
-      raise TestFailed( message.format( minimumTimestamp, timestamp ) )
-
-    if process < 0:
-      message = 'Process number went negative'
-      raise TestFailed( message )
-
-    if level != expectedLevel:
-      message = 'Expected "{}" but read "{}"'
-      raise TestFailed( message.format( expectedLevel, level ) )
-
-    # We only check the first line as compilers tend to print the return code
-    # as well. This will remain true until we can use Fortran 2008 and
-    # "stop error".
-    #
-    first, newline, rest = report.partition( '\n' )
-    if first != expectedMessage:
-      message = 'Expected "{}" but read "{}"'
-      raise TestFailed( message.format( expectedMessage, first ) )
-
-    message = 'Logging an error caused exit as expected with code {code}'
-    return message.format( code=returncode )
 
 ##############################################################################
 if __name__ == '__main__':
-  TestEngine.run( log_mod_error_serial_test() )
-  TestEngine.run( log_mod_error_parallel_test() )
+    TestEngine.run(LogModErrorSerialTest())
+    TestEngine.run(LogModErrorParallelTest())

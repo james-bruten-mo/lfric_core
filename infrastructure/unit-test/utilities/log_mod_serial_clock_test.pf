@@ -3,78 +3,81 @@
 ! The file LICENCE, distributed with this code, contains details of the terms
 ! under which the code may be used.
 !-----------------------------------------------------------------------------
-!> Tests logging with a clock
+!> Tests serial logging with a clock.
 !>
-module log_mod_clock_test
+!> This also tests parallel logging with a single rank as it is treated the
+!> same.
+!>
+module log_mod_serial_clock_test
 
-  use constants_mod, only : i_timestep, r_second
+  use constants_mod, only : i_native, i_timestep
   use log_mod,       only : finalise_logging,     &
                             initialise_logging,   &
                             log_event,            &
-                            log_level,            &
-                            log_level_warning,    &
-                            log_level_info,       &
-                            log_set_timestep,     &
                             log_forget_timestep,  &
+                            log_level_info,       &
+                            log_level_warning,    &
                             log_set_alert_stream, &
                             log_set_info_stream,  &
-                            log_set_level
+                            log_set_level,        &
+                            log_set_timestep
   use pFUnit_Mod
 
   implicit none
 
   private
-  public :: log_clock_test, setUp, tearDown
+  public :: log_clock_test, log_clock_serial_test
 
   integer, parameter :: info_unit  = 12
   integer, parameter :: alert_unit = 13
 
+  @testCase
+  type, public, extends(TestCase) :: log_test_clock_serial_type
+    private
+  contains
+    private
+    procedure, public :: log_clock_test
+  end type log_test_clock_serial_type
+
 contains
 
-  !> Create log file fixtures.
-  !>
-  @before
-  subroutine setUp()
-    implicit none
-    integer :: condition
-    call initialise_logging(0, 1, 'log_mod_clock_test')
-    call log_forget_timestep()
-    open( info_unit, status='scratch', action='readwrite', &
-          iostat=condition )
-    @assertEqual( condition, 0 )
-    open( alert_unit, status='scratch', action='readwrite', &
-          iostat=condition )
-    @assertEqual( condition, 0 )
-    call log_set_level( log_level_info )
-  end subroutine setUp
-
-  @after
-  subroutine tearDown()
-    implicit none
-    integer :: condition
-    call finalise_logging()
-    close( alert_unit, iostat=condition )
-    @assertEqual( condition, 0 )
-    close( info_unit, iostat=condition )
-    @assertEqual( condition, 0 )
-  end subroutine tearDown
-
-  !> Tests the addition and removal of a clock.
+  !> Tests the addition and removal of a clock in a serial environment.
   !>
   @test
-  subroutine log_clock_test()
+  subroutine log_clock_test( this )
 
     implicit none
 
+    class(log_test_clock_serial_type), intent(inout) :: this
+
+    call initialise_logging()
+    call log_clock_serial_test()
+    call finalise_logging()
+
+  end subroutine log_clock_test
+
+
+  subroutine log_clock_serial_test
+
+    implicit none
+
+    integer(i_native)   :: condition
     character(8)        :: info_tag, alert_tag
     character(80)       :: info_message, alert_message
     character(1)        :: info_field, alert_field
     integer(i_timestep) :: info_step, alert_step
 
-    @assertEqual( LOG_LEVEL_INFO, log_level() )
+    open( info_unit, status='scratch', action='readwrite', &
+          iostat=condition )
+    @assertEqual( 0, condition )
+    open( alert_unit, status='scratch', action='readwrite', &
+          iostat=condition )
+    @assertEqual( 0, condition )
 
+    call log_set_level( log_level_info )
     call log_set_info_stream( info_unit )
     call log_set_alert_stream( alert_unit )
+    call log_forget_timestep()
 
     call log_event( "No clock", log_level_info )
     call log_event( "Clock none", log_level_warning )
@@ -140,6 +143,11 @@ contains
     @assertEqual( ':WARN :', alert_tag )
     @assertEqual( "Clock none", alert_message )
 
-  end subroutine log_clock_test
+    close( alert_unit, iostat=condition )
+    @assertEqual( 0, condition )
+    close( info_unit, iostat=condition )
+    @assertEqual( 0, condition )
 
-end module log_mod_clock_test
+  end subroutine log_clock_serial_test
+
+end module log_mod_serial_clock_test

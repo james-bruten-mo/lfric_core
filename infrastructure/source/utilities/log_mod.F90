@@ -17,7 +17,8 @@ module log_mod
 
   use, intrinsic :: iso_fortran_env, only : output_unit, error_unit
 
-  use constants_mod,   only : i_timestep, &
+  use constants_mod,   only : i_native,   &
+                              i_timestep, &
                               str_long,   &
                               str_max_filename
   use lfric_abort_mod, only : parallel_abort
@@ -60,12 +61,134 @@ module log_mod
   integer, private :: alert_unit    = error_unit
 
   integer, private :: log_unit_number = 10
-  logical, private :: is_parallel = .false.
   logical, private :: warning_trace = .false.
-  character(len=:), private, allocatable :: petno
+  integer(i_native),   private, allocatable :: mpi_communicator
+  character(len=:),    private, allocatable :: petno
   integer(i_timestep), private, allocatable :: timestep
 
+  interface initialise_logging
+    procedure initialise_serial_logging
+    procedure initialise_parallel_logging
+  end interface initialise_logging
+
 contains
+
+  !> @brief Sets up logging for operation in a serial regime.
+  !>
+  !> @param[in] trace_on_warnings Output a backtrace on warnings.
+  !>
+  subroutine initialise_serial_logging( trace_on_warnings )
+
+    implicit none
+
+    logical, optional, intent(in) :: trace_on_warnings
+
+    call base_initialise( trace_on_warnings )
+
+  end subroutine initialise_serial_logging
+
+
+  !> @brief Sets up logging for operation in a parallel regime.
+  !>
+  !> @param[in] communicator MPI communicator to operate in.
+  !> @param[in] file_name Appears in output filename.
+  !> @param[in] trace_on_warnings Output a backtrace on warnings.
+  !>
+  subroutine initialise_parallel_logging( communicator, &
+                                          file_name,    &
+                                          trace_on_warnings )
+
+    use mpi, only : mpi_comm_rank, mpi_comm_size
+
+    implicit none
+
+    integer(i_native), intent(in) :: communicator
+    character(*),      intent(in) :: file_name
+    logical, optional, intent(in) :: trace_on_warnings
+
+    integer(i_native) :: status
+    integer(i_native) :: ilen
+    character(len=:), allocatable :: logfilename
+    character(len=12) :: fmt
+    integer(i_native) :: this_rank
+    integer(i_native) :: total_ranks
+
+    call mpi_comm_size( communicator, total_ranks, ierror=status )
+    if (status /= 0) then
+      write( error_unit, &
+             "('Cannot determine communicator size. (',i0,')')" ) status
+      call abort_model()
+    end if
+
+    if (total_ranks /= 1) then
+      allocate( mpi_communicator )
+      mpi_communicator = communicator
+
+      call mpi_comm_rank( mpi_communicator, this_rank, ierror=status )
+      if (status /= 0) then
+        write( error_unit, "('Cannot determine rank. iostat = ',i0)" ) status
+        call abort_model()
+      end if
+
+      ilen = int( log10( real( total_ranks - 1 ) ) ) + 1
+      write( fmt, '("(i",i0,".",i0,")")' ) ilen, ilen
+      allocate( character(len=ilen) :: petno )
+      write( petno, fmt ) this_rank
+
+      allocate( character(ilen + len_trim(file_name) + 8) :: logfilename )
+      write( logfilename, '("PET", a, ".", a, ".Log")' ) petno, trim(file_name)
+      open( unit=log_unit_number, file=logfilename, &
+            action="write", status='unknown', iostat=status )
+      if ( status /= 0 ) then
+        write( error_unit, &
+               '("Cannot open logging file. iostat = ", i0)' ) status
+        call abort_model()
+      end if
+    end if
+
+    call base_initialise( trace_on_warnings )
+
+  end subroutine initialise_parallel_logging
+
+  !> @brief Initialisation common to all regimes.
+  !>
+  !> @param[in] trace_on_warnings Output a backtrace on warnings.
+  !>
+  subroutine base_initialise( trace_on_warnings )
+
+    implicit none
+
+    logical, optional, intent(in) :: trace_on_warnings
+
+    if (present(trace_on_warnings)) then
+      warning_trace = trace_on_warnings
+    end if
+
+  end subroutine base_initialise
+
+  !> Finalise logging functionality by closing the log files.
+  !>
+  subroutine finalise_logging()
+
+    use mpi, only : mpi_barrier
+
+    implicit none
+
+    integer :: ios
+
+    if (allocated(mpi_communicator)) then
+      close( unit=log_unit_number, iostat=ios )
+      if ( ios /= 0 )then
+        write( error_unit, "('Cannot close logging file. iostat = ', i0)" ) ios
+        call abort_model()
+      end if
+      call log_forget_timestep()
+      deallocate( petno )
+      call mpi_barrier( mpi_communicator, ierror=ios )
+      deallocate( mpi_communicator )
+    end if
+
+  end subroutine finalise_logging
 
   !> Sets the current timestep.
   !>
@@ -172,58 +295,6 @@ contains
   end function
 
 
-  !> Initialise logging functionality by opening the log files
-  !> @param this_rank The number of the local rank
-  !> @param total_ranks The total number pf ranks in the job
-  !> @param app_name The name of the application. This will form part of the
-  !>                 log file name(s)
-  subroutine initialise_logging(this_rank, total_ranks, app_name, trace_on_warnings)
-    implicit none
-    integer, intent(in) :: this_rank, total_ranks
-    character(len=*), intent(in) :: app_name
-    logical, optional, intent(in) :: trace_on_warnings
-    integer :: ios
-    integer :: ilen
-    character(len=:), allocatable :: logfilename
-    character(len=12) :: fmt
-
-    if (present(trace_on_warnings)) then
-      if (trace_on_warnings) warning_trace = .true.
-    end if
-
-    if (total_ranks > 1 ) then
-      is_parallel = .true.
-      ilen=int(log10(real(total_ranks-1)))+1
-      write(fmt,'("(i",i0,".",i0,")")')ilen, ilen
-      allocate(character(len=ilen) :: petno)
-      write(petno,fmt)this_rank
-      allocate(character(len=ilen+len_trim(app_name)+8) :: logfilename)
-      write(logfilename,"(a,a,a,a,a)")"PET",petno,".",trim(app_name),".Log"
-      open(unit=log_unit_number, file=logfilename, status='unknown', iostat=ios)
-      if ( ios /= 0 )then
-        write(error_unit,"('Cannot open logging file. iostat = ',i0)")ios
-        call abort_model()
-      end if
-      call log_event('LFRic Logging System Version 1.0',LOG_LEVEL_ALWAYS)
-    else
-      is_parallel = .false.
-    end if
-
-  end subroutine initialise_logging
-
-  !> Finalise logging functionality by closing the log files
-  subroutine finalise_logging()
-    implicit none
-    integer :: ios
-    if ( is_parallel ) then
-      close(unit=log_unit_number,iostat=ios)
-      if ( ios /= 0 )then
-        write(error_unit,"('Cannot close logging file. iostat = ',i0)")ios
-        call abort_model()
-      end if
-    end if
-  end subroutine finalise_logging
-
   !> Log an event
   !>
   !> If the code is running on multiple MPI ranks, the event description will
@@ -282,13 +353,13 @@ contains
           tag  = 'INFO'
       end select
 
-      if (is_parallel) unit = log_unit_number
+      if (allocated(petno)) unit = log_unit_number
 
       call date_and_time( date=date_string, time=time_string, zone=zone_string)
       write( unit, '(A, A, A)', &
              advance='no' ) date_string, time_string, zone_string
 
-      if (is_parallel) then
+      if (allocated(petno)) then
         write( unit, '(":P", A)', advance='no' ) petno
       end if
 
@@ -298,7 +369,7 @@ contains
 
       write ( unit, '(":",A,": ",A)') tag, trim( message )
 
-      if(trace) then
+      if (trace) then
         call traceback()
       end if
 
@@ -321,7 +392,7 @@ contains
     integer             :: ios
     logical             :: file_opened
 
-    if ( is_parallel ) then
+    if (allocated(petno)) then
       ! Close the parallel output files if opened
       inquire( unit = log_unit_number, opened = file_opened )
       if ( file_opened ) then
