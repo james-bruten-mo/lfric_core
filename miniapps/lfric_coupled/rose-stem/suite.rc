@@ -884,6 +884,7 @@
             TARGET_PLATFORM   = {{TARGET_OPT}}
             OMP_NUM_THREADS   = $(echo ${threads:-1})
             TOTAL_RANKS       = $(echo ${mpi_parts:-1})
+            SITE_MPI_LAUNCHER_OPTS = {{get_target_property(PRIMARY_TARGET, 'queue.run.launcher-args')}}
 
             GSWP2_INSTALL_DIR={{GSWP2_INSTALL_DIR}}
             RIV_NUMBER_ANCILLARY={{RIV_NUMBER_ANCILLARY}}

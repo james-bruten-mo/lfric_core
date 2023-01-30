@@ -768,6 +768,7 @@ echo $RELATIVE_LOG_ROOT > $DESTINATION_DIRECTORY/compile.log.path
             TARGET_PLATFORM   = {{TARGET_OPT}}
             OMP_NUM_THREADS   = $(echo ${threads:-1})
             TOTAL_RANKS       = $(echo ${mpi_parts:-1})
+            SITE_MPI_LAUNCHER_OPTS = {{get_target_property(PRIMARY_TARGET, 'queue.run.launcher-args')}}
 
 {#-----------------------------------------------------------------#}
 {#    Note: As this is an enumeration it must end up having single #}

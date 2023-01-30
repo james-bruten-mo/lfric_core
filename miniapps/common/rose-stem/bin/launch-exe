@@ -38,7 +38,11 @@ if [ "${RUN_METHOD}" = "aprun" ] ; then
     LAUNCHER_OPTS="-cc depth -n ${TOTAL_RANKS} -S ${MPI_TASKS_PER_NUMA_REGION} -d ${OMP_NUM_THREADS} -j ${HYPERTHREADS}"
   fi
 elif [ "${RUN_METHOD}" = "mpiexec" ] ; then
-  LAUNCHER_OPTS="-n ${TOTAL_RANKS}"
+  if [ "${SITE_MPI_LAUNCHER_OPTS}" != "" ] ; then
+    LAUNCHER_OPTS=${SITE_MPI_LAUNCHER_OPTS}
+  else
+    LAUNCHER_OPTS="-n ${TOTAL_RANKS}"
+  fi
 elif [ "${RUN_METHOD}" = "executable" ] ; then
   LAUNCHER_OPTS=""
 fi

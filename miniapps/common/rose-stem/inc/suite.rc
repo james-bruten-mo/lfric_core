@@ -742,6 +742,8 @@ mv $CYLC_TASK_WORK_DIR/lfric_averages.nc $DESTINATION_DIRECTORY/"+pathFragment+"
             TARGET_PLATFORM   = {{TARGET_OPT}}
             OMP_NUM_THREADS   = $(echo ${threads:-1})
             TOTAL_RANKS       = $(echo ${mpi_parts:-1})
+            SITE_MPI_LAUNCHER_OPTS = {{get_target_property(PRIMARY_TARGET, 'queue.run.launcher-args')}}
+
 {#-----------------------------------------------------------------#}
 {#    Note: As this is an enumeration it must end up having single #}
 {#          quotes so that the resultant fortran namelist reads it #}

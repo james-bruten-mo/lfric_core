@@ -104,7 +104,8 @@
                 'directives' : [
                     '--partition=rhel7', '--time=00:10:00',
                     '--ntasks=6', '--mem-per-cpu=1G', '--export=NONE'
-                ]
+                ],
+                'launcher-args' : ''
             },
             'tech' : {
                 'launcher' : 'mpiexec',
@@ -162,7 +163,8 @@
                     '-l select=1',
                     '-l walltime=00:10:00',
                     '-q=normal'
-                ]
+                ],
+                'launcher-args' : ''
             },
             'tech' : {
                 'launcher' : 'mpiexec',
@@ -221,7 +223,8 @@
                     '-l select=1',
                     '-l walltime=00:10:00',
                     '-q=normal'
-                ]
+                ],
+                'launcher-args' : ''
             },
             'tech' : {
                 'launcher' : 'mpiexec',
@@ -283,7 +286,8 @@
                     '-l select=1',
                     '-l walltime=00:10:00',
                     '-q=normal'
-                ]
+                ],
+                'launcher-args' : ''
             },
             'tech' : {
                 'launcher' : 'mpiexec',
@@ -362,7 +366,8 @@
                     '-q=normal',
                     '-W umask=0022',
                     '-l storage=gdata/access+gdata/hr22+gdata/ki32+scratch/access+gdata/'~environ.get('PROJECT','NO_PROJECT')
-                ]
+                ],
+                'launcher-args' : '-n ${TOTAL_RANKS} --map-by slot:PE=${OMP_NUM_THREADS} --bind-to core'
             },
             'tech' : {
                 'launcher' : 'mpiexec',
@@ -451,7 +456,8 @@
                     '--hint=nomultithread',
                     '--mem=60G',
                     '--time=01:30:00'
-                ]
+                ],
+                'launcher-args' : ''
             },
             'tech' : {
                 'launcher' : 'srun',
@@ -494,7 +500,8 @@
             },
             'run' : {
                 'launcher': 'background',
-                'directives' : []
+                'directives' : [],
+                'launcher-args' : ''
             },
             'tech' : {
                 'launcher' : 'background',
@@ -532,7 +539,8 @@
             },
             'run' : {
                 'launcher' : 'mpiexec',
-                'directives' : {}
+                'directives' : {},
+                'launcher-args' : ''
             },
             'tech' : {
                 'launcher' : 'mpiexec',
