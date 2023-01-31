@@ -29,6 +29,7 @@ limit_cfl=.false.,
 /
 &departure_points
 departure_grid='uniform',
+horizontal_limit='none',
 method='euler',
 n_dep_pt_iterations=1,
 vertical_limit='exponential',

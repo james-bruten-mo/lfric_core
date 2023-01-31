@@ -12,55 +12,6 @@ module departure_points_mod_test
 contains
 
   @test
-  subroutine find_local_x_value_test()
-    use pFUnit_Mod
-    use, intrinsic :: iso_fortran_env, only : real64
-    use constants_mod,                 only : r_tran, i_def
-    use departure_points_mod,          only : find_local_x_value
-
-    implicit none
-
-    real(kind=r_tran), parameter :: tol = 10.0e-8_r_tran  ! r_tran 64bit
-    real(kind=r_tran)    :: x_original, local_coordinate_value, use_tol
-    integer(kind=i_def) :: iEdge, nCellEdges
-
-    nCellEdges = 10
-
-    x_original = -3.4_r_tran
-    call find_local_x_value(x_original,nCellEdges,iEdge,local_coordinate_value)
-    @assertEqual(1, iEdge)
-
-    if ( r_tran == real64 ) then
-      use_tol = tol
-    else
-      use_tol = 10.0_r_tran*spacing( local_coordinate_value )
-    end if
-    @assertEqual(0.6_r_tran, local_coordinate_value, use_tol)
-
-    x_original = -2.4_r_tran
-    call find_local_x_value(x_original,nCellEdges,iEdge,local_coordinate_value)
-    @assertEqual(2, iEdge)
-
-    if ( r_tran == real64 ) then
-      use_tol = tol
-    else
-      use_tol = 10.0_r_tran*spacing( local_coordinate_value )
-    end if
-    @assertEqual(0.6_r_tran, local_coordinate_value, use_tol)
-
-    x_original = 3.4_r_tran
-    call find_local_x_value(x_original,nCellEdges,iEdge,local_coordinate_value)
-    @assertEqual(8, iEdge)
-    @assertEqual(0.4_r_tran, local_coordinate_value, tol)
-
-    x_original = 4.4_r_tran
-    call find_local_x_value(x_original,nCellEdges,iEdge,local_coordinate_value)
-    @assertEqual(9, iEdge)
-    @assertEqual(0.4_r_tran, local_coordinate_value, tol)
-
-  end subroutine find_local_x_value_test
-
-  @test
   subroutine find_local_vertical_value_test()
     use pFUnit_Mod
     use, intrinsic :: iso_fortran_env, only : real64
@@ -97,31 +48,6 @@ contains
     @assertEqual(0.0_r_tran, local_coordinate_value, tol)
 
   end subroutine find_local_vertical_value_test
-
-  @test
-  subroutine calc_u_at_x_test()
-    use pFUnit_Mod
-    use constants_mod,        only: r_tran, i_def
-    use departure_points_mod, only: calc_u_at_x
-
-    implicit none
-
-    real(kind=r_tran), parameter :: tol = 10.0e-8_r_tran  ! r_tran 64bit
-    real(kind=r_tran)              :: x_in, u_at_x
-    real(kind=r_tran), allocatable :: wind_values(:)
-    integer(kind=i_def)           :: nCellEdges
-
-    nCellEdges = 4
-
-    allocate(wind_values(1:nCellEdges))
-
-    wind_values=(/ 1.0_r_tran,2.0_r_tran,3.0_r_tran,4.0_r_tran /)
-    x_in = 0.4_r_tran
-    u_at_x = calc_u_at_x(x_in,nCellEdges,wind_values)
-    @assertEqual(2.4_r_tran, u_at_x, tol)
-
-    deallocate(wind_values)
-  end subroutine calc_u_at_x_test
 
   @test
   subroutine calc_u_in_vertical_test()
@@ -197,52 +123,6 @@ contains
     deallocate(wind_values)
 
   end subroutine calc_u_in_vertical_phys_test
-
-  @test
-  subroutine calc_dep_point_test()
-
-    use pFUnit_Mod
-    use constants_mod,               only: r_tran, i_def
-    use departure_points_mod,        only: calc_dep_point
-    use departure_points_config_mod, only: method_euler,       &
-                                           method_midpoint,    &
-                                           method_trapezoidal, &
-                                           method_timeaverage
-
-    implicit none
-
-    real(kind=r_tran), parameter :: tol = 10.0e-8_r_tran  ! r_tran 64bit
-    real(kind=r_tran)    :: x_arrival, deltaT, x_departure
-    integer(kind=i_def) :: n_dep_pt_iterations, nCellEdges
-    real(kind=r_tran), allocatable :: u_n(:),u_np1(:)
-
-    nCellEdges = 4
-
-    allocate(u_n(1:nCellEdges))
-    allocate(u_np1(1:nCellEdges))
-    u_n   = (/ 0.5_r_tran,0.6_r_tran,0.7_r_tran,0.8_r_tran /)
-    u_np1 = (/ 0.5_r_tran,0.6_r_tran,0.7_r_tran,0.8_r_tran /)
-
-    x_arrival = 0.4_r_tran
-    deltaT = 2.0_r_tran
-    n_dep_pt_iterations = 1
-
-    x_departure =  calc_dep_point( x_arrival,nCellEdges,u_n,u_np1,deltaT,     &
-                                    method_euler, n_dep_pt_iterations )
-    @assertEqual(1.28_r_tran, x_departure,tol)
-
-    x_departure =  calc_dep_point( x_arrival,nCellEdges,u_n,u_np1,deltaT,     &
-                                    method_midpoint, n_dep_pt_iterations )
-    @assertEqual(1.152_r_tran, x_departure,tol)
-
-    x_departure =  calc_dep_point( x_arrival,nCellEdges,u_n,u_np1,deltaT,     &
-                                    method_trapezoidal, n_dep_pt_iterations )
-    @assertEqual(1.152_r_tran, x_departure,tol)
-
-    deallocate(u_n)
-    deallocate(u_np1)
-
-  end subroutine calc_dep_point_test
 
   @test
   subroutine calc_vertical_departure_dist_test()

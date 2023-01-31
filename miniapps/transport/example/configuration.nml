@@ -146,6 +146,7 @@ l_multigrid=.false.
 /
 &departure_points
 departure_grid='uniform',
+horizontal_limit='cap',
 method='euler',
 vertical_method='trapezoidal',
 vertical_limit='exponential',

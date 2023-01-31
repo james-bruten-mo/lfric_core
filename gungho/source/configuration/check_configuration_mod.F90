@@ -105,6 +105,9 @@ contains
                                            topology,                           &
                                            topology_fully_periodic,            &
                                            topology_non_periodic
+    use departure_points_config_mod, only: horizontal_limit,                   &
+                                           horizontal_limit_none,              &
+                                           horizontal_limit_cap
     use damping_layer_config_mod,    only: dl_base,                            &
                                            dl_str
     use extrusion_config_mod,        only: domain_top
@@ -114,7 +117,7 @@ contains
                             preconditioner_tridiagonal
     implicit none
 
-      logical(kind=l_def) :: any_scheme_mol
+      logical(kind=l_def) :: any_scheme_mol, any_horz_dep_pts
       integer(kind=i_def) :: i
 
       call log_event( 'Checking gungho configuration...', LOG_LEVEL_INFO )
@@ -316,6 +319,22 @@ contains
           call log_event(log_scratch_space, LOG_LEVEL_ERROR)
         end if
       end do
+
+      ! Check the departure points namelist
+      any_horz_dep_pts = check_horz_dep_pts()
+      if ( any_horz_dep_pts ) then
+        ! Warn that having no limit on horizontal departure points may lead to model
+        ! failure, and that capping the departure distance will cap the advecting wind
+        if ( horizontal_limit == horizontal_limit_none ) then
+          write( log_scratch_space, '(A)' ) &
+          'If the maximum horizontal departure distance exceeds dep_pt_stencil_extent this will result in the model failure'
+          call log_event( log_scratch_space, LOG_LEVEL_WARNING )
+        else if ( horizontal_limit == horizontal_limit_cap ) then
+          write( log_scratch_space, '(A)' ) &
+          'The maximum horizontal departure distance and thus the advecting wind will be capped'
+          call log_event( log_scratch_space, LOG_LEVEL_WARNING )
+        end if
+      end if
 
       ! Check the mixing namelist
       if ( viscosity .and. geometry == geometry_spherical ) then

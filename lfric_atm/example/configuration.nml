@@ -56,6 +56,7 @@ use_jules_flux=.true.,
 /
 &departure_points
 departure_grid='uniform',
+horizontal_limit='none',
 method='euler',
 n_dep_pt_iterations=1,
 vertical_limit='exponential',

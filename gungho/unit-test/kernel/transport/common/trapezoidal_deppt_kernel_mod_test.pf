@@ -53,6 +53,7 @@ contains
 
     use feign_config_mod,            only : feign_departure_points_config
     use departure_points_config_mod, only : departure_grid_physical, &
+                                            horizontal_limit_none,   &
                                             method_trapezoidal,      &
                                             vertical_limit_boundary, &
                                             vertical_method_trapezoidal
@@ -67,6 +68,7 @@ contains
 
     call feign_departure_points_config(             &
       departure_grid = departure_grid_physical,     &
+      horizontal_limit = horizontal_limit_none,     &
       method = method_trapezoidal,                  &
       n_dep_pt_iterations = 1,                      &
       vertical_limit = vertical_limit_boundary,     &

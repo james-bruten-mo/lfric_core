@@ -37,6 +37,8 @@ module calc_dep_pts_alg_mod
                                                method_midpoint,         &
                                                n_dep_pt_iterations,     &
                                                vertical_method,         &
+                                               horizontal_limit,        &
+                                               horizontal_limit_cap,    &
                                                departure_grid_physical, &
                                                departure_grid_uniform,  &
                                                departure_grid
@@ -101,6 +103,7 @@ contains
 
     type( function_space_type ), pointer :: w2_fs => null()
     type(mesh_type), pointer ::  mesh => null()
+    real( kind=r_tran ) :: max_hori_dep, min_hori_dep
 
     if ( subroutine_timers ) call timer( 'calc_hori_dep_pts' )
 
@@ -147,6 +150,16 @@ contains
         call invoke( X_divideby_Y(dep_wind, wind_adv, detj_at_w2),     &
                      eulerian_deppt_kernel_type( dep_pts_x, dep_pts_y, &
                                                  dep_wind, dt ) )
+
+        if ( horizontal_limit == horizontal_limit_cap) then
+          ! Cap the horizontal departure points to lie within the stencil extent
+          max_hori_dep = real(dep_pt_stencil_extent, r_tran)
+          min_hori_dep = -max_hori_dep
+          call invoke( inc_max_aX(min_hori_dep, dep_pts_x), &
+                       inc_min_aX(max_hori_dep, dep_pts_x), &
+                       inc_max_aX(min_hori_dep, dep_pts_y), &
+                       inc_min_aX(max_hori_dep, dep_pts_y) )
+        end if
 
       case default
         call log_event( "Gungho: Invalid departure point method", LOG_LEVEL_ERROR )
