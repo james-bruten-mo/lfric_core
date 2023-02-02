@@ -6,7 +6,7 @@
 !
 !> @brief A module providing an Atlas field class.
 !>
-!> @details The atlas field interface can hold a 64-bit real pointer to data 
+!> @details The atlas field interface can hold a 64-bit real pointer to data
 !> that is stored externaly. The field can be copied to and from LFRic fields
 !> stored in the lowest order W3 and Wtheta function-space including 2D fields.
 !> Methods are provided to perform the copies that rely on access to the field

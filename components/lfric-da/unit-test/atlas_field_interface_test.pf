@@ -69,12 +69,12 @@ contains
     ! Add canned mesh to the mesh collection
     plane_mesh = mesh_type( PLANE, this%unit_test_local_mesh )
     mesh_id = mesh_collection%add_new_mesh( plane_mesh )
-    this%mesh => mesh_collection%get_mesh( mesh_id )  
-    
+    this%mesh => mesh_collection%get_mesh( mesh_id )
+
     ! Add canned 2D mesh to the mesh collection
     plane_mesh = mesh_type( PLANE_TWOD, this%unit_test_local_mesh )
     mesh_id = mesh_collection%add_new_mesh( plane_mesh )
-    this%twod_mesh => mesh_collection%get_mesh_variant( this%mesh, TWOD ) 
+    this%twod_mesh => mesh_collection%get_mesh_variant( this%mesh, TWOD )
 
   end subroutine
 

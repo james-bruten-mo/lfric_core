@@ -20,6 +20,7 @@ OPERATE_ON ?= lfric_atm                                  \
               infrastructure                             \
               components/science                         \
               components/lfric-xios                      \
+              components/lfric-da                        \
               components/coupler-oasis                   \
               components/diagnostics_infrastructure      \
               components/inventory                       \

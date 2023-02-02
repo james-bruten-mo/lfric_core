@@ -1,7 +1,8 @@
 #!jinja2
 
-%include inc/targets.rc
-%include inc/common_macros.rc
+%include inc-common/targets.rc
+%include inc-common/common_macros.rc
+%include inc-common/suite_macros.rc
 %include inc/suite_macros.rc
 %include suite_control.rc
 
@@ -34,6 +35,7 @@
 {%- endif %}
 
 {%- set compilers = target[PRIMARY_TARGET['platform']]['setup']['compiler'].keys() %}
+{%- do rdef_build_precisions.append( rdef_default ) %}
 
 [cylc]
   UTC mode = True

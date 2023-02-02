@@ -39,6 +39,9 @@ export ROOT_DIR    ?= ../..
 
 export INTERNAL_DEPENDENCIES = $(ROOT_DIR)/infrastructure
 
+export SUITE_GROUP ?= developer
+export SUITE_GROUP_NAME ?= $(notdir $(realpath $(shell pwd)/$(ROOT_DIR)))-$(PROJECT_NAME)-.*
+
 META_VN       ?= HEAD
 META_FILE_DIR  = $(PROJECT_DIR)/rose-meta/$(PROJECT_NAME)/$(META_VN)
 
