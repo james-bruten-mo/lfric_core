@@ -9,7 +9,7 @@ export PROJECT_DIR_NAME = diagnostics
 PROFILE ?= fast-debug
 
 # Select option for PSyclone transformation. Select "none" for no transformation
-export PSYCLONE_TRANSFORMATION ?= meto-spice
+export PSYCLONE_TRANSFORMATION ?= none
 
 export PROJECT_DIR := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 export ROOT_DIR    ?= ../..
@@ -24,7 +24,7 @@ export SUITE_GROUP ?= developer
 export SUITE_GROUP_NAME ?= $(notdir $(realpath $(shell pwd)/$(ROOT_DIR)))-$(PROJECT_NAME)-.*
 
 META_VN       ?= HEAD
-META_FILE_DIR  = $(PROJECT_DIR)/rose-meta/lfric-$(PROJECT_NAME)/$(META_VN)
+export META_FILE_DIR  = $(PROJECT_DIR)/rose-meta/lfric-$(PROJECT_NAME)/$(META_VN)
 
 # Check PSyclone transformation option is valid
 ifneq ("$(PSYCLONE_TRANSFORMATION)","none")
