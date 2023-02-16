@@ -112,6 +112,9 @@ contains
     type( field_type ), pointer :: velocity_w2v  => null()
     type( field_type ), pointer :: shear         => null()
     type( field_type ), pointer :: u_physics     => null()
+    type( field_type ), pointer :: sea_u_current_ptr => null()
+    type( field_type ), pointer :: sea_v_current_ptr => null()
+    type( field_type ), pointer :: sea_current_w2_ptr => null()
 
     type( field_type ), pointer :: zh              => null()
     type( integer_field_type ), pointer :: ntml    => null()
@@ -401,6 +404,10 @@ contains
     call surface_fields%get_field('urbdisp', urbdisp)
     call surface_fields%get_field('urbemisw', urbemisw)
     call surface_fields%get_field('urbemisr', urbemisr)
+    call surface_fields%get_field('sea_current_w2',sea_current_w2_ptr)
+    call surface_fields%get_field('sea_u_current',sea_u_current_ptr)
+    call surface_fields%get_field('sea_v_current',sea_v_current_ptr)
+
 
     ! Soil fields
     call soil_fields%get_field('soil_albedo', soil_albedo)
@@ -500,7 +507,9 @@ contains
                                soil_moist_crit, soil_moist_sat,                &
                                soil_thermal_cond, soil_suction_sat,            &
                                clapp_horn_b, soil_respiration,                 &
-                               thermal_cond_wet_soil, sea_ice_temperature,     &
+                               thermal_cond_wet_soil,                          &
+                               sea_u_current_ptr,sea_v_current_ptr,            &
+                               sea_ice_temperature,                            &
                                sea_ice_conductivity, tile_temperature,         &
                                tile_snow_mass, n_snow_layers, snow_depth,      &
                                snow_layer_thickness, snow_layer_ice_mass,      &
@@ -588,7 +597,8 @@ contains
     ! Calculate explicit momentum diffusion on cell faces
     call invoke(bl_exp_du_kernel_type(tau_w2, tau_land_w2, tau_ssi_w2,         &
                                       rhokm_w2, rdz_fd1, u_physics,            &
-                                      surf_interp_w2, ngstress_w2, fd_tau_w2))
+                                      surf_interp_w2, ngstress_w2, fd_tau_w2,  &
+                                      sea_current_w2_ptr) )
 
     if ( subroutine_timers ) call timer('bl_exp_alg')
 

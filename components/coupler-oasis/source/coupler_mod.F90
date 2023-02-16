@@ -25,7 +25,7 @@ module coupler_mod
   use mesh_mod,                       only: mesh_type
   use function_space_mod,             only: function_space_type
   use finite_element_config_mod,      only: element_order
-  use fs_continuity_mod,              only: W3
+  use fs_continuity_mod,              only: W3, Wtheta
   use psykal_lite_mod,                only: invoke_nodal_coordinates_kernel
   use function_space_collection_mod,  only: function_space_collection
   use field_collection_iterator_mod,  only: field_collection_iterator_type
@@ -717,9 +717,10 @@ module coupler_mod
   !> @param [out] depository   field collection - all fields
   !> @param [out] prognostic_fields field collection - prognostic fields
   !
-  subroutine cpl_fields( twod_mesh, depository, prognostic_fields )
+  subroutine cpl_fields( mesh, twod_mesh, depository, prognostic_fields )
    implicit none
 
+   type( mesh_type ),             intent(in), pointer :: mesh
    type( mesh_type ),             intent(in), pointer :: twod_mesh
    type( field_collection_type ), intent(out)   :: depository
    type( field_collection_type ), intent(out)   :: prognostic_fields
@@ -727,6 +728,8 @@ module coupler_mod
    !vactor space for coupling field
    type(function_space_type), pointer :: vector_space => null()
    type(function_space_type), pointer :: sice_space => null()
+   type(function_space_type), pointer :: threed_space => null()
+   type(function_space_type), pointer :: wtheta_space => null()
    !checkpoint flag for coupling field
    logical(l_def)                     :: checkpoint_restart_flag
 
@@ -739,6 +742,8 @@ module coupler_mod
    vector_space=> function_space_collection%get_fs( twod_mesh, 0, W3 )
    sice_space  => function_space_collection%get_fs( twod_mesh, 0, W3,          &
                                                                n_sea_ice_tile )
+   threed_space => function_space_collection%get_fs(mesh, 0, W3 )
+   wtheta_space => function_space_collection%get_fs(mesh, 0, Wtheta)
    !coupling fields
    !sending-depository
 
@@ -825,6 +830,17 @@ module coupler_mod
 
    call add_cpl_field(depository, prognostic_fields, &
         'lf_svnocean', vector_space, checkpoint_restart_flag, twod=.true.)
+
+   ! Special 3D fields needed when converting incoming ocean u/v
+   ! from W3 (cell centres) to W2 (cell faces)
+   call add_cpl_field(depository, prognostic_fields, &
+        'sea_u_3d', threed_space, checkpoint_restart_flag)
+
+   call add_cpl_field(depository, prognostic_fields, &
+        'sea_v_3d', threed_space, checkpoint_restart_flag)
+
+   call add_cpl_field(depository, prognostic_fields, &
+        'sea_w_3d', wtheta_space, checkpoint_restart_flag)
 
   end subroutine cpl_fields
 
@@ -1048,9 +1064,9 @@ module coupler_mod
 
    if(l_process_data) then
 
-      ! If echange is successful then process the data that has
+      ! If exchange is successful then process the data that has
       ! come through the coupler
-      call process_o2a_algorithm(dcpl_rcv)
+      call process_o2a_algorithm(dcpl_rcv, depository)
 
       ! Update the prognostics
       call iter%initialise(dcpl_rcv)
@@ -1101,6 +1117,7 @@ module coupler_mod
    type(function_space_type), pointer, intent(in) :: vector_space
    logical(l_def), optional, intent(in)           :: checkpoint_flag
    logical(l_def), optional, intent(in)           :: twod
+
    !Local variables
    !field to initialize
    type(field_type)                               :: new_field

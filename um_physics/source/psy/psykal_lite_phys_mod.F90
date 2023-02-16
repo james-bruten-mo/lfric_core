@@ -287,7 +287,7 @@ contains
     SUBROUTINE invoke_jules_exp_kernel_type(ncells, ncells_halo, theta, exner_in_wth, u_in_w3, v_in_w3, mr_n, mr_n_1, mr_n_2, height_w3, height_wth, &
 &zh, z0msea, z0m, tile_fraction, leaf_area_index, canopy_height, peak_to_trough_orog, silhouette_area_orog, soil_albedo, &
 &soil_roughness, soil_moist_wilt, soil_moist_crit, soil_moist_sat, soil_thermal_cond, soil_suction_sat, clapp_horn_b, &
-&soil_respiration, thermal_cond_wet_soil, sea_ice_temperature, sea_ice_conductivity, &
+&soil_respiration, thermal_cond_wet_soil, sea_u_current_ptr, sea_v_current_ptr, sea_ice_temperature, sea_ice_conductivity, &
 tile_temperature, tile_snow_mass, n_snow_layers, snow_depth, &
 &snow_layer_thickness, snow_layer_ice_mass, snow_layer_liq_mass, snow_layer_temp, surface_conductance, canopy_water, &
 &soil_temperature, soil_moisture, unfrozen_soil_moisture, frozen_soil_moisture, tile_heat_flux, tile_moisture_flux, net_prim_prod, &
@@ -308,7 +308,7 @@ sw_down_surf, lw_down_surf, sw_down_blue_surf, dd_mf_cb, ozone, cf_bulk, cf_liqu
       TYPE(field_type), intent(in) :: theta, exner_in_wth, u_in_w3, v_in_w3, mr_n, mr_n_1, mr_n_2, height_w3, height_wth, zh, &
 &z0msea, z0m, tile_fraction, leaf_area_index, canopy_height, peak_to_trough_orog, silhouette_area_orog, soil_albedo, &
 &soil_roughness, soil_moist_wilt, soil_moist_crit, soil_moist_sat, soil_thermal_cond, soil_suction_sat, clapp_horn_b, &
-&soil_respiration, thermal_cond_wet_soil, sea_ice_temperature, sea_ice_conductivity, &
+&soil_respiration, thermal_cond_wet_soil, sea_u_current_ptr, sea_v_current_ptr, sea_ice_temperature, sea_ice_conductivity, &
 tile_temperature, tile_snow_mass, snow_depth, snow_layer_thickness, &
 &snow_layer_ice_mass, snow_layer_liq_mass, snow_layer_temp, surface_conductance, canopy_water, soil_temperature, soil_moisture, &
 &unfrozen_soil_moisture, frozen_soil_moisture, tile_heat_flux, tile_moisture_flux, net_prim_prod, cos_zenith_angle, &
@@ -328,8 +328,8 @@ rhostar, recip_l_mo_sea, h_blend_orog, t1_sd_2d, q1_sd_2d, &
 &mr_n_2_proxy, height_w3_proxy, height_wth_proxy, zh_proxy, z0msea_proxy, z0m_proxy, tile_fraction_proxy, leaf_area_index_proxy, &
 &canopy_height_proxy, peak_to_trough_orog_proxy, silhouette_area_orog_proxy, soil_albedo_proxy, soil_roughness_proxy, &
 &soil_moist_wilt_proxy, soil_moist_crit_proxy, soil_moist_sat_proxy, soil_thermal_cond_proxy, soil_suction_sat_proxy, &
-&clapp_horn_b_proxy, soil_respiration_proxy, thermal_cond_wet_soil_proxy, sea_ice_temperature_proxy, &
-sea_ice_conductivity_proxy, tile_temperature_proxy, &
+&clapp_horn_b_proxy, soil_respiration_proxy, thermal_cond_wet_soil_proxy, &
+sea_u_current_ptr_proxy, sea_v_current_ptr_proxy, sea_ice_temperature_proxy, sea_ice_conductivity_proxy, tile_temperature_proxy, &
 &tile_snow_mass_proxy, snow_depth_proxy, snow_layer_thickness_proxy, snow_layer_ice_mass_proxy, snow_layer_liq_mass_proxy, &
 &snow_layer_temp_proxy, surface_conductance_proxy, canopy_water_proxy, soil_temperature_proxy, soil_moisture_proxy, &
 &unfrozen_soil_moisture_proxy, frozen_soil_moisture_proxy, tile_heat_flux_proxy, tile_moisture_flux_proxy, net_prim_prod_proxy, &
@@ -363,6 +363,13 @@ rhostar_proxy, recip_l_mo_sea_proxy, h_blend_orog_proxy, &
       INTEGER(KIND=i_def), pointer :: u_in_w3_stencil_size(:) => null()
       INTEGER(KIND=i_def), pointer :: u_in_w3_stencil_dofmap(:,:,:) => null()
       TYPE(stencil_dofmap_type), pointer :: u_in_w3_stencil_map => null()
+
+      INTEGER(KIND=i_def), pointer :: sea_u_current_ptr_stencil_size(:) => null()
+      INTEGER(KIND=i_def), pointer :: sea_u_current_ptr_stencil_dofmap(:,:,:) => null()
+      TYPE(stencil_dofmap_type), pointer :: sea_u_current_ptr_stencil_map => null()
+      INTEGER(KIND=i_def), pointer :: sea_v_current_ptr_stencil_size(:) => null()
+      INTEGER(KIND=i_def), pointer :: sea_v_current_ptr_stencil_dofmap(:,:,:) => null()
+      TYPE(stencil_dofmap_type), pointer :: sea_v_current_ptr_stencil_map => null()
       !
       ! Initialise field and/or operator proxies
       !
@@ -393,6 +400,8 @@ rhostar_proxy, recip_l_mo_sea_proxy, h_blend_orog_proxy, &
       clapp_horn_b_proxy = clapp_horn_b%get_proxy()
       soil_respiration_proxy = soil_respiration%get_proxy()
       thermal_cond_wet_soil_proxy = thermal_cond_wet_soil%get_proxy()
+      sea_u_current_ptr_proxy = sea_u_current_ptr%get_proxy()
+      sea_v_current_ptr_proxy = sea_v_current_ptr%get_proxy()
       sea_ice_temperature_proxy = sea_ice_temperature%get_proxy()
       sea_ice_conductivity_proxy = sea_ice_conductivity%get_proxy()
       tile_temperature_proxy = tile_temperature%get_proxy()
@@ -483,6 +492,12 @@ rhostar_proxy, recip_l_mo_sea_proxy, h_blend_orog_proxy, &
       tile_fraction_stencil_map => tile_fraction_proxy%vspace%get_stencil_dofmap(STENCIL_REGION,stencil_depth)
       tile_fraction_stencil_dofmap => tile_fraction_stencil_map%get_whole_dofmap()
       tile_fraction_stencil_size => tile_fraction_stencil_map%get_stencil_sizes()
+      sea_u_current_ptr_stencil_map => sea_u_current_ptr_proxy%vspace%get_stencil_dofmap(STENCIL_REGION,stencil_depth)
+      sea_u_current_ptr_stencil_dofmap => sea_u_current_ptr_stencil_map%get_whole_dofmap()
+      sea_u_current_ptr_stencil_size => sea_u_current_ptr_stencil_map%get_stencil_sizes()
+      sea_v_current_ptr_stencil_map => sea_v_current_ptr_proxy%vspace%get_stencil_dofmap(STENCIL_REGION,stencil_depth)
+      sea_v_current_ptr_stencil_dofmap => sea_v_current_ptr_stencil_map%get_whole_dofmap()
+      sea_v_current_ptr_stencil_size => sea_v_current_ptr_stencil_map%get_stencil_sizes()
       !
       ! Look-up dofmaps for each function space
       !
@@ -573,6 +588,14 @@ rhostar_proxy, recip_l_mo_sea_proxy, h_blend_orog_proxy, &
         CALL tile_fraction_proxy%halo_exchange(depth=stencil_depth)
       END IF
       !
+      IF (sea_u_current_ptr_proxy%is_dirty(depth=stencil_depth)) THEN
+        CALL sea_u_current_ptr_proxy%halo_exchange(depth=stencil_depth)
+      END IF
+      !
+      IF (sea_v_current_ptr_proxy%is_dirty(depth=stencil_depth)) THEN
+        CALL sea_v_current_ptr_proxy%halo_exchange(depth=stencil_depth)
+      END IF
+      !
       CALL jules_exp_code(nlayers, ncells, ncells_halo, theta_proxy%data, exner_in_wth_proxy%data, u_in_w3_proxy%data, u_in_w3_stencil_size, &
 &u_in_w3_stencil_dofmap, v_in_w3_proxy%data, u_in_w3_stencil_size, u_in_w3_stencil_dofmap, &
 &mr_n_proxy%data, mr_n_1_proxy%data, mr_n_2_proxy%data, height_w3_proxy%data, height_wth_proxy%data, zh_proxy%data, &
@@ -580,8 +603,10 @@ rhostar_proxy, recip_l_mo_sea_proxy, h_blend_orog_proxy, &
 &tile_fraction_stencil_dofmap, leaf_area_index_proxy%data, canopy_height_proxy%data, peak_to_trough_orog_proxy%data, &
 &silhouette_area_orog_proxy%data, soil_albedo_proxy%data, soil_roughness_proxy%data, soil_moist_wilt_proxy%data, &
 &soil_moist_crit_proxy%data, soil_moist_sat_proxy%data, soil_thermal_cond_proxy%data, soil_suction_sat_proxy%data, &
-&clapp_horn_b_proxy%data, soil_respiration_proxy%data, thermal_cond_wet_soil_proxy%data, sea_ice_temperature_proxy%data, &
-sea_ice_conductivity_proxy%data, &
+&clapp_horn_b_proxy%data, soil_respiration_proxy%data, thermal_cond_wet_soil_proxy%data,  &
+sea_u_current_ptr_proxy%data,sea_u_current_ptr_stencil_size,sea_u_current_ptr_stencil_dofmap, &
+sea_v_current_ptr_proxy%data,sea_v_current_ptr_stencil_size,sea_v_current_ptr_stencil_dofmap, &
+sea_ice_temperature_proxy%data, sea_ice_conductivity_proxy%data, &
 &tile_temperature_proxy%data, tile_snow_mass_proxy%data, n_snow_layers_proxy%data, snow_depth_proxy%data, &
 &snow_layer_thickness_proxy%data, snow_layer_ice_mass_proxy%data, snow_layer_liq_mass_proxy%data, snow_layer_temp_proxy%data, &
 &surface_conductance_proxy%data, canopy_water_proxy%data, soil_temperature_proxy%data, soil_moisture_proxy%data, &

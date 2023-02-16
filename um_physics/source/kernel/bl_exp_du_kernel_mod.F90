@@ -28,7 +28,7 @@ module bl_exp_du_kernel_mod
   !> Kernel metadata type.
   type, public, extends(kernel_type) :: bl_exp_du_kernel_type
     private
-    type(arg_type) :: meta_args(9) = (/                      &
+    type(arg_type) :: meta_args(10) = (/                      &
          arg_type(GH_FIELD, GH_REAL, GH_WRITE, W2),          &! tau
          arg_type(GH_FIELD, GH_REAL, GH_WRITE, ANY_SPACE_1), &! tau_land
          arg_type(GH_FIELD, GH_REAL, GH_WRITE, ANY_SPACE_1), &! tau_ssi
@@ -37,7 +37,8 @@ module bl_exp_du_kernel_mod
          arg_type(GH_FIELD, GH_REAL, GH_READ,  W2),          &! u_physics
          arg_type(GH_FIELD, GH_REAL, GH_READ,  ANY_SPACE_2), &! surf_interp
          arg_type(GH_FIELD, GH_REAL, GH_READ,  W2),          &! ngstress
-         arg_type(GH_FIELD, GH_REAL, GH_READ,  W2)           &! fd_tau
+         arg_type(GH_FIELD, GH_REAL, GH_READ,  W2),          &! fd_tau
+         arg_type(GH_FIELD, GH_REAL, GH_READ,  W2)           &! sea_current_w2
          /)
     integer :: operates_on = CELL_COLUMN
   contains
@@ -63,6 +64,7 @@ contains
   !> @param[in]     surf_interp    Surface variables which need interpolating
   !> @param[in]     ngstress       NG stress function mapped to cell faces
   !> @param[in]     fd_tau         Stress from turbulent form-drag
+  !> @param[in]     sea_current_w2 Ocean surface current in W2 space
   !> @param[in]     ndf_w2         Number of DOFs per cell for w2 space
   !> @param[in]     undf_w2        Number of unique DOFs for w2 space
   !> @param[in]     map_w2         Dofmap for the cell at the base of the column
@@ -85,6 +87,7 @@ contains
                             surf_interp,   &
                             ngstress,      &
                             fd_tau,        &
+                            sea_current_w2, &
                             ndf_w2,        &
                             undf_w2,       &
                             map_w2,        &
@@ -122,7 +125,7 @@ contains
     real(kind=r_def), dimension(undf_w2_2d), intent(inout) :: tau_land, tau_ssi
 
     real(kind=r_def), dimension(undf_w2),  intent(in) :: rhokm, u_physics, &
-         ngstress, fd_tau
+         ngstress, fd_tau, sea_current_w2
     real(kind=r_def), dimension(undf_w1),  intent(in) :: rdz
     real(kind=r_def), dimension(undf_w2_surf), intent(in) :: surf_interp
 
@@ -149,7 +152,12 @@ contains
         zh_nonloc  = surf_interp(map_w2_surf(df) + 5)
 
         tau_land(map_w2_2d(df)) = rhokm_land * u_physics(map_w2(df)) * flandfac
-        tau_ssi(map_w2_2d(df)) = rhokm_ssi * u_physics(map_w2(df)) * fseafac
+
+        ! If sea surface current (sea_current_w2) has not been obtained
+        ! from coupling fields or from an ancillary file then it will simply
+        ! contain uniform zeros.
+        tau_ssi(map_w2_2d(df)) = rhokm_ssi *                                   &
+                 (u_physics(map_w2(df)) - sea_current_w2(map_w2(df))) * fseafac
         tau(map_w2(df)) = fland * tau_land(map_w2_2d(df))                      &
                         + (1.0_r_def - fland) * tau_ssi(map_w2_2d(df))
 

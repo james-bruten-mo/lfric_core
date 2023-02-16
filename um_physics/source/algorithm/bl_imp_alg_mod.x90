@@ -35,6 +35,8 @@ module bl_imp_alg_mod
   use physics_mappings_alg_mod,      only: map_physics_winds
   use convection_config_mod,         only: cv_scheme, cv_scheme_gregory_rowntree
   use blayer_config_mod,             only: fric_heating
+  use derived_config_mod,            only: l_esm_couple
+  use esm_couple_config_mod,         only: l_esm_couple_test
 
   implicit none
 
@@ -548,37 +550,46 @@ contains
 
     if ( subroutine_timers ) call timer("bl_imp_alg")
 
-    ! Output diagnostics on last iteration only
-    if (write_diag .and. use_xios_io .and. outer == outer_iterations) then
+    ! Output diagnostics and/or calculate taux_ssi and tauy_ssi
+    !on last iteration only
+    if (use_xios_io .and. outer == outer_iterations) then
 
-      ! Calculate zonal and meridional wind speeds - done here as it's
-      ! needed for coupling
-      call zh%copy_field_properties(w10m)
-      call map_physics_winds(u10m, v10m, w10m, wind10m_w2)
-      ! Calculate the 10m windspeed
-      call u10m%copy_field(u10m2)
-      call v10m%copy_field(v10m2)
-      call invoke(inc_X_powint_n(u10m2, 2_i_def),                              &
-                  inc_X_powint_n(v10m2, 2_i_def),                              &
-                  X_plus_Y(wspd10m,u10m2,v10m2),                               &
-                  inc_X_powreal_a(wspd10m, 0.5_r_def) )
-      call zh%copy_field_properties(w10m_neut)
-      call map_physics_winds(u10m_neut, v10m_neut, w10m_neut, wind10m_neut_w2)
+      ! Calculate zonal and meridional wind stresses.
+      ! Always set taux_ssi and tauy_ssi in coupled models regardless of 
+      ! whether write_diag is set since these are needed for coupling to 
+      ! the ocean!
+      if (write_diag .OR. l_esm_couple .OR. l_esm_couple_test) then
+        call zh%copy_field_properties(tauz_ssi)
+        call map_physics_winds(taux_ssi, tauy_ssi, tauz_ssi, tau_ssi_w2)
+      end if
+
+      ! Output diagnostics on last iteration only
+      if (write_diag) then
+
+        ! Calculate zonal and meridional wind speeds - done here as it's
+        ! needed for coupling
+        call zh%copy_field_properties(w10m)
+        call map_physics_winds(u10m, v10m, w10m, wind10m_w2)
+        ! Calculate the 10m windspeed
+        call u10m%copy_field(u10m2)
+        call v10m%copy_field(v10m2)
+        call invoke(inc_X_powint_n(u10m2, 2_i_def),                            &
+                    inc_X_powint_n(v10m2, 2_i_def),                            &
+                    X_plus_Y(wspd10m,u10m2,v10m2),                             &
+                    inc_X_powreal_a(wspd10m, 0.5_r_def) )
+        call zh%copy_field_properties(w10m_neut)
+        call map_physics_winds(u10m_neut, v10m_neut, w10m_neut, wind10m_neut_w2)
       ! Calculate the neutral 10m windspeed
-      call u10m_neut%copy_field(u10m2)
-      call v10m_neut%copy_field(v10m2)
-      call invoke(inc_X_powint_n(u10m2, 2_i_def),                              &
-                  inc_X_powint_n(v10m2, 2_i_def),                              &
-                  X_plus_Y(wspd10m_neut,u10m2,v10m2),                          &
-                  inc_X_powreal_a(wspd10m_neut, 0.5_r_def) )
+        call u10m_neut%copy_field(u10m2)
+        call v10m_neut%copy_field(v10m2)
+        call invoke(inc_X_powint_n(u10m2, 2_i_def),                            &
+                    inc_X_powint_n(v10m2, 2_i_def),                            &
+                    X_plus_Y(wspd10m_neut,u10m2,v10m2),                        &
+                    inc_X_powreal_a(wspd10m_neut, 0.5_r_def) )
 
-      ! Calculate zonal and meridional wind stresses
-      call zh%copy_field_properties(tauz_ssi)
-      call map_physics_winds(taux_ssi, tauy_ssi, tauz_ssi, tau_ssi_w2)
-
-      ! Output the BL diagnostics
-      if (mod(clock%get_step(),diagnostic_frequency) == 0) then
-        call output_diags_for_bl_imp(zh, du_bl, tile_heat_flux,                &
+        ! Output the BL diagnostics
+        if (mod(clock%get_step(),diagnostic_frequency) == 0) then
+          call output_diags_for_bl_imp(zh, du_bl, tile_heat_flux,              &
                                    tile_moisture_flux, tile_temperature,       &
                                    grid_surface_temperature,                   &
                                    snowice_sublimation, canopy_evap,           &
@@ -610,9 +621,11 @@ contains
                                    fog_fraction, vis_prob_5km, dew_point,      &
                                    visibility_with_precip,                     &
                                    visibility_no_precip )
-      end if
+        end if
 
-    end if
+      end if  ! write_diag
+
+    end if ! use_xios_io and outer_iterations
 
     nullify( mesh )
 

@@ -3,7 +3,7 @@
 # The file LICENCE, distributed with this code, contains details of the terms
 # under which the code may be used.
 ##############################################################################
-export IGNORE_DEPENDENCIES += netcdf MPI yaxt pfunit_mod
+export IGNORE_DEPENDENCIES += netcdf MPI yaxt pfunit_mod mod_oasis
 export EXTERNAL_DYNAMIC_LIBRARIES += yaxt yaxt_c netcdff netcdf hdf5
 
 .PHONY: import-infrastructure

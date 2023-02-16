@@ -258,7 +258,7 @@ contains
     if( l_esm_couple ) then
        call log_event("Initialising coupler", LOG_LEVEL_INFO)
        ! Add fields used in coupling
-       call cpl_fields( twod_mesh, model_data%depository, &
+       call cpl_fields( mesh, twod_mesh, model_data%depository, &
                         model_data%prognostic_fields )
        ! Define coupling interface
        call model_data%cpl_snd%initialise(name="cpl_snd")

@@ -76,6 +76,9 @@ contains
     type( field_type ), pointer :: melt_pond_fraction  => null()
     type( field_type ), pointer :: melt_pond_depth     => null()
     type( field_type ), pointer :: surf_ht_flux        => null()
+    type( field_type ), pointer :: sea_u_current       => null()
+    type( field_type ), pointer :: sea_v_current       => null()
+    type( field_type ), pointer :: sea_current_w2      => null()
 
     ! Local variables
     real(kind=r_def)            :: default_conductivity
@@ -115,6 +118,9 @@ contains
     call surface_fields%get_field('melt_pond_fraction', melt_pond_fraction)
     call surface_fields%get_field('melt_pond_depth', melt_pond_depth)
     call surface_fields%get_field('surf_ht_flux', surf_ht_flux)
+    call surface_fields%get_field('sea_u_current',sea_u_current)
+    call surface_fields%get_field('sea_v_current',sea_v_current)
+    call surface_fields%get_field('sea_current_w2',sea_current_w2)
 
     call invoke(                                                              &
                  ! Set sea/land surface prognostics for use in SCM testing
@@ -161,7 +167,11 @@ contains
                  ! Initialise melt ponds to zero
                  setval_c(melt_pond_fraction, 0.0_r_def ),                    &
                  setval_c(melt_pond_depth, 0.0_r_def ),                       &
-                 setval_c(surf_ht_flux, 0.0_r_def) )
+                 setval_c(surf_ht_flux, 0.0_r_def),                           &
+                 ! Initialise sea surface current components to zero
+                 setval_c(sea_u_current, 0.0_r_def ),                         &
+                 setval_c(sea_v_current, 0.0_r_def ),                         &
+                 setval_c(sea_current_w2, 0.0_r_def ))
 
   end subroutine init_surface_fields_alg
 

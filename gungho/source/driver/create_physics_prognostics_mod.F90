@@ -1134,6 +1134,17 @@ contains
       adv_fields_last_outer, &
       'melt_pond_depth', sice_space, checkpoint_flag=.false., twod=.true. )
 
+    ! Sea surface velocity vector components provided via the coupler.
+    call add_physics_field( surface_fields, depository, prognostic_fields,     &
+      adv_fields_last_outer, &
+      'sea_u_current', twod_space, checkpoint_flag=.false., twod=.true. )
+    call add_physics_field( surface_fields, depository, prognostic_fields,     &
+      adv_fields_last_outer, &
+      'sea_v_current', twod_space, checkpoint_flag=.false., twod=.true. )
+    call add_physics_field( surface_fields, depository, prognostic_fields,     &
+      adv_fields_last_outer, &
+      'sea_current_w2', w2_space, checkpoint_flag=.false. )
+
     ! Fields on surface tiles, don't need checkpointing
     call add_physics_field( surface_fields, depository, prognostic_fields,     &
       adv_fields_last_outer, &
@@ -1258,18 +1269,6 @@ contains
     call add_physics_field( surface_fields, depository, prognostic_fields,     &
       adv_fields_last_outer, &
       'tile_water_extract', vector_space, twod=.true. )
-
-    checkpoint_flag = .false.
-    ! Sea surface currents, should not need checkpointing because they
-    ! come from the coupler
-    call add_physics_field( surface_fields, depository, prognostic_fields,     &
-      adv_fields_last_outer, &
-      'sea_u_current', twod_space, checkpoint_flag=checkpoint_flag, twod=.true. )
-    call add_physics_field( surface_fields, depository, prognostic_fields,     &
-      adv_fields_last_outer, &
-      'sea_v_current', twod_space, checkpoint_flag=checkpoint_flag, twod=.true. )
-
-
 
     !========================================================================
     ! Fields owned by the soil hydrology scheme

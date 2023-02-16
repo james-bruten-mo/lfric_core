@@ -47,7 +47,7 @@ module jules_exp_kernel_mod
   !>
   type, public, extends(kernel_type) :: jules_exp_kernel_type
     private
-    type(arg_type) :: meta_args(100) = (/                                      &
+    type(arg_type) :: meta_args(102) = (/                                      &
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      WTHETA),                   &! theta_in_wth
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      WTHETA),                   &! exner_in_wth
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      W3, STENCIL(REGION)),      &! u_in_w3
@@ -75,6 +75,8 @@ module jules_exp_kernel_mod
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      ANY_DISCONTINUOUS_SPACE_1),&! clapp_horn_b
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_1),&! soil_respiration
          arg_type(GH_FIELD, GH_REAL,  GH_WRITE,     ANY_DISCONTINUOUS_SPACE_1),&! thermal_cond_wet_soil
+         arg_type(GH_FIELD, GH_REAL,  GH_READ,      ANY_DISCONTINUOUS_SPACE_1, STENCIL(REGION)),&! sea_u_current
+         arg_type(GH_FIELD, GH_REAL,  GH_READ,      ANY_DISCONTINUOUS_SPACE_1, STENCIL(REGION)),&! sea_v_current
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      ANY_DISCONTINUOUS_SPACE_4),&! sea_ice_temperature
          arg_type(GH_FIELD, GH_REAL,  GH_READ,      ANY_DISCONTINUOUS_SPACE_4),&! sea_ice_conductivity
          arg_type(GH_FIELD, GH_REAL,  GH_READWRITE, ANY_DISCONTINUOUS_SPACE_2),&! tile_temperature
@@ -189,6 +191,8 @@ contains
   !> @param[in]     clapp_horn_b           Clapp and Hornberger b coefficient
   !> @param[in,out] soil_respiration       Soil respiration  (kg m-2 s-1)
   !> @param[in,out] thermal_cond_wet_soil  Thermal conductivity of wet soil (W m-1 K-1)
+  !> @param[in]     sea_u_current          Sea surface current U component (m/s)
+  !> @param[in]     sea_v_current          Sea surface current V component (m/s)
   !> @param[in]     sea_ice_temperature    Bulk temperature of sea-ice (K)
   !> @param[in]     sea_ice_conductivity   Sea ice thermal conductivity (W m-2 K-1)
   !> @param[in,out] tile_temperature       Surface tile temperatures
@@ -330,6 +334,10 @@ contains
                            clapp_horn_b,                          &
                            soil_respiration,                      &
                            thermal_cond_wet_soil,                 &
+                           sea_u_current, sea_u_w3_stencil_size,  &
+                           sea_u_w3_stencil,                      &
+                           sea_v_current, sea_v_w3_stencil_size,  &
+                           sea_v_w3_stencil,                      &
                            sea_ice_temperature,                   &
                            sea_ice_conductivity,                  &
                            tile_temperature,                      &
@@ -594,6 +602,12 @@ contains
     real(kind=r_def), intent(in) :: leaf_area_index(undf_pft)
     real(kind=r_def), intent(in) :: canopy_height(undf_pft)
 
+    real(kind=r_def), intent(in) :: sea_u_current(undf_2d)
+    real(kind=r_def), intent(in) :: sea_v_current(undf_2d)
+    integer(kind=i_def), intent(in) :: sea_u_w3_stencil_size(seg_len), sea_v_w3_stencil_size(seg_len)
+    integer(kind=i_def), dimension(ndf_w3,maxval(sea_u_w3_stencil_size),seg_len_halo), intent(in) :: sea_u_w3_stencil
+    integer(kind=i_def), dimension(ndf_w3,maxval(sea_v_w3_stencil_size),seg_len_halo), intent(in) :: sea_v_w3_stencil
+
     real(kind=r_def), intent(in) :: sea_ice_temperature(undf_sice)
     
     real(kind=r_def), intent(in) :: sea_ice_conductivity(undf_sice)
@@ -660,6 +674,7 @@ contains
     real(kind=r_def), dimension(undf_dust), intent(inout)  :: dust_div_flux
 
     real(kind=r_def), pointer, intent(inout) :: z0h_eff(:), gross_prim_prod(:)
+
     !-----------------------------------------------------------------------
     ! Local variables for the kernel
     !-----------------------------------------------------------------------
@@ -953,6 +968,18 @@ contains
     do i = 1, seg_len_halo
       jules_vars%u_1_p_ij(i,1) = u_in_w3(u_w3_stencil(1,1,i)+k_blend_uv(i,1)-1)
       jules_vars%v_1_p_ij(i,1) = v_in_w3(v_w3_stencil(1,1,i)+k_blend_uv(i,1)-1)
+    end do
+
+    ! Surface currents
+    ! Coupled A-O models will have ocean surface current components on w3
+    ! available after coupling exchanges, assuming that coupled models always
+    ! couple to an ocean model AND that sea surface currents are always exchanged. 
+    ! If sea surface currents are obtained from elsewhere, e.g. ancillary files,
+    ! then we need to ensure that sea_u_current and sea_v_current are populated
+    ! from the appropriate source data. 
+    do i = 1, seg_len_halo
+      jules_vars%u_0_p_ij(i,1) = sea_u_current(sea_u_w3_stencil(1,1,i))
+      jules_vars%v_0_p_ij(i,1) = sea_v_current(sea_v_w3_stencil(1,1,i))
     end do
 
     ! Set type_pts and type_index
@@ -1272,10 +1299,6 @@ contains
       p_theta_levels(i,1,1) = p_zero*(exner_in_wth(map_wth(1,i)+k_blend_tq(i,1)))**(1.0_r_def/kappa)
       forcing%pstar_ij(i,1) = p_zero*(exner_in_wth(map_wth(1,i) + 0))**(1.0_r_def/kappa)
     end do
-
-    ! surface currents
-    jules_vars%u_0_p_ij = 0.0
-    jules_vars%v_0_p_ij = 0.0
 
     !-----------------------------------------------------------------------
     ! Things saved from one timestep to the next

@@ -31,9 +31,9 @@ PROJECT_NAME = um_physics
 
 PROFILE ?= fast-debug
 
-export IGNORE_DEPENDENCIES = MPI pfunit_mod yaxt
+export IGNORE_DEPENDENCIES = MPI pfunit_mod yaxt mod_oasis
 export EXTERNAL_DYNAMIC_LIBRARIES = yaxt yaxt_c
-export EXTERNAL_STATIC_LIBRARIES = 
+export EXTERNAL_STATIC_LIBRARIES =
 
 export PROJECT_DIR := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 export ROOT_DIR    ?= ..

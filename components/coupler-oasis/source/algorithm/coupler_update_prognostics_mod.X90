@@ -56,6 +56,10 @@ module coupler_update_prognostics_mod
 
    !local variables
    type( field_type ), pointer :: fld_ptr1       => null()
+   type( field_type ), pointer :: u_3d_ptr       => null()
+   type( field_type ), pointer :: v_3d_ptr       => null()
+   type( field_type ), pointer :: w_3d_ptr       => null()
+
 
    select case(fld%get_name())
       case ("lf_ocn_sst")
@@ -132,12 +136,31 @@ module coupler_update_prognostics_mod
                                  first_sea_tile, n_sea_tile ) )
          fld_ptr1 => null()
 
+         ! Move coupling U component to 1st level of 3d field 
+         call depository%get_field('sea_u_3d',u_3d_ptr)
+         call invoke(setval_c( u_3d_ptr, 0.0_r_def ))
+         call invoke(multi_insert_kernel_type(u_3d_ptr, fld, 1, 1) ) 
+         u_3d_ptr => null()
+
       case ("lf_svnocean")
          call fld%log_minmax(LOG_LEVEL_DEBUG,  'Ocean surface v from coupler')
          call depository%get_field('sea_v_current', fld_ptr1)
          call invoke( multi_insert_kernel_type(fld_ptr1, fld, &
                                  first_sea_tile, n_sea_tile ) )
          fld_ptr1 => null()
+
+         ! Move coupling V component to 1st level of 3d field 
+         call depository%get_field('sea_v_3d',v_3d_ptr)
+         call invoke(setval_c( v_3d_ptr, 0.0_r_def ))
+         call invoke(multi_insert_kernel_type(v_3d_ptr, fld, 1, 1) ) 
+         v_3d_ptr => null()
+
+         ! Ensure vertical component is uniformly set to 0.0
+         ! We arbitrarily do this under the V component processing since
+         ! you can't couple V without U!  
+         call depository%get_field('sea_w_3d',w_3d_ptr)
+         call invoke(setval_c( w_3d_ptr, 0.0_r_def ))
+         w_3d_ptr => null()
 
       case default
          write(log_scratch_space, '(3A)' )                                     &
