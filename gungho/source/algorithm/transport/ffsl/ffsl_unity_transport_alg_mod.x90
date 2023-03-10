@@ -99,7 +99,7 @@ contains
 
     ! Half time step and flags for departure points
     real(kind=r_def)    :: half_dt
-    logical(kind=l_def) :: any_horz_dep_pts, any_vert_dep_pts
+    logical(kind=l_def) :: any_horz_dep_pts, any_vert_dep_pts, reversibility
     integer(kind=i_def) :: hori_monotone, vert_monotone
 
     ! Check which unity transport directions are needed
@@ -124,10 +124,11 @@ contains
                  setval_c(flux_y,    0.0_r_def), &
                  setval_c(flux_z,    0.0_r_def)  )
 
-    ! Set half time step and monotone flag to none
+    ! Set half time step, monotone flag to none, reversibility to false
     half_dt = 0.5_r_def * dt
     hori_monotone = horizontal_monotone_none
     vert_monotone = vertical_monotone_none
+    reversibility = .false.
 
     ! Check if we need increment of unity in x and y directions
     if (any_horz_dep_pts) then
@@ -162,6 +163,7 @@ contains
                               outer_order,   &
                               dt,            &
                               vert_monotone, &
+                              reversibility, &
                               flux_z,        &
                               inc_one_z )
     end if

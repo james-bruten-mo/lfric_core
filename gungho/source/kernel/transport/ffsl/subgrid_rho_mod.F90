@@ -23,12 +23,109 @@ implicit none
 private
 
 public :: horizontal_ppm_coeffs
+public :: horizontal_nirvana_coeffs
+public :: vertical_nirvana_coeffs
 public :: fourth_order_vertical_edge
 public :: fourth_order_vertical_edge_strict
 public :: fourth_order_vertical_edge_relaxed
+public :: second_order_vertical_edge
+public :: second_order_vertical_gradient
 public :: ppm_output
 
 contains
+
+  !----------------------------------------------------------------------------
+  !> @brief Calculates the vertical edge values, taking into account the height
+  !!        between layers, using a second-order interpolation.
+  !> @details Uses a second-order interpolation to find the vertical cell edge
+  !!          values of rho. The vertical grid spacing is used to compute the
+  !!          mass, and a quadratic is fit through the cumulative
+  !!          mass points. This polynomial is differentiated and evaluated
+  !!          at the height of the cell edge, to give the cell edge rho value.
+  !!
+  !> @param[in]   rho        Density values of two cells which have the ordering
+  !!                         | 1 | 2 |
+  !> @param[in]   dz         Height of each layer, with index the same as rho
+  !> @param[in]   edge_to_do Tells routine which edge to do based on
+  !!                         cells       | 1 | 2 |
+  !!                         with edges  0   1   2
+  !> @param[out]  edge_value The interpolated edge value at edge_to_do
+  !----------------------------------------------------------------------------
+  subroutine second_order_vertical_edge(rho, dz, edge_to_do, edge_value)
+
+    implicit none
+
+    ! Arguments
+    real(kind=r_tran),   intent(in)  :: rho(1:2)
+    real(kind=r_tran),   intent(in)  :: dz(1:2)
+    integer(kind=i_def), intent(in)  :: edge_to_do
+    real(kind=r_tran),   intent(out) :: edge_value
+
+    ! Internal Variables
+    real(kind=r_tran) :: z(0:2), edge_height
+    real(kind=r_tran) :: cmass(0:2)
+
+    ! Get heights of edges starting at 0 for lowest edge in stencil
+    z(0) = 0.0_r_tran
+    z(1) = z(0) + dz(1)
+    z(2) = z(1) + dz(2)
+
+    ! Get edge height to interpolate rho
+    edge_height = z(edge_to_do)
+
+    ! Get cumulative mass
+    cmass(0) = 0.0_r_tran
+    cmass(1) = cmass(0) + dz(1)*rho(1)
+    cmass(2) = cmass(1) + dz(2)*rho(2)
+
+    ! Calculate derivative of the quadratic at z = edge_height
+    edge_value =   ( 2.0_r_tran*edge_height - z(2) ) / ( z(1) * ( z(1)-z(2) ) ) * cmass(1) &
+                 + ( 2.0_r_tran*edge_height - z(1) ) / ( z(2) * ( z(2)-z(1) ) ) * cmass(2)
+
+  end subroutine second_order_vertical_edge
+
+  !----------------------------------------------------------------------------
+  !> @brief Calculates the vertical edge gradient, taking into account the height
+  !!        between layers, using a second-order method.
+  !> @details Uses a second-order method to find the vertical cell edge
+  !!          gradient of rho. The vertical grid spacing is used to compute the
+  !!          mass, and a quadratic is fit through the cumulative
+  !!          mass points. This polynomial is differentiated twice
+  !!          to give the cell edge gradient.
+  !!
+  !> @param[in]   rho           Density values of two cells which have the ordering
+  !!                            | 1 | 2 |
+  !> @param[in]   dz            Height of each layer, with index the same as rho
+  !> @param[out]  edge_gradient The gradient at the edge
+  !----------------------------------------------------------------------------
+  subroutine second_order_vertical_gradient(rho, dz, edge_gradient)
+
+    implicit none
+
+    ! Arguments
+    real(kind=r_tran), intent(in)  :: rho(1:2)
+    real(kind=r_tran), intent(in)  :: dz(1:2)
+    real(kind=r_tran), intent(out) :: edge_gradient
+
+    ! Internal Variables
+    real(kind=r_tran) :: z(0:2)
+    real(kind=r_tran) :: cmass(0:2)
+
+    ! Get heights of edges starting at 0 for lowest edge in stencil
+    z(0) = 0.0_r_tran
+    z(1) = z(0) + dz(1)
+    z(2) = z(1) + dz(2)
+
+    ! Get cumulative mass
+    cmass(0) = 0.0_r_tran
+    cmass(1) = cmass(0) + dz(1)*rho(1)
+    cmass(2) = cmass(1) + dz(2)*rho(2)
+
+    ! Calculate second derivative of the quadratic
+    edge_gradient =   ( 2.0_r_tran ) / ( z(1) * ( z(1)-z(2) ) ) * cmass(1) &
+                    + ( 2.0_r_tran ) / ( z(2) * ( z(2)-z(1) ) ) * cmass(2)
+
+  end subroutine second_order_vertical_gradient
 
   !----------------------------------------------------------------------------
   !> @brief Calculates the vertical edge values, taking into account the height
@@ -232,7 +329,6 @@ contains
   !! @param[out]  coeffs         Coefficients for cell 3 with coeffs(1)=a0,
   !!                             coeffs(2)=a1, coeffs(3)=a2
   !! @param[in]   monotone       Monotone option to ensures no over/undershoots
-  !!                             0 = none, 1 = strict, 2 = relaxed
   !----------------------------------------------------------------------------
   subroutine horizontal_ppm_coeffs(coeffs,density,monotone)
 
@@ -252,6 +348,156 @@ contains
     call ppm_output(density_cell_edge_left,density_cell_edge_right,density(3),monotone,coeffs)
 
   end subroutine horizontal_ppm_coeffs
+
+  !----------------------------------------------------------------------------
+  !> @brief  Returns the Nirvana coefficients (a0, a1, a2) which are a quadratic
+  !!         representation of rho within the cell, i.e. rho(x)=a0 + a1*x + a2*x^2
+  !!         for 0<=x<=1. The dofmap for the density values is of the form
+  !!         | 1 | 2 | 3 | where the subgrid coefficients are being
+  !!         estimated for cell 2. This is for the horizontal Nirvana coefficients,
+  !!         and assumes uniform grid spacing in the horizontal. See Leonard et al. (1995).
+  !!         The conditions on the coefficients for Nirvana are equivalent to the integral
+  !!         of the quadratic equaling the integral of rho in all three cells.
+  !!
+  !! @param[out]  coeffs    Coefficients for cell 2 with
+  !!                        coeffs(1)=a0, coeffs(2)=a1, coeffs(3)=a2
+  !! @param[in]   rho       Density values of three cells which have the ordering
+  !!                        | 1 | 2 | 3 |
+  !! @param[in]   monotone  Monotone option to ensures no over/undershoots
+  !----------------------------------------------------------------------------
+  subroutine horizontal_nirvana_coeffs(coeffs,rho,monotone)
+
+    implicit none
+
+    ! Arguments
+    real(kind=r_tran),   intent(out) :: coeffs(1:3)
+    real(kind=r_tran),   intent(in)  :: rho(1:3)
+    integer(kind=i_def), intent(in)  :: monotone
+
+    ! Internal variables
+    real(kind=r_tran) :: t1, t2, t3
+    real(kind=r_tran) :: rho_left, rho_right
+
+    ! Initialise coefficients to be zero
+    coeffs(:) = 0.0_r_tran
+
+    ! The coefficients are taken from Leonard et al. (1995) for a uniform grid
+
+    coeffs(1) = (-rho(3) + 5.0_r_tran * rho(2) + 2.0_r_tran * rho(1)) / 6.0_r_tran
+    coeffs(2) = rho(2) - rho(1)
+    coeffs(3) = (rho(3) - 2.0_r_tran * rho(2) + rho(1)) / 2.0_r_tran
+
+    ! Apply monotonicity if needed
+    if ( monotone == horizontal_monotone_strict ) then
+      ! Strict monotonicity
+      t1 = -0.5_r_tran * coeffs(2) / ( coeffs(3) + EPS )
+      if ( ( t1 + EPS ) * ( 1.0_r_tran + EPS - t1 ) > 0.0_r_tran ) then
+        coeffs(1) = rho(2)
+        coeffs(2) = 0.0_r_tran
+        coeffs(3) = 0.0_r_tran
+      end if
+    else if ( monotone == horizontal_monotone_relaxed ) then
+      ! Approximate cell edge values
+      rho_left  = ( rho(2) + rho(1) ) / 2.0_r_tran
+      rho_right = ( rho(2) + rho(3) ) / 2.0_r_tran
+      ! Relaxed monotonicity
+      t1 = -0.5_r_tran * coeffs(2) / ( coeffs(3) + EPS )
+      if ( ( t1 + EPS ) * ( 1.0_r_tran + EPS - t1 ) > 0.0_r_tran ) then
+        t2 = ( rho_right - rho(2) ) * ( rho(2) - rho_left )
+        t3 = abs( rho(2) - rho_left ) - abs( rho_right - rho(2) )
+        if ( t2 < 0.0_r_tran ) then
+          coeffs(1) = rho(2)
+          coeffs(2) = 0.0_r_tran
+          coeffs(3) = 0.0_r_tran
+        else
+          if ( t3 < 0.0_r_tran ) then
+            coeffs(1) = rho_left
+            coeffs(2) = 0.0_r_tran
+            coeffs(3) = 3.0_r_tran*(rho(2) - rho_left)
+          else
+            coeffs(1) = -2.0_r_tran*rho_right + 3.0_r_tran*rho(2)
+            coeffs(2) =  6.0_r_tran*rho_right - 6.0_r_tran*rho(2)
+            coeffs(3) = -3.0_r_tran*rho_right + 3.0_r_tran*rho(2)
+          end if
+        end if
+      end if
+    end if
+
+  end subroutine horizontal_nirvana_coeffs
+
+  !----------------------------------------------------------------------------
+  !> @brief  Returns the vertical Nirvana coefficients (a0, a1, a2) which are a quadratic
+  !!         representation of rho within the cell, i.e. rho(z)=a0 + a1*z + a2*z^2
+  !!         for 0<=z<=1. The conditions on the coefficients for Nirvana are equivalent to:
+  !!         1) The gradient of the quadratic equaling the gradient of rho at cell edges.
+  !!         2) The integral of the quadratic equaling the integral of rho in the cell.
+  !!
+  !! @param[out]  coeffs      Coefficients for cell 2 with
+  !!                          coeffs(1)=a0, coeffs(2)=a1, coeffs(3)=a2
+  !! @param[in]   rho         Average density of the cells | 1 | 2 | 3 |
+  !! @param[in]   dz          Height of cell 2
+  !! @param[out]  grad_below  Estimate of gradient at z = 0 of cell 2, i.e.
+  !!                          at the edge between cells 1 and 2
+  !! @param[out]  grad_above  Estimate of gradient at z = 1 of cell 2, i.e.
+  !!                          at the edge between cells 2 and 3
+  !! @param[in]   monotone    Monotone option to ensures no over/undershoots
+  !----------------------------------------------------------------------------
+  subroutine vertical_nirvana_coeffs(coeffs,rho,dz,grad_below,grad_above,monotone)
+
+    implicit none
+
+    ! Arguments
+    real(kind=r_tran),   intent(out) :: coeffs(1:3)
+    real(kind=r_tran),   intent(in)  :: rho(1:3)
+    real(kind=r_tran),   intent(in)  :: dz, grad_below, grad_above
+    integer(kind=i_def), intent(in)  :: monotone
+
+    ! Internal Variables
+    real(kind=r_tran) :: t1, t2, t3
+    real(kind=r_tran) :: rho_left, rho_right
+
+    ! Calculate coefficients
+    coeffs(2) = grad_below * dz
+    coeffs(3) = ( grad_above * dz - coeffs(2) ) / 2.0_r_tran
+    coeffs(1) = rho(2) - coeffs(2) / 2.0_r_tran - coeffs(3) / 3.0_r_tran
+
+    ! Apply monotonicity if needed
+    if ( monotone == vertical_monotone_strict ) then
+      ! Strict monotonicity
+      t1 = -0.5_r_tran * coeffs(2) / ( coeffs(3) + EPS )
+      if ( ( t1 + EPS ) * ( 1.0_r_tran + EPS - t1 ) > 0.0_r_tran ) then
+        coeffs(1) = rho(2)
+        coeffs(2) = 0.0_r_tran
+        coeffs(3) = 0.0_r_tran
+      end if
+    else if ( monotone == vertical_monotone_relaxed ) then
+      ! Approximate cell edge values
+      rho_left  = ( rho(2) + rho(1) ) / 2.0_r_tran
+      rho_right = ( rho(2) + rho(3) ) / 2.0_r_tran
+      ! Relaxed monotonicity
+      t1 = -0.5_r_tran * coeffs(2) / ( coeffs(3) + EPS )
+      if ( ( t1 + EPS ) * ( 1.0_r_tran + EPS - t1 ) > 0.0_r_tran ) then
+        t2 = ( rho_right - rho(2) ) * ( rho(2) - rho_left )
+        t3 = abs( rho(2) - rho_left ) - abs( rho_right - rho(2) )
+        if ( t2 < 0.0_r_tran ) then
+          coeffs(1) = rho(2)
+          coeffs(2) = 0.0_r_tran
+          coeffs(3) = 0.0_r_tran
+        else
+          if ( t3 < 0.0_r_tran ) then
+            coeffs(1) = rho_left
+            coeffs(2) = 0.0_r_tran
+            coeffs(3) = 3.0_r_tran*(rho(2) - rho_left)
+          else
+            coeffs(1) = -2.0_r_tran*rho_right + 3.0_r_tran*rho(2)
+            coeffs(2) =  6.0_r_tran*rho_right - 6.0_r_tran*rho(2)
+            coeffs(3) = -3.0_r_tran*rho_right + 3.0_r_tran*rho(2)
+          end if
+        end if
+      end if
+    end if
+
+  end subroutine vertical_nirvana_coeffs
 
   !----------------------------------------------------------------------------
   !> @brief  Calculates the estimated density at the edge of a cell required for
@@ -316,7 +562,6 @@ contains
   !! @param[in]   density_cell_edge_right  Estimate of the density at x=1
   !! @param[in]   density_of_cell          Average density of the cell
   !! @param[in]   monotone                 Monotone option to ensures no over/undershoots
-  !!                                       0 = none, 1 = strict, 2 = relaxed
   !! @param[out]  coeffs                   coeffs(1)=a0, coeffs(2)=a1, coeffs(3)=a2
   !----------------------------------------------------------------------------
   subroutine ppm_output(density_cell_edge_left,density_cell_edge_right,density_of_cell,monotone,coeffs)

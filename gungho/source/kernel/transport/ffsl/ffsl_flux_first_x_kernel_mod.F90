@@ -92,7 +92,8 @@ contains
                                      undf_w3,      &
                                      map_w3 )
 
-    use subgrid_rho_mod, only: horizontal_ppm_coeffs
+    use subgrid_rho_mod, only: horizontal_ppm_coeffs, &
+                               horizontal_nirvana_coeffs
     use cosmic_flux_mod, only: frac_and_int_part,                &
                                calc_integration_limits_positive, &
                                calc_integration_limits_negative, &
@@ -236,6 +237,9 @@ contains
             if ( order == 0 ) then
               ! Piecewise constant reconstruction
               coeffs(1) = field_local(ind_lo+2)
+            else if ( order == 1 ) then
+              ! Nirvana reconstruction
+              call horizontal_nirvana_coeffs( coeffs, field_local(ind_lo+1:ind_hi-1), monotone )
             else
               ! Piecewise parabolic reconstruction
               call horizontal_ppm_coeffs( coeffs, field_local(ind_lo:ind_hi), monotone )
