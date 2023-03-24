@@ -63,6 +63,7 @@ contains
                               scaling_factor=scaling )
 
     call feign_formulation_config( l_multigrid           = .false.,              &
+                                   lagged_orog           = .false.,              &
                                    rotating              = .true.,               &
                                    moisture_formulation  =                       &
                                    moisture_formulation_dry,                     &

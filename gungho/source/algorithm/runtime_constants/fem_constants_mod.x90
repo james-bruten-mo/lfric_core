@@ -37,7 +37,9 @@ module fem_constants_mod
 
   ! Configuration
   use finite_element_config_mod,          only: element_order, nqp_exact
-  use formulation_config_mod,             only: dlayer_on, rotating
+  use formulation_config_mod,             only: dlayer_on, &
+                                                rotating,  &
+                                                lagged_orog
   use timestepping_config_mod,            only: tau_u
   use damping_layer_config_mod,           only: dl_base, dl_str
   use extrusion_config_mod,               only: domain_top
@@ -66,6 +68,7 @@ module fem_constants_mod
   use compute_dl_matrix_kernel_mod,           only: compute_dl_matrix_kernel_type
   use compute_mass_matrix_kernel_w2_mod,      only: compute_mass_matrix_kernel_w2_type
   use invert_local_operator_kernel_mod,       only: invert_local_operator_kernel_type
+  use lagged_orog_operator_kernel_mod,        only: lagged_orog_operator_kernel_type
   use matrix_vector_kernel_mod,               only: matrix_vector_kernel_type
   use dg_inc_matrix_vector_kernel_mod,        only: dg_inc_matrix_vector_kernel_type
   use mg_derham_mat_kernel_mod,               only: mg_derham_mat_kernel_type
@@ -98,9 +101,12 @@ module fem_constants_mod
   type(operator_type), allocatable, dimension(:), target :: mm_w3
   type(operator_type), allocatable, dimension(:), target :: mm_wtheta
   type(operator_type), allocatable, dimension(:), target :: mm_dl
+  type(operator_type), allocatable, dimension(:), target :: mm_dl_lagged
   type(operator_type), allocatable, dimension(:), target :: mm_w2_si
+  type(operator_type), allocatable, dimension(:), target :: mm_w2_si_lagged
   type(operator_type), allocatable, dimension(:), target :: mm_w3_inv
   type(operator_type), allocatable, dimension(:), target :: mm_w2b_inv
+  type(operator_type), allocatable, dimension(:), target :: mm_w2_lagged
 
   ! Differential operators
   type(operator_type), allocatable, dimension(:), target :: div
@@ -154,6 +160,7 @@ module fem_constants_mod
   type(r_solver_operator_type), allocatable, dimension(:), target :: mm_w3_inv_r_solver
   type(r_solver_operator_type), target :: mm_wtheta_r_solver
   type(r_solver_operator_type), target :: mm_w2_si_r_solver
+  type(r_solver_operator_type), target :: mm_w2_si_lagged_r_solver
   ! r_solver versions of fields
   type(r_solver_field_type),    allocatable, dimension(:), target :: w2_normalisation_r_solver
   type(r_solver_field_type),    allocatable, dimension(:), target :: wt_normalisation_r_solver
@@ -171,13 +178,16 @@ module fem_constants_mod
   public :: create_fem_constants
   public :: final_fem_constants
   public :: get_qr
+  public :: get_mass_matrix_lagged
   public :: get_mass_matrix
   public :: get_mass_matrix_diagonal
   public :: get_inverse_lumped_mass_matrix
   public :: get_inverse_w3_mass_matrix
   public :: get_inverse_w2b_mass_matrix
   public :: get_dl_mass_matrix
+  public :: get_dl_mass_matrix_lagged
   public :: get_w2_si_mass_matrix
+  public :: get_w2_si_mass_matrix_lagged
   public :: get_grad
   public :: get_curl
   public :: get_div
@@ -203,6 +213,7 @@ module fem_constants_mod
   public :: get_mass_matrix_r_solver
   public :: get_inverse_w3_mass_matrix_r_solver
   public :: get_w2_si_mass_matrix_r_solver
+  public :: get_w2_si_mass_matrix_lagged_r_solver
   public :: get_normalisation_r_solver
   public :: get_detj_at_w3_r_solver
 
@@ -294,13 +305,16 @@ contains
              mm_w2b_inv(num_meshes),                &
              mm_w2v(num_meshes),                    &
              mm_w2h(num_meshes),                    &
+             mm_w2_lagged(num_meshes),              &
              div_v(num_meshes),                     &
              div_h(num_meshes),                     &
              im3_div(num_meshes),                   &
              im3_div_h(num_meshes),                 &
              im3_div_v(num_meshes),                 &
              mm_dl(num_meshes),                     &
+             mm_dl_lagged(num_meshes),              &
              mm_w2_si(num_meshes),                  &
+             mm_w2_si_lagged(num_meshes),           &
              mm0_diag(num_meshes),                  &
              mm1_diag(num_meshes),                  &
              mm2_diag(num_meshes),                  &
@@ -373,6 +387,7 @@ contains
         call mm_w0(i)%initialise( w0_fs, w0_fs )
         call mm_w1(i)%initialise( w1_fs, w1_fs )
         call mm_w2(i)%initialise( w2_fs, w2_fs )
+        call mm_w2_lagged(i)%initialise( w2_fs, w2_fs )
         call mm_w2b(i)%initialise( w2b_fs, w2b_fs )
         call mm_w3(i)%initialise( w3_fs, w3_fs )
         call mm_wtheta(i)%initialise( wtheta_fs, wtheta_fs )
@@ -392,6 +407,11 @@ contains
                                                          chi_list(:,i),          &
                                                          panel_id_list(i),       &
                                                          qr) )
+        if ( lagged_orog ) then
+          call invoke( name = "compute_W2_lagged_mass_matrix",            &
+                       lagged_orog_operator_kernel_type( mm_w2_lagged(i), &
+                                                         mm_w2(i) ) )
+        end if
         call div_r_solver(i)%initialise( w3_fs, w2_fs )
         call invoke( operator_setval_x_kernel_type( div_r_solver(i), div(i) ) )
         call div_r_tran(i)%initialise( w3_fs, w2_fs )
@@ -402,6 +422,7 @@ contains
       else
         ! Multigrid mesh, so only set-up certain mass matrices and operators
         call mm_w2(i)%initialise( w2_fs, w2_fs )
+        call mm_w2_lagged(i)%initialise( w2_fs, w2_fs )
         call mm_wtheta(i)%initialise( wtheta_fs, wtheta_fs )
         call mm_w3(i)%initialise( w3_fs, w3_fs )
         call div(i)%initialise( w3_fs, w2_fs )
@@ -411,6 +432,11 @@ contains
                                                 mm_wtheta(i), div(i), &
                                                 chi_list(:,i),        &
                                                 panel_id_list(i), qr) )
+        if ( lagged_orog ) then
+          call invoke( name = "compute_mg_W2_lagged_mass_matrix",         &
+                       lagged_orog_operator_kernel_type( mm_w2_lagged(i), &
+                                                         mm_w2(i) ) )
+        end if
         call div_r_solver(i)%initialise( w3_fs, w2_fs )
         call invoke( operator_setval_x_kernel_type( div_r_solver(i), div(i) ) )
         call div_r_tran(i)%initialise( w3_fs, w2_fs )
@@ -436,6 +462,7 @@ contains
         ! Construct vertical- and horizontal-only velocity mass matrices
         call mm_w2v(i)%initialise( w2v_fs, w2v_fs )
         call mm_w2h(i)%initialise( w2h_fs, w2h_fs )
+ 
         call invoke( name = "compute_W2_hori_mass_matrix",                         &
                      compute_mass_matrix_kernel_w2_type( mm_w2v(i), chi_list(:,i), &
                                                          panel_id_list(i), qr ) )
@@ -481,7 +508,6 @@ contains
           .and. label_list(i) /= shifted_mesh_label         &
           .and. label_list(i) /= double_level_mesh_label ) then
 
-        call mm_dl(i)%initialise( w2_fs, w2_fs )
         ! Compute W2 mass matrix with damping layer
         ! Eventually this may be absorbed into the de Rham complex computations
         ! but until the final form is settled upon it is left separate
@@ -490,6 +516,9 @@ contains
         ! a temporary.
         !
         delta_t = model_clock%get_seconds_per_step()
+
+        call mm_dl(i)%initialise( w2_fs, w2_fs )
+
         call invoke( name = "compute_damping_layer_mass_matrix",  &
           compute_dl_matrix_kernel_type( mm_dl(i), chi_list(:,i), &
                                          panel_id_list(i),        &
@@ -498,10 +527,21 @@ contains
                                          element_order,           &
                                          delta_t,                 &
                                          qr) )
+
+        if ( lagged_orog ) then
+          ! Also create the LHS mass matrices that don't include the correlations
+          ! between the horizontal and vertical.
+          call mm_dl_lagged(i)%initialise( w2_fs, w2_fs )
+          call invoke( name = "compute_lagged_damping_layer_mass_matrix",  &
+                       lagged_orog_operator_kernel_type( mm_dl_lagged(i),  &
+                                                         mm_dl(i) ) )
+        end if
+
       end if
 
       if ( label_list(i) == primary_mesh_label ) then
         call mm_w2_si(i)%initialise( w2_fs, w2_fs )
+        call mm_w2_si_lagged(i)%initialise( w2_fs, w2_fs )
         call coriolis%initialise( w2_fs, w2_fs )
 
         ! Compute temporary Coriolis operator
@@ -524,10 +564,23 @@ contains
           call invoke( name = "set_W2_si_mass_matrix_with_damping_layer",    &
                        operator_x_plus_ay_kernel_type(mm_w2_si(i), mm_dl(i), &
                                                       const, coriolis) )
+          if (lagged_orog) then
+            call invoke( name = "set_W2_si_mass_matrix_lagged_with_damping_layer",  &
+                         operator_x_plus_ay_kernel_type(mm_w2_si_lagged(i),         &
+                                                        mm_dl_lagged(i),            &
+                                                        const, coriolis) )
+
+          end if    
         else
           call invoke( name = "set_W2_si_mass_matrix_no_damping_layer",      &
                        operator_x_plus_ay_kernel_type(mm_w2_si(i), mm_w2(i), &
                                                       const, coriolis) )
+          if (lagged_orog) then
+            call invoke( name = "set_W2_si_mass_matrix_lagged_no_damping_layer", &
+                         operator_x_plus_ay_kernel_type(mm_w2_si_lagged(i),      &
+                                                        mm_w2_lagged(i),         &
+                                                        const, coriolis) )
+          end if
         end if ! Damping layer
       end if ! Primary mesh
 
@@ -771,8 +824,12 @@ contains
         ! Set up r_solver objects (only needed on the fine dynamics mesh)
         call mm_wtheta_r_solver%initialise( wtheta_fs, wtheta_fs )
         call mm_w2_si_r_solver%initialise( w2_fs, w2_fs )
+        call mm_w2_si_lagged_r_solver%initialise( w2_fs, w2_fs )
         call invoke( operator_setval_x_kernel_type( mm_wtheta_r_solver, mm_wtheta(i) ) )
         call invoke( operator_setval_x_kernel_type( mm_w2_si_r_solver,  mm_w2_si(i) ) )
+        if ( lagged_orog ) then
+          call invoke( operator_setval_x_kernel_type( mm_w2_si_lagged_r_solver,  mm_w2_si_lagged(i) ) )
+        end if
       end if
 
     end do ! Loop through meshes
@@ -801,6 +858,35 @@ contains
     qr_obj => qr
 
   end function get_qr
+
+
+  !> @brief Returns a pointer to a lagged mass matrix
+  !> @param[in] space   The space of the desired mass matrix
+  !> @param[in] mesh_id The ID of the mesh to get the object for
+  !> @return The mass matrix operator
+  function get_mass_matrix_lagged(space, mesh_id) result(mm_op)
+    implicit none
+    integer(kind=i_def),   intent(in) :: space
+    integer(kind=i_def),   intent(in) :: mesh_id
+    integer(kind=i_def)               :: mesh_index
+    type(operator_type),      pointer :: mm_op
+    character(str_def)                :: op_name
+
+    mesh_index = find_mesh_index(mesh_id)
+    op_name = 'mass matrix_lagged'
+
+    select case (space)
+      case (W2)
+        mm_op => mm_w2_lagged(mesh_index)
+      case default
+        mm_op => null()
+        call log_event( "Mass matrix operator does not exist", LOG_LEVEL_ERROR)
+        stop
+    end select
+
+    call check_initialised_operator(mm_op, op_name, mesh_id, space)
+
+  end function get_mass_matrix_lagged
 
   !> @brief Returns a pointer to a mass matrix
   !> @param[in] space   The space of the desired mass matrix
@@ -1047,6 +1133,24 @@ contains
 
   end function get_dl_mass_matrix
 
+  !> @brief Returns a pointer to the lagged-orography damping-layer
+  !!        W2 mass matrix operator
+  !> @param[in] mesh_id The ID of the mesh to get the object for
+  !> @return The lagged damping layer W2 mass matrix operator
+  function get_dl_mass_matrix_lagged(mesh_id) result(mm_dl_op)
+    implicit none
+    integer(kind=i_def),   intent(in) :: mesh_id
+    integer(kind=i_def)               :: mesh_index
+    type(operator_type),      pointer :: mm_dl_op
+    character(str_def)                :: op_name
+
+    mesh_index = find_mesh_index(mesh_id)
+    op_name = 'dl_w2_mass_matrix_lagged'
+    mm_dl_op => mm_dl_lagged(mesh_index)
+    call check_initialised_operator(mm_dl_op, op_name, mesh_id)
+
+  end function get_dl_mass_matrix_lagged
+
   !> @brief Returns a pointer to the semi-implicit W2 mass matrix operator
   !> @param[in] mesh_id The ID of the mesh to get the object for
   !> @return The semi-implicit W2 mass matrix operator
@@ -1064,6 +1168,24 @@ contains
 
   end function get_w2_si_mass_matrix
 
+  !> @brief Returns a pointer to the lagged-orography semi-implicit
+  !!        W2 mass matrix operator
+  !> @param[in] mesh_id The ID of the mesh to get the object for
+  !> @return The lagged semi-implicit W2 mass matrix operator
+  function get_w2_si_mass_matrix_lagged(mesh_id) result(mm_w2_si_op)
+    implicit none
+    integer(kind=i_def),   intent(in) :: mesh_id
+    integer(kind=i_def)               :: mesh_index
+    type(operator_type),      pointer :: mm_w2_si_op
+    character(str_def)                :: op_name
+
+    mesh_index = find_mesh_index(mesh_id)
+    op_name = 'w2_si_mass_matrix_lagged'
+    mm_w2_si_op => mm_w2_si_lagged(mesh_index)
+    call check_initialised_operator(mm_w2_si_op, op_name, mesh_id)
+
+  end function get_w2_si_mass_matrix_lagged
+
   !> @brief Returns a pointer to the semi-implicit W2 mass matrix operator
   !> @param[in] mesh_id The ID of the mesh to get the object for
   !> @return The semi-implicit W2 mass matrix operator
@@ -1080,6 +1202,22 @@ contains
 
   end function get_w2_si_mass_matrix_r_solver
 
+  !> @brief Returns a pointer to the lagged-orography semi-implicit
+  !!        W2 mass matrix operator
+  !> @param[in] mesh_id The ID of the mesh to get the object for
+  !> @return The lagged semi-implicit W2 mass matrix operator
+  function get_w2_si_mass_matrix_lagged_r_solver(mesh_id) result(sol_mm_w2_si_op)
+    implicit none
+    integer(kind=i_def),       intent(in) :: mesh_id
+    integer(kind=i_def)                   :: mesh_index
+    type(r_solver_operator_type), pointer :: sol_mm_w2_si_op
+    character(str_def)                    :: op_name
+
+    mesh_index = find_mesh_index(mesh_id)
+    op_name = 'w2_si_mass_matrix'
+    sol_mm_w2_si_op => mm_w2_si_lagged_r_solver
+
+  end function get_w2_si_mass_matrix_lagged_r_solver
 
   !> @brief Returns a pointer to the grad operator
   !> @param[in] mesh_id The ID of the mesh to get the object for

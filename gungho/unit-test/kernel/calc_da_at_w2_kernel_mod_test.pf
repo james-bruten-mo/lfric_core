@@ -68,6 +68,7 @@ contains
                                    init_exner_bt=.false.,           &
                                    rotating=.true.,                 &
                                    l_multigrid=.false.,             &
+                                   lagged_orog=.false.,             &
                                    shallow=.false.,                 &
                                    moisture_formulation =           &
                                    moisture_formulation_dry,        &

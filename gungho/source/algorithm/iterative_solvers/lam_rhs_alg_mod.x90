@@ -17,12 +17,13 @@ module lam_rhs_alg_mod
   use io_config_mod,               only: subroutine_timers
   use timer_mod,                   only: timer
   use derived_config_mod,          only: bundle_size
+  use formulation_config_mod,      only: lagged_orog
   use si_operators_alg_mod,        only: get_ptheta2,       &
                                          get_rho_at_u
-  use fem_constants_mod,           only: get_div,           &
-                                         get_mass_matrix,       &
-                                         get_dl_mass_matrix,    &
-                                         get_w2_si_mass_matrix, &
+  use fem_constants_mod,           only: get_div,                      &
+                                         get_mass_matrix,              &
+                                         get_w2_si_mass_matrix,        &
+                                         get_w2_si_mass_matrix_lagged, &
                                          get_inverse_w3_mass_matrix
   use limited_area_constants_mod,  only: get_mask
   use fs_continuity_mod,           only: W2, W3, Wtheta
@@ -128,7 +129,12 @@ contains
     ! Obtain operators from runtime constants
     mm_w3_inv => get_inverse_w3_mass_matrix(mesh_id)
     div       => get_div(mesh_id)
-    mm_vel    => get_w2_si_mass_matrix(mesh_id) ! = m2 (or dl) + tau_u*dt*coriolis
+    ! m2 (or dl) + tau_u*dt*coriolis
+    if (lagged_orog) then
+      mm_vel    => get_w2_si_mass_matrix_lagged(mesh_id)
+    else
+      mm_vel    => get_w2_si_mass_matrix(mesh_id)
+    end if
 
     ! Obtain operators from SI operators
     r_solver_ptheta2  => get_ptheta2()

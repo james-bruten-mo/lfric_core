@@ -375,7 +375,9 @@ contains
                                                     get_rmultiplicity, &
                                                     get_div_r_solver, &
                                                     get_mass_matrix, &
+                                                    get_mass_matrix_lagged, &
                                                     get_dl_mass_matrix, &
+                                                    get_dl_mass_matrix_lagged, &
                                                     get_detj_at_w3_r_solver, &
                                                     get_inverse_w3_mass_matrix_r_solver
     use limited_area_constants_mod,           only: get_mask
@@ -389,6 +391,7 @@ contains
     use matrix_vector_kernel_mod,             only: matrix_vector_kernel_type
     use dg_inc_matrix_vector_kernel_mod,      only: dg_inc_matrix_vector_kernel_type
     use formulation_config_mod,               only: dlayer_on,       &
+                                                    lagged_orog,     &
                                                     dry_static_adjust
     use sort_ref_kernel_mod,                  only: sort_ref_kernel_type
     use psykal_lite_mod,                      only: invoke_helmholtz_operator_kernel_type, &
@@ -609,10 +612,18 @@ contains
        end if
 
        ! Compute Hb_lumped_inv field
-       if (dlayer_on) then
-          m2 => get_dl_mass_matrix( mesh%get_id() )
+       if (lagged_orog) then
+         if (dlayer_on) then
+            m2 => get_dl_mass_matrix_lagged( mesh%get_id() )
+         else
+            m2 => get_mass_matrix_lagged(W2, mesh%get_id() )
+         end if
        else
-          m2 => get_mass_matrix(W2, mesh%get_id() )
+         if (dlayer_on) then
+            m2 => get_dl_mass_matrix( mesh%get_id() )
+         else
+            m2 => get_mass_matrix(W2, mesh%get_id() )
+         end if
        end if
        call m2_r_solver%initialise( w2_fs, w2_fs )
        call invoke( operator_setval_x_kernel_type( m2_r_solver, m2 ) )

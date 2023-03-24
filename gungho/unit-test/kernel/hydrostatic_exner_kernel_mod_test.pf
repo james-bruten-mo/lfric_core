@@ -242,6 +242,7 @@ contains
     real(r_def) :: answer
 
     call feign_formulation_config(l_multigrid=.false.,                      &
+                                  lagged_orog=.false.,                      &
                                   rotating=.false.,                         &
                                   moisture_formulation =                    &
                                   moisture_formulation_dry,                 &
@@ -314,6 +315,7 @@ contains
 
     call feign_formulation_config(rotating=.false.,                          &
                                   l_multigrid=.false.,                       &
+                                  lagged_orog=.false.,                       &
                                   moisture_formulation =                     &
                                   moisture_formulation_dry,                  &
                                   p2theta_vert=.true.,                       &

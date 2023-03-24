@@ -60,6 +60,7 @@ contains
              vorticity_in_w1=.false. )
 
     call feign_formulation_config( l_multigrid           = .false.,              &
+                                   lagged_orog           = .false.,              &
                                    rotating              = .true.,               &
                                    moisture_formulation  =                       &
                                    moisture_formulation_dry,                     &

@@ -89,6 +89,7 @@ contains
 
     call feign_formulation_config(rotating=.true.,                         &
                                   l_multigrid=.false.,                     &
+                                  lagged_orog=.false.,                     &
                                   moisture_formulation =                   &
                                   moisture_formulation_dry,                &
                                   p2theta_vert=.true.,                     &

@@ -72,6 +72,7 @@ contains
                                    exner_from_eos = .false.,       &
                                    eos_method=eos_method_sampled,  &
                                    init_exner_bt = .false.,        &
+                                   lagged_orog = .false.,          &
                                    l_multigrid = .false.,          &
                                    rotating = .true.,              &
                                    shallow = .false.,              &

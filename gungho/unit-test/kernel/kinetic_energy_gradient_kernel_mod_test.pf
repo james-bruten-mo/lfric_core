@@ -74,6 +74,7 @@ contains
                                    eos_method=eos_method_sampled,   &
                                    init_exner_bt=.false.,           &
                                    l_multigrid=.false.,             &
+                                   lagged_orog=.false.,             &
                                    rotating=.true.,                 &
                                    shallow=.false.,                 &
                                    moisture_formulation =           &
