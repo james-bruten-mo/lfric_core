@@ -21,7 +21,11 @@ module log_mod
                               i_timestep, &
                               str_long,   &
                               str_max_filename
+#ifdef NO_MPI
+  ! No "parallel_abort()" calls in a non-mpi build
+#else
   use lfric_abort_mod, only : parallel_abort
+#endif
 
   implicit none
 
@@ -68,7 +72,11 @@ module log_mod
 
   interface initialise_logging
     procedure initialise_serial_logging
+#ifdef NO_MPI
+    ! No parallel logging in non-mpi build
+#else
     procedure initialise_parallel_logging
+#endif
   end interface initialise_logging
 
 contains
@@ -88,6 +96,9 @@ contains
   end subroutine initialise_serial_logging
 
 
+#ifdef NO_MPI
+  ! No parallel logging in non-mpi build
+#else
   !> @brief Sets up logging for operation in a parallel regime.
   !>
   !> @param[in] communicator MPI communicator to operate in.
@@ -123,7 +134,6 @@ contains
     if (total_ranks /= 1) then
       allocate( mpi_communicator )
       mpi_communicator = communicator
-
       call mpi_comm_rank( mpi_communicator, this_rank, ierror=status )
       if (status /= 0) then
         write( error_unit, "('Cannot determine rank. iostat = ',i0)" ) status
@@ -149,6 +159,7 @@ contains
     call base_initialise( trace_on_warnings )
 
   end subroutine initialise_parallel_logging
+#endif
 
   !> @brief Initialisation common to all regimes.
   !>
@@ -170,7 +181,11 @@ contains
   !>
   subroutine finalise_logging()
 
+#ifdef NO_MPI
+    ! No "use mpi" in non-mpi build
+#else
     use mpi, only : mpi_barrier
+#endif
 
     implicit none
 
@@ -184,7 +199,11 @@ contains
       end if
       call log_forget_timestep()
       deallocate( petno )
+#ifdef NO_MPI
+      ! No barriers required in non-mpi build
+#else
       call mpi_barrier( mpi_communicator, ierror=ios )
+#endif
       deallocate( mpi_communicator )
     end if
 
@@ -402,8 +421,13 @@ contains
           write(error_unit,"('Cannot close logging file. iostat = ',i0)")ios
         end if
       end if
+
+#ifdef NO_MPI
+      ! No "parallel_abort()" calls in a non-mpi build
+#else
       ! Abort parallel applications
       call parallel_abort( EXIT_CODE_ON_ERROR )
+#endif
 
     else
       ! Stop serial applications

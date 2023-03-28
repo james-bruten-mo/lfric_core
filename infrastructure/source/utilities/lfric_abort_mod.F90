@@ -19,7 +19,11 @@ contains
   !> @param[in] ierr  Error code
   subroutine parallel_abort(ierr)
 
+#ifdef NO_MPI
+   ! No "use mpi" in non-mpi build
+#else
     use mpi, only : mpi_abort, MPI_COMM_WORLD
+#endif
 
     implicit none
 
@@ -27,7 +31,12 @@ contains
 
     integer :: ierror
 
+#ifdef NO_MPI
+    integer, parameter :: EXIT_CODE_ON_ERROR = 1
+    stop EXIT_CODE_ON_ERROR
+#else
     call mpi_abort(MPI_COMM_WORLD, ierr, ierror)
+#endif
 
   end subroutine parallel_abort
 

@@ -10,7 +10,6 @@ module content_mod
   use constants_mod, only : i_native, l_def, str_def, str_max_filename
   use log_mod,       only : log_scratch_space, log_event, LOG_LEVEL_ERROR
   use mpi_mod,       only : get_comm_rank, broadcast
-  use mpi,           only : MPI_SUCCESS
 
   use foo_config_mod, only : read_foo_namelist, &
                              postprocess_foo_namelist, &

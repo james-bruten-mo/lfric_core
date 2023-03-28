@@ -12,7 +12,6 @@ module test_config_mod
   use log_mod,       only: log_event, log_scratch_space &
                          , LOG_LEVEL_ERROR, LOG_LEVEL_WARNING, LOG_LEVEL_INFO
   use mpi_mod,       only: broadcast
-  use mpi,           only: MPI_SUCCESS
 
   use constants_mod, only: cmdi, emdi, imdi, rmdi, unset_key
 

@@ -18,7 +18,8 @@ from re import compile as re_compile
 from stylist.fortran import (
     FortranCharacterset,
     MissingImplicit,
-    IntrinsicModule
+    IntrinsicModule,
+    ForbidUsage
 )
 from stylist.rule import TrailingWhitespace
 from stylist.source import (
@@ -35,11 +36,20 @@ if __name__ == '__main__':
 
 # Define the rules which make up our style...
 #
+# We limit the usage of "bare" MPI to a handful of modules.
+allowed_mpi = (
+    "mpi_mod_test",
+    "lfric_abort_mod",
+    "mpi_mod",
+    "log_mod"
+)
+
 infrastructure = Style(
     TrailingWhitespace(),
     FortranCharacterset(),
     MissingImplicit(),
-    IntrinsicModule()
+    IntrinsicModule(),
+    ForbidUsage('mpi', exceptions=allowed_mpi)
 )
 
 # Define additional file type processing pipelines
