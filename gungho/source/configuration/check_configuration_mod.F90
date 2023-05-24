@@ -25,6 +25,7 @@ module check_configuration_mod
                                   horizontal_method,           &
                                   vertical_method,             &
                                   reversible,                  &
+                                  log_space,                   &
                                   max_vert_cfl_calc,           &
                                   max_vert_cfl_calc_dep_point, &
                                   equation_form,               &
@@ -315,6 +316,14 @@ contains
           write( log_scratch_space, '(A)') trim(field_names(i)) // ' variable ' // &
             'is being transported with a reversible form of the FFSL scheme, ' // &
             'so it must also have the "reversible" option set to .true.'
+          call log_event(log_scratch_space, LOG_LEVEL_ERROR)
+        end if
+
+        if ( vertical_method(i) == split_method_ffsl .AND. outer_order == 1    &
+            .AND. log_space(i) .AND. .NOT. reversible(i) ) then
+          write( log_scratch_space, '(A)') trim(field_names(i)) // ' variable ' // &
+            'is being transported with Nirvana as part of the FFSL scheme, ' // &
+            'so log_space must be .false.'
           call log_event(log_scratch_space, LOG_LEVEL_ERROR)
         end if
 

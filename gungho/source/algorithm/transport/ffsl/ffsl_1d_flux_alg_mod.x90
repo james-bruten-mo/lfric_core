@@ -363,7 +363,7 @@ contains
       else
         ! Standard Nirvana reconstruction
         call invoke( vert_nirvana_kernel_type( a0, a1, a2, field, dz_w3,   &
-                                               monotone, log_space),       &
+                                               monotone ),                 &
                      ffsl_vertical_flux_kernel_type( flux, dep_pts, field, &
                                                      a0, a1, a2, dt) )
       end if

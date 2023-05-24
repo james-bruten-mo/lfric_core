@@ -8,7 +8,7 @@
 
 module vert_nirvana_kernel_mod_test
 
-  use constants_mod, only : i_def, l_def, str_long, r_tran
+  use constants_mod, only : i_def, str_long, r_tran
   use pFUnit_Mod
 
   implicit none
@@ -43,7 +43,6 @@ contains
     integer(i_def), parameter :: undf_w3   = 5
     integer(i_def), parameter :: ndf_w3    = 1
     integer(i_def), parameter :: map_w3(1) = 1
-    logical(l_def), parameter :: log_space = .false.
 
     real(r_tran) :: rho(5)
     real(r_tran) :: dz(5)
@@ -81,7 +80,6 @@ contains
                             rho,       &
                             dz,        &
                             monotone,  &
-                            log_space, &
                             ndf_w3,    &
                             undf_w3,   &
                             map_w3 )
@@ -128,7 +126,6 @@ contains
                             rho,       &
                             dz,        &
                             monotone,  &
-                            log_space, &
                             ndf_w3,    &
                             undf_w3,   &
                             map_w3 )
@@ -176,7 +173,6 @@ contains
                             rho,       &
                             dz,        &
                             monotone,  &
-                            log_space, &
                             ndf_w3,    &
                             undf_w3,   &
                             map_w3 )
@@ -227,7 +223,6 @@ contains
                             rho,       &
                             dz,        &
                             monotone,  &
-                            log_space, &
                             ndf_w3,    &
                             undf_w3,   &
                             map_w3 )
