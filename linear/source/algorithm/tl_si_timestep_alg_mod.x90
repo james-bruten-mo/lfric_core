@@ -35,8 +35,6 @@ module tl_si_timestep_alg_mod
   use derived_config_mod,          only: bundle_size
   use boundaries_config_mod,       only: limited_area
   use fem_constants_mod,           only: get_mass_matrix,       &
-                                         get_dl_mass_matrix,    &
-                                         get_w2_si_mass_matrix, &
                                          get_qr
 
   use field_bundle_mod,            only: clone_bundle,      &
@@ -44,7 +42,7 @@ module tl_si_timestep_alg_mod
                                          add_bundle,        &
                                          copy_bundle,       &
                                          set_bundle_scalar
-  use fs_continuity_mod,           only: Wtheta
+  use fs_continuity_mod,           only: Wtheta, W2
 
   ! PsyKAl PSYClone kernels
   use moist_dyn_factors_alg_mod,          only: moist_dyn_factors_alg
@@ -377,13 +375,8 @@ contains
 
     qr => get_qr()
 
-    mm_wt    => get_mass_matrix(Wtheta, mesh%get_id())
-    ! Using modified velocity mass matrix if using damping layer
-    if (dlayer_on) then
-      mm_vel => get_dl_mass_matrix(mesh%get_id())
-    else
-      mm_vel => get_w2_si_mass_matrix(mesh%get_id())
-    end if
+    mm_wt  => get_mass_matrix(Wtheta, mesh%get_id())
+    mm_vel => get_mass_matrix(W2,     mesh%get_id())
 
    !--------------------------------------------------------------------
     ! If off-centring is being spun up then modify the alpha value

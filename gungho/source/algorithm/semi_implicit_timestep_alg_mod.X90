@@ -55,8 +55,6 @@ module semi_implicit_timestep_alg_mod
                                         blend_frequency_outer, &
                                         blend_frequency_final
   use fem_constants_mod,          only: get_mass_matrix,       &
-                                        get_dl_mass_matrix,    &
-                                        get_w2_si_mass_matrix, &
                                         get_qr
 
   use field_bundle_mod,           only: clone_bundle,      &
@@ -64,7 +62,7 @@ module semi_implicit_timestep_alg_mod
                                         add_bundle,        &
                                         copy_bundle,       &
                                         set_bundle_scalar
-  use fs_continuity_mod,          only: Wtheta
+  use fs_continuity_mod,          only: Wtheta, W2
 
   ! PsyKAl PSYClone kernels
   use matrix_vector_kernel_mod,   only: matrix_vector_kernel_type
@@ -404,12 +402,7 @@ contains
     qr => get_qr()
 
     mm_wt    => get_mass_matrix(Wtheta, mesh%get_id())
-    ! Using modified velocity mass matrix if using damping layer
-    if (dlayer_on) then
-      mm_vel => get_dl_mass_matrix(mesh%get_id())
-    else
-      mm_vel => get_w2_si_mass_matrix(mesh%get_id())
-    end if
+    mm_vel   => get_mass_matrix(W2,     mesh%get_id())
 
     !--------------------------------------------------------------------
     ! If winds are being spunup overwrite the local copy of the winds
