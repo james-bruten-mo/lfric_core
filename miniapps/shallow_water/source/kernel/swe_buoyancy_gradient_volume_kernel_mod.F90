@@ -64,7 +64,7 @@ module swe_buoyancy_gradient_volume_kernel_mod
         func_type(W2,     GH_DIFF_BASIS),            &
         func_type(W3,     GH_BASIS)                  &
         /)
-    integer :: iterates_over = CELL_COLUMN
+    integer :: operates_on = CELL_COLUMN
     integer :: gh_shape = GH_QUADRATURE_XYoZ
   contains
     procedure, nopass ::swe_buoyancy_gradient_volume_code

@@ -35,7 +35,7 @@ module w1_to_w3_average_kernel_mod
          arg_type(GH_FIELD, GH_REAL, GH_READ,      W1), &
          arg_type(GH_FIELD, GH_REAL, GH_READ,      W1)  &
          /)
-    integer :: iterates_over = CELL_COLUMN
+    integer :: operates_on = CELL_COLUMN
   contains
     procedure, nopass :: w1_to_w3_average_code
   end type

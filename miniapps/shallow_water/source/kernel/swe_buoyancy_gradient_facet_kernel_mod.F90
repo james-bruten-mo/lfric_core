@@ -78,7 +78,7 @@ module swe_buoyancy_gradient_facet_kernel_mod
          reference_element_data_type( normals_to_horizontal_faces ),    &
          reference_element_data_type( outward_normals_to_faces )        &
       /)
-    integer :: iterates_over = CELL_COLUMN
+    integer :: operates_on = CELL_COLUMN
     integer :: gh_shape = GH_QUADRATURE_face
   contains
     procedure, nopass ::swe_buoyancy_gradient_facet_code

@@ -28,17 +28,17 @@ SUBROUTINE init_generator_lib()
 ! This routine creates/defines the generator library
 !
 ! Basic tranforms
-USE init_field_mod,      ONLY: init_field
-USE read_from_file_mod,  ONLY: read_from_file
-USE copy_field_data_mod, ONLY: copy_field_data
-USE a_times_X_mod,       ONLY: a_times_X
-USE X_plus_Y_mod,        ONLY: X_plus_Y
-USE aX_plus_bY_mod,      ONLY: aX_plus_bY
-USE X_minus_Y_mod,       ONLY: X_minus_Y
-USE X_times_Y_mod,       ONLY: X_times_Y
-USE X_divideby_Y_mod,    ONLY: X_divideby_Y
-USE X_powint_n_mod,      ONLY: X_powint_n
-USE X_powreal_a_mod,     ONLY: X_powreal_a
+USE init_field_mod,           ONLY: init_field
+USE read_from_file_mod,       ONLY: read_from_file
+USE copy_field_data_mod,      ONLY: copy_field_data
+USE a_times_X_dep_alg_mod,    ONLY: a_times_X_dep_alg
+USE X_plus_Y_dep_alg_mod,     ONLY: X_plus_Y_dep_alg
+USE aX_plus_bY_dep_alg_mod,   ONLY: aX_plus_bY_dep_alg
+USE X_minus_Y_dep_alg_mod,    ONLY: X_minus_Y_dep_alg
+USE X_times_Y_dep_alg_mod,    ONLY: X_times_Y_dep_alg
+USE X_divideby_Y_dep_alg_mod, ONLY: X_divideby_Y_dep_alg
+USE X_powint_n_mod,           ONLY: X_powint_n
+USE X_powreal_a_mod,          ONLY: X_powreal_a
 ! Science transforms
 USE soil_moist_content_to_soil_moist_stress_mod, ONLY:                         &
                                      soil_moist_content_to_soil_moist_stress
@@ -72,33 +72,33 @@ generator_list(l)%generator => copy_field_data
 
 ! scale field operator
 l = 4
-generator_list(l)%identifier = 'a_times_X                               '
-generator_list(l)%generator => a_times_X
+generator_list(l)%identifier = 'a_times_X_dep_alg                       '
+generator_list(l)%generator => a_times_X_dep_alg
 
 ! Add two fields
 l = 5
-generator_list(l)%identifier = 'X_plus_Y                                '
-generator_list(l)%generator => X_plus_Y
+generator_list(l)%identifier = 'X_plus_Y_dep_alg                        '
+generator_list(l)%generator => X_plus_Y_dep_alg
 
 ! Linearly combine two fields
 l = 6
-generator_list(l)%identifier = 'aX_plus_bY                              '
-generator_list(l)%generator => aX_plus_bY
+generator_list(l)%identifier = 'aX_plus_bY_dep_alg                      '
+generator_list(l)%generator => aX_plus_bY_dep_alg
 
 ! Subtract two fields
 l = 7
-generator_list(l)%identifier = 'X_minus_Y                               '
-generator_list(l)%generator => X_minus_Y
+generator_list(l)%identifier = 'X_minus_Y_dep_alg                       '
+generator_list(l)%generator => X_minus_Y_dep_alg
 
 ! Multiply two fields
 l = 8
-generator_list(l)%identifier = 'X_times_Y                               '
-generator_list(l)%generator => X_times_Y
+generator_list(l)%identifier = 'X_times_Y_dep_alg                       '
+generator_list(l)%generator => X_times_Y_dep_alg
 
 ! Divide two fields
 l = 9
-generator_list(l)%identifier = 'X_divideby_Y                            '
-generator_list(l)%generator => X_divideby_Y
+generator_list(l)%identifier = 'X_divideby_Y_dep_alg                    '
+generator_list(l)%generator => X_divideby_Y_dep_alg
 
 ! Raise field to power n, where n is an integer)
 l = 10

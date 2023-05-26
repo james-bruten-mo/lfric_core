@@ -3,10 +3,9 @@
 ! For further details please refer to the file LICENCE
 ! which you should have received as part of this distribution.
 ! *****************************COPYRIGHT*******************************
-MODULE aX_plus_bY_mod
+MODULE a_times_X_dep_alg_mod
 !
-! This module contains a generator that calculates a linear combination of
-! two fields.
+! This module contains a generator to scale the data in a field by a constant.
 !
 
 USE dependency_graph_mod, ONLY: dependency_graph
@@ -15,10 +14,10 @@ IMPLICIT NONE
 
 CONTAINS
 
-SUBROUTINE aX_plus_bY(dep_graph)
+SUBROUTINE a_times_X_dep_alg(dep_graph)
 !
-! This generator calculates a linear combination of the two input fields in a
-! dependency graph and store result in the output field.
+! This generator multiplies the input field in a dependency graph by a constant
+! value and save the result in the output field of the dependency graph.
 !
 
 USE gen_io_check_mod,       ONLY: gen_io_check
@@ -38,11 +37,10 @@ CLASS(dependency_graph), INTENT(IN OUT) :: dep_graph
 ! Local variables
 !
 ! Field pointers to use
-TYPE(field_type), POINTER :: field_y => NULL(), field_x => NULL(),             &
-                             field_z => NULL()
+TYPE(field_type), POINTER :: field_y => NULL(), field_x => NULL()
 !
-! Scaling factors
-REAL(KIND=r_def) :: scale_fac_a, scale_fac_b
+! Scale factor
+REAL(KIND=r_def) :: scale_fac
 !
 ! Parameter list
 CHARACTER(LEN=genpar_len) :: parlist
@@ -59,35 +57,34 @@ INTEGER :: ioerr
 fspace = dep_graph % output_field(1) % field_ptr % which_function_space()
 CALL gen_io_check(                                                             &
                   dep_graph=dep_graph,                                         &
-                  input_field_no=2,                                            &
-                  input_field_fs=[fspace, fspace],                             &
+                  input_field_no=1,                                            &
+                  input_field_fs=[fspace],                                     &
                   output_field_no=1,                                           &
                   output_field_fs=[fspace],                                    &
-                  parameter_no=2                                               &
+                  parameter_no=1                                               &
                  )
 !
-! Done with initial input checks
+! Done with initial field checks
 !
 
 ! Read parameter list for scaling factor
 parlist = dep_graph % genpar
-READ(parlist,*,IOSTAT=ioerr) scale_fac_a, scale_fac_b
+READ(parlist,*,IOSTAT=ioerr) scale_fac
 IF (ioerr /= 0 ) THEN
   WRITE(log_scratch_space,'(A)') 'Error occured when parsing parameter ' //    &
-                                 'list in routine aX_plus_bY. ' //             &
-                                 'Input should be two real/integer values.'
+                                 'list in routine a_times_X_dep_alg. ' //              &
+                                 'Input should be a single real/integer value.'
   CALL log_event(log_scratch_space, LOG_LEVEL_ERROR)
 END IF
 
-! Linearly combine field data via a call to a Psyclone built-in kernel
-field_z => dep_graph % output_field(1) % field_ptr
+! Scale the field data through a call to a Psyclone built-in kernel
+field_y => dep_graph % output_field(1) % field_ptr
 field_x => dep_graph % input_field(1) % field_ptr
-field_y => dep_graph % input_field(2) % field_ptr
-CALL invoke(aX_plus_bY(field_z, scale_fac_a, field_x, scale_fac_b, field_y))
+CALL invoke(a_times_X(field_y, scale_fac, field_x))
 
 ! Nullify field pointers
-NULLIFY(field_x, field_y, field_z)
+NULLIFY(field_y, field_x)
 
-END SUBROUTINE aX_plus_bY
+END SUBROUTINE a_times_X_dep_alg
 
-END MODULE aX_plus_bY_mod
+END MODULE a_times_X_dep_alg_mod

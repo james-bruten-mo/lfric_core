@@ -3,7 +3,7 @@
 ! For further details please refer to the file LICENCE
 ! which you should have received as part of this distribution.
 ! *****************************COPYRIGHT*******************************
-MODULE X_divideby_Y_mod
+MODULE X_divideby_Y_dep_alg_mod
 !
 ! This module contains a generator to divide the data in two fields.
 !
@@ -14,7 +14,7 @@ IMPLICIT NONE
 
 CONTAINS
 
-SUBROUTINE X_divideby_Y(dep_graph)
+SUBROUTINE X_divideby_Y_dep_alg(dep_graph)
 !
 ! This generator divide the data in the two input fields of a dependency
 ! graph and save the result in the output field of the dependency graph.
@@ -66,6 +66,6 @@ call invoke (X_divideby_Y(field_z, field_x, field_y))
 ! Nullify field pointers
 NULLIFY(field_x, field_y, field_z)
 
-END SUBROUTINE X_divideby_Y
+END SUBROUTINE X_divideby_Y_dep_alg
 
-END MODULE X_divideby_Y_mod
+END MODULE X_divideby_Y_dep_alg_mod

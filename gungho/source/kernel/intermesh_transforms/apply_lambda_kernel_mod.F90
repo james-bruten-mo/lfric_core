@@ -39,7 +39,7 @@ type, public, extends(kernel_type) :: apply_lambda_kernel_type
        arg_type(GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_2, mesh_arg=GH_COARSE),    &
        arg_type(GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_1, mesh_arg=GH_FINE)       &
        /)
-  integer :: iterates_over = CELL_COLUMN
+  integer :: operates_on = CELL_COLUMN
 contains
   procedure, nopass :: apply_lambda_kernel_code
 end type apply_lambda_kernel_type

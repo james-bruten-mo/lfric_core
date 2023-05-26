@@ -40,7 +40,7 @@ module evap_condense_kernel_mod
           arg_type(GH_FIELD*6, GH_REAL, GH_READ,  WTHETA), &
           arg_type(GH_FIELD,   GH_REAL, GH_READ,  WTHETA)  &
           /)
-      integer :: iterates_over = CELL_COLUMN
+      integer :: operates_on = CELL_COLUMN
 
   contains
       procedure, nopass :: evap_condense_code

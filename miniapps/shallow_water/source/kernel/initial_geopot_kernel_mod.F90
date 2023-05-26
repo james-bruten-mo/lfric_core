@@ -37,7 +37,7 @@ module initial_geopot_kernel_mod
       type(func_type) :: meta_funcs(1) = (/                    &
           func_type(ANY_SPACE_9, GH_BASIS)                     &
           /)
-      integer :: iterates_over = CELL_COLUMN
+      integer :: operates_on = CELL_COLUMN
       integer :: gh_shape = GH_EVALUATOR
   contains
       procedure, nopass :: initial_geopot_code

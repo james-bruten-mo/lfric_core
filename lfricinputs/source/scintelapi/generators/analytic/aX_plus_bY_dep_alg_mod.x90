@@ -3,9 +3,10 @@
 ! For further details please refer to the file LICENCE
 ! which you should have received as part of this distribution.
 ! *****************************COPYRIGHT*******************************
-MODULE X_minus_Y_mod
+MODULE aX_plus_bY_dep_alg_mod
 !
-! This module contains a generator to difference the data in two fields.
+! This module contains a generator that calculates a linear combination of
+! two fields.
 !
 
 USE dependency_graph_mod, ONLY: dependency_graph
@@ -14,14 +15,16 @@ IMPLICIT NONE
 
 CONTAINS
 
-SUBROUTINE X_minus_Y(dep_graph)
+SUBROUTINE aX_plus_bY_dep_alg(dep_graph)
 !
-! This generator difference the data in the two input fields of a dependency
-! graph and save the result in the output field of the dependency graph.
+! This generator calculates a linear combination of the two input fields in a
+! dependency graph and store result in the output field.
 !
 
 USE gen_io_check_mod,       ONLY: gen_io_check
 USE field_mod,              ONLY: field_type
+USE log_mod,                ONLY: log_event, log_scratch_space, LOG_LEVEL_ERROR
+USE constants_def_mod,      ONLY: genpar_len, r_def
 
 IMPLICIT NONE
 
@@ -35,11 +38,20 @@ CLASS(dependency_graph), INTENT(IN OUT) :: dep_graph
 ! Local variables
 !
 ! Field pointers to use
-TYPE(field_type), POINTER :: field_x => NULL(), field_y => NULL(),             &
+TYPE(field_type), POINTER :: field_y => NULL(), field_x => NULL(),             &
                              field_z => NULL()
+!
+! Scaling factors
+REAL(KIND=r_def) :: scale_fac_a, scale_fac_b
+!
+! Parameter list
+CHARACTER(LEN=genpar_len) :: parlist
 !
 ! Dummy function space variable used in checks
 INTEGER :: fspace
+!
+! Error code for reading parameter list
+INTEGER :: ioerr
 
 !
 ! Perform some initial input checks
@@ -51,21 +63,31 @@ CALL gen_io_check(                                                             &
                   input_field_fs=[fspace, fspace],                             &
                   output_field_no=1,                                           &
                   output_field_fs=[fspace],                                    &
-                  parameter_no=0                                               &
+                  parameter_no=2                                               &
                  )
 !
 ! Done with initial input checks
 !
 
-! Difference field data through a call to a Psyclone built-in kernel
+! Read parameter list for scaling factor
+parlist = dep_graph % genpar
+READ(parlist,*,IOSTAT=ioerr) scale_fac_a, scale_fac_b
+IF (ioerr /= 0 ) THEN
+  WRITE(log_scratch_space,'(A)') 'Error occured when parsing parameter ' //    &
+                                 'list in routine aX_plus_bY_dep_alg. ' //             &
+                                 'Input should be two real/integer values.'
+  CALL log_event(log_scratch_space, LOG_LEVEL_ERROR)
+END IF
+
+! Linearly combine field data via a call to a Psyclone built-in kernel
 field_z => dep_graph % output_field(1) % field_ptr
 field_x => dep_graph % input_field(1) % field_ptr
 field_y => dep_graph % input_field(2) % field_ptr
-call invoke (X_minus_Y(field_z, field_x, field_y))
+CALL invoke(aX_plus_bY(field_z, scale_fac_a, field_x, scale_fac_b, field_y))
 
 ! Nullify field pointers
 NULLIFY(field_x, field_y, field_z)
 
-END SUBROUTINE X_minus_Y
+END SUBROUTINE aX_plus_bY_dep_alg
 
-END MODULE X_minus_Y_mod
+END MODULE aX_plus_bY_dep_alg_mod

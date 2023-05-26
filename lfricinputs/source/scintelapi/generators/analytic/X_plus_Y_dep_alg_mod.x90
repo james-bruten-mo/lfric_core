@@ -3,9 +3,9 @@
 ! For further details please refer to the file LICENCE
 ! which you should have received as part of this distribution.
 ! *****************************COPYRIGHT*******************************
-MODULE X_times_Y_mod
+MODULE X_plus_Y_dep_alg_mod
 !
-! This module contains a generator to multiply the data in two fields.
+! This module contains a generator to sum the data in two fields.
 !
 
 USE dependency_graph_mod, ONLY: dependency_graph
@@ -14,9 +14,9 @@ IMPLICIT NONE
 
 CONTAINS
 
-SUBROUTINE X_times_Y(dep_graph)
+SUBROUTINE X_plus_Y_dep_alg(dep_graph)
 !
-! This generator multiply the data in the two input fields of a dependency
+! This generator sum the data in the two input fields of a dependency
 ! graph and save the result in the output field of the dependency graph.
 !
 
@@ -57,15 +57,15 @@ CALL gen_io_check(                                                             &
 ! Done with initial input checks
 !
 
-! Multiply field data through a call to a Psyclone built-in kernel
+! Sum field data through a call to a Psyclone built-in kernel
 field_z => dep_graph % output_field(1) % field_ptr
 field_x => dep_graph % input_field(1) % field_ptr
 field_y => dep_graph % input_field(2) % field_ptr
-call invoke (X_times_Y(field_z, field_x, field_y))
+call invoke (X_plus_Y(field_z, field_x, field_y))
 
 ! Nullify field pointers
 NULLIFY(field_x, field_y, field_z)
 
-END SUBROUTINE X_times_Y
+END SUBROUTINE X_plus_Y_dep_alg
 
-END MODULE X_times_Y_mod
+END MODULE X_plus_Y_dep_alg_mod

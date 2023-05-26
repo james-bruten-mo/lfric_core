@@ -48,7 +48,7 @@ module initial_swe_u_kernel_mod
         func_type(W2, GH_BASIS),                        &
         func_type(ANY_SPACE_9, GH_BASIS, GH_DIFF_BASIS) &
         /)
-    integer :: iterates_over = CELL_COLUMN
+    integer :: operates_on = CELL_COLUMN
     integer :: gh_shape = GH_QUADRATURE_XYoZ
   contains
     procedure, public, nopass :: initial_swe_u_code

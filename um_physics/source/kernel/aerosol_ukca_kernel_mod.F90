@@ -198,7 +198,7 @@ type, public, extends(kernel_type) :: aerosol_ukca_kernel_type
        arg_type( GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_4 ), & ! emiss_meoh
        arg_type( GH_FIELD, GH_REAL, GH_READ, WTHETA )                     & !emiss_no_aircrft
        /)
-  integer :: iterates_over = CELL_COLUMN
+  integer :: operates_on = CELL_COLUMN
 contains
   procedure, nopass :: aerosol_ukca_code
 end type

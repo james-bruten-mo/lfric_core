@@ -34,7 +34,7 @@ module w0_to_wth_average_kernel_mod
          arg_type(GH_FIELD, GH_REAL, GH_READWRITE, WTHETA), &
          arg_type(GH_FIELD, GH_REAL, GH_READ,      W0)      &
          /)
-    integer :: iterates_over = CELL_COLUMN
+    integer :: operates_on = CELL_COLUMN
   contains
     procedure, nopass :: w0_to_wth_average_code
   end type
