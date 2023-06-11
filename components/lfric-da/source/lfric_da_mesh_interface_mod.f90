@@ -7,151 +7,157 @@
 !> @brief  Container for methods that retrieve mesh shape data for use by DA
 
 module lfric_da_mesh_interface_mod
-  use mesh_mod,                       only: mesh_type
-  use local_mesh_mod,                 only: local_mesh_type
-  use mesh_collection_mod,            only: mesh_collection
-  use constants_mod,                  only: i_def, r_def
-  use fs_continuity_mod,              only: Wtheta, W3
-  use extrusion_config_mod,           only: stretching_height
-  use coord_transform_mod,            only: xyz2llr
-  use extrusion_mod,                  only: TWOD
+
+  use mesh_mod,             only: mesh_type
+  use local_mesh_mod,       only: local_mesh_type
+  use mesh_collection_mod,  only: mesh_collection
+  use constants_mod,        only: i_def, r_def
+  use fs_continuity_mod,    only: Wtheta, W3
+  use extrusion_config_mod, only: stretching_height
+  use coord_transform_mod,  only: xyz2llr
+  use extrusion_mod,        only: TWOD
+  use log_mod,              only: log_event, LOG_LEVEL_ERROR, log_scratch_space
 
   implicit none
 
+
+  type(mesh_type),       pointer :: mesh       => null()
+  type(local_mesh_type), pointer :: local_mesh => null()
+
+  private :: mesh, local_mesh
+
 contains
 
-  !> @brief  Gets the number of vertical layers of the given mesh
+  !> @brief  Sets the target mesh for functions in this module to the mesh with
+  !>         the given name.
+  !> @details  The mesh name is searched in the global mesh_collection.
   !>
-  !> @param[in]  mesh_id  The id of the mesh
-  !> @return  The number of layers of the mesh
-  function get_levels(mesh_id) result(levels)
+  !> @param[in]  mesh_name  The name of the desired target mesh.
+  subroutine set_target_mesh(mesh_name)
+
     implicit none
-    integer(i_def), intent(in)  :: mesh_id
-    integer(i_def) :: levels
 
-    type(mesh_type), pointer :: mesh
+    character(*), intent(in)  :: mesh_name
 
-    mesh => mesh_collection%get_mesh(mesh_id)
-    levels = mesh%get_nlayers()
+    mesh => mesh_collection%get_mesh(mesh_name)
+    local_mesh => mesh%get_local_mesh()
 
-  end function get_levels
+  end subroutine set_target_mesh
 
-  !> @brief  Determines the resolution of a cube sphere mesh
+  !> @brief  Gets the number of vertical layers in the target mesh.
   !>
-  !> @param[in]   mesh_id        The id of the mesh
-  !> @param[out]  is_cubesphere  Returns true if the mesh is determined to be a
-  !>                             cubesphere.
-  !> @param[out]  grid_size      The horizontal resolution of the cubesphere.
-  !>                             If the mesh is not a cubesphere this is instead
-  !>                             the total number of cells.
-  subroutine get_grid_size(mesh_id, is_cubesphere, grid_size)
+  !> @return  The number of layers in the mesh.
+  function get_nlayers() result(layers)
+
     implicit none
-    integer(i_def), intent(in)  :: mesh_id
-    logical, intent(out)        :: is_cubesphere
-    integer(i_def), intent(out) :: grid_size
 
-    type(mesh_type), pointer  :: mesh
-    type(local_mesh_type)     :: local_mesh
-    integer(i_def)            :: ncells
+    integer(i_def) :: layers
 
-    mesh => mesh_collection%get_mesh(mesh_id)
-    local_mesh = mesh%get_local_mesh()
-    ncells = local_mesh%get_ncells_global_mesh()
+    layers = mesh%get_nlayers()
 
-    ! get_ncells_global_mesh
+  end function get_nlayers
 
-    ! No metadata exists to describe overall mesh shape
-    ! A periodic, spherical mesh with 6n^2 cells is likely to be a cubesphere
-    grid_size = nint( sqrt( real(ncells, kind=r_def) / 6 ), kind = i_def )
+  !> @brief  Determines whether the target mesh is a cubesphere.
+  !> @details  Cubesphere meshes are spherical with six panels.
+  !>
+  !> @return  Number of cells along the edge of each cubesphere panel.
+  function is_mesh_cubesphere() result(is_cubesphere)
 
-    is_cubesphere = mesh%is_topology_periodic()               &
-              .and. mesh%is_geometry_spherical()              &
-              .and. grid_size ** 2 * 6 == ncells
+    implicit none
 
-    ! If the mesh is not a cubesphere, return number of cells instead
-    if ( .not. is_cubesphere ) then
-      grid_size = ncells
+    logical :: is_cubesphere
+
+    is_cubesphere = mesh%is_topology_periodic()  &
+              .and. mesh%is_geometry_spherical() &
+              .and. local_mesh%get_num_panels_global_mesh() == 6_i_def
+
+  end function is_mesh_cubesphere
+
+  !> @brief  Gets the number of cells along the edge of each panel in a
+  !>         cubesphere mesh.
+  !> @details  Cubesphere panels are identical squares so the single return
+  !>           value is the length of all edges.
+  !>
+  !> @return  Number of cells along the edge of each cubesphere panel.
+  function get_cubesphere_resolution() result(grid_size)
+
+    implicit none
+
+    integer(i_def) :: grid_size
+
+    integer(i_def) :: n_cells, n_panels, cells_per_panel
+
+    n_cells  = local_mesh%get_ncells_global_mesh()
+    n_panels = local_mesh%get_num_panels_global_mesh()
+
+    cells_per_panel = n_cells / n_panels
+    grid_size = nint( sqrt( real( cells_per_panel, kind=r_def ) ), kind=i_def )
+
+  end function get_cubesphere_resolution
+
+  !> @brief    Gets the cell-centred lon/lat coordinates for the given mesh.
+  !> @details  This requires the local_mesh to be defined in lon/lat
+  !>           coordinates. A cartesian local_mesh will cause this to throw an
+  !>           error.
+  !>
+  !> @return  lonlat 2xN array of longitude/latitude points in default order.
+  function get_lonlat() result(lonlat)
+
+    implicit none
+
+    real(r_def), allocatable :: lonlat(:,:)
+
+    integer(i_def) :: i, ncells
+
+    ncells = local_mesh%get_last_edge_cell()
+
+    allocate( lonlat( 2, ncells ) )
+
+    if ( local_mesh%is_coord_sys_ll() ) then
+
+      do i=1, ncells
+        call local_mesh%get_cell_coords( i, lonlat(:,i) )
+      end do
+
+    else
+
+      call log_event( "Specified local_mesh does not use lonlat coordinates.", &
+                      log_level_error )
+
     end if
 
-  end subroutine get_grid_size
-
-  !> @brief  Gets the cell-centred lon/lat coordinates for the given mesh
-  !> @details  The atlas_field_interface requires a map_horizontal_ptr to
-  !>           identify cells in atlas and LFRic. JEDI constructs this based on
-  !>           the lonlat coordinates of the cells, retrieved here, and so this
-  !>           procedure breaks field encapsulation.
-  !>
-  !> @param[in]   mesh_id       The id of the mesh
-  !> @param[out]  lon_external  Array of longitude points in default order
-  !> @param[out]  lat_external  Array of latitude points in default order
-  subroutine get_lonlat(mesh_id, lon_external, lat_external)
-    implicit none
-    integer(i_def), intent(in)              :: mesh_id
-    real(r_def), intent(inout), allocatable :: lon_external(:), lat_external(:)
-
-    type(mesh_type), pointer  :: mesh
-    integer(i_def)            :: i, ncells
-    real(r_def)               :: cell_centre(3), radius
-
-    mesh => mesh_collection%get_mesh(mesh_id)
-    mesh => mesh_collection%get_mesh_variant(mesh, TWOD)
-
-    ncells = mesh%get_last_edge_cell()
-
-    allocate(lon_external(ncells))
-    allocate(lat_external(ncells))
-
-    do i=1, ncells
-      ! Get coords of cell centres
-      call mesh%get_cell_centre_coords( i, cell_centre(:) )
-      call xyz2llr( cell_centre(1),  &
-                    cell_centre(2),  &
-                    cell_centre(3),  &
-                    lon_external(i), &
-                    lat_external(i), &
-                    radius )
-    end do
-
-  end subroutine get_lonlat
+  end function get_lonlat
 
   !> @brief  Get the normalised heights of W3 levels (cell centres)
   !>
-  !> @param[in]  mesh_id  The id of the mesh
   !> @return  An array containing the normalised heights
-  function get_sigma_w3_levels(mesh_id) result(levels)
+  function get_sigma_w3_levels() result(levels)
+
     implicit none
-    integer(i_def), intent(in) :: mesh_id
+
     real(r_def), allocatable :: levels(:)
 
     integer(i_def) :: len
     real(r_def), allocatable :: wtheta_levels(:)
-    type(mesh_type), pointer :: mesh
 
-    mesh => mesh_collection%get_mesh(mesh_id)
+    wtheta_levels = get_sigma_wtheta_levels()
 
-    allocate( wtheta_levels( mesh%get_nlayers() + 1 ) )
-    call mesh%get_eta(wtheta_levels)
-
-    len = size(wtheta_levels) - 1
+    len = size( wtheta_levels ) - 1
     levels = ( wtheta_levels(2:len+1) + wtheta_levels(1:len) ) / 2
 
   end function get_sigma_w3_levels
 
   !> @brief  Get the normalised heights of Wtheta levels (cell edges)
   !>
-  !> @param[in]  mesh_id  The id of the mesh
   !> @return  An array containing the normalised heights
-  function get_sigma_wtheta_levels(mesh_id) result(levels)
+  function get_sigma_wtheta_levels() result(levels)
+
     implicit none
-    integer(i_def), intent(in) :: mesh_id
+
     real(r_def), allocatable :: levels(:)
 
-    type(mesh_type), pointer :: mesh
-
-    mesh => mesh_collection%get_mesh(mesh_id)
-
     allocate( levels( mesh%get_nlayers() + 1 ) )
-    call mesh%get_eta(levels)
+    call mesh%get_eta( levels )
 
   end function get_sigma_wtheta_levels
 
@@ -162,25 +168,25 @@ contains
   !>
   !> @return  stretching_height in physical coordinates
   function get_stretching_height() result(stretching_height_out)
+
     implicit none
+
     real(r_def) :: stretching_height_out
 
     stretching_height_out = stretching_height
+
   end function get_stretching_height
 
   !> @brief  Get the physical height of the top of the mesh.
   !> @details  Also called boundary layer height.
   !>
-  !> @param[in]  mesh_id  The id of the mesh
   !> @return  domain_top in physical coordinates
-  function get_domain_top(mesh_id) result(domain_top)
+  function get_domain_top() result(domain_top)
+
     implicit none
-    integer(i_def)  :: mesh_id
-    real(r_def)     :: domain_top
 
-    type(mesh_type), pointer :: mesh
+    real(r_def) :: domain_top
 
-    mesh => mesh_collection%get_mesh(mesh_id)
     domain_top = mesh%get_domain_top()
 
   end function get_domain_top

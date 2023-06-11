@@ -14,6 +14,16 @@ module jedi_geometry_mod
   use, intrinsic :: iso_fortran_env, only : real64
 
   use constants_mod,                 only : i_def
+  use lfric_da_mesh_interface_mod,   only : set_target_mesh,           &
+                                            is_mesh_cubesphere,        &
+                                            get_domain_top,            &
+                                            get_cubesphere_resolution, &
+                                            get_nlayers,               &
+                                            get_lonlat,                &
+                                            get_sigma_w3_levels,       &
+                                            get_sigma_wtheta_levels,   &
+                                            get_stretching_height
+  use log_mod,                       only : log_event, LOG_LEVEL_ERROR
 
   implicit none
 
@@ -51,26 +61,45 @@ contains
 !> @brief    Initialiser for jedi_geometry_type
 !>
 subroutine initialise( self )
-
-  use da_dev_driver_mod, only : mesh
+  ! Access config directly until modeldb ready
+  use base_mesh_config_mod, only: prime_mesh_name
 
   implicit none
 
-  class( jedi_geometry_type ), intent(inout)   :: self
+  class( jedi_geometry_type ), intent(inout) :: self
 
   ! Local
   integer :: i_horizontal
+  real(real64) :: domain_top, stretching_height
+  real(real64), allocatable :: lonlat(:,:),          &
+                               sigma_W3_levels(:),   &
+                               sigma_Wtheta_levels(:)
 
-  ! These will be provided by calls that James is working on
-  self%n_layers = mesh%get_nlayers()
-  self%n_horizontal = mesh%get_last_edge_cell()
+  ! Set target mesh for all functions in the interface
+  call set_target_mesh( prime_mesh_name )
+
+  if ( .not. is_mesh_cubesphere() ) then
+    call log_event( "Working mesh is not a cubesphere", LOG_LEVEL_ERROR )
+  end if
+
+  ! Get grid size and layers
+  self%n_layers = get_nlayers()
+  self%n_horizontal = get_cubesphere_resolution() ** 2 * 6
 
   ! Create horizontal_map
-  allocate(self%horizontal_map(self%n_horizontal))
+  lonlat = get_lonlat()
+  allocate( self%horizontal_map( self%n_horizontal ) )
 
+  ! For mock purposes return sequential map
   do i_horizontal=1,self%n_horizontal
-    self%horizontal_map(i_horizontal) = i_horizontal
-  enddo
+    self%horizontal_map( i_horizontal ) = i_horizontal
+  end do
+
+  ! Here JEDI deals with physical coordinates
+  domain_top = get_domain_top()
+  sigma_W3_levels = get_sigma_w3_levels()
+  sigma_Wtheta_levels = get_sigma_wtheta_levels()
+  stretching_height = get_stretching_height()
 
 end subroutine initialise
 
