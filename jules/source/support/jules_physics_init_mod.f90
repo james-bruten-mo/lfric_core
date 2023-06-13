@@ -152,7 +152,7 @@ contains
     use c_kappai, only: kappai, kappai_snow, kappa_seasurf
     use c_z0h_z0m, only: z0h_z0m
     use jules_hydrology_mod, only: l_hydrology, check_jules_hydrology,      &
-         l_top, l_var_rainfrac, nfita
+         l_top, l_var_rainfrac, nfita, ti_max, ti_wetl, zw_max
     use jules_irrig_mod, only: l_irrig_dmd
     use jules_radiation_mod, only: i_sea_alb_method,                        &
          l_embedded_snow, l_mask_snow_orog,                                 &
@@ -237,6 +237,9 @@ contains
     l_top       = .true.
     l_var_rainfrac = l_variable_rainfraction
     nfita       = 30
+    ti_max      = 10.0_r_um
+    ti_wetl     = 1.5_r_um
+    zw_max      = 6.0_r_um
 
     ! Check the contents of the hydrology parameters module
     call check_jules_hydrology()
