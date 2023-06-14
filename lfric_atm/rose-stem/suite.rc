@@ -308,6 +308,8 @@
 
 {{check_style_task('TECHNICAL', SECONDARY_TARGET)}}
 
+{{extract_list_task('TECHNICAL', SECONDARY_TARGET)}}
+
 {{api_documentation_task('DOCUMENTATION', SECONDARY_TARGET, 'PUBLISH', SECONDARY_TARGET)}}
 {{uml_documentation_task('DOCUMENTATION', SECONDARY_TARGET, 'PUBLISH', SECONDARY_TARGET)}}
 {{design_documentation_task('DOCUMENTATION', SECONDARY_TARGET, 'PUBLISH', SECONDARY_TARGET)}}

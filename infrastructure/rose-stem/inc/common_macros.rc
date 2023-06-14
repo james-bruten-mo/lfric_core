@@ -173,7 +173,42 @@ err-script = """
 {%- endmacro %}
 
 
-{# CHECK CONFGI-DUMP MACROS #}
+{# CHECK EXTRACT LIST MACROS #}
+{#---------------------------------------------------------------------------#}
+
+{% macro extract_list_graph() %}
+{% if 'check_extract_list' in RUN_TECHNICAL %}
+        [[[R1]]]
+            graph = """
+            export_source => unit-test_extract_list
+            compile_lfric_atm_with_intel_64-bit_fast-debug => check_extract_list
+            """
+{% endif %}
+{% endmacro %}
+
+
+{% macro extract_list_task(family, target) %}
+{% if 'check_extract_list' in scheduledTasks %}
+    [[check_extract_list]]
+        inherit = {{family}}
+        {{scripting(target,
+                    ["base", "tech"],
+                    ["base"],
+                    script="rose task-run --app-key=extract_list_checker"
+            )}}
+
+    [[unit-test_extract_list]]
+        inherit = {{family}}
+        {{scripting(target,
+                    ["base", "tech"],
+                    ["base"],
+                    script="pytest $SOURCE_ROOT/bin --verbose"
+            )}}
+{% endif %}
+{% endmacro %}
+
+
+{# CHECK CONFIG-DUMP MACROS #}
 {#---------------------------------------------------------------------------#}
 {%- macro check_config_dump_graph() %}
 {%-   if 'check_config_dump' in RUN_TECHNICAL %}
