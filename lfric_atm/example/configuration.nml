@@ -53,7 +53,6 @@ stochastic_physics='none',
 surface='jules',
 /
 &convection
-use_jules_flux=.true.,
 /
 &departure_points
 departure_grid='uniform',

@@ -101,7 +101,7 @@ stretching_method='linear',
   start_dump_directory      = './'
   ancil_directory           = './'
   coarse_ancil_directory = './'
-  orography_ancil_path      = 'qrparm.orog.ugrid'
+  orography_mean_ancil_path      = 'qrparm.orog.ugrid'
 /
 
 &io

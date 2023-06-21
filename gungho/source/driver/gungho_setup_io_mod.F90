@@ -21,19 +21,24 @@ module gungho_setup_io_mod
   use files_config_mod,          only: ancil_directory,           &
                                        checkpoint_stem_name,      &
                                        land_area_ancil_path,      &
-                                       orography_ancil_path,      &
+                                       orography_mean_ancil_path, &
+                                       orography_subgrid_ancil_path,&
                                        aerosols_ancil_path,       &
                                        albedo_nir_ancil_path,     &
                                        albedo_vis_ancil_path,     &
                                        emiss_bc_biofuel_ancil_path,&
                                        emiss_bc_fossil_ancil_path, &
                                        emiss_bc_biomass_ancil_path,&
+                                       emiss_bc_biomass_hi_ancil_path,&
+                                       emiss_bc_biomass_lo_ancil_path,&
                                        emiss_dms_land_ancil_path,  &
                                        dms_conc_ocean_ancil_path,  &
                                        emiss_monoterp_ancil_path,  &
                                        emiss_om_biofuel_ancil_path,&
                                        emiss_om_fossil_ancil_path, &
                                        emiss_om_biomass_ancil_path,&
+                                       emiss_om_biomass_hi_ancil_path,&
+                                       emiss_om_biomass_lo_ancil_path,&
                                        emiss_so2_low_ancil_path,  &
                                        emiss_so2_high_ancil_path, &
                                        emiss_so2_nat_ancil_path,  &
@@ -61,6 +66,7 @@ module gungho_setup_io_mod
                                        sea_ice_ancil_path,        &
                                        soil_ancil_path,           &
                                        soil_dust_ancil_path,      &
+                                       soil_rough_ancil_path,     &
                                        sst_ancil_path,            &
                                        surface_frac_ancil_path,   &
                                        start_dump_filename,       &
@@ -97,11 +103,14 @@ module gungho_setup_io_mod
                                        timestep_end
   use derived_config_mod,        only: l_esm_couple
 #ifdef UM_PHYSICS
+  use jules_surface_config_mod,  only: l_vary_z0m_soil
   use surface_config_mod,        only: sea_alb_var_chl, albedo_obs
   use aerosol_config_mod,        only: glomap_mode,               &
                                        glomap_mode_climatology,   &
                                        glomap_mode_dust_and_clim, &
-                                       glomap_mode_ukca
+                                       glomap_mode_ukca,          &
+                                       emissions, emissions_GC3,  &
+                                       emissions_GC5
   use chemistry_config_mod,      only: chem_scheme, chem_scheme_strattrop, &
                                        chem_scheme_strat_test
 #endif
@@ -198,8 +207,16 @@ module gungho_setup_io_mod
 
 #ifdef UM_PHYSICS
     ! Setup ancillary files
-    if ( ancil_option == ancil_option_fixed .or. &
-         ancil_option == ancil_option_updating ) then
+    if( ancil_option == ancil_option_fixed .or. &
+        ancil_option == ancil_option_updating ) then
+
+      ! Set orography ancil filename from namelist
+      write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
+                               trim(orography_subgrid_ancil_path)
+      call files_list%insert_item( lfric_xios_file_type( ancil_fname,               &
+                                                         xios_id="orography_subgrid_ancil", &
+                                                         io_mode=FILE_MODE_READ ) )
+
       ! Set land area ancil filename from namelist
       write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
                                trim(land_area_ancil_path)
@@ -213,6 +230,15 @@ module gungho_setup_io_mod
       call files_list%insert_item( lfric_xios_file_type( ancil_fname,          &
                                                          xios_id="soil_ancil", &
                                                          io_mode=FILE_MODE_READ ) )
+
+      if (l_vary_z0m_soil) then
+        ! Set soil roughness ancil filename from namelist
+        write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
+                                 trim(soil_rough_ancil_path)
+        call files_list%insert_item( lfric_xios_file_type( ancil_fname,                &
+                                                           xios_id="soil_rough_ancil", &
+                                                           io_mode=FILE_MODE_READ ) )
+      end if
 
       ! Set plant functional type ancil filename from namelist
       write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
@@ -401,11 +427,25 @@ module gungho_setup_io_mod
                                                          xios_id="emiss_bc_fossil_ancil", &
                                                          io_mode=FILE_MODE_READ ) )
 
-      write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
-                               trim(emiss_bc_biomass_ancil_path)
-      call files_list%insert_item( lfric_xios_file_type( ancil_fname,                      &
-                                                         xios_id="emiss_bc_biomass_ancil", &
-                                                         io_mode=FILE_MODE_READ ) )
+      if (emissions == emissions_GC3) then
+        write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
+                                 trim(emiss_bc_biomass_ancil_path)
+        call files_list%insert_item( lfric_xios_file_type( ancil_fname,                      &
+                                                           xios_id="emiss_bc_biomass_ancil", &
+                                                           io_mode=FILE_MODE_READ ) )
+      else if (emissions == emissions_GC5) then
+        write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
+                                 trim(emiss_bc_biomass_hi_ancil_path)
+        call files_list%insert_item( lfric_xios_file_type( ancil_fname,                         &
+                                                           xios_id="emiss_bc_biomass_hi_ancil", &
+                                                           io_mode=FILE_MODE_READ ) )
+
+        write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
+                                 trim(emiss_bc_biomass_lo_ancil_path)
+        call files_list%insert_item( lfric_xios_file_type( ancil_fname,                         &
+                                                           xios_id="emiss_bc_biomass_lo_ancil", &
+                                                           io_mode=FILE_MODE_READ ) )
+      end if
 
       write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
                                trim(emiss_dms_land_ancil_path)
@@ -437,11 +477,25 @@ module gungho_setup_io_mod
                                                          xios_id="emiss_om_fossil_ancil", &
                                                          io_mode=FILE_MODE_READ ) )
 
-      write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
-                               trim(emiss_om_biomass_ancil_path)
-      call files_list%insert_item( lfric_xios_file_type( ancil_fname,                      &
-                                                         xios_id="emiss_om_biomass_ancil", &
-                                                         io_mode=FILE_MODE_READ ) )
+      if (emissions == emissions_GC3) then
+        write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
+                                 trim(emiss_om_biomass_ancil_path)
+        call files_list%insert_item( lfric_xios_file_type( ancil_fname,                      &
+                                                           xios_id="emiss_om_biomass_ancil", &
+                                                           io_mode=FILE_MODE_READ ) )
+      else if (emissions == emissions_GC5) then
+        write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
+                                 trim(emiss_om_biomass_hi_ancil_path)
+        call files_list%insert_item( lfric_xios_file_type( ancil_fname,                         &
+                                                           xios_id="emiss_om_biomass_hi_ancil", &
+                                                           io_mode=FILE_MODE_READ ) )
+
+        write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
+                                 trim(emiss_om_biomass_lo_ancil_path)
+        call files_list%insert_item( lfric_xios_file_type( ancil_fname,                         &
+                                                           xios_id="emiss_om_biomass_lo_ancil", &
+                                                           io_mode=FILE_MODE_READ ) )
+      end if
 
       write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
                                trim(emiss_so2_low_ancil_path)
@@ -449,11 +503,13 @@ module gungho_setup_io_mod
                                                          xios_id="emiss_so2_low_ancil", &
                                                          io_mode=FILE_MODE_READ ) )
 
-      write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
-                               trim(emiss_so2_high_ancil_path)
-      call files_list%insert_item( lfric_xios_file_type( ancil_fname,                    &
-                                                         xios_id="emiss_so2_high_ancil", &
-                                                         io_mode=FILE_MODE_READ ) )
+      if (emissions == emissions_GC3) then
+        write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
+                                 trim(emiss_so2_high_ancil_path)
+        call files_list%insert_item( lfric_xios_file_type( ancil_fname,                    &
+                                                           xios_id="emiss_so2_high_ancil", &
+                                                           io_mode=FILE_MODE_READ ) )
+      end if
 
       write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
                                trim(emiss_so2_nat_ancil_path)
@@ -509,15 +565,13 @@ module gungho_setup_io_mod
 #endif
 
     ! Setup orography ancillary file
-    if( ( orog_init_option == orog_init_option_ancil ) .or. &
-      ( ancil_option == ancil_option_fixed .or. &
-        ancil_option == ancil_option_updating ) ) then
+    if ( orog_init_option == orog_init_option_ancil ) then
 
       ! Set orography ancil filename from namelist
       write(ancil_fname,'(A)') trim(ancil_directory)//'/'// &
-                               trim(orography_ancil_path)
+                               trim(orography_mean_ancil_path)
       call files_list%insert_item( lfric_xios_file_type( ancil_fname,               &
-                                                         xios_id="orography_ancil", &
+                                                         xios_id="orography_mean_ancil", &
                                                          io_mode=FILE_MODE_READ ) )
     end if
 

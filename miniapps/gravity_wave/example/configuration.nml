@@ -23,7 +23,7 @@ ancil_directory = ''
 coarse_ancil_directory = ''
 checkpoint_stem_name = 'restartGravityWave'
 diag_stem_name = 'diagGravityWave'
-orography_ancil_path = ''
+orography_mean_ancil_path = ''
 start_dump_directory = ''
 start_dump_filename = ''
 /

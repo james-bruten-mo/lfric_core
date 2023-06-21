@@ -8,6 +8,7 @@ module process_inputs_alg_mod
 
   use field_collection_mod, only : field_collection_type
   use field_mod,            only : field_type
+  use mesh_mod,             only : mesh_type
   use integer_field_mod,    only : integer_field_type
   use constants_mod,        only : i_def
 
@@ -29,6 +30,8 @@ module process_inputs_alg_mod
   use int_multi_insert_kernel_mod, only: int_multi_insert_kernel_type
   use derived_config_mod,         only: l_esm_couple
   use set_topography_kernel_mod,  only: set_topography_kernel_type
+  use geometric_constants_mod,    only: get_latitude
+  use surface_config_mod,         only: amip_ice_thick
 
   implicit none
 
@@ -61,6 +64,7 @@ contains
     type( field_type ), pointer :: land_area_fraction => null()
     type( field_type ), pointer :: land_tile_fraction => null()
     type( field_type ), pointer :: sea_ice_fraction   => null()
+    type( field_type ), pointer :: sea_ice_thickness  => null()
     type( field_type ), pointer :: tile_fraction      => null()
 
     type( field_type ), pointer :: tstar_sea        => null()
@@ -121,6 +125,9 @@ contains
     type( field_type ), pointer :: horizon_angle  => null()
     type( field_type ), pointer :: horizon_aspect => null()
 
+    type( mesh_type ),  pointer :: twod_mesh => null()
+    type( field_type ), pointer :: latitude  => null()
+
     integer( i_def ) :: n_horizon_angle, n_horizon_layer
 
 
@@ -136,6 +143,7 @@ contains
       else
         call ancil_fields%get_field('sea_ice_fraction', sea_ice_fraction)
       endif
+      call surface_fields%get_field('sea_ice_thickness', sea_ice_thickness)
       call surface_fields%get_field('tile_fraction', tile_fraction)
 
       if (sst_source == sst_source_start_dump) then
@@ -192,12 +200,17 @@ contains
       call fd_fields%get_field('snow_under_canopy_in', snow_under_canopy_in)
       call fd_fields%get_field('snowpack_density_in', snowpack_density_in)
 
+      twod_mesh => sea_ice_thickness%get_mesh()
+      latitude => get_latitude( twod_mesh%get_id() )
+
       ! Surface fields
       call invoke(process_land_kernel_type( land_area_fraction,               &
                                             land_tile_fraction,               &
                                             tile_fraction),                   &
                   process_ssi_kernel_type( sea_ice_fraction,                  &
-                                           tile_fraction),                    &
+                                           sea_ice_thickness,                 &
+                                           tile_fraction, latitude,           &
+                                           amip_ice_thick, l_esm_couple),     &
                   multi_insert_kernel_type(tile_temperature, land_tile_temp,  &
                                            1, n_land_tile),                   &
                   multi_insert_kernel_type(tile_temperature, tstar_sea,       &

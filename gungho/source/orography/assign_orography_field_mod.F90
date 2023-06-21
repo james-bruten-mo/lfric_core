@@ -19,7 +19,8 @@ module assign_orography_field_mod
   use orography_config_mod,           only : orog_init_option, &
                                              orog_init_option_analytic, &
                                              orog_init_option_ancil, &
-                                             orog_init_option_none
+                                             orog_init_option_none, &
+                                             orog_init_option_start_dump
   use base_mesh_config_mod,           only : geometry, &
                                              geometry_spherical
   use finite_element_config_mod,      only : coord_system,            &
@@ -136,7 +137,8 @@ contains
     use orography_helper_functions_mod, only : set_horizontal_domain_size
     use function_space_collection_mod,  only : function_space_collection
     use orography_config_mod,           only : orog_init_option, &
-                                               orog_init_option_ancil
+                                               orog_init_option_ancil, &
+                                               orog_init_option_start_dump
 
     implicit none
 
@@ -257,7 +259,8 @@ contains
       end do
 
 
-    else if  (orog_init_option==orog_init_option_ancil)then
+    else if  (orog_init_option==orog_init_option_ancil .or. &
+              orog_init_option==orog_init_option_start_dump) then
 
       call log_event( "assign_orography_field: "// &
          "Assigning orography from surface_altitude field.", LOG_LEVEL_INFO )

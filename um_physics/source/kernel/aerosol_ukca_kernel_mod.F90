@@ -30,7 +30,7 @@ implicit none
 
 type, public, extends(kernel_type) :: aerosol_ukca_kernel_type
   private
-  type(arg_type) :: meta_args(166) = (/            &
+  type(arg_type) :: meta_args(170) = (/            &
        arg_type( GH_FIELD, GH_REAL, GH_READWRITE, WTHETA ), & ! h2o2
        arg_type( GH_FIELD, GH_REAL, GH_READWRITE, WTHETA ), & ! dms
        arg_type( GH_FIELD, GH_REAL, GH_READWRITE, WTHETA ), & ! so2
@@ -185,6 +185,10 @@ type, public, extends(kernel_type) :: aerosol_ukca_kernel_type
        arg_type( GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_4 ), & ! emiss_om_fossil
        arg_type( GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_4 ), & ! emiss_so2_low
        arg_type( GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_4 ), & ! emiss_so2_high
+       arg_type( GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_4 ), & ! emiss_bc_biomass_high
+       arg_type( GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_4 ), & ! emiss_bc_biomass_low
+       arg_type( GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_4 ), & ! emiss_om_biomass_high
+       arg_type( GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_4 ), & ! emiss_om_biomass_low
        arg_type( GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_4 ), & ! emiss_c2h6
        arg_type( GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_4 ), & ! emiss_c3h8
        arg_type( GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_4 ), & ! emiss_c5h8
@@ -338,6 +342,10 @@ contains
 !> @param[in]     emiss_om_fossil     Organic matter fossil fuel emissions expressed as C (kg m-2 s-1)
 !> @param[in]     emiss_so2_low       Low-level SO2 emissions expressed as S (kg m-2 s-1)
 !> @param[in]     emiss_so2_high      High-level SO2 emissions expressed as S (kg m-2 s-1)
+!> @param[in]     emiss_bc_biomass_high Black C emissions from biomass burning (kg m-2 s-1)
+!> @param[in]     emiss_bc_biomass_low  Black C emissions from biomass burning (kg m-2 s-1)
+!> @param[in]     emiss_om_biomass_high Organic matter emissions from biomass burning expressed as C (kg m-2 s-1)
+!> @param[in]     emiss_om_biomass_low  Organic matter emissions from biomass burning expressed as C (kg m-2 s-1)
 !> @param[in]     emiss_c2h6          C2H6 emissions (kg m-2 s-1)
 !> @param[in]     emiss_c3h8          C3H8 emissions (kg m-2 s-1)
 !> @param[in]     emiss_c5h8          Biogenic C5H8 emissions (kg m-2 s-1)
@@ -530,6 +538,10 @@ subroutine aerosol_ukca_code( nlayers,                                         &
                               emiss_om_fossil,                                 &
                               emiss_so2_low,                                   &
                               emiss_so2_high,                                  &
+                              emiss_bc_biomass_high,                           &
+                              emiss_bc_biomass_low,                            &
+                              emiss_om_biomass_high,                           &
+                              emiss_om_biomass_low,                            &
                               emiss_c2h6,                                      &
                               emiss_c3h8,                                      &
                               emiss_c5h8,                                      &
@@ -931,6 +943,10 @@ subroutine aerosol_ukca_code( nlayers,                                         &
   real(kind=r_def), intent(in), dimension(undf_2d) :: emiss_om_fossil
   real(kind=r_def), intent(in), dimension(undf_2d) :: emiss_so2_low
   real(kind=r_def), intent(in), dimension(undf_2d) :: emiss_so2_high
+  real(kind=r_def), intent(in), dimension(undf_2d) :: emiss_bc_biomass_high
+  real(kind=r_def), intent(in), dimension(undf_2d) :: emiss_bc_biomass_low
+  real(kind=r_def), intent(in), dimension(undf_2d) :: emiss_om_biomass_high
+  real(kind=r_def), intent(in), dimension(undf_2d) :: emiss_om_biomass_low
   real(kind=r_def), intent(in), dimension(undf_2d) :: emiss_c2h6
   real(kind=r_def), intent(in), dimension(undf_2d) :: emiss_c3h8
   real(kind=r_def), intent(in), dimension(undf_2d) :: emiss_c5h8
@@ -1917,43 +1933,51 @@ subroutine aerosol_ukca_code( nlayers,                                         &
 
   do i = 1, size(emiss_names_flat)
     select case(emiss_names_flat(i))
-    case('BC_biofuel')
+    case('emissions_BC_biofuel')
       emissions_flat(i) = real( emiss_bc_biofuel(map_2d(1)), r_um )
-    case('BC_fossil')
+    case('emissions_BC_fossil')
       emissions_flat(i) = real( emiss_bc_fossil(map_2d(1)), r_um )
-    case('OM_biofuel')
+    case('emissions_OM_biofuel')
       emissions_flat(i) = real( emiss_om_biofuel(map_2d(1)), r_um )
-    case('OM_fossil')
+    case('emissions_OM_fossil')
       emissions_flat(i) = real( emiss_om_fossil(map_2d(1)), r_um )
-    case('Monoterp')
+    case('emissions_Monoterp')
       emissions_flat(i) = real( emiss_monoterp(map_2d(1)), r_um )
-    case('DMS')
+    case('emissions_DMS')
       emissions_flat(i) = real( emiss_dms_land(map_2d(1)), r_um )
-    case('SO2_low')
+    case('emissions_SO2_low')
       emissions_flat(i) = real( emiss_so2_low(map_2d(1)), r_um )
-    case('SO2_high')
+    case('emissions_SO2_high')
       emissions_flat(i) = real( emiss_so2_high(map_2d(1)), r_um )
-    case('C2H6')
+    case('emissions_BC_biomass_high')
+      emissions_flat(i) = real( emiss_bc_biomass_high(map_2d(1)), r_um )
+    case('emissions_BC_biomass_low')
+      emissions_flat(i) = real( emiss_bc_biomass_low(map_2d(1)), r_um )
+    case('emissions_OM_biomass_high')
+      emissions_flat(i) = real( emiss_om_biomass_high(map_2d(1)), r_um )
+    case('emissions_OM_biomass_low')
+      emissions_flat(i) = real( emiss_om_biomass_low(map_2d(1)), r_um )
+    case('emissions_C2H6')
       emissions_flat(i) = real( emiss_c2h6(map_2d(1)), r_um )
-    case('C3H8')
+    case('emissions_C3H8')
       emissions_flat(i) = real( emiss_c3h8(map_2d(1)), r_um )
-    case('C5H8')
+    case('emissions_C5H8')
       emissions_flat(i) = real( emiss_c5h8(map_2d(1)), r_um )
-    case('CH4')
+    case('emissions_CH4')
       emissions_flat(i) = real( emiss_ch4(map_2d(1)), r_um )
-    case('CO')
+    case('emissions_CO')
       emissions_flat(i) = real( emiss_co(map_2d(1)), r_um )
-    case('HCHO')
+    case('emissions_HCHO')
       emissions_flat(i) = real( emiss_hcho(map_2d(1)), r_um )
-    case('Me2CO')
+    case('emissions_Me2CO')
       emissions_flat(i) = real( emiss_me2co(map_2d(1)), r_um )
-    case('MeCHO')
+    case('emissions_MeCHO')
       emissions_flat(i) = real( emiss_mecho(map_2d(1)), r_um )
-    case('NH3')
+    case('emissions_NH3')
       emissions_flat(i) = real( emiss_nh3(map_2d(1)), r_um )
-    case('NO')
+    case('emissions_NO')
       emissions_flat(i) = real( emiss_no(map_2d(1)), r_um )
-    case('MeOH')
+    case('emissions_MeOH')
       emissions_flat(i) = real( emiss_meoh(map_2d(1)), r_um )
     case default
       write( log_scratch_space, '(A,A)' )                                      &
@@ -1970,16 +1994,16 @@ subroutine aerosol_ukca_code( nlayers,                                         &
 
   do i = 1, size(emiss_names_fullht)
     select case(emiss_names_fullht(i))
-    case('BC_biomass')
+    case('emissions_BC_biomass')
       emissions_fullht( :, i ) =                                               &
         real( emiss_bc_biomass( map_wth(1) + 1 : map_wth(1) + nlayers ), r_um )
-    case('OM_biomass')
+    case('emissions_OM_biomass')
       emissions_fullht( :, i ) =                                               &
         real( emiss_om_biomass( map_wth(1) + 1 : map_wth(1) + nlayers ), r_um )
-    case('SO2_nat')
+    case('emissions_SO2_nat')
       emissions_fullht( :, i ) =                                               &
         real( emiss_so2_nat( map_wth(1) + 1 : map_wth(1) + nlayers ), r_um )
-    case('NO_aircrft')
+    case('emissions_NO_aircrft')
       emissions_fullht( :, i ) =                                               &
         real( emiss_no_aircrft( map_wth(1) + 1 : map_wth(1) + nlayers ), r_um )
     case default

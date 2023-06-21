@@ -37,7 +37,7 @@ stretching_method='linear',
 ancil_directory='',
 checkpoint_stem_name='',
 diag_stem_name='diagGungho',
-orography_ancil_path='',
+orography_mean_ancil_path='',
 start_dump_directory='',
 start_dump_filename='',
 /

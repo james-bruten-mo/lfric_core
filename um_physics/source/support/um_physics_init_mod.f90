@@ -68,13 +68,14 @@ module um_physics_init_mod
                                         falliceshear_method_real,             &
                                         falliceshear_method_constant,         &
                                         subgrid_qv, ice_width_in => ice_width,&
-                                        use_fsd_eff_res, ez_subcrit, ez_max
+                                        use_fsd_eff_res, ez_subcrit, ez_max,  &
+                                        two_d_fsd_factor_in => two_d_fsd_factor
 
   use convection_config_mod,     only : cv_scheme,                    &
                                         cv_scheme_gregory_rowntree,   &
                                         cv_scheme_lambert_lewis,      &
                                         number_of_convection_substeps,&
-                                        use_jules_flux
+                                        cape_timescale_in => cape_timescale
 
   use extrusion_config_mod,      only : domain_top, number_of_layers
 
@@ -548,7 +549,7 @@ contains
     iconv_congestus      = 0
     iconv_deep           = 0
     icvdiag              = 1
-    l_jules_flux         = use_jules_flux
+    l_jules_flux         = .true.
     limit_pert_opt       = 2
     plume_water_load     = 0
     tv1_sd_opt           = 2
@@ -583,7 +584,7 @@ contains
         anvil_factor        = 1.0000_r_um
         bl_cnv_mix          = 1
         cape_min            = 0.5_r_um
-        cape_timescale      = 1800.0_r_um
+        cape_timescale      = cape_timescale_in
         cape_ts_max         = 14400.0_r_um
         cape_ts_min         = 1800.0_r_um
         cca2d_dp_opt        = 2
@@ -1054,7 +1055,7 @@ contains
       ! Options for the subgrid cloud variability parametrization used
       ! in microphysics and radiation but living elsewhere in the UM
       ! ... contained in rad_input_mod
-      two_d_fsd_factor = 1.65_r_um
+      two_d_fsd_factor = two_d_fsd_factor_in
       ! ... contained in fsd_parameters_mod
       if (use_fsd_eff_res) then
         ! In UM GA8, the fixed effective resolution was N96: 1.875 x 1.25 degrees

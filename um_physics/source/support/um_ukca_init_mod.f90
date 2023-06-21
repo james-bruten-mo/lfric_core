@@ -28,7 +28,8 @@ module um_ukca_init_mod
   ! LFRic namelists which have been read
   use aerosol_config_mod,        only: glomap_mode,                            &
                                        glomap_mode_ukca,                       &
-                                       glomap_mode_dust_and_clim
+                                       glomap_mode_dust_and_clim,              &
+                                       emissions, emissions_GC3, emissions_GC5
   use section_choice_config_mod, only: aerosol, aerosol_um
   use chemistry_config_mod,      only: chem_scheme, chem_scheme_offline_ox,    &
                                        chem_scheme_strattrop, chem_scheme_none,&
@@ -72,14 +73,14 @@ module um_ukca_init_mod
   private
   public :: um_ukca_init
 
-  ! Ignore non-dust emissions when true
-  logical :: l_dust_only
-
   ! Number of entrainment levels considered by UM routine tr_mix
   integer(i_um), parameter, public :: nlev_ent_tr_mix = 3
 
   ! Number of emission field entries required for the UKCA configuration
   integer(i_um) :: n_emiss_slots
+
+  ! Number of emission entries for each emitted species
+  integer, pointer :: n_slots(:) => null()
 
   ! --------------------------------------------------------------------------
   ! List of dust_only required chemistry emissions
@@ -391,9 +392,9 @@ module um_ukca_init_mod
   ! Lists of emissions for the UKCA configuration
   character(len=ukca_maxlen_emiss_tracer_name), pointer ::                     &
     emiss_names(:) => null()
-  character(len=ukca_maxlen_emiss_tracer_name), allocatable, public ::         &
+  character(len=ukca_maxlen_emiss_var_name), allocatable, public ::            &
     emiss_names_flat(:)
-  character(len=ukca_maxlen_emiss_tracer_name), allocatable, public ::         &
+  character(len=ukca_maxlen_emiss_var_name), allocatable, public ::            &
     emiss_names_fullht(:)
 
 contains
@@ -489,7 +490,6 @@ contains
     logical :: l_three_dim
 
     character(len=ukca_maxlen_emiss_long_name) :: long_name
-    character(len=ukca_maxlen_emiss_tracer_name), allocatable :: tmp_names(:)
 
     character(len=ukca_maxlen_emiss_var_name) :: field_varname
     character(len=*), parameter  :: emiss_units = 'kg m-2 s-1'
@@ -620,7 +620,6 @@ contains
     end if
 
     ! Retrieve the lists of required fields for the configuration
-    l_dust_only = .false.
     call set_ukca_field_lists()
 
     ! Set up indexing data needed for plume scavenging of UKCA tracers in the
@@ -658,8 +657,8 @@ contains
   !> @brief Set up the emissions for UKCA model
     implicit none
     ! Emissions registration:
-    ! One emission field is provided for each active emission species (as for
-    ! GA9).
+    ! Multiple emission fields can be provided for each active emission
+    ! species (as for GA9).
     ! Register 2D emissions first, followed by 3D emissions; emissions
     ! must be registered in order of dimensionality for compatibility with
     ! the UKCA time step call which expects an array of 2D emission fields
@@ -670,25 +669,29 @@ contains
     ! are given in separate reference arrays created below.
 
     ! 'Dictionary' of emission species and long_names
-    integer, parameter :: num_2d = 19, num_3d = 4  !  Max for Strattrop+GLOMAP
+    integer, parameter :: num_tot = 23 !  Max for Strattrop+GLOMAP
+    integer :: num_2d, num_3d
 
     character(len=ukca_maxlen_emiss_long_name) :: long_name
 
     integer(i_um) :: emiss_id
     integer :: n_emissions
     integer :: n2d, n3d
-    integer :: i, j
+    integer :: i, j, k
+    integer :: anc_per_emiss(num_tot)
 
     logical :: l_three_dim, l_found
     integer :: low_lev, hi_lev
     character(len=ukca_maxlen_emiss_vert_fact) :: vert_fact
-    character(len=ukca_maxlen_emiss_tracer_name), allocatable :: tmp_names(:)
+    character(len=ukca_maxlen_emiss_var_name), allocatable :: tmp_names(:)
 
     character(len=ukca_maxlen_emiss_var_name) :: field_varname
     character(len=*), parameter  :: emiss_units = 'kg m-2 s-1'
 
     ! Populate dictionary of names. Using DATA as length of strings varies.
-    character(len=ukca_maxlen_emiss_long_name) :: emname_map(num_2d+num_3d,2)
+    ! Element 1 is the emission name
+    ! Element 2 is the long name
+    character(len=ukca_maxlen_emiss_long_name) :: emname_map(num_tot,2)
     data emname_map(1,:) /'NO', 'NOx surf emissions'/
     data emname_map(2,:) /'CH4', 'CH4 surf emissions'/
     data emname_map(3,:) /'CO', 'CO surf emissions'/
@@ -711,20 +714,33 @@ contains
     data emname_map(17,:) /'OM_fossil',   &
                           'OC fossil fuel surf emissions expressed as carbon'/
     data emname_map(18,:) /'SO2_low',     &
-                           'SO2 low level emissions expressed as sulfur'/
+                           'SO2 low level emissions'/
     data emname_map(19,:) /'SO2_high',    &
                            'SO2 high level emissions expressed as sulfur'/
-    ! 3-D emissions
-    data emname_map(20,:) /'BC_biomass', 'BC biomass 3D emissions'/
+    ! could be 2D or could be 3D
+    data emname_map(20,:) /'BC_biomass', 'BC biomass emissions'/
     data emname_map(21,:) /'OM_biomass', &
-                           'OC biomass 3D emissions expressed as carbon'/
+                           'OC biomass emissions expressed as carbon'/
+    ! 3-D emissions
     data emname_map(22,:) /'SO2_nat',    &
-                           'SO2 natural emissions expressed as sulfur'/
+                           'SO2 natural emissions'/
     data emname_map(23,:) /'NO_aircrft', 'NOx aircraft emissions'/
 
     ! End of Header
 
     n_emissions = size(emiss_names)
+    anc_per_emiss(:) = 1
+    if (emissions == emissions_GC3) then
+      num_2d=19
+      num_3d=4
+      emname_map(18,2) = trim(emname_map(18,2)) // ' expressed as sulfur'
+      emname_map(22,2) = trim(emname_map(22,2)) // ' expressed as sulfur'
+    else if (emissions == emissions_GC5) then
+      num_2d=21
+      num_3d=2
+      anc_per_emiss(20) = 2
+      anc_per_emiss(21) = 2
+    end if
 
     if ( n_emissions > (num_2d+num_3d) ) then
       write(log_scratch_space,'(2(A,I0),A)')' Number of expected emissions: ', &
@@ -747,49 +763,75 @@ contains
       end if
     end do
 
+    ! Determine number of offline emission entries required.
+    ! Allow for multiple emission fields for each active emission species
+    ! (consistent with GA9 requirements).
+    n_emiss_slots = 0
+    do i = 1, n_emissions
+      do j = 1, num_2d+num_3d
+        if ( emiss_names(i) == emname_map(j,1) ) then
+          n_emiss_slots = n_emiss_slots + n_slots(i) * anc_per_emiss(j)
+        end if
+      end do
+    end do
+
     ! === Register 2-D emissions ===
 
-    allocate(tmp_names(num_2d))  ! Max possible
+    allocate(tmp_names(sum(anc_per_emiss(1:num_2d))))  ! Max possible
     ! counter
     n2d = 0
     do i = 1, n_emissions
       do j = 1, num_2d
         if ( emiss_names(i) == emname_map(j,1) ) then
-          ! species found in dictionary, set up parameters
-          long_name = emname_map(j,2)
-          l_three_dim = .false.  ! A few default values.
-          vert_fact = 'surface'
-          low_lev = 1            ! Can pass as arguments in all calls since
-          hi_lev = 1             ! these are ignored for vert_fact= surface
-          n2d = n2d + 1
-          tmp_names(n2d) = emiss_names(i)
-          field_varname = 'emissions_' // emiss_names(i)
+          do k = 1, anc_per_emiss(j)
+            ! species found in dictionary, set up parameters
+            long_name = emname_map(j,2)
+            l_three_dim = .false.  ! A few default values.
+            vert_fact = 'surface'
+            low_lev = 1            ! Can pass as arguments in all calls since
+            hi_lev = 1             ! these are ignored for vert_fact= surface
+            n2d = n2d + 1
+            field_varname = 'emissions_' // emiss_names(i)
 
-          ! Assign long name as in GA7 ancil file.
-          ! *** WARNING ***
-          ! This is currently hard-wired in the absence of functionality
-          ! to handle the NetCDF variable attributes that provide the long names
-          ! in the UM. There is therefore no guarantee of compatibility with
-          ! arbitrary ancil files and care must be taken to ensure that the
-          ! data in the ancil files provided are consistent with the names
-          ! defined here.
-          if (emiss_names(i) == 'SO2_high') then
-            vert_fact = 'high_level'
-            low_lev = 8     ! Corresponding to L70 and L85
-            hi_lev = 8
-          end if
-          call ukca_register_emission( n_emiss_slots, field_varname,           &
-                                       emiss_names(i), emiss_units,            &
-                                       l_three_dim, emiss_id,                  &
-                                       long_name=long_name,                    &
-                                       vert_fact=vert_fact,                    &
-                                       lowest_lev=low_lev, highest_lev=hi_lev )
-          if (emiss_id /= int( n2d, i_um )) then
-            write( log_scratch_space, '(A,I0,A,I0)' )                          &
-              'Unexpected id (', emiss_id,                                     &
-              ') assigned on registering a 2D UKCA emission. Expected ', n2d
-           call log_event( log_scratch_space, LOG_LEVEL_ERROR )
-          end if
+            ! Assign long name as in GA9 ancil file.
+            ! *** WARNING ***
+            ! This is currently hard-wired in the absence of functionality
+            ! to handle the NetCDF variable attributes that provide the long names
+            ! in the UM. There is therefore no guarantee of compatibility with
+            ! arbitrary ancil files and care must be taken to ensure that the
+            ! data in the ancil files provided are consistent with the names
+            ! defined here.
+            if (emiss_names(i) == 'SO2_high') then
+              vert_fact = 'high_level'
+              low_lev = 8     ! Corresponding to L70 and L85
+              hi_lev = 8
+            end if
+            if ( anc_per_emiss(j) > 1 ) then
+              if (k == 1) then
+                vert_fact = 'high_level'
+                low_lev = 1
+                hi_lev = 20
+                field_varname = trim(field_varname) // '_high'
+                long_name = trim(long_name) // ' high level'
+              else
+                field_varname = trim(field_varname) // '_low'
+                long_name = trim(long_name) // ' low level'
+              end if
+            end if
+            tmp_names(n2d) = field_varname
+            call ukca_register_emission( n_emiss_slots, field_varname,         &
+                                         emiss_names(i), emiss_units,          &
+                                         l_three_dim, emiss_id,                &
+                                         long_name=long_name,                  &
+                                         vert_fact=vert_fact,                  &
+                                         lowest_lev=low_lev, highest_lev=hi_lev)
+            if (emiss_id /= int( n2d, i_um )) then
+              write( log_scratch_space, '(A,I0,A,I0)' )                        &
+                'Unexpected id (', emiss_id,                                   &
+                ') assigned on registering a 2D UKCA emission. Expected ', n2d
+              call log_event( log_scratch_space, LOG_LEVEL_ERROR )
+            end if
+          end do ! Loop over ancillaries per emission
         end if  ! species found in emnames ?
 
       end do    ! Loop over emnames_map 2-D
@@ -815,8 +857,8 @@ contains
           ! species found in dictionary, set up parameters
           field_varname = 'emissions_' // emiss_names(i)
           n3d = n3d + 1
-          tmp_names(n3d) = emiss_names(i)
-          ! Register with parameters as  in GA7 ancil file.
+          tmp_names(n3d) = field_varname
+          ! Register with parameters as  in GA9 ancil file.
           call ukca_register_emission( n_emiss_slots, field_varname,           &
                                        emiss_names(i), emiss_units,            &
                                        l_three_dim, emiss_id,                  &
@@ -857,12 +899,8 @@ contains
     ! Local variables
 
     integer :: i
-    integer :: j
     integer :: n
     integer :: n_tot
-
-    ! Number of emission entries for each emitted species
-    integer, pointer :: n_slots(:) => null()
 
     ! Variables for UKCA error handling
     integer :: ukca_errcode
@@ -1102,24 +1140,6 @@ contains
       call log_event( log_scratch_space, LOG_LEVEL_INFO )
     end do
 
-    ! Determine number of offline emission entries required.
-    ! Allow for one emission field for each active emission species
-    ! (consistent with GA9 requirements).
-    n_emiss_slots = 0
-    if (l_dust_only) then
-      do i = 1, size(emiss_names)
-        do j = 1, size(required_emissions)
-          if ( required_emissions(j) == emiss_names(i) ) then
-            n_emiss_slots = n_emiss_slots + n_slots(i)
-          end if
-        end do
-      end do
-    else
-      do i = 1, size(emiss_names)
-        n_emiss_slots = n_emiss_slots + n_slots(i)
-      end do
-    end if
-
   end subroutine set_ukca_field_lists
 
   subroutine aerosol_ukca_dust_only_init( row_length, rows, model_levels,      &
@@ -1140,12 +1160,12 @@ contains
     integer(i_um) :: n_emissions
     integer(i_um) :: n
     integer(i_um) :: n_previous
-    integer(i_um) :: i
+    integer(i_um) :: i, j
 
     logical :: l_three_dim
 
     character(len=ukca_maxlen_emiss_long_name) :: long_name
-    character(len=ukca_maxlen_emiss_tracer_name), allocatable :: tmp_names(:)
+    character(len=ukca_maxlen_emiss_var_name), allocatable :: tmp_names(:)
 
     character(len=ukca_maxlen_emiss_var_name) :: field_varname
     character(len=*), parameter  :: emiss_units = 'kg m-2 s-1'
@@ -1239,7 +1259,6 @@ contains
     end if
 
     ! Retrieve the lists of required fields for the configuration
-    l_dust_only = .true.
     call set_ukca_field_lists()
 
     ! Set up indexing data needed for plume scavenging of UKCA tracers in the
@@ -1286,6 +1305,18 @@ contains
 
     n_emissions = size(emiss_names)
     allocate(tmp_names(n_emissions))
+
+    ! Determine number of offline emission entries required.
+    ! Allow for one emission field for each active emission species
+    ! (consistent with GA9 requirements).
+    n_emiss_slots = 0
+    do i = 1, size(emiss_names)
+      do j = 1, size(required_emissions)
+        if ( required_emissions(j) == emiss_names(i) ) then
+          n_emiss_slots = n_emiss_slots + n_slots(i)
+        end if
+      end do
+    end do
 
     ! Register 2D emissions
     n = 0
@@ -1343,7 +1374,7 @@ contains
           call log_event( log_scratch_space, LOG_LEVEL_ERROR )
         end if
 
-        tmp_names(n) = emiss_names(i)
+        tmp_names(n) = field_varname
 
       end if
     end do
@@ -1386,7 +1417,7 @@ contains
           call log_event( log_scratch_space, LOG_LEVEL_ERROR )
         end if
 
-        tmp_names(n) = emiss_names(i)
+        tmp_names(n) = field_varname
 
       end if
     end do

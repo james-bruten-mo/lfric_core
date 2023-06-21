@@ -38,9 +38,12 @@ module init_ancils_mod
   use aerosol_config_mod,             only : glomap_mode,               &
                                              glomap_mode_climatology,   &
                                              glomap_mode_dust_and_clim, &
-                                             glomap_mode_ukca
+                                             glomap_mode_ukca,          &
+                                             emissions, emissions_GC3,  &
+                                             emissions_GC5
   use jules_surface_config_mod,       only : l_vary_z0m_soil, l_urban2t
-  use surface_config_mod,             only : sea_alb_var_chl, albedo_obs
+  use surface_config_mod,             only : sea_alb_var_chl, albedo_obs, &
+                                             amip_ice_thick
   use radiation_config_mod,           only : topography, topography_slope, &
                                              topography_horizon, &
                                              n_horiz_ang, n_horiz_layer
@@ -93,12 +96,16 @@ contains
     type(time_axis_type), save :: em_bc_bf_time_axis
     type(time_axis_type), save :: em_bc_ff_time_axis
     type(time_axis_type), save :: em_bc_bb_time_axis
+    type(time_axis_type), save :: em_bc_bb_hi_time_axis
+    type(time_axis_type), save :: em_bc_bb_lo_time_axis
     type(time_axis_type), save :: em_dms_lnd_time_axis
     type(time_axis_type), save :: dms_ocn_time_axis
     type(time_axis_type), save :: em_mterp_time_axis
     type(time_axis_type), save :: em_om_bf_time_axis
     type(time_axis_type), save :: em_om_ff_time_axis
     type(time_axis_type), save :: em_om_bb_time_axis
+    type(time_axis_type), save :: em_om_bb_hi_time_axis
+    type(time_axis_type), save :: em_om_bb_lo_time_axis
     type(time_axis_type), save :: em_so2_lo_time_axis
     type(time_axis_type), save :: em_so2_hi_time_axis
     type(time_axis_type), save :: em_c2h6_time_axis
@@ -140,7 +147,7 @@ contains
                               ndata=n_land_tile)
     call pft_time_axis%initialise("plant_func_time",          &
                                   file_id="plant_func_ancil", &
-                                  interp_flag=interp_flag, pop_freq="five_days")
+                                  interp_flag=interp_flag, pop_freq="daily")
     call setup_ancil_field("canopy_height", depository, ancil_fields,         &
                               mesh, twod_mesh, twod=.true., ndata=npft, &
                               time_axis=pft_time_axis)
@@ -169,7 +176,7 @@ contains
     !=====  SEA ANCILS  =====
     if ( sea_alb_var_chl ) then
       call sea_time_axis%initialise("sea_time", file_id="sea_ancil", &
-                                    interp_flag=interp_flag, pop_freq="five_days")
+                                    interp_flag=interp_flag, pop_freq="daily")
       call setup_ancil_field("chloro_sea", depository, ancil_fields, mesh, &
                               twod_mesh, twod=.true.,                      &
                               time_axis=sea_time_axis)
@@ -189,8 +196,10 @@ contains
     if (.not. l_esm_couple) then
       call sea_ice_time_axis%initialise("sea_ice_time", file_id="sea_ice_ancil", &
                                       interp_flag=interp_flag, pop_freq="daily")
-      call setup_ancil_field("sea_ice_thickness", depository, ancil_fields, &
-                mesh, twod_mesh, twod=.true., time_axis=sea_ice_time_axis)
+      if (.not. amip_ice_thick) then
+        call setup_ancil_field("sea_ice_thickness", depository, ancil_fields, &
+                  mesh, twod_mesh, twod=.true., time_axis=sea_ice_time_axis)
+      end if
       call setup_ancil_field("sea_ice_fraction", depository, ancil_fields, &
                 mesh, twod_mesh, twod=.true., time_axis=sea_ice_time_axis)
       call ancil_times_list%insert_item(sea_ice_time_axis)
@@ -201,7 +210,7 @@ contains
       call albedo_vis_time_axis%initialise("albedo_vis_time",          &
                                            file_id="albedo_vis_ancil", &
                                            interp_flag=interp_flag,    &
-                                           pop_freq="five_days")
+                                           pop_freq="daily")
       call setup_ancil_field("albedo_obs_vis", depository, ancil_fields, &
                              mesh, twod_mesh, twod=.true.,         &
                              time_axis=albedo_vis_time_axis)
@@ -210,7 +219,7 @@ contains
       call albedo_nir_time_axis%initialise("albedo_nir_time",          &
                                            file_id="albedo_nir_ancil", &
                                            interp_flag=interp_flag,    &
-                                           pop_freq="five_days")
+                                           pop_freq="daily")
       call setup_ancil_field("albedo_obs_nir", depository, ancil_fields, &
                               mesh, twod_mesh, twod=.true.,        &
                               time_axis=albedo_nir_time_axis)
@@ -288,7 +297,7 @@ contains
       call aerosol_time_axis%initialise( "aerosols_time",          &
                                          file_id="aerosols_ancil", &
                                          interp_flag=interp_flag,  &
-                                         pop_freq="five_days" )
+                                         pop_freq="daily" )
       call setup_ancil_field("acc_sol_bc", depository, ancil_fields, mesh,  &
                              twod_mesh, time_axis=aerosol_time_axis,        &
                              alt_mesh=aerosol_mesh, alt_twod_mesh=aerosol_twod_mesh)
@@ -369,7 +378,7 @@ contains
       call em_bc_bf_time_axis%initialise("em_bc_bf_time",                &
                                        file_id="emiss_bc_biofuel_ancil", &
                                        interp_flag=interp_flag,          &
-                                       pop_freq="five_days")
+                                       pop_freq="daily")
       call setup_ancil_field("emiss_bc_biofuel", depository, ancil_fields,   &
                            mesh, twod_mesh, twod=.true.,               &
                            time_axis=em_bc_bf_time_axis)
@@ -378,7 +387,7 @@ contains
       call em_bc_ff_time_axis%initialise("em_bc_ff_time",                &
                                        file_id="emiss_bc_fossil_ancil",  &
                                        interp_flag=interp_flag,          &
-                                       pop_freq="five_days")
+                                       pop_freq="daily")
       call setup_ancil_field("emiss_bc_fossil", depository, ancil_fields,    &
                            mesh, twod_mesh, twod=.true.,               &
                            time_axis=em_bc_ff_time_axis)
@@ -387,7 +396,7 @@ contains
       call em_dms_lnd_time_axis%initialise("em_dms_lnd_time",              &
                                          file_id="emiss_dms_land_ancil",   &
                                          interp_flag=interp_flag,          &
-                                         pop_freq="five_days")
+                                         pop_freq="daily")
       call setup_ancil_field("emiss_dms_land", depository, ancil_fields,     &
                            mesh, twod_mesh, twod=.true.,               &
                            time_axis=em_dms_lnd_time_axis)
@@ -396,7 +405,7 @@ contains
       call dms_ocn_time_axis%initialise("dms_ocn_time",                 &
                                       file_id="dms_conc_ocean_ancil",   &
                                       interp_flag=interp_flag,          &
-                                      pop_freq="five_days")
+                                      pop_freq="daily")
       call setup_ancil_field("dms_conc_ocean", depository, ancil_fields,     &
                            mesh, twod_mesh, twod=.true.,               &
                            time_axis=dms_ocn_time_axis)
@@ -405,7 +414,7 @@ contains
       call em_mterp_time_axis%initialise("em_mterp_time",               &
                                        file_id="emiss_monoterp_ancil",  &
                                        interp_flag=interp_flag,         &
-                                       pop_freq="five_days")
+                                       pop_freq="daily")
       call setup_ancil_field("emiss_monoterp", depository, ancil_fields,     &
                            mesh, twod_mesh, twod=.true.,               &
                            time_axis=em_mterp_time_axis)
@@ -414,7 +423,7 @@ contains
       call em_om_bf_time_axis%initialise("em_om_bf_time",                &
                                        file_id="emiss_om_biofuel_ancil", &
                                        interp_flag=interp_flag,          &
-                                       pop_freq="five_days")
+                                       pop_freq="daily")
       call setup_ancil_field("emiss_om_biofuel", depository, ancil_fields,   &
                            mesh, twod_mesh, twod=.true.,               &
                            time_axis=em_om_bf_time_axis)
@@ -423,7 +432,7 @@ contains
       call em_om_ff_time_axis%initialise("em_om_ff_time",                &
                                        file_id="emiss_om_fossil_ancil",  &
                                        interp_flag=interp_flag,          &
-                                       pop_freq="five_days")
+                                       pop_freq="daily")
       call setup_ancil_field("emiss_om_fossil", depository, ancil_fields,   &
                            mesh, twod_mesh, twod=.true.,              &
                            time_axis=em_om_ff_time_axis)
@@ -432,49 +441,89 @@ contains
       call em_so2_lo_time_axis%initialise("em_so2_lo_time",              &
                                         file_id="emiss_so2_low_ancil",   &
                                         interp_flag=interp_flag,         &
-                                        pop_freq="five_days")
+                                        pop_freq="daily")
       call setup_ancil_field("emiss_so2_low", depository, ancil_fields,     &
                            mesh, twod_mesh, twod=.true.,              &
                            time_axis=em_so2_lo_time_axis)
       call ancil_times_list%insert_item(em_so2_lo_time_axis)
 
-      call em_so2_hi_time_axis%initialise("em_so2_hi_time",              &
-                                        file_id="emiss_so2_high_ancil",  &
-                                        interp_flag=interp_flag,         &
-                                        pop_freq="five_days")
-      call setup_ancil_field("emiss_so2_high", depository, ancil_fields,    &
-                           mesh, twod_mesh, twod=.true.,              &
-                           time_axis=em_so2_hi_time_axis)
-      call ancil_times_list%insert_item(em_so2_hi_time_axis)
+      if (emissions == emissions_GC3) then
+        call em_so2_hi_time_axis%initialise("em_so2_hi_time",              &
+                                          file_id="emiss_so2_high_ancil",  &
+                                          interp_flag=interp_flag,         &
+                                          pop_freq="daily")
+        call setup_ancil_field("emiss_so2_high", depository, ancil_fields,  &
+                                 mesh, twod_mesh, twod=.true.,              &
+                                 time_axis=em_so2_hi_time_axis)
+        call ancil_times_list%insert_item(em_so2_hi_time_axis)
+      else if (emissions == emissions_GC5) then
+        call em_bc_bb_hi_time_axis%initialise("em_bc_bb_hi_time",             &
+                                         file_id="emiss_bc_biomass_hi_ancil", &
+                                         interp_flag=interp_flag,             &
+                                         pop_freq="daily")
+        call setup_ancil_field("emiss_bc_biomass_high", depository, ancil_fields,&
+                             mesh, twod_mesh, twod=.true.,                       &
+                             time_axis=em_bc_bb_hi_time_axis)
+        call ancil_times_list%insert_item(em_bc_bb_hi_time_axis)
+
+        call em_bc_bb_lo_time_axis%initialise("em_bc_bb_lo_time",             &
+                                         file_id="emiss_bc_biomass_lo_ancil", &
+                                         interp_flag=interp_flag,             &
+                                         pop_freq="daily")
+        call setup_ancil_field("emiss_bc_biomass_low", depository, ancil_fields, &
+                             mesh, twod_mesh, twod=.true.,                       &
+                             time_axis=em_bc_bb_lo_time_axis)
+        call ancil_times_list%insert_item(em_bc_bb_lo_time_axis)
+
+        call em_om_bb_hi_time_axis%initialise("em_om_bb_hi_time",             &
+                                         file_id="emiss_om_biomass_hi_ancil", &
+                                         interp_flag=interp_flag,             &
+                                         pop_freq="daily")
+        call setup_ancil_field("emiss_om_biomass_high", depository, ancil_fields,&
+                             mesh, twod_mesh, twod=.true.,                       &
+                             time_axis=em_om_bb_hi_time_axis)
+        call ancil_times_list%insert_item(em_om_bb_hi_time_axis)
+
+        call em_om_bb_lo_time_axis%initialise("em_om_bb_lo_time",             &
+                                         file_id="emiss_om_biomass_lo_ancil", &
+                                         interp_flag=interp_flag,             &
+                                         pop_freq="daily")
+        call setup_ancil_field("emiss_om_biomass_low", depository, ancil_fields, &
+                             mesh, twod_mesh, twod=.true.,                       &
+                             time_axis=em_om_bb_lo_time_axis)
+        call ancil_times_list%insert_item(em_om_bb_lo_time_axis)
+      end if ! GC3 or GC5
 
       ! -- 3-D ancils
       !-- natural SO2 emissions, currently single-time
       call setup_ancil_field("emiss_so2_nat", depository, ancil_fields,     &
                              mesh, twod_mesh)
 
-      call em_bc_bb_time_axis%initialise("em_bc_bb_time",                &
-                                       file_id="emiss_bc_biomass_ancil", &
-                                       interp_flag=interp_flag,          &
-                                       pop_freq="five_days")
-      call setup_ancil_field("emiss_bc_biomass", depository, ancil_fields,  &
-                           mesh, twod_mesh,                           &
-                           time_axis=em_bc_bb_time_axis)   ! 3-D
-      call ancil_times_list%insert_item(em_bc_bb_time_axis)
+      if (emissions == emissions_GC3) then
+        call em_bc_bb_time_axis%initialise("em_bc_bb_time",                &
+                                         file_id="emiss_bc_biomass_ancil", &
+                                         interp_flag=interp_flag,          &
+                                         pop_freq="daily")
+        call setup_ancil_field("emiss_bc_biomass", depository, ancil_fields,  &
+                                mesh, twod_mesh,                              &
+                                time_axis=em_bc_bb_time_axis)   ! 3-D
+        call ancil_times_list%insert_item(em_bc_bb_time_axis)
 
-      call em_om_bb_time_axis%initialise("em_om_bb_time",                &
-                                       file_id="emiss_om_biomass_ancil", &
-                                       interp_flag=interp_flag,          &
-                                       pop_freq="five_days")
-      call setup_ancil_field("emiss_om_biomass", depository, ancil_fields,  &
-                           mesh, twod_mesh,                           &
-                           time_axis=em_om_bb_time_axis)
-      call ancil_times_list%insert_item(em_om_bb_time_axis)
+        call em_om_bb_time_axis%initialise("em_om_bb_time",                &
+                                         file_id="emiss_om_biomass_ancil", &
+                                         interp_flag=interp_flag,          &
+                                         pop_freq="daily")
+        call setup_ancil_field("emiss_om_biomass", depository, ancil_fields,  &
+                                mesh, twod_mesh,                              &
+                                time_axis=em_om_bb_time_axis)
+        call ancil_times_list%insert_item(em_om_bb_time_axis)
+      end if
 
       !=====  OFFLINE OXIDANT ANCILS  =====
       call h2o2_limit_time_axis%initialise("h2o2_limit_time",         &
                                          file_id="h2o2_limit_ancil",  &
                                          interp_flag=interp_flag,     &
-                                         pop_freq="five_days")
+                                         pop_freq="daily")
       call setup_ancil_field("h2o2_limit", depository, ancil_fields,        &
                            mesh, twod_mesh,                           &
                            time_axis=h2o2_limit_time_axis)
@@ -482,28 +531,28 @@ contains
 
       call ho2_time_axis%initialise("ho2_time", file_id="ho2_ancil", &
                                     interp_flag=interp_flag,         &
-                                    pop_freq="five_days")
+                                    pop_freq="daily")
       call setup_ancil_field("ho2", depository, ancil_fields,               &
                            mesh, twod_mesh, time_axis=ho2_time_axis)
       call ancil_times_list%insert_item(ho2_time_axis)
 
       call no3_time_axis%initialise("no3_time", file_id="no3_ancil", &
                                     interp_flag=interp_flag,         &
-                                    pop_freq="five_days")
+                                    pop_freq="daily")
       call setup_ancil_field("no3", depository, ancil_fields,               &
                            mesh, twod_mesh, time_axis=no3_time_axis)
       call ancil_times_list%insert_item(no3_time_axis)
 
       call o3_time_axis%initialise("o3_time", file_id="o3_ancil",    &
                                    interp_flag=interp_flag,          &
-                                   pop_freq="five_days")
+                                   pop_freq="daily")
       call setup_ancil_field("o3", depository, ancil_fields,                &
                            mesh, twod_mesh, time_axis=o3_time_axis)
       call ancil_times_list%insert_item(o3_time_axis)
 
       call oh_time_axis%initialise("oh_time", file_id="oh_ancil",    &
                                    interp_flag=interp_flag,          &
-                                   pop_freq="five_days")
+                                   pop_freq="daily")
       call setup_ancil_field("oh", depository, ancil_fields,                &
                            mesh, twod_mesh, time_axis=oh_time_axis)
       call ancil_times_list%insert_item(oh_time_axis)
@@ -519,7 +568,7 @@ contains
       call em_c2h6_time_axis%initialise("em_c2h6_time",              &
                                         file_id="emiss_c2h6_ancil",  &
                                         interp_flag=interp_flag,     &
-                                        pop_freq="five_days")
+                                        pop_freq="daily")
       call setup_ancil_field("emiss_c2h6", depository, ancil_fields, &
                              mesh, twod_mesh, twod=.true.,           &
                              time_axis=em_c2h6_time_axis)
@@ -528,7 +577,7 @@ contains
       call em_c3h8_time_axis%initialise("em_c3h8_time",              &
                                         file_id="emiss_c3h8_ancil",  &
                                         interp_flag=interp_flag,     &
-                                        pop_freq="five_days")
+                                        pop_freq="daily")
       call setup_ancil_field("emiss_c3h8", depository, ancil_fields, &
                              mesh, twod_mesh, twod=.true.,           &
                              time_axis=em_c3h8_time_axis)
@@ -537,7 +586,7 @@ contains
       call em_c5h8_time_axis%initialise("em_c5h8_time",              &
                                         file_id="emiss_c5h8_ancil",  &
                                         interp_flag=interp_flag,     &
-                                        pop_freq="five_days")
+                                        pop_freq="daily")
       call setup_ancil_field("emiss_c5h8", depository, ancil_fields, &
                              mesh, twod_mesh, twod=.true.,           &
                              time_axis=em_c5h8_time_axis)
@@ -546,7 +595,7 @@ contains
       call em_ch4_time_axis%initialise("em_ch4_time",                &
                                        file_id="emiss_ch4_ancil",    &
                                        interp_flag=interp_flag,      &
-                                       pop_freq="five_days")
+                                       pop_freq="daily")
       call setup_ancil_field("emiss_ch4", depository, ancil_fields,  &
                              mesh, twod_mesh, twod=.true.,           &
                              time_axis=em_ch4_time_axis)
@@ -555,7 +604,7 @@ contains
       call em_co_time_axis%initialise("em_co_time",                  &
                                       file_id="emiss_co_ancil",      &
                                       interp_flag=interp_flag,       &
-                                      pop_freq="five_days")
+                                      pop_freq="daily")
       call setup_ancil_field("emiss_co", depository, ancil_fields,   &
                              mesh, twod_mesh, twod=.true.,           &
                             time_axis=em_co_time_axis)
@@ -564,7 +613,7 @@ contains
       call em_hcho_time_axis%initialise("em_hcho_time",              &
                                        file_id="emiss_hcho_ancil",   &
                                        interp_flag=interp_flag,      &
-                                       pop_freq="five_days")
+                                       pop_freq="daily")
       call setup_ancil_field("emiss_hcho", depository, ancil_fields, &
                              mesh, twod_mesh, twod=.true.,           &
                              time_axis=em_hcho_time_axis)
@@ -573,7 +622,7 @@ contains
       call em_me2co_time_axis%initialise("em_me2co_time",            &
                                         file_id="emiss_me2co_ancil", &
                                         interp_flag=interp_flag,     &
-                                        pop_freq="five_days")
+                                        pop_freq="daily")
       call setup_ancil_field("emiss_me2co", depository, ancil_fields, &
                              mesh, twod_mesh, twod=.true.,            &
                              time_axis=em_me2co_time_axis)
@@ -582,7 +631,7 @@ contains
       call em_mecho_time_axis%initialise("em_mecho_time",             &
                                          file_id="emiss_mecho_ancil", &
                                          interp_flag=interp_flag,     &
-                                         pop_freq="five_days")
+                                         pop_freq="daily")
       call setup_ancil_field("emiss_mecho", depository, ancil_fields, &
                              mesh, twod_mesh, twod=.true.,            &
                              time_axis=em_mecho_time_axis)
@@ -591,7 +640,7 @@ contains
       call em_nh3_time_axis%initialise("em_nh3_time",                 &
                                        file_id="emiss_nh3_ancil",     &
                                        interp_flag=interp_flag,       &
-                                       pop_freq="five_days")
+                                       pop_freq="daily")
       call setup_ancil_field("emiss_nh3", depository, ancil_fields,   &
                              mesh, twod_mesh, twod=.true.,            &
                              time_axis=em_nh3_time_axis)
@@ -599,7 +648,7 @@ contains
 
       call em_no_time_axis%initialise("em_no_time", file_id="emiss_no_ancil",  &
                                      interp_flag=interp_flag,         &
-                                     pop_freq="five_days")
+                                     pop_freq="daily")
       call setup_ancil_field("emiss_no", depository, ancil_fields,    &
                              mesh, twod_mesh, twod=.true.,            &
                              time_axis=em_no_time_axis)
@@ -608,7 +657,7 @@ contains
       call em_meoh_time_axis%initialise("em_meoh_time",               &
                                        file_id="emiss_meoh_ancil",    &
                                        interp_flag=interp_flag,       &
-                                       pop_freq="five_days")
+                                       pop_freq="daily")
       call setup_ancil_field("emiss_meoh", depository, ancil_fields,  &
                              mesh, twod_mesh, twod=.true.,            &
                              time_axis=em_meoh_time_axis)
@@ -617,7 +666,7 @@ contains
       call em_no_aircrft_time_axis%initialise("em_no_aircrft_time",    &
                                               file_id="emiss_no_aircrft_ancil",&
                                               interp_flag=interp_flag, &
-                                              pop_freq="five_days")
+                                              pop_freq="daily")
       call setup_ancil_field("emiss_no_aircrft", depository, ancil_fields, &
                              mesh, twod_mesh,                              &
                              time_axis=em_no_aircrft_time_axis)

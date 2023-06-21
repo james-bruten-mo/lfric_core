@@ -40,9 +40,9 @@ module create_physics_prognostics_mod
   use aerosol_config_mod,             only : glomap_mode,                      &
                                              glomap_mode_climatology,          &
                                              glomap_mode_dust_and_clim,        &
-                                             glomap_mode_ukca,                 &
-                                             l_radaer,                         &
-                                             n_radaer_step
+                                             glomap_mode_ukca, n_radaer_step,  &
+                                             l_radaer, emissions,              &
+                                             emissions_GC3, emissions_GC5
   use section_choice_config_mod,      only : cloud, cloud_um,                  &
                                              aerosol, aerosol_um,              &
                                              radiation, radiation_socrates,    &
@@ -173,7 +173,7 @@ contains
 
     integer(i_def) :: theta_space
 #ifdef UM_PHYSICS
-    logical(l_def) :: checkpoint_flag
+    logical(l_def) :: checkpoint_flag, checkpoint_GC3, checkpoint_GC5
     logical(l_def) :: checkpoint_couple
     logical(l_def) :: advection_flag
     logical(l_def) :: advection_flag_dust
@@ -1571,8 +1571,12 @@ contains
     ! 2D fields, might need checkpointing
     if ( aerosol == aerosol_um .and. glomap_mode == glomap_mode_ukca ) then
       checkpoint_flag = .true.
+      checkpoint_GC3 = (emissions == emissions_GC3)
+      checkpoint_GC5 = (emissions == emissions_GC5)
     else
       checkpoint_flag = .false.
+      checkpoint_GC3 = .false.
+      checkpoint_GC5 = .false.
     end if
     if ( aerosol == aerosol_um .and.            &
          ( glomap_mode == glomap_mode_ukca .or. &
@@ -1612,7 +1616,23 @@ contains
       call add_physics_field( aerosol_fields, depository, prognostic_fields,   &
       adv_fields_last_outer, &
       'emiss_so2_high', twod_space, twod=.true.,                               &
-      checkpoint_flag=checkpoint_flag )
+      checkpoint_flag=checkpoint_GC3 )
+      call add_physics_field( aerosol_fields, depository, prognostic_fields,   &
+      adv_fields_last_outer, &
+      'emiss_bc_biomass_high', twod_space, twod=.true.,                        &
+      checkpoint_flag=checkpoint_GC5 )
+      call add_physics_field( aerosol_fields, depository, prognostic_fields,   &
+      adv_fields_last_outer, &
+      'emiss_bc_biomass_low', twod_space, twod=.true.,                         &
+      checkpoint_flag=checkpoint_GC5 )
+      call add_physics_field( aerosol_fields, depository, prognostic_fields,   &
+      adv_fields_last_outer, &
+      'emiss_om_biomass_high', twod_space, twod=.true.,                        &
+      checkpoint_flag=checkpoint_GC5 )
+      call add_physics_field( aerosol_fields, depository, prognostic_fields,   &
+      adv_fields_last_outer, &
+      'emiss_om_biomass_low', twod_space, twod=.true.,                         &
+      checkpoint_flag=checkpoint_GC5 )
       call add_physics_field( aerosol_fields, depository, prognostic_fields,   &
       adv_fields_last_outer, &
       'surf_wetness', twod_space, twod=.true.,                                 &
@@ -1633,10 +1653,10 @@ contains
       ! 3D fields, might need checkpointing
       call add_physics_field( aerosol_fields, depository, prognostic_fields,   &
       adv_fields_last_outer, &
-      'emiss_bc_biomass', wtheta_space, checkpoint_flag=checkpoint_flag )
+      'emiss_bc_biomass', wtheta_space, checkpoint_flag=checkpoint_GC3 )
       call add_physics_field( aerosol_fields, depository, prognostic_fields,   &
       adv_fields_last_outer, &
-      'emiss_om_biomass', wtheta_space, checkpoint_flag=checkpoint_flag )
+      'emiss_om_biomass', wtheta_space, checkpoint_flag=checkpoint_GC3 )
       call add_physics_field( aerosol_fields, depository, prognostic_fields,   &
       adv_fields_last_outer, &
       'emiss_so2_nat', wtheta_space, checkpoint_flag=checkpoint_flag )

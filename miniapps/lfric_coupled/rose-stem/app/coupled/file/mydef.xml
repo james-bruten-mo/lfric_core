@@ -1375,8 +1375,10 @@
       </file>
 
       <!-- Ancillary files to read -->
-      <file id="orography_ancil" name="orography_ancil" mode="read" output_freq="1ts" convention="UGRID" cyclic="false" enabled=".FALSE.">
+      <file id="orography_mean_ancil" name="orography_mean_ancil" mode="read" output_freq="1ts" convention="UGRID" cyclic="false" enabled=".FALSE.">
 	<field id="surface_altitude" name="surface_altitude" long_name="surface_altitude" unit="m" operation="once" domain_ref="face"/>
+      </file>
+      <file id="orography_subgrid_ancil" name="orography_subgrid_ancil" mode="read" output_freq="1ts" convention="UGRID" cyclic="false" enabled=".FALSE.">
 	<field id="sd_orog" name="m01s00i034" long_name="standard_deviation_of_orography" unit="1" operation="once" domain_ref="face"/>
 	<field id="grad_x_orog" name="m01s00i005" long_name="orographic_gradient_X_component" unit="1" operation="once" domain_ref="face"/>
 	<field id="grad_y_orog" name="m01s00i006" long_name="orographic_gradient_Y_component" unit="1" operation="once" domain_ref="face"/>

@@ -73,12 +73,16 @@ contains
     type( field_type ), pointer :: emiss_bc_biofuel => null()
     type( field_type ), pointer :: emiss_bc_fossil => null()
     type( field_type ), pointer :: emiss_bc_biomass => null()
+    type( field_type ), pointer :: emiss_bc_biomass_high => null()
+    type( field_type ), pointer :: emiss_bc_biomass_low => null()
     type( field_type ), pointer :: emiss_dms_land => null()
     type( field_type ), pointer :: dms_conc_ocean => null()
     type( field_type ), pointer :: emiss_monoterp => null()
     type( field_type ), pointer :: emiss_om_biofuel => null()
     type( field_type ), pointer :: emiss_om_fossil => null()
     type( field_type ), pointer :: emiss_om_biomass => null()
+    type( field_type ), pointer :: emiss_om_biomass_high => null()
+    type( field_type ), pointer :: emiss_om_biomass_low => null()
     type( field_type ), pointer :: emiss_so2_low => null()
     type( field_type ), pointer :: emiss_so2_high => null()
     type( field_type ), pointer :: emiss_so2_nat => null()
@@ -204,12 +208,16 @@ contains
       call aerosol_fields%get_field('emiss_bc_biofuel', emiss_bc_biofuel)
       call aerosol_fields%get_field('emiss_bc_fossil', emiss_bc_fossil)
       call aerosol_fields%get_field('emiss_bc_biomass', emiss_bc_biomass)
+      call aerosol_fields%get_field('emiss_bc_biomass_high', emiss_bc_biomass_high)
+      call aerosol_fields%get_field('emiss_bc_biomass_low', emiss_bc_biomass_low)
       call aerosol_fields%get_field('emiss_dms_land', emiss_dms_land)
       call aerosol_fields%get_field('dms_conc_ocean', dms_conc_ocean)
       call aerosol_fields%get_field('emiss_monoterp', emiss_monoterp)
       call aerosol_fields%get_field('emiss_om_biofuel', emiss_om_biofuel)
       call aerosol_fields%get_field('emiss_om_fossil', emiss_om_fossil)
       call aerosol_fields%get_field('emiss_om_biomass', emiss_om_biomass)
+      call aerosol_fields%get_field('emiss_om_biomass_high', emiss_om_biomass_high)
+      call aerosol_fields%get_field('emiss_om_biomass_low', emiss_om_biomass_low)
       call aerosol_fields%get_field('emiss_so2_low', emiss_so2_low)
       call aerosol_fields%get_field('emiss_so2_high', emiss_so2_high)
       call aerosol_fields%get_field('emiss_so2_nat', emiss_so2_nat)
@@ -254,14 +262,18 @@ contains
                    setval_c(emiss_bc_biofuel,    5e-11_r_def), &
                    setval_c(emiss_bc_fossil,     5e-11_r_def), &
                    setval_c(emiss_bc_biomass,      0.0_r_def), &
+                   setval_c(emiss_bc_biomass_high, 0.0_r_def), &
+                   setval_c(emiss_bc_biomass_low,  0.0_r_def), &
                    setval_c(emiss_dms_land,      5e-11_r_def), &
                    setval_c(dms_conc_ocean,        0.0_r_def), &
                    setval_c(emiss_monoterp,      1e-11_r_def), &
                    setval_c(emiss_om_biofuel,    5e-11_r_def), &
                    setval_c(emiss_om_fossil,     5e-11_r_def), &
                    setval_c(emiss_om_biomass,      0.0_r_def), &
+                   setval_c(emiss_om_biomass_high, 0.0_r_def), &
+                   setval_c(emiss_om_biomass_low,  0.0_r_def), &
                    setval_c(emiss_so2_low,       1e-10_r_def), &
-                   setval_c(emiss_so2_high,      1e-10_r_def), &
+                   setval_c(emiss_so2_high,        0.0_r_def), &
                    setval_c(emiss_so2_nat,         0.0_r_def), &
                    setval_c(soil_clay,             0.2_r_def), &
                    setval_c(soil_sand,             0.2_r_def), &

@@ -1,21 +1,23 @@
 <file_definition type="one_file" par_access="collective" time_counter="none">
 
   <!-- Ancillary files applicable to all setups -->
+  <file id="orography_mean_ancil" name="orography_mean_ancil" mode="read" output_freq="1ts" convention="UGRID" cyclic="false" enabled=".FALSE.">
+    <field id="surface_altitude" name="surface_altitude" long_name="surface_altitude" unit="m" operation="once" domain_ref="face"/>
+  </file>
+  <file id="orography_subgrid_ancil" name="orography_subgrid_ancil" mode="read" output_freq="1ts" convention="UGRID" cyclic="false" enabled=".FALSE.">
+    <field id="sd_orog" name="m01s00i034" long_name="standard_deviation_of_orography" unit="1" operation="once" domain_ref="face"/>
+    <field id="grad_x_orog" name="m01s00i005" long_name="orographic_gradient_X_component" unit="1" operation="once" domain_ref="face"/>
+    <field id="grad_y_orog" name="m01s00i006" long_name="orographic_gradient_Y_component" unit="1" operation="once" domain_ref="face"/>
+    <field id="grad_xx_orog" name="m01s00i035" long_name="orographic_gradient_XX_component" unit="1" operation="once" domain_ref="face"/>
+    <field id="grad_xy_orog" name="m01s00i036" long_name="orographic_gradient_XY_component" unit="1" operation="once" domain_ref="face"/>
+    <field id="grad_yy_orog" name="m01s00i037" long_name="orographic_gradient_YY_component" unit="1" operation="once" domain_ref="face"/>
+    <field id="peak_to_trough_orog" name="m01s00i018" long_name="half_of_peak_to_trough_ht_of_orog" unit="1" operation="once" domain_ref="face"/>
+    <field id="silhouette_area_orog" name="m01s00i017" long_name="silhouette_orographic_roughness" unit="1" operation="once" domain_ref="face"/>
+  </file>
 
   <file id="sea_ancil" name="sea_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
     <field id="sea_time" name="time" unit="hours" operation="once" axis_ref="monthly_axis"/>
     <field id="chloro_sea_data" name="mass_concentration_of_chlorophyll_a_in_sea_water" long_name="Mass concentration of chlorophyll A in sea water" unit="kg m-3" operation="instant" domain_ref="face" axis_ref="monthly_axis"/>
-  </file>
-
-  <file id="sst_ancil" name="sst_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
-    <field id="sst_time" name="time" unit="hours" operation="once" axis_ref="monthly_axis"/>
-    <field id="tstar_sea_data" name="surface_temperature" long_name="Sea surface temperature" unit="K" operation="instant" domain_ref="face" axis_ref="monthly_axis"/>
-  </file>
-
-  <file id="sea_ice_ancil" name="sea_ice_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
-    <field id="sea_ice_time" name="time" unit="hours" operation="once" axis_ref="monthly_axis"/>
-    <field id="sea_ice_thickness_data" name="sea_ice_thickness" long_name="sea_ice_thickness" unit="m" operation="instant" domain_ref="face" axis_ref="monthly_axis"/>
-    <field id="sea_ice_fraction_data" name="sea_ice_area_fraction" long_name="sea_ice_fraction" unit="1" operation="instant" domain_ref="face" axis_ref="monthly_axis"/>
   </file>
 
   <file id="albedo_vis_ancil" name="albedo_vis_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
@@ -26,11 +28,6 @@
   <file id="albedo_nir_ancil" name="albedo_nir_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
     <field id="albedo_nir_time" name="time" unit="days" operation="once" axis_ref="monthly_axis"/>
     <field id="albedo_obs_nir_data" name="surface_diffuse_albedo_of_near_infra_red_radiation_assuming_no_snow" long_name="surface_diffuse_albedo_of_near_infra_red_radiation_assuming_no_snow" unit="1" operation="instant" domain_ref="face" axis_ref="monthly_axis"/>
-  </file>
-
-  <file id="hydtop_ancil" name="hydtop_ancil" mode="read" output_freq="1ts" convention="UGRID" cyclic="false" enabled=".FALSE.">
-    <field id="mean_topog_index" name="m01s00i274" long_name="mean_topographic_index" unit="1" operation="once" domain_ref="face" />
-    <field id="stdev_topog_index" name="m01s00i275" long_name="standard_deviation_in_topographic_index" unit="1" operation="once" domain_ref="face" />
   </file>
 
   <file id="soil_ancil" name="soil_ancil" mode="read" output_freq="1ts" convention="UGRID" cyclic="false" enabled=".FALSE.">
@@ -45,8 +42,14 @@
     <field id="clapp_horn_b" name="m01s00i207" long_name="exponent_for_soil_moisture_functions" unit="1" operation="once" domain_ref="face" />
   </file>
 
-  <file id="surface_frac_ancil" name="surface_frac_ancil" mode="read" output_freq="1ts" convention="UGRID" cyclic="false" enabled=".FALSE.">
-    <field id="land_tile_fraction" name="m01s00i216" long_name="fractions_of_vegetation_types" unit="1" operation="once" domain_ref="face" axis_ref="land_tiles"/>
+  <file id="soil_rough_ancil" name="soil_rough_ancil" mode="read" output_freq="1ts" convention="UGRID" cyclic="false" enabled=".FALSE.">
+    <field id="soil_roughness" name="surface_roughness_length" long_name="soil_surface_roughness_length" unit="m" operation="once" domain_ref="face"/>
+  </file>
+
+  <file id="plant_func_ancil" name="plant_func_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
+    <field id="plant_func_time" name="time" unit="hours" operation="once" axis_ref="monthly_axis"/>
+    <field id="canopy_height_data" name="canopy_height" long_name="canopy_height" unit="1" operation="once" grid_ref="pft_monthly_grid"/>
+    <field id="leaf_area_index_data" name="leaf_area_index" long_name="leaf_area_index" unit="1" operation="once" grid_ref="pft_monthly_grid"/>
   </file>
 
   <file id="ozone_ancil" name="ozone_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
@@ -139,18 +142,28 @@
       </file>
 
   <file id="emiss_bc_biofuel_ancil" name="emiss_bc_biofuel_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
-    <field id="em_bc_bf_time" name="time" unit="hours" operation="once" axis_ref="monthly_axis"/>
-    <field id="emiss_bc_biofuel_data" name="emissions_BC_biofuel" long_name="BC biofuel surf emissions" unit="kg m-2 s-1" operation="instant" domain_ref="face" axis_ref="monthly_axis"/>
+    <field id="em_bc_bf_time" name="time" unit="days" operation="once" axis_ref="emiss_axis"/>
+    <field id="emiss_bc_biofuel_data" name="emissions_BC_biofuel" long_name="BC biofuel surf emissions" unit="kg m-2 s-1" operation="instant" domain_ref="face" axis_ref="emiss_axis"/>
   </file>
 
   <file id="emiss_bc_fossil_ancil" name="emiss_bc_fossil_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
-    <field id="em_bc_ff_time" name="time" unit="hours" operation="once" axis_ref="monthly_axis"/>
-    <field id="emiss_bc_fossil_data" name="emissions_BC_fossil" long_name="BC fossil fuel surf emissions" unit="kg m-2 s-1" operation="instant" domain_ref="face" axis_ref="monthly_axis"/>
+    <field id="em_bc_ff_time" name="time" unit="days" operation="once" axis_ref="emiss_axis"/>
+    <field id="emiss_bc_fossil_data" name="emissions_BC_fossil" long_name="BC fossil fuel surf emissions" unit="kg m-2 s-1" operation="instant" domain_ref="face" axis_ref="emiss_axis"/>
   </file>
 
   <file id="emiss_bc_biomass_ancil" name="emiss_bc_biomass_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
     <field id="em_bc_bb_time" name="time" unit="hours" operation="once" axis_ref="monthly_axis"/>
     <field id="emiss_bc_biomass_data" name="emissions_BC_biomass" long_name="BC biomass 3D emissions" unit="kg m-2 s-1" operation="instant" grid_ref="3D_monthly_grid"/>
+  </file>
+
+  <file id="emiss_bc_biomass_hi_ancil" name="emiss_bc_biomass_hi_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
+    <field id="em_bc_bb_hi_time" name="time" unit="days" operation="once" axis_ref="emiss_axis"/>
+    <field id="emiss_bc_biomass_high_data" name="emissions_BC_biomass_high" long_name="BC biomass high-level emissions" unit="kg m-2 s-1" operation="instant" domain_ref="face" axis_ref="emiss_axis"/>
+  </file>
+
+  <file id="emiss_bc_biomass_lo_ancil" name="emiss_bc_biomass_lo_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
+    <field id="em_bc_bb_lo_time" name="time" unit="days" operation="once" axis_ref="emiss_axis"/>
+    <field id="emiss_bc_biomass_low_data" name="emissions_BC_biomass_low" long_name="BC biomass low-level emissions" unit="kg m-2 s-1" operation="instant" domain_ref="face" axis_ref="emiss_axis"/>
   </file>
 
   <file id="emiss_dms_land_ancil" name="emiss_dms_land_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
@@ -169,13 +182,13 @@
   </file>
 
   <file id="emiss_om_biofuel_ancil" name="emiss_om_biofuel_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
-    <field id="em_om_bf_time" name="time" unit="hours" operation="once" axis_ref="monthly_axis"/>
-    <field id="emiss_om_biofuel_data" name="emissions_OC_biofuel" long_name="OC biofuel surf emissions expressed as carbon" unit="kg(C) m-2 s-1" operation="instant" domain_ref="face" axis_ref="monthly_axis"/>
+    <field id="em_om_bf_time" name="time" unit="days" operation="once" axis_ref="emiss_axis"/>
+    <field id="emiss_om_biofuel_data" name="emissions_OC_biofuel" long_name="OC biofuel surf emissions expressed as carbon" unit="kg(C) m-2 s-1" operation="instant" domain_ref="face" axis_ref="emiss_axis"/>
   </file>
 
   <file id="emiss_om_fossil_ancil" name="emiss_om_fossil_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
-    <field id="em_om_ff_time" name="time" unit="hours" operation="once" axis_ref="monthly_axis"/>
-    <field id="emiss_om_fossil_data" name="emissions_OC_fossil" long_name="OC fossil fuel surf emissions expressed as carbon" unit="kg(C) m-2 s-1" operation="instant" domain_ref="face" axis_ref="monthly_axis"/>
+    <field id="em_om_ff_time" name="time" unit="days" operation="once" axis_ref="emiss_axis"/>
+    <field id="emiss_om_fossil_data" name="emissions_OC_fossil" long_name="OC fossil fuel surf emissions expressed as carbon" unit="kg(C) m-2 s-1" operation="instant" domain_ref="face" axis_ref="emiss_axis"/>
   </file>
 
   <file id="emiss_om_biomass_ancil" name="emiss_om_biomass_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
@@ -183,9 +196,19 @@
     <field id="emiss_om_biomass_data" name="emissions_OC_biomass" long_name="OC biomass 3D emissions expressed as carbon" unit="kg(C) m-2 s-1" operation="instant" grid_ref="3D_monthly_grid"/>
   </file>
 
+  <file id="emiss_om_biomass_hi_ancil" name="emiss_om_biomass_hi_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
+    <field id="em_om_bb_hi_time" name="time" unit="days" operation="once" axis_ref="emiss_axis"/>
+    <field id="emiss_om_biomass_high_data" name="emissions_OC_biomass_high" long_name="OC biomass high-level emissions expressed as carbon" unit="kg(C) m-2 s-1" operation="instant" domain_ref="face" axis_ref="emiss_axis"/>
+  </file>
+
+  <file id="emiss_om_biomass_lo_ancil" name="emiss_om_biomass_lo_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
+    <field id="em_om_bb_lo_time" name="time" unit="days" operation="once" axis_ref="emiss_axis"/>
+    <field id="emiss_om_biomass_low_data" name="emissions_OC_biomass_low" long_name="OC biomass low-level emissions expressed as carbon" unit="kg(C) m-2 s-1" operation="instant" domain_ref="face" axis_ref="emiss_axis"/>
+  </file>
+
   <file id="emiss_so2_low_ancil" name="emiss_so2_low_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
-    <field id="em_so2_lo_time" name="time" unit="hours" operation="once" axis_ref="monthly_axis"/>
-    <field id="emiss_so2_low_data" name="emissions_SO2_low" long_name="SO2 low level emissions expressed as sulfur" unit="kg(S) m-2 s-1" operation="instant" domain_ref="face" axis_ref="monthly_axis"/>
+    <field id="em_so2_lo_time" name="time" unit="days" operation="once" axis_ref="emiss_axis"/>
+    <field id="emiss_so2_low_data" name="emissions_SO2_all_low_kgSO2" long_name="SO2 low level emissions" unit="kg(SO2) m-2 s-1" operation="instant" domain_ref="face" axis_ref="emiss_axis"/>
   </file>
 
   <file id="emiss_so2_high_ancil" name="emiss_so2_high_ancil" mode="read" output_freq="1mo" convention="UGRID" cyclic="true" enabled=".FALSE.">
@@ -194,7 +217,7 @@
   </file>
 
   <file id="emiss_so2_nat_ancil" name="emiss_so2_nat_ancil" mode="read" output_freq="1ts" convention="UGRID" cyclic="false" enabled=".FALSE.">
-    <field id="emiss_so2_nat" name="emissions_SO2_nat" long_name="SO2 natural emissions expressed as sulfur" unit="kg(S) m-2 s-1" operation="once" grid_ref="full_level_face_grid"/>
+    <field id="emiss_so2_nat" name="emissions_SO2_nat_kgSO2" long_name="SO2 natural emissions" unit="kg(SO2) m-2 s-1" operation="once" grid_ref="full_level_face_grid"/>
   </file>
 
   <file id="soil_dust_ancil" name="soil_dust_ancil" mode="read" output_freq="1ts" convention="UGRID" cyclic="false" enabled=".FALSE.">

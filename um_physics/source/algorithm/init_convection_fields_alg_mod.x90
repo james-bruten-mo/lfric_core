@@ -98,7 +98,7 @@ contains
                  setval_c(cca,          0.0_r_def), &
                  setval_c(conv_prog_dtheta, 0.0_r_def), &
                  setval_c(conv_prog_dmv,    0.0_r_def), &
-                 setval_c(conv_prog_precip, 0.0_r_def) )
+                 setval_c(conv_prog_precip, 3.0e-4_r_def) )
   end subroutine init_convection_fields_alg
 
 end module init_convection_fields_alg_mod

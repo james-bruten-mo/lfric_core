@@ -12,6 +12,7 @@
 
     <!-- Include grid definitions -->
     <grid_definition src="./grid_def_main.xml"/>
+    <grid_definition src="./grid_def_gal.xml"/>
     <grid_definition src="./grid_def_aero_ctl.xml"/>
 
     <!-- Include field definitions -->
@@ -22,6 +23,7 @@
     <file_definition src="./file_def_check_restart_all.xml"/>
     <file_definition src="./file_def_ancil_main.xml"/>
     <file_definition src="./file_def_ancil_gal.xml"/>
+    <file_definition src="./file_def_ancil_hadisst.xml"/>
     <file_definition src="./file_def_diags_idealised.xml"/>
     <file_definition src="./file_def_diags_ave.xml"/>
 
