@@ -608,6 +608,8 @@ contains
            i_ukca_nwbins=20,                                                   &
            ! Callback procedures
            proc_bl_tracer_mix = bl_tracer_mix,                                 &
+           ! UKCA temporary logicals
+           l_fix_ukca_hygroscopicities=.false.,                                &
            ! Return status information
            error_message=ukca_errmsg,                                          &
            error_routine=ukca_errproc)
