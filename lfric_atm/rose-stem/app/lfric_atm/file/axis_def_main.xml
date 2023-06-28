@@ -17,4 +17,8 @@
   <axis id="monthly_axis" name="monthly_axis" n_glo="12"/>
   <axis id="lbc_axis" name="lbc_axis" n_glo="7"/>
   <axis id="reynolds_timeseries" name="reynolds_timeseries" n_glo="14001"/>
+  <axis id="isccp_ctp_tau_bins" name="isccp_ctp_tau_bins" n_glo="49"/>
+  <axis id="cloudsat_levels" name="cloudsat_levels" n_glo="40"/>
+  <axis id="csat_lvls_atb_bins" name="csat_lvls_atb_bins" n_glo="600"/>
+  <axis id="cloud_subcols" name="cloud_subcols" n_glo="64"/>
 </axis_definition>

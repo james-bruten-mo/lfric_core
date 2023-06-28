@@ -59,7 +59,8 @@ contains
 
 subroutine socrates_init()
 
-  use radiation_config_mod,  only: &
+  use cosp_config_mod, only: l_cosp
+  use radiation_config_mod, only: &
     spectral_file_sw, spectral_file_lw, mcica_data_file, &
     l_h2o_sw, l_co2_sw, l_o3_sw, l_n2o_sw, l_ch4_sw, l_o2_sw, &
     l_h2o_lw, l_co2_lw, l_o3_lw, l_n2o_lw, l_ch4_lw, &
@@ -202,7 +203,7 @@ subroutine socrates_init()
   end do
 
   if ( (cloud_representation /= cloud_representation_no_cloud) .and. &
-       (cloud_inhomogeneity == cloud_inhomogeneity_mcica) ) then
+       ((cloud_inhomogeneity == cloud_inhomogeneity_mcica) .or. l_cosp) ) then
     ! Read MCICA data file
     call set_mcica(mcica_data_file, 'sw', 'lw')
     call log_event( 'Read MCICA data file.', LOG_LEVEL_INFO )

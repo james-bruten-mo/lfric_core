@@ -85,6 +85,8 @@ module slow_physics_alg_mod
   use rad_tile_alg_mod,          only: rad_tile_alg
   use rad_cloud_alg_mod,         only: rad_cloud_alg
   use radiation_alg_mod,         only: radiation_alg
+  use cosp_alg_mod,              only: cosp_alg
+  use cosp_diags_mod,            only: cosp_diags_this_tstep
   use pc2_rad_response_alg_mod,  only: pc2_rad_response_alg
   use spectral_gwd_alg_mod,      only: spectral_gwd_alg
   use orographic_drag_alg_mod,   only: orographic_drag_alg
@@ -474,7 +476,7 @@ contains
       else
         rad_inc_this_tstep = .false.
       end if
-      cosp_this_tstep = rad_this_tstep ! .and. COSP turned on
+      cosp_this_tstep = cosp_diags_this_tstep()
 
       !--------------------------------------------------------------------
       ! Radiatively active cloud for Socrates and COSP
@@ -567,6 +569,19 @@ contains
                                    dbcf_pc2_rad,   & ! OUT
                                    dt )              ! IN
       end if ! (scheme == scheme_pc2)
+
+      !--------------------------------------------------------------------
+      ! CFMIP Observation Simulator Package (COSP)
+      !--------------------------------------------------------------------
+      if (cosp_this_tstep) then
+        call cosp_alg(pressure_in_wth, temperature_in_wth, exner, mr_n, &
+                      derived_fields, radiation_fields, cloud_fields, &
+                      aerosol_fields, convection_fields, microphysics_fields, &
+                      rand_seed, n_cloud_layer, &
+                      radiative_cloud_fraction, radiative_conv_fraction, &
+                      conv_liquid_fraction, conv_frozen_fraction, &
+                      conv_liquid_mmr, conv_frozen_mmr)
+      end if
 
     end if
 

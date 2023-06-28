@@ -42,6 +42,9 @@ contains
     use um_physics_init_mod,     only: sw_band_mode, lw_band_mode, mode_dimen
     use dust_parameters_mod,     only: ndiv
     use extrusion_config_mod,    only: number_of_layers
+    use cosp_config_mod,         only: n_subcol_gen
+    use cosp_mod,                only: n_cloudsat_levels, n_backscatter_bins,  &
+                                       n_isccp_tau_bins, n_isccp_pressure_bins
 #endif
 
     use log_mod,                 only: log_event, LOG_LEVEL_ERROR,             &
@@ -89,6 +92,14 @@ contains
             dim = sw_band_mode
       case ('lw_bands_aero_modes')
             dim = lw_band_mode
+      case ('cloud_subcols')
+            dim = n_subcol_gen
+      case ('isccp_ctp_tau_bins')
+            dim = n_isccp_tau_bins*n_isccp_pressure_bins
+      case ('cloudsat_levels')
+            dim = n_cloudsat_levels
+      case ('csat_lvls_atb_bins')
+            dim = n_cloudsat_levels*n_backscatter_bins
       case ('')
             dim = 1 ! ordinary (non-multidata) field
 #endif

@@ -70,9 +70,59 @@ module initialise_diagnostics_mod
   character(str_def), parameter :: disabled                                   &
     = 'Disabled'      ! dynamically disabledm will not be sampled
 
+  ! grid names
+  character(str_def), parameter :: full_level_face_grid                        &
+    = 'full_level_face_grid'
+  character(str_def), parameter :: half_level_face_grid                        &
+    = 'half_level_face_grid'
+  character(str_def), parameter :: half_level_edge_grid                        &
+    = 'half_level_edge_grid'
+  character(str_def), parameter :: node_grid                                   &
+    = 'node_grid'
+
   public :: init_diagnostic_field, diagnostic_to_be_sampled
 
 contains
+
+  ! if string is of shape "<prefix>_<suffix>",
+  ! split it into prefix and suffix, updating the string
+  function try_split(string, suffix, prefix) result(ok)
+    character(*), intent(inout) :: string
+    character(*), intent(inout) :: suffix
+    character(*), intent(in) :: prefix
+    logical(l_def) :: ok
+    integer(i_def) :: m
+    if (index(string, trim(prefix) // '_') == 1) then
+      m = len_trim(prefix)
+      suffix = string(m+2:) ! start one after the underscore
+      string = prefix
+      ok = .true.
+    else
+      ok = .false.
+    end if
+  end function try_split
+
+  ! extract and remove axis reference from composite grid reference;
+  ! for instance, "full_level_face_grid_cloud_subcols" yields
+  !   grid_ref = "full_level_face_grid"
+  !   axis_ref = "cloud_subcols"
+  subroutine split_composite_grid_ref(grid_ref, axis_ref)
+    implicit none
+    character(*), intent(inout) :: grid_ref
+    character(*), intent(out) :: axis_ref
+    if (try_split(grid_ref, axis_ref, full_level_face_grid)) then
+      ! noop
+    else if (try_split(grid_ref, axis_ref, half_level_face_grid)) then
+      ! noop
+    else if (try_split(grid_ref, axis_ref, half_level_edge_grid)) then
+      ! noop
+    else if (try_split(grid_ref, axis_ref, node_grid)) then
+      ! noop
+    else
+      ! no axis_ref - keep grid_ref unchanged
+      axis_ref = ''
+    end if
+  end subroutine split_composite_grid_ref
 
   ! derive function space enumerator from xios metadata
   function get_field_fsenum(field_name, grid_ref, domain_ref)                 &
@@ -84,14 +134,14 @@ contains
     integer(i_def) :: fsenum
 
     ! from RB's python metadata generator
-    if (grid_ref == 'full_level_face_grid') then
+    if (grid_ref == full_level_face_grid) then
       fsenum = Wtheta
-    else if (grid_ref == 'half_level_face_grid'                               &
+    else if (grid_ref == half_level_face_grid                                 &
       .or. domain_ref == 'face') then
       fsenum = W3
-    else if (grid_ref == 'half_level_edge_grid') then
+    else if (grid_ref == half_level_edge_grid) then
       fsenum = W2H
-    else if (grid_ref == 'node_grid') then
+    else if (grid_ref == node_grid) then
       fsenum = W0
     else
       fsenum = 0 ! silence compiler warning
@@ -264,9 +314,13 @@ contains
 
     ! metadata lookup
     grid_ref = get_field_grid_ref(unique_id)
+    call split_composite_grid_ref(grid_ref, axis_ref)
     domain_ref = get_field_domain_ref(unique_id)
-    axis_ref = get_field_axis_ref(unique_id)
-    order = get_field_order(unique_id )
+    if (axis_ref == '') then
+      ! no axis encoded in grid name - try to get it from XIOS
+      axis_ref = get_field_axis_ref(unique_id)
+    end if
+    order = get_field_order(unique_id)
 
     ! derive function space and flavour from metadata
     fsenum = get_field_fsenum(field_name, grid_ref, domain_ref)
@@ -316,7 +370,7 @@ contains
       call log_event("unexpected flavour: " // flavour, log_level_error)
     end select
 
-    ! set up functions space - needed by psyclone even for inactive fields
+    ! set up function space - needed by psyclone even for inactive fields
     vector_space => function_space_collection%get_fs(                         &
       this_mesh,                                                              &
       order,                                                                  &

@@ -22,6 +22,10 @@
       <axis id="horizon_angles" name="horizon_angles" n_glo="16"/>
       <axis id="horizon_aspects" name="horizon_aspects" n_glo="16"/>
       <axis id="radiation_levels" name="radiation_levels"/>
+      <axis id="isccp_ctp_tau_bins" name="isccp_ctp_tau_bins" n_glo="49"/>
+      <axis id="cloudsat_levels" name="cloudsat_levels" n_glo="40"/>
+      <axis id="csat_lvls_atb_bins" name="csat_lvls_atb_bins" n_glo="600"/>
+      <axis id="cloud_subcols" name="cloud_subcols" n_glo="64"/>
     </axis_definition>
 
     <grid_definition>
@@ -50,6 +54,11 @@
 	<domain domain_ref="face"/>
 	<axis axis_ref="monthly_axis"/>
 	<axis axis_ref="plant_func_types"/>
+      </grid>
+      <grid id="full_level_face_grid_cloud_subcols">
+        <domain domain_ref="face"/>
+        <axis axis_ref="vert_axis_full_levels"/>
+        <axis axis_ref="cloud_subcols"/>
       </grid>
     </grid_definition>
 
@@ -780,12 +789,29 @@
 	<field id="radiation__ice_conv_mmr_rts" name="ice_conv_mmr_rts" long_name="ice_convective_cloud_mmr_radiative_timestep" unit="kg kg-1" grid_ref="full_level_face_grid" />
 	<field id="radiation__liq_cloud_path_rts" name="liq_cloud_path_rts" long_name="liquid_water_path_radiative_timestep" unit="kg m-2" domain_ref="face" />
 	<field id="radiation__ice_cloud_path_rts" name="ice_cloud_path_rts" long_name="ice_water_path_radiative_timestep" unit="kg m-2" domain_ref="face" />
+        <field id="radiation__cloud_absorptivity_rts" name="cloud_absorptivity_rts" long_name="weighted_longwave_cloud_absorptivity_radiative_timestep" unit="m2 kg-1" grid_ref="full_level_face_grid" />
+        <field id="radiation__cloud_weight_absorptivity_rts" name="cloud_weight_absorptivity_rts" long_name="weight_for_cloud_absorptivity_radiative_timestep" unit="1" grid_ref="full_level_face_grid" />
+        <field id="radiation__cloud_extinction_rts" name="cloud_extinction_rts" long_name="weighted_shortwave_cloud_extinction_radiative_timestep" unit="m2 kg-1" grid_ref="full_level_face_grid" />
+        <field id="radiation__cloud_weight_extinction_rts" name="cloud_weight_extinction_rts" long_name="weight_for_cloud_extinction_radiative_timestep" unit="1" grid_ref="full_level_face_grid" />
 	<field id="radiation__sw_aer_optical_depth_rts" name="sw_aer_optical_depth_rts" long_name="aerosol_optical_depth_in_visible_radiative_timestep" unit="1" grid_ref="full_level_face_grid" />
 	<field id="radiation__lw_aer_optical_depth_rts" name="lw_aer_optical_depth_rts" long_name="aerosol_optical_depth_in_infra-red_radiative_timestep" unit="1" grid_ref="full_level_face_grid" />
-    <field id="radiation__cloud_absorptivity_rts" name="cloud_absorptivity_rts" long_name="weighted_longwave_cloud_absorptivity_radiative_timestep" unit="m2 kg-1" grid_ref="full_level_face_grid" />
-    <field id="radiation__cloud_weight_absorptivity_rts" name="cloud_weight_absorptivity_rts" long_name="weight_for_cloud_absorptivity_radiative_timestep" unit="1" grid_ref="full_level_face_grid" />
-    <field id="radiation__cloud_extinction_rts" name="cloud_extinction_rts" long_name="weighted_shortwave_cloud_extinction_radiative_timestep" unit="m2 kg-1" grid_ref="full_level_face_grid" />
-    <field id="radiation__cloud_weight_extinction_rts" name="cloud_weight_extinction_rts" long_name="weight_for_cloud_extinction_radiative_timestep" unit="1" grid_ref="full_level_face_grid" />
+	<!-- COSP diagnostics -->
+	<field id="cosp__sunlit_mask" name="sunlit_mask" long_name="sunlit_mask" unit="1" domain_ref="face" />
+	<field id="cosp__calipso_low_cloud" name="calipso_low_cloud" long_name="calipso_low_cloud" unit="1" domain_ref="face" />
+	<field id="cosp__calipso_low_cloud_mask" name="calipso_low_cloud_mask" long_name="calipso_low_cloud_mask" unit="1" domain_ref="face" />
+	<field id="cosp__calipso_mid_cloud" name="calipso_mid_cloud" long_name="calipso_mid_cloud" unit="1" domain_ref="face" />
+	<field id="cosp__calipso_mid_cloud_mask" name="calipso_mid_cloud_mask" long_name="calipso_mid_cloud_mask" unit="1" domain_ref="face" />
+	<field id="cosp__calipso_high_cloud" name="calipso_high_cloud" long_name="calipso_high_cloud" unit="1" domain_ref="face" />
+	<field id="cosp__calipso_high_cloud_mask" name="calipso_high_cloud_mask" long_name="calipso_high_cloud_mask" unit="1" domain_ref="face" />
+	<field id="cosp__isccp_ctp_tau" name="isccp_ctp_tau" long_name="isccp_ctp_tau" unit="1" domain_ref="face" axis_ref="isccp_ctp_tau_bins" />
+	<field id="cosp__calipso_cf_40_lvls_liq" name="calipso_cf_40_lvls_liq" long_name="calipso_cf_40_lvls_liq" unit="1" domain_ref="face" axis_ref="cloudsat_levels" />
+	<field id="cosp__calipso_cf_40_lvls_ice" name="calipso_cf_40_lvls_ice" long_name="calipso_cf_40_lvls_ice" unit="1" domain_ref="face" axis_ref="cloudsat_levels" />
+	<field id="cosp__calipso_cf_40_lvls_undet" name="calipso_cf_40_lvls_undet" long_name="calipso_cf_40_lvls_undet" unit="1" domain_ref="face" axis_ref="cloudsat_levels" />
+	<field id="cosp__calipso_cf_40_lvls_mask" name="calipso_cf_40_lvls_mask" long_name="calipso_cf_40_lvls_mask" unit="1" domain_ref="face" axis_ref="cloudsat_levels" />
+	<field id="cosp__calipso_total_backscatter" name="calipso_total_backscatter" long_name="calipso_total_backscatter" unit="m-1 sr-1" grid_ref="full_level_face_grid_cloud_subcols" />
+	<field id="cosp__calipso_cfad_sr_40_lvls" name="calipso_cfad_sr_40_lvls" long_name="calipso_cfad_sr_40_lvls" unit="1" domain_ref="face" axis_ref="csat_lvls_atb_bins" />
+        <field id="cosp__cloud_thermal_absorptivity" name="cloud_thermal_absorptivity" long_name="in-cloud_broadband_thermal_absorptivity" unit="m2 kg-1" grid_ref="full_level_face_grid" />
+        <field id="cosp__cloud_solar_extinction" name="cloud_solar_extinction" long_name="in-cloud_broadband_solar_extinction" unit="m2 kg-1" grid_ref="full_level_face_grid" />
 	<!-- Stochastic Physics diagnostics -->
 	<field id="stochastic__dtheta_spt" name="dtheta_spt" long_name="potential_temperature_increment_from_spt" unit="K" grid_ref="full_level_face_grid" />
 	<field id="stochastic__dmv_spt" name="dmv_spt" long_name="vapour_increment_from_spt" unit="kg/kg" grid_ref="full_level_face_grid" />

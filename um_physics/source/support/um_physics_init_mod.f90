@@ -274,6 +274,7 @@ contains
         l_mcr_qgraup, casim_max_sed_length, fixed_number, wvarfac,           &
         l_orograin, l_orogrime, l_orograin_block,                            &
         fcrit, nsigmasf, nscalesf
+    use mphys_psd_mod, only: x1g, x2g, x4g, x1gl, x2gl, x4gl
     use mphys_switches, only: set_mphys_switches,            &
         max_step_length, max_sed_length,                     &
         iopt_inuc, iopt_act, process_level, l_separate_rain, &
@@ -837,6 +838,11 @@ contains
     ! beta_precip which can still have convective rain/snow.
     x1r            = 2.2000e-1_r_um
     x2r            = 2.2000_r_um
+    ! The following are also needed by COSP. They are initialised here but
+    ! may be reset within microphysics.
+    x1g = x1gl
+    x2g = x2gl
+    x4g = x4gl
 
     if ( microphysics == microphysics_um ) then
 

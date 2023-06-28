@@ -52,11 +52,28 @@ liq_cloud_mmr_rts  = ['liq_cloud_mmr_rts', 0, 1e-4]
 ice_cloud_mmr_rts  = ['ice_cloud_mmr_rts', 0, 1e-4]
 liq_cloud_path_rts  = ['liq_cloud_path_rts', 0, 5e-1]
 ice_cloud_path_rts  = ['ice_cloud_path_rts', 0, 5e-1]
+cloud_thermal_absorptivity = ['cloud_thermal_absorptivity', 0, 0.05]
+cloud_solar_extinction = ['cloud_solar_extinction', 0, 0.1]
 cloud_absorptivity_rts = ['cloud_absorptivity_rts', 0, 0.1]
 cloud_weight_absorptivity_rts = ['cloud_weight_absorptivity_rts', 0, 5]
 cloud_extinction_rts = ['cloud_extinction_rts', 0, 1]
 cloud_weight_extinction_rts = ['cloud_weight_extinction_rts', 0, 50]
+sunlit_mask = ['sunlit_mask', 0, 1]
+calipso_low_cloud = ['calipso_low_cloud', 0, 1]
+calipso_mid_cloud = ['calipso_mid_cloud', 0, 1]
+calipso_high_cloud = ['calipso_high_cloud', 0, 1]
+calipso_low_cloud_mask = ['calipso_low_cloud_mask', 0, 1]
+calipso_mid_cloud_mask = ['calipso_mid_cloud_mask', 0, 1]
+calipso_high_cloud_mask = ['calipso_high_cloud_mask', 0, 1]
+calipso_cf_40_lvls_liq = ['calipso_cf_40_lvls_liq', 0, 1]
+calipso_cf_40_lvls_ice = ['calipso_cf_40_lvls_ice', 0, 1]
+calipso_cf_40_lvls_undet = ['calipso_cf_40_lvls_undet', 0, 1]
+calipso_cf_40_lvls_mask = ['calipso_cf_40_lvls_mask', 0, 1]
+calipso_cfad_sr_40_lvls = ['calipso_cfad_sr_40_lvls', 0, 1]
+calipso_total_backscatter = ['calipso_total_backscatter', 0, 5e-5]
+isccp_ctp_tau = ['isccp_ctp_tau', 0, 1]
 sw_aod_rts = ['sw_aer_optical_depth_rts', 0, 1e-3]
+lw_aod_rts = ['lw_aer_optical_depth_rts', 0, 1e-3]
 sw_net_surf_rts = ['sw_net_surf_rts', 0, 1200]
 sw_direct_toa_rts = ['sw_direct_toa_rts', 0, 1450]
 sw_up_toa_rts = ['sw_up_toa_rts', 0, 600]
@@ -109,10 +126,12 @@ def do_plot(datapath, plotfield, plotpath='.', plotlevel=0):
     ''' Do the plotting using data from datapath. Send output to plotpath '''
 
     lfric = load_cube_by_varname(datapath, plotfield[varname])
-    if lfric.ndim == 2:
-        lfric = lfric[-1]
-    else:
+    if lfric.ndim == 4:
+        lfric = lfric[-1, 0, plotlevel]
+    elif lfric.ndim == 3:
         lfric = lfric[-1, plotlevel]
+    else:
+        lfric = lfric[-1]
 
     # Get the x and y co-ordinates
     x_coord = np.around(lfric.coord('longitude').points, decimals=5)
@@ -148,6 +167,7 @@ if __name__ == "__main__":
         opts = [opt for opt in sys.argv[1:] if opt.startswith('-')]
         args = [arg for arg in sys.argv[1:] if not arg.startswith('-')]
         datapath, plotpath = args[0:2]
+        cosp_plots = '-cosp' in opts
         rts_plots = '-rts' in opts
         ral_plots = '-ral' in opts
         slope_plots = '-slope' in opts
@@ -178,6 +198,23 @@ if __name__ == "__main__":
         do_plot(datapath, lw_net_skyview_incr, plotpath)
         do_plot(datapath, horizon_angle, plotpath, plotlevel=2)
         do_plot(datapath, horizon_aspect, plotpath, plotlevel=2)
+    if cosp_plots:
+        do_plot(datapath, sunlit_mask,                plotpath)
+        do_plot(datapath, calipso_low_cloud,          plotpath)
+        do_plot(datapath, calipso_mid_cloud,          plotpath)
+        do_plot(datapath, calipso_high_cloud,         plotpath)
+        do_plot(datapath, calipso_low_cloud_mask,     plotpath)
+        do_plot(datapath, calipso_mid_cloud_mask,     plotpath)
+        do_plot(datapath, calipso_high_cloud_mask,    plotpath)
+        do_plot(datapath, calipso_cf_40_lvls_liq,     plotpath, plotlevel=35)
+        do_plot(datapath, calipso_cf_40_lvls_ice,     plotpath, plotlevel=35)
+        do_plot(datapath, calipso_cf_40_lvls_undet,   plotpath, plotlevel=35)
+        do_plot(datapath, calipso_cf_40_lvls_mask,    plotpath, plotlevel=35)
+        do_plot(datapath, isccp_ctp_tau,              plotpath, plotlevel=25)
+        do_plot(datapath, calipso_cfad_sr_40_lvls,    plotpath, plotlevel=518)
+        do_plot(datapath, calipso_total_backscatter,  plotpath, plotlevel=30)
+        do_plot(datapath, cloud_thermal_absorptivity, plotpath, plotlevel=17)
+        do_plot(datapath, cloud_solar_extinction,     plotpath, plotlevel=17)
     if rts_plots:
         do_plot(datapath, cloud_cover_rts,        plotpath)
         do_plot(datapath, cloud_fraction_rts,     plotpath, plotlevel=17)
@@ -187,6 +224,7 @@ if __name__ == "__main__":
         do_plot(datapath, cloud_weight_absorptivity_rts, plotpath, plotlevel=17)
         do_plot(datapath, cloud_weight_extinction_rts,   plotpath, plotlevel=17)
         do_plot(datapath, sw_aod_rts,             plotpath, plotlevel=38)
+        do_plot(datapath, lw_aod_rts,             plotpath, plotlevel=38)
         do_plot(datapath, sw_net_surf_rts,        plotpath)
         do_plot(datapath, sw_direct_toa_rts,      plotpath)
         do_plot(datapath, sw_up_toa_rts,          plotpath)
