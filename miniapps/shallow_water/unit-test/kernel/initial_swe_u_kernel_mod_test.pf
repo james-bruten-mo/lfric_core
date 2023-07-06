@@ -70,7 +70,7 @@ contains
                                  prime_mesh_name='unit_test',         &
                                  geometry=geometry_planar,            &
                                  topology=topology_fully_periodic,    &
-                                 offline_partitioning=.false.,        &
+                                 prepartitioned=.false.,              &
                                  fplane=.false., f_lat_deg=0.0_r_def )
 
     call feign_finite_element_config( cellshape=cellshape_quadrilateral, &

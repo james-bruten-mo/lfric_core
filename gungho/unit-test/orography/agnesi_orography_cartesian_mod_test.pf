@@ -75,7 +75,7 @@ contains
                          file_prefix     = file_prefix,             &
                          prime_mesh_name = mesh_name,               &
                          geometry        = geometry_planar,         &
-                         offline_partitioning = .false.,            &
+                         prepartitioned  = .false.,                 &
                          topology        = topology_fully_periodic, &
                          fplane          = .false.,                 &
                          f_lat_deg       = 0.0_r_def )

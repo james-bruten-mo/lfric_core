@@ -42,7 +42,7 @@ module driver_mesh_mod
 
   use base_mesh_config_mod,       only: file_prefix,             &
                                         prime_mesh_name,         &
-                                        offline_partitioning,    &
+                                        prepartitioned,          &
                                         key_from_geometry,       &
                                         key_from_topology,       &
                                         geometry,                &
@@ -176,7 +176,7 @@ subroutine init_mesh( local_rank, total_ranks,        &
     end if
   end if
 
-  if (offline_partitioning) then
+  if (prepartitioned) then
 
     !=================================================================
     ! 2.0 Read in local meshes / partition information / mesh maps

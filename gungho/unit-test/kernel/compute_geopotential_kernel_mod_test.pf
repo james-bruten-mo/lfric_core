@@ -63,7 +63,7 @@ contains
     call feign_base_mesh_config( file_prefix='foo',                &
                                  prime_mesh_name='dynamics',       &
                                  geometry=geometry_spherical,      &
-                                 offline_partitioning=.false.,     &
+                                 prepartitioned=.false.,           &
                                  topology=topology_fully_periodic, &
                                  fplane=.false., f_lat_deg=f_lat )
 

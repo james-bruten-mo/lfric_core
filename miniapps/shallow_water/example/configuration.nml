@@ -10,7 +10,7 @@ prime_mesh_name      = 'dynamics'
 geometry             = 'planar'
         ! Geometry either 'planar' or 'spherical'
 topology             ='fully_periodic'
-offline_partitioning = .false.
+prepartitioned       = .false.
 fplane               = .true.
 f_lat_deg            = 90.0
         ! Choose 90.0 for planar shallow water equations with Coriolis term f u^perp

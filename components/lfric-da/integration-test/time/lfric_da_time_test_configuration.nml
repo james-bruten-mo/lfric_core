@@ -3,7 +3,7 @@ f_lat_deg=45.0,
 file_prefix='mesh_C12',
 fplane=.false.,
 geometry='spherical',
-offline_partitioning=.false.,
+prepartitioned=.false.,
 prime_mesh_name='dynamics',
 topology='fully_periodic',
 /

@@ -100,7 +100,7 @@ contains
              ( file_prefix='foo',                &
                prime_mesh_name='unit_test',      &
                geometry=geometry_planar,         &
-               offline_partitioning=.false.,     &
+               prepartitioned=.false.,           &
                topology=topology_fully_periodic, &
                fplane=.false., f_lat_deg=0.0_r_def )
 

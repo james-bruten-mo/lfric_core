@@ -49,7 +49,7 @@
   file_prefix     = 'mesh_io_dev'
   prime_mesh_name = 'C3'
   geometry        = 'spherical'
-  offline_partitioning = .false.
+  prepartitioned  = .false.
   topology        = 'fully_periodic'
   fplane          = .false.
   f_lat_deg       = 45.0

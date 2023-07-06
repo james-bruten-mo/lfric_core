@@ -5,8 +5,8 @@
 !-----------------------------------------------------------------------------
 !> @brief   Support routine to generate global mesh objects for mesh generators.
 !> @details Mesh generators were initially based on outputting meshes from
-!>          ugrid_2d_types. For Offline Partitioning Global mesh objects are
-!>          used. This routine produces the required global mesh objects for
+!>          ugrid_2d_types. Longer term, global mesh objects are to used.
+!>          This routine produces the required global mesh objects for
 !>          cubedsphere and planar mesh generators in preparation for
 !>          partitioning.
 module generate_op_global_objects_mod
@@ -72,9 +72,9 @@ subroutine generate_op_global_objects( ugridders,        &
   integer(i_def) :: i, target
   integer(i_def) :: n_maps, n_meshes
 
-  ! In order to obtain partititon informtion for offline
-  ! partititoning, the local mesh objects must be generated
-  ! before being output to file.
+  ! In order to obtain partititon informtion, the local
+  ! mesh objects must be generated before being output
+  ! to file.
   !
   ! For consistency global mesh objects will also be able
   ! to be output to file.

@@ -27,7 +27,7 @@ module driver_collections_mod
   use mesh_collection_mod,           only: mesh_collection_type,           &
                                            mesh_collection
 
-  use base_mesh_config_mod,          only: offline_partitioning
+  use base_mesh_config_mod,          only: prepartitioned
 
   implicit none
 
@@ -42,7 +42,7 @@ subroutine init_collections()
 
   implicit none
 
-  if ( .not. offline_partitioning ) then
+  if ( .not. prepartitioned ) then
     allocate( global_mesh_collection, source=global_mesh_collection_type() )
   end if
 
