@@ -33,8 +33,8 @@
   <field id="u_in_w3_star" name="u_in_w3_star" long_name="physics_predictor_eastward_wind_at_cell_centres" unit="ms-1" grid_ref="half_level_face_grid" />
   <field id="v_in_w3_star" name="v_in_w3_star" long_name="physics_predictor_northward_wind_at_cell_centres" unit="ms-1" grid_ref="half_level_face_grid" />
   <field id="w_in_w3_star" name="w_in_w3_star" long_name="physics_predictor_upward_air_velocity_at_cell_centres" unit="ms-1" grid_ref="half_level_face_grid" />
-  <field id="height_w3" name="height_w3" long_name="height_of_cell_centres_above_earth_radius" unit="m" grid_ref="half_level_face_grid" />
-  <field id="height_wth" name="height_wth" long_name="height_of_cell_interfaces_above_earth_radius" unit="m" grid_ref="full_level_face_grid" />
+  <field id="height_w3" name="height_w3" long_name="height_of_cell_centres_above_earth_radius" standard_name="height_above_mean_sea_level" unit="m" grid_ref="half_level_face_grid" />
+  <field id="height_wth" name="height_wth" long_name="height_of_cell_interfaces_above_earth_radius" standard_name="height_above_mean_sea_level" unit="m" grid_ref="full_level_face_grid" />
   <!-- First line extracts level 0, second line removes vertical coordinate, cannot do as one -->
   <field id="zoomed__orography" field_ref="height_wth" grid_ref="full_level_0_face_zoom"/>
   <field id="orography" name="orography" long_name="surface_altitude" standard_name="surface_altitude" unit="m" domain_ref="face" > zoomed__orography </field>
@@ -172,18 +172,18 @@
   <field id="cloud__dcff_pc2_initiation" name="dcff_pc2_initiation" long_name="tendency_of_frozen_cloud_amount_in_atmosphere_layer_due_to_pc2_initiation" unit="1" grid_ref="full_level_face_grid" />
   <field id="cloud__cloud_amount_max" name="cloud_amount_max" long_name="combined_cloud_amount_maximum_overlap" unit="1" domain_ref="face" />
   <field id="cloud__cloud_amount_rnd" name="cloud_amount_rnd" long_name="combined_cloud_amount_random_overlap" unit="1" domain_ref="face" />
-  <field id="cloud__cloud_amount_maxrnd" name="cloud_amount_maxrnd" long_name="combined_cloud_amount_maximum_random_overlap" unit="1" domain_ref="face" />
+  <field id="cloud__cloud_amount_maxrnd" name="cloud_amount_maxrnd" long_name="combined_cloud_amount_maximum_random_overlap" standard_name="cloud_area_fraction" unit="1" domain_ref="face" />
   <field id="cloud__ceilometer_cloud_amount_maxrnd" name="ceilometer_cloud_amount_maxrnd" long_name="ceilometrer_filtered_combined_cloud_amount_maximum_random_overlap" unit="1" domain_ref="face" />
   <field id="cloud__cloud_base_altitude" name="cloud_base_altitude" long_name="cloud_base_altitude_asl_combined_cloud_amount_greater_than_2p5_okta" unit="kilofeet" domain_ref="face" />
   <field id="cloud__very_low_type_cloud_amount" name="very_low_type_cloud_amount" long_name="maximum_combined_cloud_amount_below_111m_asl" unit="1" domain_ref="face" />
-  <field id="cloud__low_type_cloud_amount" name="low_type_cloud_amount" long_name="maximum_combined_cloud_amount_between_111_and_1949m_asl" unit="1" domain_ref="face" />
-  <field id="cloud__medium_type_cloud_amount" name="medium_type_cloud_amount" long_name="maximum_combined_cloud_amount_between_1949_and_5574m_asl" unit="1" domain_ref="face" />
+  <field id="cloud__low_type_cloud_amount" name="low_type_cloud_amount" long_name="maximum_combined_cloud_amount_between_111_and_1949m_asl" standard_name="low_type_cloud_area_fraction" unit="1" domain_ref="face" />
+  <field id="cloud__medium_type_cloud_amount" name="medium_type_cloud_amount" long_name="maximum_combined_cloud_amount_between_1949_and_5574m_asl" standard_name="medium_type_cloud_area_fraction" unit="1" domain_ref="face" />
   <field id="cloud__high_type_cloud_amount" name="high_type_cloud_amount" long_name="maximum_combined_cloud_amount_between_5574_and_13608m_asl" unit="1" domain_ref="face" />
   <field id="cloud__very_high_type_cloud_amount" name="very_high_type_cloud_amount" long_name="maximum_combined_cloud_amount_above_13608m_asl" unit="1" domain_ref="face" />
   <field id="cloud__combined_cloud_amount" name="combined_cloud_amount" long_name="combined_cloud_amount" unit="1" grid_ref="full_level_face_grid" />
   <field id="cloud__icing_sfip_li_bcf" name="icing_sfip_li_bcf" long_name="simplified_icing_potential_using_liquid_and_ice_condensate_and_bulk_cloud_fraction" unit="1" grid_ref="full_level_face_grid" />
   <field id="cloud__icing_sfip_lir_com" name="icing_sfip_lir_com" long_name="simplified_icing_potential_using_liquid_ice_and_rain_and_combined_cloud_amount" unit="1" grid_ref="full_level_face_grid" />
-  <field id="cloud__low_cloud_base_altitude" name="low_cloud_base_altitude" long_name="cloud_base_altitude_asl_combined_cloud_amount_greater_than_5percent" unit="feet" domain_ref="face" />
+  <field id="cloud__low_cloud_base_altitude" name="low_cloud_base_altitude" long_name="cloud_base_altitude_asl_combined_cloud_amount_greater_than_5percent" standard_name="cloud_base_altitude" unit="feet" domain_ref="face" />
   <field id="cloud__cloud_fraction_below_1000feet_asl" name="cloud_fraction_below_1000feet_asl" long_name="cloud_fraction_below_1000feet_asl" unit="1" domain_ref="face" />
   <!-- convection diagnostics -->
   <field id="convection__dth_conv_noshal" name="dth_conv_noshal" long_name="potential_temperature_increment_from_convection_excluding_shallow_convection" unit="K" grid_ref="full_level_face_grid" />
@@ -374,7 +374,7 @@
   <field id="surface__dew_point" name="dew_point" long_name="dew_point_temperature_at_screen_level" unit="K" domain_ref="face" />
   <field id="surface__fog_fraction" name="fog_fraction" long_name="fog_fraction_at_screen_level" unit="1" domain_ref="face" />
   <field id="surface__vis_prob_5km" name="vis_prob_5km" long_name="probability_visibility_below_5km_at_screen_level" unit="1" domain_ref="face" />
-  <field id="surface__visibility_no_precip" name="visibility_no_precip" long_name="visibility_excluding precipitation_at_screen_level" unit="m" domain_ref="face" />
+  <field id="surface__visibility_no_precip" name="visibility_no_precip" long_name="visibility_excluding precipitation_at_screen_level" standard_name="visibility_in_air" unit="m" domain_ref="face" />
   <field id="surface__visibility_with_precip" name="visibility_with_precip" long_name="visibility_including_precipitation_at_screen_level" unit="m" domain_ref="face" />
   <field id="surface__tile_heat_flux" name="tile_heat_flux" long_name="surface_sensible_heat_flux" unit="W m-2" domain_ref="face" axis_ref="surface_tiles"/>
   <field id="surface__tile_moisture_flux" name="tile_moisture_flux" long_name="surface_moisture_flux" unit="kg m-2 s-1" domain_ref="face" axis_ref="surface_tiles"/>
@@ -450,7 +450,7 @@
   <field id="turbulence__du_bl" name="du_bl" long_name="eastward_wind_increment_from_bl_scheme" unit="m s-1" grid_ref="half_level_face_grid" />
   <field id="turbulence__dv_bl" name="dv_bl" long_name="northward_wind_increment_from_bl_scheme" unit="m s-1" grid_ref="half_level_face_grid" />
   <field id="turbulence__dw_bl" name="dw_bl" long_name="upward_air_velocity_increment_from_bl_scheme" unit="m s-1" grid_ref="half_level_face_grid" />
-  <field id="turbulence__zh" name="zh" long_name="boundary_layer_depth" unit="m" domain_ref="face" />
+  <field id="turbulence__zh" name="zh" long_name="boundary_layer_depth" standard_name="atmosphere_boundary_layer_thickness" unit="m" domain_ref="face" />
   <field id="turbulence__zht" name="zht" long_name="turbulent_mixing_height" unit="m" domain_ref="face" />
   <field id="turbulence__zhsc" name="zhsc" long_name="height_at_top_of_decoupled_stratocumulus_layer" unit="m" domain_ref="face" />
   <field id="turbulence__oblen" name="oblen" long_name="obukhov_length" unit="m" domain_ref="face" />
