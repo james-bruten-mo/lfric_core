@@ -184,6 +184,7 @@ contains
     ! ------------------------------------------------------------------------ !
     ! Transport potential temperature (must be after moisture)
     ! NB: moisture not passed through as theta_vd transport not yet implemented
+    ! Note: theta increment is pointwise
     call log_event( "Transporting potential temperature...", LOG_LEVEL_INFO)
     transport_metadata => transport_metadata_collection%get_transport_metadata('potential_temperature')
     call tl_theta_transport_alg( fields_np1(igh_t), advection_inc(igh_t),   &

@@ -61,7 +61,8 @@ module semi_implicit_timestep_alg_mod
                                         bundle_axpy,       &
                                         add_bundle,        &
                                         copy_bundle,       &
-                                        set_bundle_scalar
+                                        set_bundle_scalar, &
+                                        bundle_inc_axpby
   use fs_continuity_mod,          only: Wtheta, W2
 
   ! PsyKAl PSYClone kernels
@@ -98,6 +99,7 @@ module semi_implicit_timestep_alg_mod
                                         semi_implicit_solver_alg_final
   use derive_exner_from_eos_alg_mod, &
                                   only: derive_exner_from_eos
+  use mass_matrix_solver_alg_mod, only: mass_matrix_solver_alg
   use moist_dyn_factors_alg_mod,  only: moist_dyn_factors_alg
   use update_prognostic_scalars_alg_mod, &
                                   only: update_prognostic_scalars_alg
@@ -154,13 +156,14 @@ module semi_implicit_timestep_alg_mod
   type( field_type ), allocatable :: state_after_slow(:)
   type( field_type ), allocatable :: advected_state(:)
   type( field_type ), allocatable :: mr_n(:), mr_after_adv(:), mr_after_slow(:)
-  type( field_type ), allocatable :: mr_prev(:)
   type( field_type ), allocatable :: rhs_n(:), rhs_np1(:), rhs_adv(:)
   type( field_type ), allocatable :: adv_inc_prev(:)
   type( field_type ), allocatable :: rhs_phys(:), rhs_lbc(:)
   type( field_type ) :: dtheta, dtheta_cld ! increment to theta
   type( field_type ) :: du ! increment to u
-  type( field_type ) :: wind_prev ! u from previous iteration used for cheap transport update
+  type( field_type ) :: wind_prev  ! u from previous iteration used for cheap transport update
+  type( field_type ) :: wind_fv_inc  ! u fv transport increment used for cheap transport update
+  type( field_type ) :: theta_fv_inc ! theta fv transport increment to change to weak form
 
   type( field_type ) :: visc_m ! Smagorinsky diffusion coefficient for momentum
   type( field_type ) :: visc_h ! Smagorinsky diffusion coefficient for scalars
@@ -208,7 +211,6 @@ contains
     allocate(mr_n(nummr))
     allocate(mr_after_slow(nummr))
     allocate(mr_after_adv(nummr))
-    allocate(mr_prev(nummr))
 
     use_moisture = ( moisture_formulation /= moisture_formulation_dry )
 
@@ -233,18 +235,18 @@ contains
 
     call theta%copy_field_properties(dtheta)
     call theta%copy_field_properties(dtheta_cld)
+    call theta%copy_field_properties(theta_fv_inc)
     call u%copy_field_properties(du)
     call u%copy_field_properties(wind_prev)
+    call u%copy_field_properties(wind_fv_inc)
 
     call clone_bundle(mr, mr_n, nummr)
     call clone_bundle(mr, mr_after_slow, nummr)
-    call clone_bundle(mr, mr_prev, nummr)
     if (use_moisture) then
       call clone_bundle(mr, mr_after_adv, nummr)
     else
       call set_bundle_scalar(0.0_r_def, mr_n, nummr)
       call set_bundle_scalar(0.0_r_def, mr_after_slow, nummr)
-      call set_bundle_scalar(0.0_r_def, mr_prev, nummr)
     end if
 
     if ( use_physics ) then
@@ -389,7 +391,6 @@ contains
 
     ! Fields after slow physics to be advected (i.e. field_n + slow phys inc)
     type( field_collection_type ) :: adv_fields_all_outer_after_slow
-    type( field_collection_type ) :: adv_fields_all_outer_prev
     type( field_collection_type ) :: adv_fields_last_outer_after_slow
     ! Cloud fields after advection / before fast physics updates
     type( field_collection_type ) :: cloud_fields_after_adv
@@ -432,7 +433,6 @@ contains
     if (use_moisture) then
       call copy_bundle(mr, mr_n, nummr)
       call copy_bundle(mr, mr_after_slow, nummr)
-      call copy_bundle(mr, mr_prev, nummr)
     end if
     call copy_bundle(state, state_n, bundle_size)
     call copy_bundle(state, state_after_slow, bundle_size)
@@ -473,9 +473,6 @@ contains
     call conditional_collection_copy(adv_fields_all_outer_after_slow,  &
               generic_fields_to_copy=adv_fields_all_outer,             &
               field_list=adv_fields_all_outer)
-    call conditional_collection_copy(adv_fields_all_outer_prev,        &
-              generic_fields_to_copy=adv_fields_all_outer,             &
-               field_list=adv_fields_all_outer)
     call conditional_collection_copy(adv_fields_last_outer_after_slow, &
               generic_fields_to_copy=adv_fields_last_outer,            &
               field_list=adv_fields_last_outer)
@@ -484,35 +481,40 @@ contains
     outer_dynamics_loop: do outer = 1,outer_iterations
 
       if (use_wavedynamics) then
-        call gungho_transport_control_alg( rhs_adv, advected_state,          &
-                                           state(igh_u), state_n(igh_u),     &
-                                           mr, mr_after_slow,                &
-                                           model_clock, outer,               &
-                                           cheap_update, adv_inc_prev,       &
-                                           wind_prev, mr_prev,               &
-                                           adv_fields_all_outer,             &
-                                           adv_fields_all_outer_after_slow,  &
-                                           adv_fields_all_outer_prev,        &
-                                           adv_fields_last_outer,            &
+        call gungho_transport_control_alg( rhs_adv, advected_state,         &
+                                           state(igh_u), state_n(igh_u),    &
+                                           mr, mr_after_slow, model_clock,  &
+                                           outer, cheap_update,             &
+                                           adv_inc_prev, wind_prev,         &
+                                           adv_fields_all_outer,            &
+                                           adv_fields_all_outer_after_slow, &
+                                           adv_fields_last_outer,           &
                                            adv_fields_last_outer_after_slow )
 
-        if ( cheap_update ) then
-          if ( outer < outer_iterations ) then
-            ! Copy transport increments to use in next outer iteration
-            ! for cheap transport update
-            call copy_bundle(rhs_adv, adv_inc_prev, bundle_size)
-            if (use_moisture) then
-              ! Store previous moisture for cheap transport update
-              call copy_bundle(mr, mr_prev, nummr)
-            end if
-            ! Store previous fields for cheap transport update
-            call conditional_collection_copy(adv_fields_all_outer_prev, &
-                        generic_fields_to_copy=adv_fields_all_outer,    &
-                        field_list=adv_fields_all_outer)
-            ! Store latest estimate of the wind for cheap transport update
-            call invoke( setval_X(wind_prev, state(igh_u)) )
+        if ( cheap_update .AND. (outer < outer_iterations) ) then
+          ! Copy transport increments to use in next outer iteration
+          ! for the cheap transport update
+          call copy_bundle(rhs_adv, adv_inc_prev, bundle_size)
+          ! Update advected state, moisture, and tracers
+          call mass_matrix_solver_alg( wind_fv_inc, rhs_adv(igh_u) )
+          call invoke( inc_X_plus_Y(advected_state(igh_d), rhs_adv(igh_d) ), &
+                       inc_X_plus_Y(advected_state(igh_t), rhs_adv(igh_t) ),   &
+                       inc_X_plus_Y(advected_state(igh_u), wind_fv_inc ) )
+          call conditional_collection_copy(adv_fields_all_outer_after_slow, &
+                      generic_fields_to_copy=adv_fields_all_outer,          &
+                      field_list=adv_fields_all_outer)
+          if (use_moisture) then
+            call copy_bundle(mr, mr_after_slow, nummr)
           end if
+          ! Store latest estimate of the wind for cheap transport update
+          call invoke( setval_X(wind_prev, state(igh_u)) )
         end if
+
+        ! Convert theta increment to weak form
+        call invoke( setval_X(theta_fv_inc, rhs_adv(igh_t)),          &
+                     setval_c(rhs_adv(igh_t), 0.0_r_def),             &
+                     dg_inc_matrix_vector_kernel_type(rhs_adv(igh_t), &
+                                                      theta_fv_inc, mm_wt) )
 
         ! Compute the time-level n+1 dynamics terms
         call rhs_alg( rhs_np1, -varalpha*cast_dt, state, state, moist_dyn, &
@@ -806,7 +808,6 @@ contains
     if (allocated(mr_n))             deallocate(mr_n)
     if (allocated(mr_after_slow))    deallocate(mr_after_slow)
     if (allocated(mr_after_adv))     deallocate(mr_after_adv)
-    if (allocated(mr_prev))          deallocate(mr_prev)
 
     call dtheta%field_final()
     call du%field_final()

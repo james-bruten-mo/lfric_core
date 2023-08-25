@@ -49,6 +49,7 @@ module tl_si_timestep_alg_mod
   use tl_moist_dyn_factors_alg_mod,       only: tl_moist_dyn_factors_alg
   use enforce_lower_bound_kernel_mod,     only: enforce_lower_bound_kernel_type
   use set_any_dof_kernel_mod,             only: set_any_dof_kernel_type
+  use dg_inc_matrix_vector_kernel_mod,    only: dg_inc_matrix_vector_kernel_type
 
   ! Derived Types
   use field_mod,                   only: field_type
@@ -136,6 +137,7 @@ module tl_si_timestep_alg_mod
 
   type( field_type ) :: visc_m ! Smagorinsky diffusion coefficient for momentum
   type( field_type ) :: visc_h ! Smagorinsky diffusion coefficient for scalars
+  type( field_type ) :: theta_fv_inc ! theta fv transport increment to change to weak form
 
   public  :: tl_semi_implicit_alg_init
   public  :: tl_semi_implicit_alg_step
@@ -249,6 +251,8 @@ contains
         call set_bundle_scalar(0.0_r_def, ls_rhs_phys(:, outer, inner),   bundle_size)
       end do
     end do
+
+    call ls_theta%copy_field_properties(theta_fv_inc)
 
     call clone_bundle(mr, mr_n, nummr)
     call clone_bundle(mr, mr_after_slow, nummr)
@@ -464,6 +468,12 @@ contains
                                         ls_mr_after_slow(:),            &
                                         model_clock, outer,             &
                                         cheap_update = .false. )
+
+      ! Convert theta increment to weak form
+      call invoke( setval_X(theta_fv_inc, ls_rhs_adv(igh_t, outer, 1)),          &
+                   setval_c(ls_rhs_adv(igh_t, outer, 1), 0.0_r_def),             &
+                   dg_inc_matrix_vector_kernel_type(ls_rhs_adv(igh_t, outer, 1), &
+                                                    theta_fv_inc, mm_wt) )
 
       if (use_wavedynamics) then
 
@@ -702,6 +712,12 @@ contains
                                     ls_mr_after_slow,               &
                                     model_clock,                    &
                                     outer )
+
+      ! Convert theta increment to weak form
+      call invoke( setval_X(theta_fv_inc, rhs_adv(igh_t)),          &
+                   setval_c(rhs_adv(igh_t), 0.0_r_def),             &
+                   dg_inc_matrix_vector_kernel_type(rhs_adv(igh_t), &
+                                                    theta_fv_inc, mm_wt) )
 
       if (use_wavedynamics) then
 

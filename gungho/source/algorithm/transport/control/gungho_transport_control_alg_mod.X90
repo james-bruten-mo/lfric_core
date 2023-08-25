@@ -134,29 +134,22 @@ contains
   !!                                iteration transport used for cheap transport update
   !> @param[in]     wind_prev       (Optional) Estimate of end of timestep wind from
   !!                                previous outer iteration
-  !> @param[in]     mr_prev         (Optional) Moisture fields after 1st outer
-  !!                                iteration transport used for cheap transport update
   !> @param[in,out] adv_fields_all_outer
   !!                                (Optional) Fields after transport on every iteration
   !> @param[in]     adv_fields_all_outer_after_slow
   !!                                (Optional) Fields to transport every iteration
-  !> @param[in]     adv_fields_all_outer_prev
-  !!                                (Optional) Fields after 1st outer iteration transport
-  !!                                used for cheap transport update
   !> @param[in,out] adv_fields_last_outer
   !!                                (Optional) Fields after transport on final iteration only
   !> @param[in]     adv_fields_last_outer_after_slow
   !!                                (Optional) Fields to transport on final iteration only
 
-  subroutine gungho_transport_control_alg(advection_inc, advected_fields,  &
-                                          wind_np1, wind_n, mr_out, mr_in, &
-                                          model_clock, outer,              &
-                                          cheap_update, prev_inc,          &
-                                          wind_prev, mr_prev,              &
-                                          adv_fields_all_outer,            &
-                                          adv_fields_all_outer_after_slow, &
-                                          adv_fields_all_outer_prev,       &
-                                          adv_fields_last_outer,           &
+  subroutine gungho_transport_control_alg(advection_inc, advected_fields,    &
+                                          wind_np1, wind_n, mr_out, mr_in,   &
+                                          model_clock, outer,                &
+                                          cheap_update, prev_inc, wind_prev, &
+                                          adv_fields_all_outer,              &
+                                          adv_fields_all_outer_after_slow,   &
+                                          adv_fields_last_outer,             &
                                           adv_fields_last_outer_after_slow)
 
     use check_configuration_mod,         only: check_any_shifted
@@ -195,10 +188,8 @@ contains
     logical(kind=l_def),         intent(in)    :: cheap_update
     type(field_type),            intent(in),    optional :: prev_inc(bundle_size)
     type(field_type),            intent(in),    optional :: wind_prev
-    type(field_type),            intent(in),    optional :: mr_prev(nummr)
     type(field_collection_type), intent(inout), optional :: adv_fields_all_outer
     type(field_collection_type), intent(in),    optional :: adv_fields_all_outer_after_slow
-    type(field_collection_type), intent(in),    optional :: adv_fields_all_outer_prev
     type(field_collection_type), intent(inout), optional :: adv_fields_last_outer
     type(field_collection_type), intent(in),    optional :: adv_fields_last_outer_after_slow
 
@@ -303,17 +294,27 @@ contains
         call tracer_collection_transport_alg(adv_fields_all_outer,            &
                                              adv_fields_all_outer_after_slow, &
                                              cast_dt,                         &
-                                             transport_metadata,              &
-                                             adv_fields_all_outer_prev,       &
-                                             cheap_update,                    &
-                                             outer )
+                                             transport_metadata)
       end if
+    end if
+
+    ! ------------------------------------------------------------------------ !
+    ! Transport potential temperature
+    ! (must be after moisture but before last_outer tracers due to cheap update)
+    ! Note: the theta increment is pointwise
+    call log_event( "Transporting potential temperature...", LOG_LEVEL_INFO)
+    transport_metadata => transport_metadata_collection%get_transport_metadata('potential_temperature')
+    call theta_transport_alg( fields_np1(igh_t), advection_inc(igh_t), &
+                              advected_fields(igh_t), mr_out, mr_in,   &
+                              cast_dt, transport_metadata )
+
+    if ( moisture_formulation /= moisture_formulation_dry ) then
       ! ---------------------------------------------------------------------- !
       ! Transport fields which aren't needed in fast physics, and therefore
       ! only need transporting on the final outer iteration
       if (outer == outer_iterations) then
         if (present(adv_fields_last_outer)) then
-          if ( cheap_update .AND. outer > 1 ) then
+          if ( cheap_update ) then
           ! Recompute transport_runtime with full wind instead of cheap update wind,
           ! and set cheap_update flag = .false.
             if ( any_shifted ) then
@@ -348,17 +349,8 @@ contains
 
     end if
 
-    ! ------------------------------------------------------------------------ !
-    ! Transport potential temperature (must be after moisture)
-    call log_event( "Transporting potential temperature...", LOG_LEVEL_INFO)
-    transport_metadata => transport_metadata_collection%get_transport_metadata('potential_temperature')
-    call theta_transport_alg( fields_np1(igh_t), advection_inc(igh_t), &
-                              advected_fields(igh_t), mr_out, mr_in,   &
-                              cast_dt, transport_metadata )
-
     ! ---------------------------------------------------------------------- !
     ! If cheap update we need to add the previous iteration state increments
-    ! and transported moisture
     if (cheap_update .AND. outer > 1) then
       ! Add the previous iteration state increments for density, theta and u
       ! On the second outer iteration we have
@@ -370,19 +362,13 @@ contains
       call invoke( inc_X_plus_Y(advection_inc(igh_d),prev_inc(igh_d)), &
                    inc_X_plus_Y(advection_inc(igh_t),prev_inc(igh_t)), &
                    inc_X_plus_Y(advection_inc(igh_u),prev_inc(igh_u)) )
-      if ( present(mr_prev) ) then
-        ! Add previous iteration transported moisture for cheap transport update
-        ! On the second outer iteration we have
-        ! mr_prev = mr_in - dt increment(mr,wind_n)
-        ! mr_out  = mr_in - dt increment(mr,(wind_np1-wind_n)/2)
-        ! To get
-        ! mr_out = mr_in - dt increment(mr,(wind_np1+wind_n)/2)
-        ! we set
-        ! mr_out = mr_out + mr_prev - mr_in
-        ! This carries forward for further outer iterations
-        call bundle_inc_axpby( 1.0_r_def, mr_out, 1.0_r_def, mr_prev, nummr)
-        call bundle_inc_axpby( 1.0_r_def, mr_out, -1.0_r_def, mr_in, nummr)
-      end if
+      ! For moisture and tracers the cheap update is done automatically as the output is the
+      ! field after transport (compared to the transport increment for the state fields).
+      ! From the first outer iteration we have
+      ! mr_1 = mr_n - dt increment(mr,wind_n)
+      ! On the second outer iteration we have
+      ! mr_out = mr_1 - dt increment(mr_1,(wind_np1-wind_n)/2)
+      ! This carries forward for further outer iterations
     end if
 
     if ( subroutine_timers ) call timer('gungho_transport_control')

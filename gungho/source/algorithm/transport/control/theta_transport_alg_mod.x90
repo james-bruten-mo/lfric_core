@@ -95,7 +95,6 @@ contains
     integer(kind=i_def)                   :: num_dry_steps
     real(kind=r_def)                      :: one
     real(kind=r_tran)                     :: min_value
-    type(field_type)                      :: temp_inc
     type(field_type),             pointer :: theta_in_ptr => null()
     type(field_type),             pointer :: theta_out_ptr => null()
     type(field_type),              target :: theta_vd_in, theta_vd_out
@@ -105,7 +104,6 @@ contains
     type(r_tran_field_type),      pointer :: rho_d_in => null()
     type(r_tran_field_type),      pointer :: rho_d_out => null()
     type(field_type),             pointer :: height_wt
-    type(operator_type),          pointer :: mm_wt => null()
 
     type(function_space_type),    pointer :: wt_fs => null()
     type(function_space_type),    pointer :: w3_shifted_fs => null()
@@ -287,20 +285,6 @@ contains
     ! ------------------------------------------------------------------------ !
 
     call invoke( X_minus_Y(theta_inc_rdef, theta_out_rdef, theta_in_rdef) )
-
-    ! The increment is now pointwise. Depending upon the temporal discretisation
-    ! this may need converting into weak form by multiplying by the mass matrix
-    if ( time_method == method_semi_implicit ) then
-      wt_fs => theta_in_rdef%get_function_space()
-      mm_wt => get_mass_matrix( Wtheta, theta_in_rdef%get_mesh_id() )
-      call temp_inc%initialise( wt_fs )
-
-      call invoke( setval_X(temp_inc, theta_inc_rdef),              &
-                   setval_c(theta_inc_rdef, 0.0_r_def),             &
-                   dg_inc_matrix_vector_kernel_type(theta_inc_rdef, &
-                                                    temp_inc, mm_wt) )
-      nullify( mm_wt, wt_fs )
-    end if
 
     nullify( theta_in_ptr, theta_out_ptr )
 

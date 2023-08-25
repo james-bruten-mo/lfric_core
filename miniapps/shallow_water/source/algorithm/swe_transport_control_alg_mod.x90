@@ -382,9 +382,9 @@ contains
 
     end select    ! momentum_form
 
-    ! If cheap update we need to add the 1st iteration state increments
+    ! If cheap update we need to add the previous iteration state increments
     if ( cheap_update_flag .AND. outer > 1) then
-      ! Add the previous iteration state increments for geopotential and u
+      ! Add the previous iteration state increments for geopotential, u and buoyancy
       ! On the second outer iteration we have
       ! advection_inc = dt increment(field,(wind_np1-wind_n)/2)
       ! prev_inc      = dt increment(field,(wind_n)/2)
