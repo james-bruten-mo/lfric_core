@@ -31,7 +31,7 @@ module spectral_2_cs_kernel_mod
                                CELL_COLUMN
 
   use fs_continuity_mod, only: Wtheta
-  use constants_mod,     only: r_def, i_def, pi
+  use constants_mod,     only: r_def, i_def
   use kernel_mod,        only: kernel_type
 
   implicit none
@@ -53,17 +53,16 @@ module spectral_2_cs_kernel_mod
   ! !>
   ! type, public, extends(kernel_type) :: spectral_2_cs_kernel_type
   !   private
-  !   !type(arg_type) :: meta_args(10) = (/                                  &
+  !   !type(arg_type) :: meta_args(9) = (/                                   &
   !        arg_type(GH_FIELD, GH_REAL, GH_WRITE, ANY_DISCONTINUOUS_SPACE_1), & ! fp
   !        arg_type(GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_2),  & ! longitude
   !        arg_type(GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_3),  & ! Pnm_star
-  !        arg_type(GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_1),  & ! height
-  !        arg_type(GH_ARRAY, GH_REAL, GH_READ, NRANKS*1),                   & ! stph_spectral_coeffc
-  !        arg_type(GH_ARRAY, GH_REAL, GH_READ, NRANKS*1),                   & ! stph_spectral_coeffs
+  !        arg_type(GH_ARRAY, GH_REAL, GH_READ, NRANKS*2),                   & ! stph_spectral_coeffc
+  !        arg_type(GH_ARRAY, GH_REAL, GH_READ, NRANKS*2),                   & ! stph_spectral_coeffs
   !        arg_type(GH_SCALAR, GH_INTEGER, GH_READ),                         & ! stph_level_bottom
   !        arg_type(GH_SCALAR, GH_INTEGER, GH_READ),                         & ! stph_level_top
-  !        arg_type(GH_SCALAR, GH_INTEGER, GH_READ),                         & ! stph_n_max
-  !        arg_type(GH_SCALAR, GH_INTEGER, GH_READ)                          & ! spectral_dim
+  !        arg_type(GH_SCALAR, GH_INTEGER, GH_READ),                         & ! stph_n_min
+  !        arg_type(GH_SCALAR, GH_INTEGER, GH_READ)                          & ! stph_n_max
   !        /)
   !        integer :: operates_on = CELL_COLUMN
 
@@ -75,15 +74,14 @@ module spectral_2_cs_kernel_mod
   !>
   type, public, extends(kernel_type) :: spectral_2_cs_kernel_type
     private
-    type(arg_type) :: meta_args(8) = (/                                    &
+    type(arg_type) :: meta_args(7) = (/                                    &
          arg_type(GH_FIELD, GH_REAL, GH_WRITE, ANY_DISCONTINUOUS_SPACE_1), & ! fp
          arg_type(GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_2),  & ! longitude
          arg_type(GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_3),  & ! Pnm_star
-         arg_type(GH_FIELD, GH_REAL, GH_READ, ANY_DISCONTINUOUS_SPACE_1),  & ! height
          arg_type(GH_SCALAR, GH_INTEGER, GH_READ),                         & ! stph_level_bottom
          arg_type(GH_SCALAR, GH_INTEGER, GH_READ),                         & ! stph_level_top
-         arg_type(GH_SCALAR, GH_INTEGER, GH_READ),                         & ! stph_n_max
-         arg_type(GH_SCALAR, GH_INTEGER, GH_READ)                          & ! spectral_dim
+         arg_type(GH_SCALAR, GH_INTEGER, GH_READ),                         & ! stph_n_min
+         arg_type(GH_SCALAR, GH_INTEGER, GH_READ)                          & ! stph_n_max
          /)
          integer :: operates_on = CELL_COLUMN
 
@@ -103,16 +101,14 @@ contains
   !> @param[in,out]  fp                     Forcing Pattern
   !> @param[in]      longitude              2D array with longitudes
   !> @param[in]      Pnm_star               Spherical harmonic coefficients
-  !> @param[in]      height                 Height of the given space (W3 or WTHETA)
   !> @param[in]      nranks_array           No. Ranks (shape) of stph_spectral_coeff arrays
   !> @param[in]      dims_array             Dimension of stphh_spectral_coeff arrays
-  !> @param[in]      stph_spectral_coeffc   Array with real (cosine) spectral coefficients
-  !> @param[in]      stph_spectral_coeffs   Array with imaginary (sine) spectral coefficients
+  !> @param[in]      coeffc_phase           Array with real (cosine) spectral coefficients
+  !> @param[in]      coeffs_phase           Array with imaginary (sine) spectral coefficients
   !> @param[in]      stph_level_bottom      Bottom level where stph is applied
   !> @param[in]      stph_level_top         Top level where stph is applied
   !> @param[in]      stph_n_min             stph minimum wavenumber
   !> @param[in]      stph_n_max             stph maximum wavenumber
-  !> @param[in]      spectral_dim           Dimension of spectral  matrices
   !> @param[in]      ndf_hgt                Number of degrees of freedom per cell for wtheta
   !> @param[in]      undf_hgt               Number of total degrees of freedom for wtheta
   !> @param[in]      map_hgt                Dofmap for the cell at the base of the column for wthera
@@ -127,16 +123,14 @@ contains
                                  fp,                   &
                                  longitude,            &
                                  Pnm_star,             &
-                                 height,               &
                                  nranks_array,         &
                                  dims_array,           &
-                                 stph_spectral_coeffc, &
-                                 stph_spectral_coeffs, &
+                                 coeffc_phase,         &
+                                 coeffs_phase,         &
                                  stph_level_bottom,    &
                                  stph_level_top,       &
                                  stph_n_min,           &
                                  stph_n_max,           &
-                                 stph_spectral_dim,    &
                                  ndf_hgt,              &
                                  undf_hgt,             &
                                  map_hgt,              &
@@ -147,7 +141,6 @@ contains
                                  undf_sp,              &
                                  map_sp                &
                                  )
-
 
     implicit none
 
@@ -162,91 +155,47 @@ contains
     integer(kind=i_def), intent(in), dimension(nranks_array) :: dims_array
     !fields
     real(kind=r_def), intent(inout), dimension(undf_hgt) :: fp
-    real(kind=r_def), intent(in),    dimension(undf_hgt) :: height
-    real(kind=r_def), intent(in),    dimension(undf_2d)  :: longitude
-    real(kind=r_def), intent(in),    dimension(undf_sp)  :: Pnm_star
-    real(kind=r_def), intent(in),    dimension(dims_array(1)) :: stph_spectral_coeffc, &
-                                                                 stph_spectral_coeffs
+
+    real(kind=r_def), intent(in), dimension(undf_2d)  :: longitude
+    real(kind=r_def), intent(in), dimension(undf_sp)  :: Pnm_star
+    real(kind=r_def), intent(in), dimension(dims_array(1), dims_array(2)) :: &
+         coeffc_phase, coeffs_phase
+
     ! stph scalars
     integer(kind=i_def), intent(in) :: stph_level_bottom
     integer(kind=i_def), intent(in) :: stph_level_top
     integer(kind=i_def), intent(in) :: stph_n_min
     integer(kind=i_def), intent(in) :: stph_n_max
-    integer(kind=i_def), intent(in) :: stph_spectral_dim
 
     ! Spectral coefficients for vertical phasing (local to the timestep)
-    real(kind=r_def) :: coeffc_phase(stph_spectral_dim)
-    real(kind=r_def) :: coeffs_phase(stph_spectral_dim)
-    real(kind=r_def) :: my_coeff_rad(stph_spectral_dim)
-    real(kind=r_def) :: my_phi_stph(stph_spectral_dim)
-    real(kind=r_def) :: my_phishft_stph(stph_spectral_dim)
-
-    ! Vertical shift coefficient
-    real(kind=r_def) :: kr
+    real(kind=r_def) :: cos_fac
+    real(kind=r_def) :: sin_fac
 
     ! Integers for iteration
-    integer(kind=i_def) :: k,m,n, n_row
+    integer(kind=i_def) :: k, m, n, n_row
 
-    ! Initialize phase shifting variables
-    n_row=0
-    do n= 1,stph_n_max
-      n_row= n_row + n
-      do m = 0,stph_n_max
-        my_coeff_rad(n_row+m) = 0.0_r_def
-        my_phi_stph(n_row+m) = 0.0_r_def
-        my_phishft_stph(n_row+m) = 0.0_r_def
-        coeffc_phase(n_row+m) = 0.0_r_def
-        coeffs_phase(n_row+m) = 0.0_r_def
-      end do
+    ! Initialize n_row to stph_n_min-1
+    n_row = 0
+    do n = 1,stph_n_min-1
+      n_row = n_row + n
     end do
+    ! Apply vertical scaling for each spectral coeff.
+    do n = stph_n_min, stph_n_max
+      n_row = n_row + n
+      do m = 0, n
 
-    !!!! Compute the inverse transformation for each stph level
-    do k= stph_level_bottom, stph_level_top
+        cos_fac = Pnm_star(map_sp(1) + n_row+m)*cos(m*longitude(map_2d(1)))
+        sin_fac = Pnm_star(map_sp(1) + n_row+m)*sin(m*longitude(map_2d(1)))
 
-      ! Apply vertical scaling Level 1 = no change -> 12km Level = max change (=pi)
-      kr= height(map_hgt(1) + k)/12.0e3_r_def
+        ! Compute the inverse transformation for each stph level
+        do k = stph_level_bottom, stph_level_top
 
-      ! Initialize n_row to stph_n_min-1
-      n_row=0
-      do n = 1,stph_n_min-1
-        n_row= n_row + n
-      end do
-      ! Apply vertical scaling for each spectral coeff.
-      do n = stph_n_min, stph_n_max
-        n_row= n_row + n
-        do m = 0, n
-          ! Modulus of coefficeints
-          my_coeff_rad(n_row+m) = SQRT(stph_spectral_coeffc(n_row+m)**2 + &
-                                       stph_spectral_coeffs(n_row+m)**2)
-          ! Determine angle from sin and cos wave components (single step)
-          my_phi_stph(n_row+m) = ATAN2(stph_spectral_coeffs(n_row+m), &
-                                      stph_spectral_coeffc(n_row+m))
-          ! Max shift ranges from 0 <-> pi  for wavenos 1 <-> stph_n_max
-          my_phishft_stph(n_row+m) = (stph_n_max - max(n,m)) * pi/ (stph_n_max-1)
-          ! Create coeff with phase shift
-          coeffc_phase(n_row+m) = my_coeff_rad(n_row+m) * cos(my_phi_stph(n_row+m) +     &
-                             kr * my_phishft_stph(n_row+m))
-          coeffs_phase(n_row+m) = my_coeff_rad(n_row+m) * sin(my_phi_stph(n_row+m) +     &
-                             kr * my_phishft_stph(n_row+m))
+          fp(map_hgt(1) + k)  = fp(map_hgt(1) + k) +  &
+                  coeffc_phase(k,n_row+m)*cos_fac +   &
+                  coeffs_phase(k,n_row+m)*sin_fac
         end do
       end do
-
-    ! Do spectral to cubed-sphere transformation at the current k level
-    ! Initialize n_row to stph_n_min-1
-    n_row=0
-    do n = 1,stph_n_min-1
-      n_row= n_row + n
     end do
-    ! Do spectral transformation summing all relevant spectral coeff x cos or sin of the longitude
-    do n= stph_n_min,stph_n_max
-      n_row= n_row + n
-      do m = 0,n
-        fp(map_hgt(1) + k)  = fp(map_hgt(1) + k) +                                         &
-                  coeffc_phase(n_row+m)*Pnm_star(map_sp(1) + n_row+m)*cos(m*longitude(map_2d(1))) + &
-                  coeffs_phase(n_row+m)*Pnm_star(map_sp(1) + n_row+m)*sin(m*longitude(map_2d(1)))
-      end do
-    end do
-  end do
 
   end subroutine  spectral_2_cs_code
 

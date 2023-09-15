@@ -185,42 +185,43 @@ contains
   !---------------------------------------------------------------------
   !> Contains the Psy-layer to build the stochastic physics
   !> forcing pattern. At the moment it requires to pass the arrays
-  !> stph_spectral_coeffc and stph_spectral_coeffs via the kernel argument.
+  !> my_coeff_rad and my_phi_stph via the kernel argument.
   !> Psyclone does not recognize arrays in the argument yet
   !> this functionality is being developed in PSyclone ticket 1312
   !> at https://github.com/stfc/PSyclone/issues/1312
   !> Hence this module could be removed once the PSyclone ticket is
   !> completed
-  subroutine invoke_spectral_2_cs_kernel_type(fp, longitude, pnm_star, height,            &
-                                              stph_spectral_coeffc, stph_spectral_coeffs, &
-                                              stph_level_bottom, stph_level_top,          &
-                                              stph_n_min, stph_n_max, stph_spectral_dim)
+  subroutine invoke_spectral_2_cs_kernel_type(fp, longitude, pnm_star,         &
+                                              coeffc_phase, coeffs_phase,      &
+                                              stph_level_bottom,               &
+                                              stph_level_top,                  &
+                                              stph_n_min, stph_n_max)
 
   use spectral_2_cs_kernel_mod, ONLY: spectral_2_cs_code
   use mesh_mod, ONLY: mesh_type
 
   implicit none
 
-  integer(KIND=i_def), intent(in) :: stph_level_bottom, stph_level_top,stph_n_min, stph_n_max, stph_spectral_dim
-  type(field_type), intent(in) :: fp, longitude, pnm_star, height
+  integer(KIND=i_def), intent(in) :: stph_level_bottom, stph_level_top,stph_n_min, stph_n_max
+  type(field_type), intent(in) :: fp, longitude, pnm_star
   integer(KIND=i_def) cell
   integer(KIND=i_def) nlayers
-  type(field_proxy_type) fp_proxy, longitude_proxy, pnm_star_proxy, height_proxy
+  type(field_proxy_type) fp_proxy, longitude_proxy, pnm_star_proxy
   integer(KIND=i_def), pointer :: map_adspc1_longitude(:,:) => null(), map_adspc2_pnm_star(:,:) => null(), &
   &map_wspace(:,:) => null()
   integer(KIND=i_def) ndf_wspace, undf_wspace, ndf_adspc1_longitude, undf_adspc1_longitude, ndf_adspc2_pnm_star, &
   &undf_adspc2_pnm_star
   type(mesh_type), pointer :: mesh => null()
 
-  ! Add arrays stph_spectral_coeffc & stph_spectral_coeffs by hand
-  real(kind=r_def), intent(in), dimension(:) :: stph_spectral_coeffc
-  real(kind=r_def), intent(in), dimension(:) :: stph_spectral_coeffs
-  integer(kind=i_def), parameter :: nranks_array = rank(stph_spectral_coeffc)
+  ! Add arrays my_coeff_rad & my_phi_stph by hand
+  real(kind=r_def), intent(in), dimension(:,:) :: coeffc_phase
+  real(kind=r_def), intent(in), dimension(:,:) :: coeffs_phase
+  integer(kind=i_def), parameter :: nranks_array = rank(coeffc_phase)
   integer(kind=i_def), dimension(nranks_array) :: dims_array
 
   ! Get the upper bound for each rank of each scalar array
   ! Do dims_array for coeffc and coeffs?
-  dims_array = shape(stph_spectral_coeffc)
+  dims_array = shape(coeffc_phase)
 
   !
   ! Initialise field and/or operator proxies
@@ -228,7 +229,6 @@ contains
   fp_proxy     = fp%get_proxy()
   longitude_proxy  = longitude%get_proxy()
   pnm_star_proxy   = pnm_star%get_proxy()
-  height_proxy = height%get_proxy()
   !
   ! Initialise number of layers
   !
@@ -264,11 +264,11 @@ contains
   do cell=1,mesh%get_last_edge_cell()
       call spectral_2_cs_code(nlayers, &
                               ! Add fields
-                              fp_proxy%data, longitude_proxy%data, pnm_star_proxy%data, height_proxy%data, &
+                              fp_proxy%data, longitude_proxy%data, pnm_star_proxy%data, &
                               ! Add arrays
-                              nranks_array, dims_array, stph_spectral_coeffc, stph_spectral_coeffs, &
+                              nranks_array, dims_array, coeffc_phase, coeffs_phase, &
                               ! Add SPT scalars
-                              stph_level_bottom, stph_level_top, stph_n_min, stph_n_max, stph_spectral_dim, &
+                              stph_level_bottom, stph_level_top, stph_n_min, stph_n_max, &
                               ! Add fields' assoc. space variables
                               ndf_wspace, undf_wspace, map_wspace(:,cell), &
                               ndf_adspc1_longitude, undf_adspc1_longitude, map_adspc1_longitude(:,cell), &
