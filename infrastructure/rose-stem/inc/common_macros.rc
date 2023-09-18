@@ -536,3 +536,43 @@ echo $RELATIVE_LOG_ROOT > $DOCUMENT_DIR/api.log.path
         script = true
 {%- endif %}
 {%- endmacro %}
+
+{# CANNED TEST MACRO #}
+{#---------------------------------------------------------------------------#}
+{%- macro canned_test(appName, processes=1, precisions=[rdef_default],
+                      run_with_compilers=[TARGET_SCIENCE_COMPILER]) %}
+
+{%-   do variables.update( canned_processes=processes ) %}
+
+{%-   if appName not in appConfigsCompilerRuns.keys() %}
+{%-     do appConfigsCompilerRuns.update({appName : run_with_compilers}) %}
+{%-   else %}
+{%-     do appConfigsCompilerRuns[appName].extend(run_with_compilers) %}
+{%-   endif %}
+
+{%-   if appName not in appPrecisionRuns.keys() %}
+{%-     do appPrecisionRuns.update({appName : precisions} ) %}
+{%-   else %}
+{%-     do appPrecisionRuns[appName].extend(precisions) %}
+{%-   endif %}
+
+{%-   if appName not in appPrecisionBuilds.keys() %}
+{%-     do appPrecisionBuilds.update({appName : precisions} ) %}
+{%-   else %}
+{%-     do appPrecisionBuilds[appName].extend(precisions) %}
+{%-   endif %}
+
+        [[[R1]]]
+{%-   for compiler in appConfigsCompilerRuns[appName] %}
+{%-     if compiler in TARGET_PERFORM_RUN %}
+
+{%-       for precision in precisions %}
+{%-         set label = compiler | lower + '_'
+                        + precision + '-bit_fast-debug' %}
+              export_source => compile_{{projectName}}_with_{{label}}
+              compile_{{projectName}}_with_{{label}} => run_{{appName}}_canned_test_{{label}}
+{%-       endfor %}
+{%-     endif %}
+{%-   endfor %}   {# appConfigsCompilerRuns #}
+
+{%- endmacro %}

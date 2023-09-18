@@ -71,7 +71,7 @@
                 resolutions=[("C24",100.0)],
                 env={"nrun":22},
                 plotstr="sbr.py $NODAL_DATA_DIR/lfric_diag.nc $PLOT_DIR uniform 10 11 gw-limited-c24-rec buoyancy:wind1:wind2:wind3:pressure 120:0:6")',
-    'canned_test("gravity_wave")',
+    'canned_test("gravity_wave", run_with_compilers='~TARGET_CANNED_COMPILER~')',
     'check_compilers("gravity_wave", "default", "fast-debug",
                      resolution=("C24",100.0), publish=True)',
     'check_compilers("gravity_wave", "default", "full-debug",

@@ -147,37 +147,6 @@
 
 
 {#- #########################################################################}
-{%- macro canned_test(appName, processes=1, precisions=[rdef_default]) %}
-
-{%-   do variables.update( canned_processes=processes ) %}
-
-{%-   if appName not in appPrecisionRuns.keys() %}
-{%-     do appPrecisionRuns.update({appName : precisions} ) %}
-{%-   else %}
-{%-     do appPrecisionRuns[appName].extend(precisions) %}
-{%-   endif %}
-
-{%-   if appName not in appPrecisionBuilds.keys() %}
-{%-     do appPrecisionBuilds.update({appName : precisions} ) %}
-{%-   else %}
-{%-     do appPrecisionBuilds[appName].extend(precisions) %}
-{%-   endif %}
-
-        [[[R1]]]
-{%-   if TARGET_SCIENCE_COMPILER in TARGET_PERFORM_RUN %}
-{%-     for precision in precisions %}
-{%-       set label = TARGET_SCIENCE_COMPILER | lower + '_'
-                      + precision + '-bit_fast-debug' %}
-            export_source => compile_{{projectName}}_with_{{label}}
-            compile_{{projectName}}_with_{{label}} => run_{{appName}}_canned_test_{{label}}
-{%-     endfor %}
-{%-   endif %}
-
-{%- endmacro %}
-
-
-
-{#- #########################################################################}
 {%- macro publish_commit() %}
 
         [[[R1/P1/$]]]

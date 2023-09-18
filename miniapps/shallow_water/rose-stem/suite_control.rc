@@ -112,7 +112,7 @@
                      plotstr="plot_swe.py ' + plotStemName + ' $NODAL_DATA_DIR C q 72:288 $PLOT_DIR")',
     'check_compilers("shallow_water", "williamson2_vi", "fast-debug",
                      resolution=("C24",1800.0))',
-    'canned_test("shallow_water")',
+    'canned_test("shallow_water", run_with_compilers='~TARGET_CANNED_COMPILER~')',
 ],
 'nightly': [
     'run_application("shallow_water", "vortex_plane_vi",

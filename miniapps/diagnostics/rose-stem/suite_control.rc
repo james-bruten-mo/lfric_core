@@ -98,7 +98,7 @@
     'run_application("diagnostics", "default", resolutions={}, env={})'.format(run_app_res, env),
     'check_compilers("diagnostics", "default", "fast-debug", resolution={})'.format(check_compilers_res),
     'check_compilers("diagnostics", "default", "full-debug", resolution={})'.format(check_compilers_res),
-    'canned_test("diagnostics")'],
+    'canned_test("diagnostics", run_with_compilers='~TARGET_CANNED_COMPILER~')' ],
 'nightly': [
     'null_task_graph()'] } %}
 

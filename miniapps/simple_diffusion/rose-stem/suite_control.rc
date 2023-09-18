@@ -81,7 +81,7 @@
     'run_application("simple_diffusion", "default", resolutions=[("C24",)])',
     'check_compilers("simple_diffusion", "default", "fast-debug", resolution=("C24",))',
     'check_compilers("simple_diffusion", "default", "full-debug", resolution=("C24",))',
-    'canned_test("simple_diffusion")' ],
+    'canned_test("simple_diffusion", run_with_compilers='~TARGET_CANNED_COMPILER~')' ],
 'nightly': [
     'null_task_graph()' ]
  } %}

@@ -105,18 +105,7 @@
 {%-   endfor %} {# appConfigsCompilerRuns #}
 {%- endmacro %} {# run_application #}
 
-{#- #########################################################################}
-{%- macro canned_test(appName) %}
-      [[[R1]]]
-{%-   if appName and appName not in appsToRun %}
-{%-     do appsToRun.append(appName) %}
-{%-   endif %}
-{%-   set label = TARGET_SCIENCE_COMPILER | lower + '_' + 'fast-debug' %}
-{%-   if TARGET_SCIENCE_COMPILER in TARGET_PERFORM_RUN %}
-            export_source => compile_{{projectName}}_with_{{label}}
-            compile_{{projectName}}_with_{{label}} => run_{{appName}}_canned_test_{{label}}
-{%-   endif %}
-{%- endmacro %}
+
 
 {#- #########################################################################}
 {%- macro cleanliness() %}

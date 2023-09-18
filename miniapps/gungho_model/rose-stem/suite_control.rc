@@ -276,7 +276,8 @@
     'check_compilers("gungho_model", "baroclinic-noio", "cray", "full-debug",
                      resolution=("C24_MG",3600.0), precisions=["32"],
                      publish=True )',
-    'canned_test("gungho_model", precisions=["32", "64"] )'
+    'canned_test("gungho_model", precisions=["32", "64"],
+                 run_with_compilers='~TARGET_CANNED_COMPILER~')'
 ],
 'nightly': [
     'publish_commit'],

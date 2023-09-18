@@ -33,14 +33,15 @@ panel_decomposition = 'auto'
 /
 
 &io
-  use_xios_io               = .true.
-  write_diag                = .true.
-  diagnostic_frequency      = 1
-  nodal_output_on_w3        = .false.
-  subroutine_timers         = .false.
-  subroutine_counters       = .false.
-  checkpoint_read           = .false.
-  checkpoint_write          = .false.
+  use_xios_io          = .true.
+  write_diag           = .true.
+  diagnostic_frequency = 1
+  nodal_output_on_w3   = .false.
+  subroutine_timers    = .false.
+  subroutine_counters  = .false.
+  checkpoint_read      = .false.
+  checkpoint_write     = .false.
+  file_convention      = 'UGRID'
 /
 
 &logging

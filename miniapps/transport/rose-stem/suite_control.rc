@@ -117,7 +117,8 @@
                      plotstr="slices.py ' + appDiagStemName + ' $NODAL_DATA_DIR theta:tracer_con:tracer_adv:m_v:constant T000000:T000032:T000064:T000096:T000128:T000160:T000192:T000224:T000256 -1 -91 0 $PLOT_DIR" )',
     'check_compilers("transport", "sbr_hori_cosine_mol_consist", "full-debug",
                      resolution=("C32", 4050.0) )',
-    'canned_test( "transport", processes=6, precisions=["32", "64"] )'
+    'canned_test( "transport", processes=6, precisions=["32", "64"], 
+                  run_with_compilers='~TARGET_CANNED_COMPILER~' )'
 ],
 'comparison': [
     'run_application("transport", "eternal_fountain_xz_mol",
