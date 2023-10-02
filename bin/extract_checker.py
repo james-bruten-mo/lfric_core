@@ -301,7 +301,7 @@ if __name__ == "__main__":
 
     # Create path to build output file.
     log_file_path = "log/job/1/compile_lfric_atm_with_intel_64-bit_fast-debug"\
-                    "/01/job.out"
+                    "/NN/job.out"
     if args.suite_dir:
         filepath = args.suite_dir
     else:
