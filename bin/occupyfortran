@@ -23,27 +23,17 @@ if __name__ == '__main__':
                         help="Print version information and exit.")
     parser.add_argument('-debug', action='store_true',
                         help="Log more information.")
-    subparsers = parser.add_subparsers(dest='operation', help="Operations")
 
-    file_operation = subparsers.add_parser(
-        "file", add_help=False,
-        help="Filename specifies a file object."
-    )
-    file_operation.add_argument('-help', '-h', '--help', action='help',
-                                help="Print this message and exit.")
-    file_operation.add_argument('-cleanlist',
-                                help="Generate a list of passing files")
-
-    list_operation = subparsers.add_parser(
-        "list", add_help=False,
-        help="Filename specifies a list file."
-    )
-    list_operation.add_argument('-help', '-h', '--help', action='help',
-                                help="Print this message and exit.")
-
-    parser.add_argument('-directory', type=Path, default=Path(),
+    parser.add_argument('-directory', metavar='FILENAME',
+                        type=Path, default=Path(),
                         help="Scan relative to this directory.")
-    parser.add_argument('filename', type=Path, default=Path())
+    parser.add_argument('-dirtylist', metavar='FILENAME', type=Path,
+                        help="A list of failing files.")
+    parser.add_argument('-generate', action='store_true',
+                        help="Overwrite dirty list with new scan from source.")
+
+    parser.add_argument('filename', type=Path, default=Path(),
+                        help="path relative to '-directory' to examine.")
     arguments = parser.parse_args()
 
     logger = getLogger('occupyfortran')
@@ -53,16 +43,18 @@ if __name__ == '__main__':
     else:
         logger.setLevel(logging.INFO)
 
-    file_objects: List[Path] = []
-    if arguments.operation == 'list':
-        for line in arguments.filename.read_text().splitlines():
-            if line.strip() and not line.strip().startswith('#'):
-                file_objects.append(arguments.directory / Path(line))
-    elif arguments.operation == 'file':
-        file_objects.append(arguments.directory / arguments.filename)
+    # We can't use a default here because we need to be able to turn it off.
+    #
+    expected_dirty_list: List[Path] = []
+    if getattr(arguments, 'dirtylist'):
+        if arguments.dirtylist.exists():
+            for line in arguments.dirtylist.read_text().splitlines():
+                if line.strip() and not line.strip().startswith('#'):
+                    expected_dirty_list.append(arguments.directory / Path(line))
     else:
-        raise Exception(f"Unrecognised operation: {arguments.operation}")
+        arguments.dirtylist = Path() / 'dirtylist.txt'
 
+    file_objects: List[Path] = [arguments.directory / arguments.filename]
     try:
         dirty_list, clean_list, not_considered = entry(file_objects)
     except FileNotFoundError as ex:
@@ -70,41 +62,50 @@ if __name__ == '__main__':
               file=stderr)
         sys_exit(2)
 
-    globals_found = 0  # pylint: disable=invalid-name
     for report in dirty_list:
+        if report.filename in expected_dirty_list:
+            continue
+
         for problem in report.dirt:
-            globals_found += 1
             MESSAGE = ' : '.join([str(report.filename),
                                   str(problem.line_number),
                                   problem.fortran_type,
                                   problem.variable_name])
             getLogger('occupyfortran').error(MESSAGE)
 
-    if 'cleanlist' in arguments:
-        clean_list_filename = Path() / 'cleanlist.txt'
-        if clean_list_filename.exists():
-            clean_list_filename.unlink()
-        if len(clean_list) > 0:
-            clean_list.sort()
-            with clean_list_filename.open('w', encoding='utf8') as fhandle:
+    if arguments.generate:
+        if arguments.dirtylist.exists():
+            arguments.dirtylist.unlink()
+        if len(dirty_list) > 0:
+            dirty_list.sort()
+            with arguments.dirtylist.open('w', encoding='utf8') as fhandle:
                 print("""
-# Files should only ever be added or renamed in this file, never removed.
+# Files should only ever be removed or renamed in this file, never added.
 """.strip(), file=fhandle)
                 print("#", file=fhandle)
-                for clean_filename in clean_list:
-                    print(str(clean_filename), file=fhandle)
+                for dirt in dirty_list:
+                    print(str(dirt.filename.relative_to(arguments.directory)),
+                          file=fhandle)
 
     # pylint: disable=invalid-name
-    total_scanned = len(dirty_list) + len(clean_list) + len(not_considered)
-    message = f"Found {globals_found} global variables " \
-              f"in {len(dirty_list)} files."
+    total_scanned = len(dirty_list) + len(clean_list)
+    dirty_set = {str(dirt.filename) for dirt in dirty_list}
+    expected_dirty_set = {str(filename) for filename in expected_dirty_list}
+    new_files = dirty_set - expected_dirty_set
+    ignored_set = dirty_set & expected_dirty_set
+    stale_set = expected_dirty_set - dirty_set
+    message = f"Found {len(new_files)} new files with global variables."
+    getLogger('occupyfortran').info(message)
+    message = f"Ignored {len(ignored_set)} files already known to contain globals."
+    getLogger('occupyfortran').info(message)
+    message = f"Missed {len(stale_set)} expected files not found."
+    getLogger('occupyfortran').info(message)
+    message = f"Scanned {total_scanned} files in total."
     getLogger('occupyfortran').info(message)
     message = f"Meanwhile no problems found in {len(clean_list)} files."
     getLogger('occupyfortran').info(message)
-    message = f"Overall {total_scanned} scanned."
-    getLogger('occupyfortran').info(message)
 
-    if len(dirty_list) > 0:
+    if len(new_files) > 0:
         sys_exit(1)
     else:
         sys_exit(0)

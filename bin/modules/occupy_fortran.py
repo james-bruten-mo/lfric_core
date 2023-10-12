@@ -12,7 +12,7 @@ from logging import getLogger
 from os import strerror
 from pathlib import Path
 from re import compile as re_compile
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, List, Optional, Sequence, Tuple
 
 from fparser.common.readfortran import FortranFileReader  # type: ignore
 from fparser.two.Fortran2003 import (Attr_Spec,  # type: ignore
@@ -49,6 +49,17 @@ class DirtyFile:
     def __init__(self, filename: Path) -> None:
         self.filename = filename
         self.dirt: List[Dirt] = []
+
+    def __lt__(self, other: Any):
+        """
+        Compares this object against another for "less than" relationship.
+
+        This is done based on filename.
+        """
+        if not isinstance(other, DirtyFile):
+            message = "Can only compare DirtyFile against other DirtyFile objects."
+            raise ValueError(message)
+        return self.filename < other.filename
 
     def add_dirt(self, line_number: int, fortran_type: str,
                  variable_name: str):
@@ -96,7 +107,7 @@ def __process_file(filename: Path,
 
     reader = FortranFileReader(str(filename))
     # pylint: disable = redefined-outer-name
-    parser = ParserFactory().create(std='f2008')
+    parser: Program = ParserFactory().create(std='f2008')
     tree = parser(reader)
     __find_declarations(tree, file_tally, tree_handler)
 
@@ -144,9 +155,8 @@ __FORTRAN_EXTENSION_PATTERN = re_compile(r'\.[FfXx]90')
 
 
 # pylint: disable=redefined-outer-name
-def entry(file_objects: List[Path]) -> Tuple[List[DirtyFile],
-                                             List[Path],
-                                             List[Path]]:
+def entry(file_objects: List[Path]) \
+        -> Tuple[List[DirtyFile], List[Path], List[Path]]:
     """
     Descend file tree processing files.
     """

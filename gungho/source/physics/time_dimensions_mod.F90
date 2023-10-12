@@ -11,18 +11,22 @@ module time_dimensions_mod
   use log_mod,                   only: log_event,                             &
                                        log_scratch_space,                     &
                                        log_level_error
-  use initialization_config_mod, only:                                        &
 #ifdef UM_PHYSICS
-                                       ancil_option,                          &
+  ! This import split to support fparser which gets confused by FPP directives
+  ! in the middle of a syntactic unit.
+  !
+  use initialization_config_mod, only: ancil_option,                          &
                                        ancil_option_fixed,                    &
-                                       ancil_option_updating,                 &
+                                       ancil_option_updating
 #endif
-                                       lbc_option,                            &
+  use initialization_config_mod, only: lbc_option,                            &
                                        lbc_option_gungho_file,                &
                                        lbc_option_um2lfric_file
-  use files_config_mod,          only:                                        &
 #ifdef UM_PHYSICS
-                                       ancil_dir => ancil_directory,          &
+  ! This import split to support fparser which gets confused by FPP directives
+  ! in the middle of a syntactic unit.
+  !
+  use files_config_mod,          only: ancil_dir => ancil_directory,          &
                                        sst_ancil_path,                        &
                                        emiss_bc_biofuel_ancil_path,           &
                                        emiss_bc_fossil_ancil_path,            &
@@ -35,9 +39,9 @@ module time_dimensions_mod
                                        emiss_om_biomass_hi_ancil_path,        &
                                        emiss_om_biomass_lo_ancil_path,        &
                                        emiss_so2_low_ancil_path,              &
-                                       emiss_so2_high_ancil_path,             &
+                                       emiss_so2_high_ancil_path
 #endif
-                                       lbc_dir => lbc_directory,              &
+  use files_config_mod,          only: lbc_dir => lbc_directory,              &
                                        lbc_filename
 #ifdef UM_PHYSICS
   use aerosol_config_mod,        only: glomap_mode,                           &

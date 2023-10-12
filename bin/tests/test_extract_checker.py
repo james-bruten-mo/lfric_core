@@ -1,5 +1,5 @@
 import pytest
-from .extract_checker import *
+from ..extract_checker import *
 
 # Generate some inputs and outputs that will be used in unit tests below
 list_of_strings = ["first string", "second string", "third string"]

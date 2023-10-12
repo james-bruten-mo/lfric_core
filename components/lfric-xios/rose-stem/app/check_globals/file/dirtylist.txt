@@ -1,0 +1,6 @@
+# Files should only ever be removed or renamed in this file, never added.
+#
+source/lfric_xios_file_mod.f90
+source/lfric_xios_mock_mod.f90
+source/lfric_xios_process_output_mod.f90
+source/lfric_xios_utils_mod.f90
