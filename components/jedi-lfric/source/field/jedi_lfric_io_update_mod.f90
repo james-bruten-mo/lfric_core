@@ -11,17 +11,17 @@
 !>          file I/O via the XIOS read_state and write_state methods. The
 !>          collection is updated so that fields are added if they are not
 !>          present and removed if they are no longer needed.
-module jedi_lfric_tests_io_update_mod
+module jedi_lfric_io_update_mod
 
-  use constants_mod,                   only : l_def, i_def
-  use log_mod,                         only : log_event, &
-                                              LOG_LEVEL_INFO
-  use mesh_mod,                        only : mesh_type
-  use jedi_lfric_tests_utils_mod,      only : add_real_field
-  use jedi_lfric_field_meta_mod,       only : jedi_lfric_field_meta_type
-  use field_collection_mod,            only : field_collection_type
-  use field_collection_iterator_mod,   only : field_collection_iterator_type
-  use field_parent_mod,                only : field_parent_type
+  use constants_mod,                  only : l_def, i_def
+  use log_mod,                        only : log_event, &
+                                             LOG_LEVEL_INFO
+  use mesh_mod,                       only : mesh_type
+  use jedi_lfric_utils_mod,           only : add_real_field
+  use jedi_lfric_field_meta_mod,      only : jedi_lfric_field_meta_type
+  use field_collection_mod,           only : field_collection_type
+  use field_collection_iterator_mod,  only : field_collection_iterator_type
+  use field_parent_mod,               only : field_parent_type
 
   implicit none
 
@@ -48,10 +48,10 @@ module jedi_lfric_tests_io_update_mod
 
     implicit none
 
-    type(field_collection_type),            intent(inout) :: io_collection
-    type(mesh_type), pointer,               intent(in)    :: mesh_3d
-    type(mesh_type), pointer,               intent(in)    :: mesh_2d
-    type(jedi_lfric_field_meta_type),       intent(in)    :: field_meta_data
+    type(field_collection_type), intent(inout)   :: io_collection
+    type(mesh_type), pointer, intent(in)         :: mesh_3d
+    type(mesh_type), pointer, intent(in)         :: mesh_2d
+    type(jedi_lfric_field_meta_type), intent(in) :: field_meta_data
 
     ! Local
     class(field_parent_type), pointer     :: field_ptr => null()
@@ -113,4 +113,4 @@ module jedi_lfric_tests_io_update_mod
 
   end subroutine update_io_field_collection
 
-end module jedi_lfric_tests_io_update_mod
+end module jedi_lfric_io_update_mod

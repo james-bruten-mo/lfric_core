@@ -4,7 +4,7 @@
 ! under which the code may be used.
 !-----------------------------------------------------------------------------
 !
-!> @brief A module providing a field meta-data type.
+!> @brief A module providing a field meta-data type for JEDI.
 !>
 !> @details Defines an object to store the meta-data associated with
 !>          collections of fields used by the JEDI model-interface.

@@ -231,9 +231,9 @@ end function valid_time
 !> @param [in] file_prefix Character array that specifies the file to read from
 subroutine read_file( self, read_time, file_prefix )
 
-  use jedi_lfric_tests_io_update_mod, only : update_io_field_collection
-  use jedi_lfric_fake_nl_driver_mod,  only : mesh, twod_mesh
-  use lfric_xios_read_mod,            only : read_state
+  use jedi_lfric_io_update_mod,      only : update_io_field_collection
+  use jedi_lfric_fake_nl_driver_mod, only : mesh, twod_mesh
+  use lfric_xios_read_mod,           only : read_state
 
   implicit none
 
@@ -313,8 +313,8 @@ end subroutine create_model_data
 !>
 subroutine setup_interface_to_model_data( self )
 
-  use jedi_lfric_tests_utils_mod, only : get_model_field
-  use field_mod,                  only : field_type
+  use jedi_lfric_utils_mod, only : get_model_field
+  use field_mod,            only : field_type
 
   implicit none
 
@@ -386,8 +386,8 @@ end subroutine from_model_data
 !>
 subroutine setup_interface_to_field_collection( self, atlas_lfric_interface_fields, variable_names, field_collection )
 
-  use jedi_lfric_tests_utils_mod, only : get_model_field
-  use field_mod,                  only : field_type
+  use jedi_lfric_utils_mod, only : get_model_field
+  use field_mod,            only : field_type
 
   implicit none
 

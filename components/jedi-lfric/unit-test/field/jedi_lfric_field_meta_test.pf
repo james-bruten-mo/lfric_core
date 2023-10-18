@@ -54,8 +54,6 @@ contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   subroutine tearDown(this)
-!!! why is this here?
-    use configuration_mod,        only: final_configuration
 
     implicit none
 

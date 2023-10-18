@@ -31,14 +31,14 @@ PROJECT_NAME = jedi-lfric
 
 PROFILE ?= fast-debug
 
-export IGNORE_DEPENDENCIES = netcdf MPI yaxt pfunit_mod xios
 export EXTERNAL_DYNAMIC_LIBRARIES = netcdff netcdf yaxt yaxt_c
 
 export PROJECT_DIR := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 export ROOT_DIR    ?= ../..
 
 export INTERNAL_DEPENDENCIES = $(ROOT_DIR)/infrastructure \
-							   $(ROOT_DIR)/gungho
+                               $(ROOT_DIR)/gungho \
+                               $(ROOT_DIR)/components/lfric-xios
 
 export SUITE_GROUP ?= developer
 export SUITE_GROUP_NAME ?= $(notdir $(realpath $(shell pwd)/$(ROOT_DIR)))-$(PROJECT_NAME)-.*
@@ -83,9 +83,11 @@ document-api: api-documentation
 #
 unit-tests/%: export ADDITIONAL_EXTRACTION = $(ROOT_DIR)/infrastructure/source \
                                              $(ROOT_DIR)/components/science/source \
-											                       $(ROOT_DIR)/components/driver/source \
-											                       $(ROOT_DIR)/gungho/unit-test
+                                             $(ROOT_DIR)/components/driver/source \
+                                             $(ROOT_DIR)/components/lfric-xios/source \
+                                             $(ROOT_DIR)/gungho/unit-test
 unit-tests/%: export BIN_DIR ?= $(PROJECT_DIR)/test
+unit-tests/%: export CXX_LINK = YES
 unit-tests/%: export FFLAGS += -D UNIT_TEST
 unit-tests/%: export META_FILE_DIR = rose-meta/jedi-lfric/HEAD
 unit-tests/%: export PROGRAMS = jedi_lfric_unit_tests
@@ -100,9 +102,9 @@ unit-tests: unit-tests/run
 # Integration tests
 #
 integration-tests/%: export ADDITIONAL_EXTRACTION = $(ROOT_DIR)/infrastructure/source \
-                                             $(ROOT_DIR)/components/science/source \
-											                       $(ROOT_DIR)/components/driver/source \
-											                       $(ROOT_DIR)/gungho/unit-test
+                                                    $(ROOT_DIR)/components/science/source \
+                                                    $(ROOT_DIR)/components/driver/source \
+                                                    $(ROOT_DIR)/gungho/unit-test
 
 integration-tests/%: export BIN_DIR      ?= $(PROJECT_DIR)/test
 integration-tests/%: export FFLAGS       += -DINT_TEST
