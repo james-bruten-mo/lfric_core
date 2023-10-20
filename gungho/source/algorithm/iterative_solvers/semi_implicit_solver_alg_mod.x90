@@ -14,7 +14,9 @@ module semi_implicit_solver_alg_mod
   use constants_mod,                      only: i_def, r_def, l_def, r_solver, &
                                                 PRECISION_R_SOLVER
   use log_mod,                            only: log_event,         &
+                                                log_level,         &
                                                 log_scratch_space, &
+                                                LOG_LEVEL_DEBUG,   &
                                                 LOG_LEVEL_INFO,    &
                                                 LOG_LEVEL_ERROR,   &
                                                 LOG_LEVEL_TRACE,   &
@@ -506,25 +508,28 @@ contains
     else
       call invoke( inc_X_times_Y(rhs(igh_t), t_normalisation) )
     end if
+
     ! Write out si residuals
-    call invoke( name = "compute_si_residuals",               &
-                 X_innerproduct_X(si_err(igh_u), rhs(igh_u)), &
-                 X_innerproduct_X(si_err(igh_t), rhs(igh_t)), &
-                 X_innerproduct_X(si_err(igh_d), rhs(igh_d)), &
-                 X_innerproduct_X(si_err(igh_p), rhs(igh_p))  &
-               )
-    write( log_scratch_space, '(A,E16.8)' ) &
-         'Residual in momentum equation:  ',sqrt(si_err(igh_u))
-    call log_event( log_scratch_space, LOG_LEVEL_INFO )
-    write( log_scratch_space, '(A,E16.8)' ) &
-         'Residual in energy equation:    ',sqrt(si_err(igh_t))
-    call log_event( log_scratch_space, LOG_LEVEL_INFO )
-    write( log_scratch_space, '(A,E16.8)' ) &
-         'Residual in continuity equation:',sqrt(si_err(igh_d))
-    call log_event( log_scratch_space, LOG_LEVEL_INFO )
-    write( log_scratch_space, '(A,E16.8)' ) &
-         'Residual in equation of state:  ',sqrt(si_err(igh_p))
-    call log_event( log_scratch_space, LOG_LEVEL_INFO )
+    if (log_level() == LOG_LEVEL_DEBUG) then
+      call invoke( name = "compute_si_residuals",               &
+                  X_innerproduct_X(si_err(igh_u), rhs(igh_u)), &
+                  X_innerproduct_X(si_err(igh_t), rhs(igh_t)), &
+                  X_innerproduct_X(si_err(igh_d), rhs(igh_d)), &
+                  X_innerproduct_X(si_err(igh_p), rhs(igh_p))  &
+                )
+      write( log_scratch_space, '(A,E16.8)' ) &
+          'Residual in momentum equation:  ',sqrt(si_err(igh_u))
+      call log_event( log_scratch_space, LOG_LEVEL_DEBUG )
+      write( log_scratch_space, '(A,E16.8)' ) &
+          'Residual in energy equation:    ',sqrt(si_err(igh_t))
+      call log_event( log_scratch_space, LOG_LEVEL_DEBUG )
+      write( log_scratch_space, '(A,E16.8)' ) &
+          'Residual in continuity equation:',sqrt(si_err(igh_d))
+      call log_event( log_scratch_space, LOG_LEVEL_DEBUG )
+      write( log_scratch_space, '(A,E16.8)' ) &
+          'Residual in equation of state:  ',sqrt(si_err(igh_p))
+      call log_event( log_scratch_space, LOG_LEVEL_DEBUG )
+    end if
 
     ! Now we copy data to r_solver fields and proceed with everything
     ! of kind r_solver
