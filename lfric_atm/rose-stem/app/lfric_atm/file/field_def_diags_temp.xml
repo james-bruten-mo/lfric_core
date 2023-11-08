@@ -137,12 +137,10 @@
   <field id="aerosol__easy_lw_sca" name="easy_lw_sca" long_name="scattering coefficient of EasyAerosol" unit="m-1" grid_ref="full_level_face_grid_lw_bands" />
   <field id="aerosol__easy_lw_ext" name="easy_lw_ext" long_name="extinction coefficient of EasyAerosol" unit="m-1" grid_ref="full_level_face_grid_lw_bands" />
   <field id="aerosol__easy_lw_asy" name="easy_lw_asy"  long_name="asymmetry parameter of EasyAerosol" unit="1"      grid_ref="full_level_face_grid_lw_bands" />
-  <field id="radiation__aer_sw_abs" name="aer_sw_abs" long_name="aer_sw_absorption" unit="m-1" grid_ref="full_level_face_grid_sw_bands_aero_modes" /> 
-  <field id="radiation__aer_sw_sca" name="aer_sw_sca" long_name="aer_sw_scattering" unit="m-1" grid_ref="full_level_face_grid_sw_bands_aero_modes" /> 
-  <field id="radiation__aer_sw_asy"  name="aer_sw_asy"  long_name="aer_sw_asymmetry" unit="1" grid_ref="full_level_face_grid_sw_bands_aero_modes" /> 
-  <field id="radiation__aer_lw_abs" name="aer_lw_abs" long_name="aer_lw_absorption" unit="m-1" grid_ref="full_level_face_grid_lw_bands_aero_modes" /> 
-  <field id="radiation__aer_lw_sca" name="aer_lw_sca" long_name="aer_lw_scattering" unit="m-1" grid_ref="full_level_face_grid_lw_bands_aero_modes" /> 
-  <field id="radiation__aer_lw_asy"  name="aer_lw_asy"  long_name="aer_lw_asymmetry" unit="1" grid_ref="full_level_face_grid_lw_bands_aero_modes" /> 
+  <field id="aerosol__aer_sw_abs_per_m" name="aer_sw_abs_per_m" long_name="aer_sw_absorption_per_metre" unit="m-1" grid_ref="full_level_face_grid_sw_bands_aero_modes" /> 
+  <field id="aerosol__aer_sw_sca_per_m" name="aer_sw_sca_per_m" long_name="aer_sw_scattering_per_metre" unit="m-1" grid_ref="full_level_face_grid_sw_bands_aero_modes" /> 
+  <field id="aerosol__aer_lw_abs_per_m" name="aer_lw_abs_per_m" long_name="aer_lw_absorption_per_metre" unit="m-1" grid_ref="full_level_face_grid_lw_bands_aero_modes" /> 
+  <field id="aerosol__aer_lw_sca_per_m" name="aer_lw_sca_per_m" long_name="aer_lw_scattering_per_metre" unit="m-1" grid_ref="full_level_face_grid_lw_bands_aero_modes" /> 
   <!-- cloud diagnostics -->
   <field id="cloud__area_fraction" name="area_fraction" long_name="area_cloud_fraction" unit="1" grid_ref="full_level_face_grid" />
   <field id="cloud__bulk_fraction" name="bulk_fraction" long_name="bulk_cloud_fraction" unit="1" grid_ref="full_level_face_grid" />
@@ -581,6 +579,13 @@
   <field id="radiation__cloud_weight_extinction_rts" name="cloud_weight_extinction_rts" long_name="weight_for_cloud_extinction_radiative_timestep" unit="1" grid_ref="full_level_face_grid" />
   <field id="radiation__sw_aer_optical_depth_rts" name="sw_aer_optical_depth_rts" long_name="aerosol_optical_depth_in_visible_radiative_timestep" unit="1" grid_ref="full_level_face_grid" />
   <field id="radiation__lw_aer_optical_depth_rts" name="lw_aer_optical_depth_rts" long_name="aerosol_optical_depth_in_infra-red_radiative_timestep" unit="1" grid_ref="full_level_face_grid" />
+  <field id="radiation__aer_mix_ratio" name="aer_mix_ratio" long_name="aerosol_mixing_ratio" unit="kg kg-1" grid_ref="aero_mode_grid" />
+  <field id="radiation__aer_sw_abs" name="aer_sw_abs" long_name="aer_sw_absorption" unit="m2/kg" grid_ref="full_level_face_grid_sw_bands_aero_modes" /> 
+  <field id="radiation__aer_sw_sca" name="aer_sw_sca" long_name="aer_sw_scattering" unit="m2/kg" grid_ref="full_level_face_grid_sw_bands_aero_modes" /> 
+  <field id="radiation__aer_sw_asy"  name="aer_sw_asy"  long_name="aer_sw_asymmetry" unit="1" grid_ref="full_level_face_grid_sw_bands_aero_modes" /> 
+  <field id="radiation__aer_lw_abs" name="aer_lw_abs" long_name="aer_lw_absorption" unit="m2/kg" grid_ref="full_level_face_grid_lw_bands_aero_modes" /> 
+  <field id="radiation__aer_lw_sca" name="aer_lw_sca" long_name="aer_lw_scattering" unit="m2/kg" grid_ref="full_level_face_grid_lw_bands_aero_modes" /> 
+  <field id="radiation__aer_lw_asy"  name="aer_lw_asy"  long_name="aer_lw_asymmetry" unit="1" grid_ref="full_level_face_grid_lw_bands_aero_modes" /> 
   <!-- COSP diagnostics -->
   <field id="cosp__sunlit_mask" name="sunlit_mask" long_name="sunlit_mask" unit="1" domain_ref="face" />
   <field id="cosp__calipso_low_cloud" name="calipso_low_cloud" long_name="calipso_low_cloud" unit="1" domain_ref="face" />

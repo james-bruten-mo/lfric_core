@@ -520,7 +520,7 @@ contains
       !--------------------------------------------------------------------
       if (easyaerosol_sw .or. easyaerosol_lw) then
         call easyaerosol_alg(radiation_fields, aerosol_fields, &
-                                 derived_fields )
+                             derived_fields, clock%get_step() )
       end if
 
       !--------------------------------------------------------------------

@@ -12,7 +12,8 @@ module radiation_diags_mod
   use io_config_mod,            only: subroutine_timers
   use timer_mod,                only: timer
   use timestepping_config_mod,  only: dt
-  use initialise_diagnostics_mod, only: init_diag => init_diagnostic_field
+  use initialise_diagnostics_mod, only: init_diag => init_diagnostic_field, &
+                                        diagnostic_to_be_sampled
 
   implicit none
 
@@ -251,7 +252,9 @@ subroutine output_diags_for_radiation( dtheta_rad, &
   cos_zenith_angle, lit_fraction, skyview, &
   cos_zenith_angle_rts, lit_fraction_rts, &
   stellar_irradiance_rts, orographic_correction_rts, &
-  sw_up_tile, &
+  sw_up_tile, aer_mix_ratio, &
+  aer_sw_absorption, aer_sw_scattering, aer_sw_asymmetry, &
+  aer_lw_absorption, aer_lw_scattering, aer_lw_asymmetry, &
   lw_up_surf, sw_up_surf, lw_up_toa, sw_up_toa, sw_direct_toa, &
   sw_direct_rts, sw_down_rts, sw_up_rts, lw_down_rts, lw_up_rts, &
   cloud_cover_rts, cloud_fraction_rts, cloud_droplet_re_rts, &
@@ -285,7 +288,10 @@ subroutine output_diags_for_radiation( dtheta_rad, &
     cos_zenith_angle, lit_fraction, skyview, &
     cos_zenith_angle_rts, lit_fraction_rts, &
     stellar_irradiance_rts, orographic_correction_rts, &
-    sw_up_tile
+    sw_up_tile, aer_mix_ratio, &
+    aer_sw_absorption, aer_sw_scattering, aer_sw_asymmetry, &
+    aer_lw_absorption, aer_lw_scattering, aer_lw_asymmetry
+
 
   ! Diagnostic fields that are always required by the kernels
   type( field_type ), intent(in) :: &
@@ -360,6 +366,20 @@ subroutine output_diags_for_radiation( dtheta_rad, &
 
   call sw_up_tile%write_field('radiation__sw_up_tile')
 
+  if (diagnostic_to_be_sampled('radiation__aer_mix_ratio')) &
+       call aer_sw_absorption%write_field('radiation__aer_mix_ratio')
+  if (diagnostic_to_be_sampled('radiation__aer_sw_abs')) &
+       call aer_sw_absorption%write_field('radiation__aer_sw_abs')
+  if (diagnostic_to_be_sampled('radiation__aer_sw_sca')) &
+       call aer_sw_scattering%write_field('radiation__aer_sw_sca')
+  if (diagnostic_to_be_sampled('radiation__aer_sw_asy')) &
+       call aer_sw_asymmetry%write_field('radiation__aer_sw_asy')
+  if (diagnostic_to_be_sampled('radiation__aer_lw_abs')) &
+       call aer_lw_absorption%write_field('radiation__aer_lw_abs')
+  if (diagnostic_to_be_sampled('radiation__aer_lw_sca')) &
+       call aer_lw_scattering%write_field('radiation__aer_lw_sca')
+  if (diagnostic_to_be_sampled('radiation__aer_lw_asy')) &
+       call aer_lw_asymmetry%write_field('radiation__aer_lw_asy')
 
   ! Diagnostic fields that are always required by the kernels
   call lw_up_surf%write_field()

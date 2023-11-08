@@ -570,7 +570,9 @@ subroutine radiation_alg(dtheta_rad, theta, exner, mr,                        &
       cos_zenith_angle, lit_fraction, skyview, &
       cos_zenith_angle_rts, lit_fraction_rts, &
       stellar_irradiance_rts, orographic_correction_rts, &
-      sw_up_tile, &
+      sw_up_tile, aer_mix_ratio, &
+      aer_sw_absorption, aer_sw_scattering, aer_sw_asymmetry, &
+      aer_lw_absorption, aer_lw_scattering, aer_lw_asymmetry, &
       lw_up_surf, sw_up_surf, lw_up_toa, sw_up_toa, sw_direct_toa, &
       sw_direct_rts, sw_down_rts, sw_up_rts, lw_down_rts, lw_up_rts, &
       cloud_cover_rts, cloud_fraction_rts, cloud_droplet_re_rts, &
