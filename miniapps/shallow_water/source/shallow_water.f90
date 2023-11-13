@@ -20,6 +20,7 @@ program shallow_water
   use driver_config_mod,         only: init_config, final_config
   use driver_counter_mod,        only: init_counters, final_counters
   use driver_log_mod,            only: init_logger, final_logger
+  use driver_modeldb_mod,        only: modeldb_type
   use driver_time_mod,           only: init_time, get_calendar
   use driver_timer_mod,          only: init_timers, final_timers
   use log_mod,                   only: log_event,       &
@@ -27,7 +28,6 @@ program shallow_water
                                        log_scratch_space
   use mpi_mod,                   only: global_mpi
   use shallow_water_mod,         only: shallow_water_required_namelists
-  use shallow_water_modeldb_mod, only: modeldb_type
   use shallow_water_driver_mod,  only: initialise, &
                                        step,       &
                                        finalise
@@ -45,8 +45,10 @@ program shallow_water
   call modeldb%configuration%initialise( program_name, table_len=10 )
 
   ! Create the depository and prognostics field collections
-  call modeldb%model_data%depository%initialise(name='depository', table_len=100)
-  call modeldb%model_data%prognostic_fields%initialise(name="prognostics", table_len=100)
+  call modeldb%fields%add_empty_field_collection("depository", &
+                                                 table_len = 100)
+  call modeldb%fields%add_empty_field_collection("prognostics", &
+                                                 table_len = 100)
 
   call init_comm( program_name, global_mpi )
   call get_initial_filename( filename )

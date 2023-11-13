@@ -52,23 +52,21 @@ module create_shallow_water_prognostics_mod
   !> @param [in]     mesh        Mesh to initialise variables on
   !> @param [in,out] depository  A collection of all fields used in the miniapp
   !> @param [in,out] prognostics A collection of all the prognostic fields.
-  !> @param [in,out] s_geopot    Surface geopotential.
   subroutine create_shallow_water_prognostics( mesh,        &
                                                depository,  &
-                                               prognostics, &
-                                               s_geopot)
+                                               prognostics )
 
     implicit none
 
     type(mesh_type), pointer,    intent(in)    :: mesh
     type(field_collection_type), intent(inout) :: depository
     type(field_collection_type), intent(inout) :: prognostics
-    type(field_type),            intent(inout) :: s_geopot
 
     type(field_type) :: wind
     type(field_type) :: buoyancy
     type(field_type) :: geopot
     type(field_type) :: q
+    type(field_type) :: s_geopot
 
     type(field_type), pointer                 :: tmp_field_ptr => null()
     class(pure_abstract_field_type), pointer  :: tmp_ptr => null()

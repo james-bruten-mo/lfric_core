@@ -20,6 +20,7 @@ module shallow_water_model_mod
   use driver_fem_mod,                 only: init_fem, final_fem
   use driver_io_mod,                  only: init_io, final_io, &
                                             filelist_populator
+  use driver_modeldb_mod,             only: modeldb_type
   use driver_mesh_mod,                only: init_mesh
   use field_mod,                      only: field_type
   use field_parent_mod,               only: write_interface
@@ -45,7 +46,6 @@ module shallow_water_model_mod
   use model_clock_mod,                only: model_clock_type
   use mpi_mod,                        only: mpi_type
   use runtime_constants_mod,          only: create_runtime_constants
-  use shallow_water_model_data_mod,   only: model_data_type
   use shallow_water_setup_io_mod,     only: init_shallow_water_files
   use timestepping_config_mod,        only: dt, &
                                             spinup_period
@@ -154,19 +154,18 @@ module shallow_water_model_mod
   !=============================================================================
   !> @brief Initialises the shallow_water application.
   !> @param[in]     mesh       The primary mesh
-  !> @param[in,out] model_data The working data set for the model run
+  !> @param[in,out] modeldb The working data set for the model run
   subroutine initialise_model( mesh,    &
-                               model_data )
+                               modeldb )
 
     use swe_timestep_alg_mod, only: swe_timestep_alg_init
 
     implicit none
 
-    type(mesh_type),       pointer, intent(in)    :: mesh
-    type(model_data_type), target,  intent(inout) :: model_data
+    type(mesh_type),    pointer, intent(in)    :: mesh
+    type(modeldb_type),          intent(inout) :: modeldb
 
     type(field_collection_type), pointer :: prognostic_fields => null()
-    type(field_collection_type), pointer :: diagnostic_fields => null()
 
     ! Prognostic fields
     type(field_type), pointer :: wind => null()
@@ -176,8 +175,7 @@ module shallow_water_model_mod
 
     call log_event( 'shallow_water: Initialising miniapp ...', LOG_LEVEL_INFO )
 
-    prognostic_fields => model_data%prognostic_fields
-    diagnostic_fields => model_data%diagnostic_fields
+    prognostic_fields => modeldb%fields%get_field_collection("prognostics")
 
     call prognostic_fields%get_field("wind", wind)
     call prognostic_fields%get_field("buoyancy", buoyancy)
@@ -207,17 +205,17 @@ module shallow_water_model_mod
 
   !=============================================================================
   !> @brief Finalise the shallow_water application.
-  !> @param[in,out] model_data   The working data set for the model run
+  !> @param[in,out] modeldb   The working data set for the model run
   !> @param[in]     program_name An identifier given to the model begin run
-  subroutine finalise_model( model_data, &
+  subroutine finalise_model( modeldb, &
                              program_name )
 
     use swe_timestep_alg_mod, only: swe_timestep_alg_final
 
     implicit none
 
-    type(model_data_type), target, intent(inout) :: model_data
-    character(*),                  intent(in)    :: program_name
+    type(modeldb_type), intent(inout) :: modeldb
+    character(*),       intent(in)    :: program_name
 
     type( field_collection_type ), pointer :: prognostic_fields => null()
 
@@ -228,7 +226,7 @@ module shallow_water_model_mod
     ! Pointer for setting I/O handlers on fields
     procedure(write_interface), pointer :: tmp_write_ptr => null()
 
-    prognostic_fields => model_data%prognostic_fields
+    prognostic_fields => modeldb%fields%get_field_collection("prognostics")
 
     call prognostic_fields%get_field('wind', wind)
     call prognostic_fields%get_field('geopot', geopot)

@@ -11,6 +11,7 @@ module shallow_water_driver_mod
   use base_mesh_config_mod,          only: prime_mesh_name
   use calendar_mod,                  only: calendar_type
   use constants_mod,                 only: i_def, imdi, r_def
+  use driver_modeldb_mod,            only: modeldb_type
   use field_mod,                     only: field_type
   use field_collection_mod,          only: field_collection_type
   use io_config_mod,                 only: write_diag,           &
@@ -29,8 +30,7 @@ module shallow_water_driver_mod
                                            initialise_model,          &
                                            finalise_infrastructure,   &
                                            finalise_model
-  use shallow_water_modeldb_mod,     only: modeldb_type
-  use shallow_water_model_data_mod,  only: create_model_data,     &
+  use shallow_water_init_fields_mod, only: create_model_data,     &
                                            initialise_model_data, &
                                            output_model_data,     &
                                            finalise_model_data
@@ -76,25 +76,24 @@ contains
     call log_event( 'Creating model data ...', LOG_LEVEL_INFO )
     ! Instantiate the fields stored in model_data
     mesh => mesh_collection%get_mesh(prime_mesh_name)
-    call create_model_data( modeldb%model_data, mesh )
+    call create_model_data( modeldb, mesh )
 
     call log_event( 'Initialising model data ...', LOG_LEVEL_INFO )
     ! Initialise the fields stored in the model_data
-    call initialise_model_data( modeldb%model_data, mesh, modeldb%clock )
+    call initialise_model_data( modeldb, mesh )
 
     ! Initial output: we only want these once at the beginning of a run
     if (modeldb%clock%is_initialisation() .and. write_diag) then
       call log_event( 'Output of initial diagnostics ...', LOG_LEVEL_INFO )
       ! Calculation and output of diagnostics
       call shallow_water_diagnostics( mesh,               &
-                                      modeldb%model_data, &
-                                      modeldb%clock,      &
+                                      modeldb,            &
                                       nodal_output_on_w3, &
                                       1_i_def )
     end if
 
     ! Model configuration initialisation
-    call initialise_model( mesh, modeldb%model_data )
+    call initialise_model( mesh, modeldb )
 
   end subroutine initialise
 
@@ -117,8 +116,7 @@ contains
          .and. ( write_diag ) ) then
 
       call shallow_water_diagnostics(mesh,               &
-                                     modeldb%model_data, &
-                                     modeldb%clock,      &
+                                     modeldb,            &
                                      nodal_output_on_w3, &
                                      0_i_def)
 
@@ -138,14 +136,14 @@ contains
     character(*), intent(in) :: program_name
 
     ! Output the fields stored in the model_data (checkpoint and dump)
-    call output_model_data( modeldb%model_data, modeldb%clock )
+    call output_model_data( modeldb )
 
     ! Model configuration finalisation
-    call finalise_model( modeldb%model_data, &
+    call finalise_model( modeldb, &
                          program_name )
 
     ! Destroy the fields stored in model_data
-    call finalise_model_data( modeldb%model_data )
+    call finalise_model_data( modeldb )
 
     !-------------------------------------------------------------------------
     ! Finalise constants

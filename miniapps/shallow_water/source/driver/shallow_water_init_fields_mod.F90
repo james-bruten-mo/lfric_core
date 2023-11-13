@@ -1,5 +1,5 @@
 !-----------------------------------------------------------------------------
-! (C) Crown copyright 2022 Met Office. All rights reserved.
+! (C) Crown copyright 2023 Met Office. All rights reserved.
 ! The file LICENCE, distributed with this code, contains details of the terms
 ! under which the code may be used.
 !-----------------------------------------------------------------------------
@@ -10,9 +10,9 @@
 !!          to initialise (create and read), copy and finalise (write and
 !!          destroy) the data contained within the type.
 !!
-module shallow_water_model_data_mod
+module shallow_water_init_fields_mod
 
-  use clock_mod,                            only: clock_type
+  use driver_modeldb_mod,                   only: modeldb_type
   use field_mod,                            only: field_type
   use field_collection_mod,                 only: field_collection_type
   use files_config_mod,                     only: checkpoint_stem_name
@@ -33,26 +33,7 @@ module shallow_water_model_data_mod
 
   private
 
-  !> Holds the working data set for a model run and other working state.
-  !>
-  type :: model_data_type
-
-    private
-
-    !> Stores all the fields used by the model - the remaining collections store
-    !> pointers to the data in the depository.
-    type(field_collection_type), public :: depository
-    !> All the prognostic fields
-    type(field_collection_type), public :: prognostic_fields
-    !> All the diagnostic fields
-    type(field_collection_type), public :: diagnostic_fields
-    !> Surface geopotential field
-    type(field_type), public  :: s_geopot
-
-  end type model_data_type
-
-  public :: model_data_type,       &
-            create_model_data,     &
+  public :: create_model_data,     &
             finalise_model_data,   &
             initialise_model_data, &
             output_model_data
@@ -61,55 +42,65 @@ contains
 
   !=============================================================================
   !> @brief Create the fields contained in model_data.
-  !> @param[in,out] model_data The working data set for a model run
+  !> @param[in,out] modeldb    The working data set for a model run
   !> @param[in]     mesh       Mesh to initialise variables on
-  subroutine create_model_data( model_data, &
+  subroutine create_model_data( modeldb, &
                                 mesh )
 
     implicit none
 
-    type(model_data_type), intent(inout) :: model_data
+    type(modeldb_type),    intent(inout) :: modeldb
     type(mesh_type), pointer, intent(in) :: mesh
+
+    type( field_collection_type ), pointer :: depository => null()
+    type( field_collection_type ), pointer :: prognostic_fields => null()
 
     !-------------------------------------------------------------------------
     ! Instantiate the fields
     !-------------------------------------------------------------------------
 
-    ! Create prognostics
+    depository => modeldb%fields%get_field_collection("depository")
+    prognostic_fields => modeldb%fields%get_field_collection("prognostics")
 
+    ! Create prognostics
     call create_shallow_water_prognostics( mesh,                         &
-                                           model_data%depository,        &
-                                           model_data%prognostic_fields, &
-                                           model_data%s_geopot )
+                                           depository,                   &
+                                           prognostic_fields )
 
   end subroutine create_model_data
 
   !=======================================================================
   !> @brief Initialises the working data set depending on namelist config.
-  !> @param[in,out] model_data The working data set for a model run
+  !> @param[in,out] modeldb    The working data set for a model run
   !> @param[in]     mesh       Mesh to initialise variables on
-  !> @param[in]     clock      Model time
-  subroutine initialise_model_data( model_data, &
-                                    mesh,       &
-                                    clock )
+  subroutine initialise_model_data( modeldb, &
+                                    mesh )
 
     implicit none
 
-    type(model_data_type), intent(inout) :: model_data
+    type(modeldb_type),    intent(inout) :: modeldb
     type(mesh_type), pointer, intent(in) :: mesh
-    class(clock_type),        intent(in) :: clock
 
+    type( field_collection_type ), pointer :: depository => null()
+    type( field_collection_type ), pointer :: prognostic_fields => null()
+
+    type(field_type), pointer :: s_geopot
+
+    depository => modeldb%fields%get_field_collection("depository")
+    prognostic_fields => modeldb%fields%get_field_collection("prognostics")
+
+    call prognostic_fields%get_field('s_geopot', s_geopot)
     ! Initialise the surface geopotential
-    call swe_init_surface_alg(model_data%s_geopot)
+    call swe_init_surface_alg(s_geopot)
 
     ! Initialise prognostic fields
     if (checkpoint_read) then               ! Recorded check point to start from
-      call read_checkpoint(model_data%depository, &
-                           clock%get_first_step() - 1, checkpoint_stem_name)
+      call read_checkpoint(depository, &
+                       modeldb%clock%get_first_step() - 1, checkpoint_stem_name)
     else                                      ! No check point to start from
       call swe_init_fields_alg(mesh,                &
-                               model_data%s_geopot, &
-                               model_data%prognostic_fields)
+                               s_geopot,            &
+                               prognostic_fields)
     end if
 
   end subroutine initialise_model_data
@@ -117,45 +108,47 @@ contains
   !=============================================================================
   !> @brief Writes out a checkpoint and dump file dependent on namelist
   !!        options.
-  !> @param[in,out] model_data The working data set for the model run
-  !> @param[in]     clock      Model time.
-  subroutine output_model_data( model_data, &
-                                clock )
+  !> @param[in,out] modeldb The working data set for the model run
+  subroutine output_model_data( modeldb )
 
     implicit none
 
-    type(model_data_type), intent(inout), target :: model_data
-    class(clock_type),     intent(in)            :: clock
+    type(modeldb_type),    intent(inout) :: modeldb
 
-    type(field_collection_type), pointer :: prognostic_fields => null()
+    type( field_collection_type ), pointer :: prognostic_fields => null()
 
     ! Get pointers to field collections for use downstream
-    prognostic_fields => model_data%prognostic_fields
+    prognostic_fields => modeldb%fields%get_field_collection("prognostics")
 
     !=================== Write fields to checkpoint files ====================!
     if ( checkpoint_write ) then
-      call write_checkpoint( prognostic_fields, clock, checkpoint_stem_name )
+      call write_checkpoint( prognostic_fields, modeldb%clock, checkpoint_stem_name )
     end if
 
   end subroutine output_model_data
 
   !=============================================================================
   !> @brief Routine to destroy all the field collections in the working data set
-  !> @param[in,out] model_data The working data set for a model run
-  subroutine finalise_model_data( model_data )
+  !> @param[in,out] modeldb The working data set for a model run
+  subroutine finalise_model_data( modeldb )
 
     implicit none
 
-    type(model_data_type), intent(inout) :: model_data
+    type(modeldb_type),    intent(inout) :: modeldb
+
+    type( field_collection_type ), pointer :: depository => null()
+    type( field_collection_type ), pointer :: prognostic_fields => null()
+
+    depository => modeldb%fields%get_field_collection("depository")
+    prognostic_fields => modeldb%fields%get_field_collection("prognostics")
 
     ! Clear all the fields in each field collection
-    call model_data%depository%clear()
-    call model_data%prognostic_fields%clear()
-    call model_data%diagnostic_fields%clear()
+    call depository%clear()
+    call prognostic_fields%clear()
 
     call log_event( 'finalise_model_data: all fields have been cleared', &
                      LOG_LEVEL_INFO )
 
   end subroutine finalise_model_data
 
-end module shallow_water_model_data_mod
+end module shallow_water_init_fields_mod

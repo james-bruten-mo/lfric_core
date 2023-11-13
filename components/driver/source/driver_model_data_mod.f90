@@ -14,7 +14,7 @@ module driver_model_data_mod
 
   use field_mod,            only : field_type
   use field_collection_mod, only : field_collection_type
-  use constants_mod,        only : l_def, str_def
+  use constants_mod,        only : i_def, l_def, str_def
   use log_mod,              only : log_event,       &
                                    LOG_LEVEL_ERROR, &
                                    log_scratch_space
@@ -132,15 +132,29 @@ contains
   !> @brief Generates a field_collection and adds it to the model data.
   !> @param [in] field_collection_name The name of the field collection that is
   !!                                   to be generated and added to model data
-  subroutine add_empty_field_collection(self, field_collection_name)
+  !> @param [in] optional table_len    Optionally specify the size of the hash
+  !>                                   table used for the field collection
+  subroutine add_empty_field_collection(self, &
+                                        field_collection_name, &
+                                        table_len)
 
     implicit none
 
     class(model_data_type), intent(inout) :: self
     character(len=*),       intent(in)    :: field_collection_name
     type(field_collection_type)           :: field_collection
+    integer(i_def), optional, intent(in)  :: table_len
 
-    call field_collection%initialise(name = field_collection_name, table_len=100)
+    integer(i_def)  :: tab_len
+
+    ! If no table length is supplied default to 100
+    tab_len=100
+    if (present(table_len)) then
+      tab_len = table_len
+    end if
+
+    call field_collection%initialise(name = field_collection_name, &
+                                     table_len = tab_len)
 
     ! Make sure field collection is empty
     if ( field_collection%get_length() == 0 ) then

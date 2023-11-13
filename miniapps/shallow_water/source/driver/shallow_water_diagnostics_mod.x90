@@ -12,6 +12,7 @@
 module shallow_water_diagnostics_mod
 
   use constants_mod,                     only: i_def
+  use driver_modeldb_mod,                only: modeldb_type
   use field_mod,                         only: field_type
   use field_collection_mod,              only: field_collection_type
   use log_mod,                           only: log_event, LOG_LEVEL_INFO
@@ -20,7 +21,6 @@ module shallow_water_diagnostics_mod
   use diagnostics_io_mod,                only: write_scalar_diagnostic, &
                                                write_vector_diagnostic
   use shallow_water_settings_config_mod, only: thermal_swe
-  use shallow_water_model_data_mod,      only: model_data_type
   use swe_init_fields_alg_mod,           only: swe_init_vorticity_alg
 
   implicit none
@@ -36,24 +36,22 @@ contains
   !!          and the optional buoyancy. The surface geopotential is output
   !!          if the initial_flag equals 1.
   !> @param [in]     mesh               The primary mesh
-  !> @param [in,out] model_data         A collection containing the fields that will
-  !!                                    be written to diagnostic output
-  !> @param [in]     model_clock        Time in the model.
+  !> @param [in,out] modeldb            Model database that contains a list of
+  !>                                    fields that will be written to
+  !>                                    diagnostic output
   !> @param [in]     nodal_output_on_w3 Flag that determines if vector fields
   !!                                    should be projected to W3
   !> @param [in]     initial_flag       Output surface geopot if flag = 1
   !>
   subroutine shallow_water_diagnostics( mesh,               &
-                                        model_data,         &
-                                        model_clock,        &
+                                        modeldb,            &
                                         nodal_output_on_w3, &
                                         initial_flag        )
 
     implicit none
 
     type(mesh_type),         intent(in), pointer :: mesh
-    type(model_data_type),   intent(in), target  :: model_data
-    class(model_clock_type), intent(in)          :: model_clock
+    type(modeldb_type),      intent(in), target  :: modeldb
     logical,                 intent(in)          :: nodal_output_on_w3
     integer(i_def),          intent(in)          :: initial_flag
 
@@ -63,12 +61,12 @@ contains
     type(field_type), pointer :: buoyancy => null()
     type(field_type), pointer :: geopot => null()
     type(field_type), pointer :: q => null()
+    type(field_type), pointer :: s_geopot
     type(field_type)          :: total_geopot
     type(field_type)          :: surface_geopot
-    type(field_type)          :: s_geopot
 
     ! Get pointers to field collections for use downstream
-    prognostic_fields => model_data%prognostic_fields
+    prognostic_fields => modeldb%fields%get_field_collection("prognostics")
 
     ! Can't just iterate through the collection as some fields are scalars
     ! and some fields are vectors, so explicitly extract all fields from
@@ -77,12 +75,11 @@ contains
     call prognostic_fields%get_field('buoyancy', buoyancy)
     call prognostic_fields%get_field('geopot', geopot)
     call prognostic_fields%get_field('q', q)
+    call prognostic_fields%get_field('s_geopot', s_geopot)
 
     ! Calculation and output of diagnostics
     call total_geopot%initialise( vector_space=geopot%get_function_space() )
-    call model_data%s_geopot%copy_field_properties(s_geopot)
-    call invoke( setval_X(s_geopot,model_data%s_geopot), &
-                 X_plus_Y(total_geopot, geopot, s_geopot) )
+    call invoke( X_plus_Y(total_geopot, geopot, s_geopot) )
 
     if (initial_flag == 1) then
 
@@ -90,20 +87,20 @@ contains
       call surface_geopot%initialise( vector_space=geopot%get_function_space() )
       call invoke( X_minus_Y(surface_geopot, total_geopot, geopot) )
       call write_scalar_diagnostic('s_geopot', surface_geopot, &
-                                   model_clock, mesh, nodal_output_on_w3)
+                                  modeldb%clock, mesh, nodal_output_on_w3)
 
     end if
 
     call write_vector_diagnostic('wind', wind, &
-                                 model_clock, mesh, nodal_output_on_w3)
+                                 modeldb%clock, mesh, nodal_output_on_w3)
     call write_scalar_diagnostic('geopot', total_geopot, &
-                                 model_clock, mesh, nodal_output_on_w3)
+                                 modeldb%clock, mesh, nodal_output_on_w3)
     if ( thermal_swe ) then
       call write_scalar_diagnostic('buoyancy', buoyancy, &
-                                   model_clock, mesh, nodal_output_on_w3)
+                                  modeldb%clock, mesh, nodal_output_on_w3)
     end if
     call write_scalar_diagnostic('q', q, &
-                                 model_clock, mesh, nodal_output_on_w3)
+                                 modeldb%clock, mesh, nodal_output_on_w3)
 
   end subroutine shallow_water_diagnostics
 
