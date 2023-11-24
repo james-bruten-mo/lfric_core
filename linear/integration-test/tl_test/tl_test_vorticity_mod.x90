@@ -22,7 +22,7 @@ module tl_test_vorticity_mod
   use fs_continuity_mod,              only: W1, W2
   use geometric_constants_mod,        only: get_coordinates, &
                                             get_panel_id
-  use gungho_model_data_mod,          only: model_data_type
+  use gungho_modeldb_mod,             only: modeldb_type
   use quadrature_xyoz_mod,            only: quadrature_xyoz_type
   use log_mod,                        only: log_event,         &
                                             log_scratch_space, &
@@ -46,20 +46,20 @@ module tl_test_vorticity_mod
   contains
 
   !> @brief Test the tangent linear vorticity advection kernel.
-  !> @param[in] model_data    The working data set for a model run
-  !> @param[in] mesh          The current 3d mesh
-  !> @param[in] twod_mesh     The current 2d mesh
-  subroutine test_vorticity_advection( model_data, &
-                                       mesh,       &
+  !> @param[in] modeldb    The working data set for a model run
+  !> @param[in] mesh       The current 3d mesh
+  !> @param[in] twod_mesh  The current 2d mesh
+  subroutine test_vorticity_advection( modeldb, &
+                                       mesh,    &
                                        twod_mesh )
     implicit none
 
     type(mesh_type), pointer, intent(in) :: mesh
     type(mesh_type), pointer, intent(in) :: twod_mesh
 
-    type(model_data_type), target, intent(in) :: model_data
+    type(modeldb_type), target, intent(in) :: modeldb
 
-   character(str_def) :: label = "vorticity_advection"
+    character(str_def) :: label = "vorticity_advection"
 
     type(field_collection_type ), pointer :: prognostic_fields => null()
     type(field_collection_type ), pointer :: ls_fields => null()
@@ -100,8 +100,8 @@ module tl_test_vorticity_mod
     panel_id => get_panel_id(mesh%get_id())
     qr => get_qr()
 
-    prognostic_fields => model_data%prognostic_fields
-    ls_fields         => model_data%ls_fields
+    prognostic_fields => modeldb%model_data%prognostic_fields
+    ls_fields         => modeldb%model_data%ls_fields
 
     ! Input
     call prognostic_fields%get_field('u', n_u)

@@ -14,6 +14,7 @@
 module field_collection_mod
 
   use constants_mod,           only: i_def, l_def, str_def
+  use field_array_mod,         only: field_array_type
   use field_mod,               only: field_type, &
                                      field_pointer_type
   use field_parent_mod,        only: field_parent_type
@@ -60,9 +61,11 @@ module field_collection_mod
     procedure, public :: get_r32_field
     procedure, public :: get_r64_field
     procedure, public :: get_integer_field
-    generic           :: get_field => get_r32_field, &
-                                      get_r64_field, &
-                                      get_integer_field
+    procedure, public :: get_field_array
+    generic           :: get_field => get_r32_field,     &
+                                      get_r64_field,     &
+                                      get_integer_field, &
+                                      get_field_array
     procedure, public :: get_length
     procedure, public :: get_name
     procedure, public :: get_table_len
@@ -222,6 +225,10 @@ subroutine add_reference_to_field(self, field_ptr)
       int_fld_ptr => field_ptr
       call integer_field_pointer%initialise(int_fld_ptr)
       call self%add_field( integer_field_pointer )
+    class default
+      call log_event( &
+        'Failed to add an object of unsupported type to a field collection.', &
+        LOG_LEVEL_ERROR)
   end select
 
 end subroutine add_reference_to_field
@@ -479,6 +486,55 @@ subroutine get_integer_field(self, field_name, field)
 
 end subroutine get_integer_field
 
+!> Access a field array from the collection
+!> @param [in] field_array_name The name of the field array to be accessed
+!> @param [out] field_array Pointer to the field array that is returned
+subroutine get_field_array(self, field_array_name, field_array)
+
+  implicit none
+
+  class(field_collection_type),    intent(in)  :: self
+  type(field_array_type), pointer, intent(out) :: field_array
+  character(*),                    intent(in)  :: field_array_name
+
+  character(len=str_def) :: name
+
+  ! Pointer to linked list - used for looping through the list
+  type(linked_list_item_type), pointer :: loop => null()
+
+  integer(i_def) :: hash
+
+  ! Calculate the hash of the field being searched for
+  hash = mod(sum_string(trim(field_array_name)),self%table_len)
+
+  ! start at the head of the mesh collection linked list
+  loop => self%field_list(hash)%get_head()
+
+  do
+    ! If list is empty or we're at the end of list and we didn't find the
+    ! field, fail with an error
+    if ( .not. associated(loop) ) then
+      write(log_scratch_space, '(4A)') 'get_field: No field array [', &
+         trim(field_array_name), '] in field collection: ', trim(self%name)
+      call log_event( log_scratch_space, LOG_LEVEL_ERROR)
+    end if
+    ! otherwise search list for the name of field we want
+
+    name = get_field_name(loop%payload)
+    ! 'cast' to the field_array_type
+    select type(listfield => loop%payload)
+      type is (field_array_type)
+        if ( trim(field_array_name) == trim(name) ) then
+          field_array => listfield
+          exit
+        end if
+    end select
+
+    loop => loop%next
+  end do
+
+end subroutine get_field_array
+
 !> Returns the number of entries in the field collection
 function get_length(self) result(length)
 
@@ -630,6 +686,8 @@ end subroutine field_collection_destructor
       name = infield%field_ptr%get_name()
     type is (integer_field_pointer_type)
       name = infield%field_ptr%get_name()
+    type is (field_array_type)
+      name = infield%get_name()
   end select
 end function get_field_name
 

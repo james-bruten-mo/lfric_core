@@ -137,7 +137,7 @@ contains
 
     ! Model configuration initialisation
     call initialise_model( mesh, &
-                           modeldb%model_data )
+                           modeldb )
 
     ! Initialise the linearisation state
     call linear_init_ls( mesh, twod_mesh, modeldb )
@@ -145,7 +145,7 @@ contains
     ! Initialise the linear model perturbation state
     call linear_init_pert( mesh,      &
                            twod_mesh, &
-                           modeldb%model_data )
+                           modeldb )
 
     ! Initial output
     io_context => get_io_context()
@@ -154,7 +154,7 @@ contains
 
     ! Linear model configuration initialisation
     call initialise_linear_model( mesh,        &
-                                  modeldb%model_data )
+                                  modeldb )
 
   end subroutine initialise
 
@@ -209,14 +209,14 @@ contains
     call output_model_data( modeldb%model_data, modeldb%clock )
 
     ! Model configuration finalisation
-    call finalise_model( modeldb%model_data,    &
+    call finalise_model( modeldb,               &
                          modeldb%configuration, &
                          program_name )
 
     call finalise_linear_model( )
 
     ! Destroy the fields stored in model_data
-    call finalise_model_data( modeldb%model_data )
+    call finalise_model_data( modeldb )
 
     ! Finalise infrastructure and constants
     call finalise_infrastructure()

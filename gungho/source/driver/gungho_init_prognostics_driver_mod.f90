@@ -23,7 +23,7 @@ module gungho_init_prognostics_driver_mod
                                               test_specified_profiles, &
                                               test_bryan_fritsch,      &
                                               test_grabowski_clark
-  use field_bundle_mod,                 only: set_bundle_scalar
+  use field_bundle_builtins_mod,        only: set_bundle_scalar
   use field_mod,                        only: field_type
   use field_collection_mod,             only: field_collection_type
   use mr_indices_mod,                   only: nummr, imr_v

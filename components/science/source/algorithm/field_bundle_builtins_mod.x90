@@ -6,7 +6,7 @@
 
 !>@brief Contains wrapper routines for working on arrays of fields.
 !!       Effectively these are generally wrapper functions to pointwise kernels
-module field_bundle_mod
+module field_bundle_builtins_mod
 
   use constants_mod,                   only: i_def, r_def
   use field_mod,                       only: field_type
@@ -219,5 +219,5 @@ contains
 
 !=============================================================================!
 
-end module field_bundle_mod
+end module field_bundle_builtins_mod
 

@@ -171,10 +171,10 @@ contains
 
    if ( multires_coupling_mode /= multires_coupling_mode_test ) then
      ! Model configuration initialisation
-     call initialise_model( dynamics_mesh,            &
-                    dynamics_mesh_modeldb%model_data, &
-                            physics_mesh,             &
-                    physics_mesh_modeldb%model_data )
+     call initialise_model( dynamics_mesh,         &
+                            dynamics_mesh_modeldb, &
+                            physics_mesh,          &
+                            physics_mesh_modeldb  )
    end if
 
   end subroutine initialise
@@ -249,14 +249,14 @@ contains
     end if
 
     if ( multires_coupling_mode /= multires_coupling_mode_test ) then
-      call finalise_model( dynamics_mesh_modeldb%model_data, &
-                           physics_mesh_modeldb%model_data,  &
+      call finalise_model( dynamics_mesh_modeldb, &
+                           physics_mesh_modeldb,  &
                            program_name )
     end if
 
     ! Destroy the fields stored in model_data
-    call finalise_model_data( dynamics_mesh_modeldb%model_data )
-    call finalise_model_data( physics_mesh_modeldb%model_data )
+    call finalise_model_data( dynamics_mesh_modeldb )
+    call finalise_model_data( physics_mesh_modeldb )
 
     call finalise_infrastructure()
 

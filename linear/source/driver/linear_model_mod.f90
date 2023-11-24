@@ -7,9 +7,10 @@
 module linear_model_mod
 
   use constants_mod,              only : i_def
+  use field_array_mod,            only : field_array_type
   use field_mod,                  only : field_type
   use field_collection_mod,       only : field_collection_type
-  use gungho_model_data_mod,      only : model_data_type
+  use gungho_modeldb_mod,         only : modeldb_type
   use model_clock_mod,            only : model_clock_type
   use tl_rk_alg_timestep_mod,     only : tl_rk_alg_init, &
                                          tl_rk_alg_final
@@ -39,14 +40,14 @@ contains
   !> @brief Completes the initialisation of the tangent linear model
   !> @param[in] model_clock Time wihtin the model.
   !> @param[in] mesh The primary mesh
-  !> @param[in,out] model_data The working data set for the model run
+  !> @param[in,out] modeldb The working data set for the model run
   !>
   subroutine initialise_linear_model( mesh,  &
-                                      model_data )
+                                      modeldb )
     implicit none
 
-    type(mesh_type),        intent(in),    pointer :: mesh
-    type(model_data_type),  intent(inout), target :: model_data
+    type(mesh_type),     intent(in),   pointer :: mesh
+    type(modeldb_type),  intent(inout), target :: modeldb
 
     type( field_collection_type ), pointer :: prognostic_fields => null()
     type( field_type ),            pointer :: mr(:) => null()
@@ -63,12 +64,17 @@ contains
     type( field_type), pointer :: ls_rho => null()
     type( field_type), pointer :: ls_exner => null()
 
+    type(field_collection_type), pointer :: moisture_fields => null()
+    type(field_array_type), pointer      :: mr_array => null()
+
     ! Get pointers to field collections for use downstream
-    prognostic_fields => model_data%prognostic_fields
-    mr => model_data%mr
-    ls_fields => model_data%ls_fields
-    ls_mr => model_data%ls_mr
-    ls_moist_dyn => model_data%ls_moist_dyn
+    prognostic_fields => modeldb%model_data%prognostic_fields
+    moisture_fields => modeldb%fields%get_field_collection("moisture_fields")
+    call moisture_fields%get_field("mr", mr_array)
+    mr => mr_array%bundle
+    ls_fields => modeldb%model_data%ls_fields
+    ls_mr => modeldb%model_data%ls_mr
+    ls_moist_dyn => modeldb%model_data%ls_moist_dyn
 
     ! Get pointers to fields in the prognostic/diagnostic field collections
     ! for use downstream

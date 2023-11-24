@@ -7,12 +7,14 @@
 module linear_data_algorithm_mod
 
   use constants_mod,                  only: i_def, r_def, str_def
-  use field_bundle_mod,               only: set_bundle_scalar
+  use field_array_mod,                only: field_array_type
+  use field_bundle_builtins_mod,      only: set_bundle_scalar
   use field_mod,                      only: field_type
   use field_collection_mod,           only: field_collection_type
   use geometric_constants_mod,        only: get_coordinates, &
                                             get_panel_id
   use gungho_model_data_mod,          only: model_data_type
+  use gungho_modeldb_mod,             only: modeldb_type
   use linked_list_mod,                only: linked_list_type
   use lfric_xios_read_mod,            only: read_state
   use mr_indices_mod,                 only: nummr, mr_names
@@ -196,12 +198,12 @@ module linear_data_algorithm_mod
   end subroutine combine_ls_winds
 
   !> @brief Copy the prognostic fields to the LS and then zero the prognostics.
-  !> @param[in,out] model_data The working data set for the model run
-  subroutine linear_copy_model_to_ls( model_data )
+  !> @param[in,out] modeldb The working data set for the model run
+  subroutine linear_copy_model_to_ls( modeldb )
 
     implicit none
 
-    type( model_data_type ), target, intent(inout) :: model_data
+    type( modeldb_type ), target, intent(inout) :: modeldb
 
     type( field_collection_type ), pointer :: prognostics => null()
     type( field_collection_type ), pointer :: ls_fields => null()
@@ -213,11 +215,15 @@ module linear_data_algorithm_mod
     type( field_type ),            pointer :: n_field => null()
     integer( kind=i_def )                  :: imr
 
+    type(field_collection_type), pointer :: moisture_fields => null()
+    type(field_array_type), pointer      :: mr_array => null()
+    type(field_array_type), pointer      :: moist_dyn_array => null()
+
     write(log_scratch_space,'(A)') "Copy prognostics to ls fields"
     call log_event(log_scratch_space, LOG_LEVEL_INFO)
 
-    ls_fields => model_data%ls_fields
-    prognostics => model_data%prognostic_fields
+    ls_fields => modeldb%model_data%ls_fields
+    prognostics => modeldb%model_data%prognostic_fields
 
     call ls_fields%get_field("ls_u", l_field)
     call prognostics%get_field("u", n_field)
@@ -239,15 +245,18 @@ module linear_data_algorithm_mod
     call invoke( setval_X( l_field, n_field) , &
                  setval_C( n_field, 0.0_r_def) )
 
-    ls_mr => model_data%ls_mr
-    mr => model_data%mr
+    moisture_fields => modeldb%fields%get_field_collection("moisture_fields")
+    call moisture_fields%get_field("mr", mr_array)
+    mr => mr_array%bundle
+    ls_mr => modeldb%model_data%ls_mr
     do imr = 1, nummr
       call invoke( setval_X( ls_mr(imr), mr(imr) ) , &
                    setval_C( mr(imr), 0.0_r_def) )
     end do
 
-    ls_moist_dyn => model_data%ls_moist_dyn
-    moist_dyn => model_data%moist_dyn
+    ls_moist_dyn => modeldb%model_data%ls_moist_dyn
+    call moisture_fields%get_field("moist_dyn", moist_dyn_array)
+    moist_dyn => moist_dyn_array%bundle
     do imr = 1, num_moist_factors
       call invoke( setval_X( ls_moist_dyn(imr), moist_dyn(imr) ) , &
                    setval_C( moist_dyn(imr), 0.0_r_def) )
@@ -263,8 +272,8 @@ module linear_data_algorithm_mod
   !!          by specified parameters such as gamma_u and gamma_rho.
   !> @param[in]     mesh       The current 3D mesh
   !> @param[in]     twod_mesh  The current 2D mesh
-  !> @param[in,out] model_data The working data set for the model run
-  subroutine linear_init_pert_random( mesh, twod_mesh, model_data )
+  !> @param[in,out] modeldb    The working data set for the model run
+  subroutine linear_init_pert_random( mesh, twod_mesh, modeldb )
 
     use assign_field_random_kernel_mod, only: assign_field_random_kernel_type
 
@@ -273,7 +282,7 @@ module linear_data_algorithm_mod
     type( mesh_type ), intent(in), pointer :: mesh
     type( mesh_type ), intent(in), pointer :: twod_mesh
 
-    type( model_data_type ), target, intent(inout) :: model_data
+    type( modeldb_type ), target, intent(inout) :: modeldb
 
     integer( kind=i_def )                          :: i
     type( field_type ), pointer                    :: field => null()
@@ -282,6 +291,10 @@ module linear_data_algorithm_mod
     real( kind=r_def ) :: gamma_u, gamma_rho, gamma_exner, gamma_theta
     real( kind=r_def ) :: gamma_moist_dyn, gamma_mr
 
+    type(field_collection_type), pointer :: moisture_fields => null()
+    type(field_array_type), pointer      :: mr_array => null()
+    type(field_array_type), pointer      :: moist_dyn_array => null()
+
     gamma_u = 1.e4
     gamma_theta = 1.e2
     gamma_rho = 1.e-1
@@ -289,24 +302,27 @@ module linear_data_algorithm_mod
     gamma_moist_dyn = 1.e-1
     gamma_mr = 1.e-1
 
-    call model_data%prognostic_fields%get_field("u", field)
+    call modeldb%model_data%prognostic_fields%get_field("u", field)
     call invoke( assign_field_random_kernel_type( field, gamma_u))
 
-    call model_data%prognostic_fields%get_field("rho", field)
+    call modeldb%model_data%prognostic_fields%get_field("rho", field)
     call invoke( assign_field_random_kernel_type( field, gamma_rho ))
 
-    call model_data%prognostic_fields%get_field("theta", field)
+    call modeldb%model_data%prognostic_fields%get_field("theta", field)
     call invoke( assign_field_random_kernel_type( field, gamma_theta ))
 
-    call  model_data%prognostic_fields%get_field("exner", field)
+    call modeldb%model_data%prognostic_fields%get_field("exner", field)
     call invoke( assign_field_random_kernel_type( field, gamma_exner ))
 
-    moist_dyn => model_data%moist_dyn
+    moisture_fields => modeldb%fields%get_field_collection("moisture_fields")
+    call moisture_fields%get_field("moist_dyn", moist_dyn_array)
+    moist_dyn => moist_dyn_array%bundle
     do i = 1, num_moist_factors
       call invoke( assign_field_random_kernel_type( moist_dyn(i), gamma_moist_dyn ) )
     end do
 
-    mr => model_data%mr
+    call moisture_fields%get_field("mr", mr_array)
+    mr => mr_array%bundle
     do i = 1, nummr
       call invoke( assign_field_random_kernel_type( mr(i), gamma_mr ) )
     end do
@@ -319,14 +335,14 @@ module linear_data_algorithm_mod
   !> @details The DCMIP gravity wave test case is used to define perturbation.
   !> @param[in]     mesh       The current 3D mesh
   !> @param[in]     twod_mesh  The current 2D mesh
-  !> @param[in,out] model_data The working data set for the model run
-  subroutine linear_init_pert_analytical( mesh, twod_mesh, model_data )
+  !> @param[in,out] modeldb    The working data set for the model run
+  subroutine linear_init_pert_analytical( mesh, twod_mesh, modeldb )
 
     implicit none
 
     type( mesh_type ), intent(in), pointer :: mesh
     type( mesh_type ), intent(in), pointer :: twod_mesh
-    type( model_data_type ), target, intent(inout) :: model_data
+    type( modeldb_type ), target, intent(inout) :: modeldb
 
     type( field_type ), pointer :: u => null()
     type( field_type ), pointer :: rho => null()
@@ -346,10 +362,14 @@ module linear_data_algorithm_mod
     type( field_collection_type ), pointer :: prognostic_fields => null()
     type( field_collection_type ), pointer :: ls_fields => null()
 
+    type(field_collection_type), pointer :: moisture_fields => null()
+    type(field_array_type), pointer      :: mr_array => null()
+    type(field_array_type), pointer      :: moist_dyn_array => null()
+
     integer( kind=i_def )  :: i
 
-    ls_fields => model_data%ls_fields
-    prognostic_fields => model_data%prognostic_fields
+    ls_fields => modeldb%model_data%ls_fields
+    prognostic_fields => modeldb%model_data%prognostic_fields
 
     call ls_fields%get_field('ls_theta', ls_theta)
     call ls_fields%get_field('ls_u', ls_u)
@@ -361,10 +381,13 @@ module linear_data_algorithm_mod
     call prognostic_fields%get_field('rho', rho)
     call prognostic_fields%get_field('exner', exner)
 
-    moist_dyn => model_data%moist_dyn
-    mr => model_data%mr
-    ls_moist_dyn => model_data%ls_moist_dyn
-    ls_mr => model_data%ls_mr
+    moisture_fields => modeldb%fields%get_field_collection("moisture_fields")
+    call moisture_fields%get_field("mr", mr_array)
+    call moisture_fields%get_field("moist_dyn", moist_dyn_array)
+    mr => mr_array%bundle
+    moist_dyn => moist_dyn_array%bundle
+    ls_moist_dyn => modeldb%model_data%ls_moist_dyn
+    ls_mr => modeldb%model_data%ls_mr
 
     ! Subtract reference field from perturbed field to give perturbation
     call invoke( inc_X_minus_Y( u, ls_u ) ,         &

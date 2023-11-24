@@ -27,6 +27,7 @@ module multires_coupling_model_mod
   use derived_config_mod,         only : set_derived_config
   use extrusion_mod,              only : extrusion_type, TWOD, &
                                          SHIFTED, DOUBLE_LEVEL
+  use field_array_mod,            only : field_array_type
   use field_mod,                  only : field_type
   use field_parent_mod,           only : write_interface
   use field_collection_mod,       only : field_collection_type
@@ -45,7 +46,7 @@ module multires_coupling_model_mod
                                   only : physics_mesh_name,           &
                                          multires_coupling_mesh_tags, &
                                          orography_mesh_name
-  use gungho_model_data_mod,      only : model_data_type
+  use gungho_modeldb_mod,         only : modeldb_type
   use gungho_setup_io_mod,        only : init_gungho_files
   use init_altitude_mod,          only : init_altitude
   use io_config_mod,              only : write_conservation_diag, &
@@ -398,21 +399,21 @@ contains
   !---------------------------------------------------------------------------
   !> @brief Initialises the multires_coupling application
   !>
-  !> @param[in] dynamics_mesh           The dynamics mesh
-  !> @param[in,out] dynamics_model_data The dynamics data set
-  !> @param[in] physics_mesh            The physics mesh
-  !> @param[in,out] physics_model_data  The physics data set
+  !> @param[in] dynamics_mesh        The dynamics mesh
+  !> @param[in,out] dynamics_modeldb The dynamics data set
+  !> @param[in] physics_mesh         The physics mesh
+  !> @param[in,out] physics_modeldb  The physics data set
   !>
-  subroutine initialise_model( dynamics_mesh,       &
-                               dynamics_model_data, &
-                               physics_mesh,        &
-                               physics_model_data )
+  subroutine initialise_model( dynamics_mesh,    &
+                               dynamics_modeldb, &
+                               physics_mesh,     &
+                               physics_modeldb )
     implicit none
 
     type(mesh_type),       pointer, intent(in)    :: dynamics_mesh
     type(mesh_type),       pointer, intent(in)    :: physics_mesh
-    type(model_data_type), target,  intent(inout) :: dynamics_model_data
-    type(model_data_type), target,  intent(inout) :: physics_model_data
+    type(modeldb_type),    target,  intent(inout) :: dynamics_modeldb
+    type(modeldb_type),    target,  intent(inout) :: physics_modeldb
 
     type(field_collection_type), pointer :: prognostic_fields => null()
     type(field_type),            pointer :: dynamics_mr(:) => null()
@@ -427,17 +428,28 @@ contains
     type(field_type), pointer :: physics_rho => null()
     type(field_type), pointer :: physics_exner => null()
 
-    ! Get pointers to field collections for use downstream
-    dynamics_mr => dynamics_model_data%mr
-    physics_mr  => physics_model_data%mr
+    type(field_collection_type), pointer :: dynamics_moisture_fields => null()
+    type(field_array_type), pointer      :: dynamics_mr_array => null()
+    type(field_collection_type), pointer :: physics_moisture_fields => null()
+    type(field_array_type), pointer      :: physics_mr_array => null()
 
-    prognostic_fields => dynamics_model_data%prognostic_fields
+    ! Get pointers to field collections for use downstream
+    dynamics_moisture_fields => &
+                 dynamics_modeldb%fields%get_field_collection("moisture_fields")
+    call dynamics_moisture_fields%get_field("mr", dynamics_mr_array)
+    dynamics_mr => dynamics_mr_array%bundle
+    physics_moisture_fields => &
+                 physics_modeldb%fields%get_field_collection("moisture_fields")
+    call physics_moisture_fields%get_field("mr", physics_mr_array)
+    physics_mr => physics_mr_array%bundle
+
+    prognostic_fields => dynamics_modeldb%model_data%prognostic_fields
     call prognostic_fields%get_field('theta', dynamics_theta)
     call prognostic_fields%get_field('u', dynamics_u)
     call prognostic_fields%get_field('rho', dynamics_rho)
     call prognostic_fields%get_field('exner', dynamics_exner)
 
-    prognostic_fields => physics_model_data%prognostic_fields
+    prognostic_fields => physics_modeldb%model_data%prognostic_fields
     call prognostic_fields%get_field('theta', physics_theta)
     call prognostic_fields%get_field('u', physics_u)
     call prognostic_fields%get_field('rho', physics_rho)
@@ -516,19 +528,19 @@ contains
   !---------------------------------------------------------------------------
   !> @brief Finalise the Multires Coupling application
   !>
-  !> @param[in,out] dynamics_model_data The working data set for the model run
-  !> @param[in,out] physics_model_data  The working data set for the model run
-  !> @param[in] program_name An identifier given to the model begin run
+  !> @param[in,out] dynamics_modeldb The working data set for the model run
+  !> @param[in,out] physics_modeldb  The working data set for the model run
+  !> @param[in] program_name         An identifier given to the model begin run
   !>
-  subroutine finalise_model( dynamics_model_data, &
-                             physics_model_data,  &
+  subroutine finalise_model( dynamics_modeldb, &
+                             physics_modeldb,  &
                              program_name )
     implicit none
 
 
-    type(model_data_type), target, intent(inout) :: dynamics_model_data
-    type(model_data_type), target, intent(inout) :: physics_model_data
-    character(*),                  intent(in)    :: program_name
+    type(modeldb_type), target, intent(inout) :: dynamics_modeldb
+    type(modeldb_type), target, intent(inout) :: physics_modeldb
+    character(*),               intent(in)    :: program_name
 
     type(field_collection_type), pointer :: prognostic_fields => null()
     type(field_type),            pointer :: dynamics_mr(:) => null()
@@ -543,20 +555,31 @@ contains
     type(field_type), pointer :: physics_rho => null()
     type(field_type), pointer :: physics_exner => null()
 
+    type(field_collection_type), pointer :: dynamics_moisture_fields => null()
+    type(field_array_type), pointer      :: dynamics_mr_array => null()
+    type(field_collection_type), pointer :: physics_moisture_fields => null()
+    type(field_array_type), pointer      :: physics_mr_array => null()
+
     ! Pointer for setting I/O handlers on fields
     procedure(write_interface), pointer :: tmp_write_ptr => null()
 
     ! Get pointers to field collections for use downstream
-    dynamics_mr => dynamics_model_data%mr
-    physics_mr => physics_model_data%mr
+    dynamics_moisture_fields => &
+                 dynamics_modeldb%fields%get_field_collection("moisture_fields")
+    call dynamics_moisture_fields%get_field("mr", dynamics_mr_array)
+    dynamics_mr => dynamics_mr_array%bundle
+    physics_moisture_fields => &
+                 physics_modeldb%fields%get_field_collection("moisture_fields")
+    call physics_moisture_fields%get_field("mr", physics_mr_array)
+    physics_mr => physics_mr_array%bundle
 
-    prognostic_fields => dynamics_model_data%prognostic_fields
+    prognostic_fields => dynamics_modeldb%model_data%prognostic_fields
     call prognostic_fields%get_field('theta', dynamics_theta)
     call prognostic_fields%get_field('u', dynamics_u)
     call prognostic_fields%get_field('rho', dynamics_rho)
     call prognostic_fields%get_field('exner', dynamics_exner)
 
-    prognostic_fields => physics_model_data%prognostic_fields
+    prognostic_fields => physics_modeldb%model_data%prognostic_fields
     call prognostic_fields%get_field('theta', physics_theta)
     call prognostic_fields%get_field('u', physics_u)
     call prognostic_fields%get_field('rho', physics_rho)

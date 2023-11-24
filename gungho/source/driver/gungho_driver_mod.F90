@@ -135,7 +135,7 @@ contains
                                io_context, nodal_output_on_w3 )
 
     ! Model configuration initialisation
-    call initialise_model( mesh, modeldb%model_data )
+    call initialise_model( mesh, modeldb )
 
 #ifdef COUPLED
     ! Placeholder for ESM coupling initialisation code.
@@ -266,12 +266,12 @@ contains
     call output_model_data( modeldb%model_data, modeldb%clock )
 
     ! Model configuration finalisation
-    call finalise_model( modeldb%model_data,    &
+    call finalise_model( modeldb,               &
                          modeldb%configuration, &
                          program_name )
 
     ! Destroy the fields stored in model_data
-    call finalise_model_data( modeldb%model_data )
+    call finalise_model_data( modeldb )
 
     ! Finalise infrastructure and constants
     call finalise_infrastructure()

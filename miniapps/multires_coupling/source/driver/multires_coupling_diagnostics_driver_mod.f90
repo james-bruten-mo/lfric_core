@@ -12,6 +12,7 @@
 module multires_coupling_diagnostics_driver_mod
 
   use constants_mod,                      only : i_def
+  use field_array_mod,                only: field_array_type
   use field_mod,                          only : field_type
   use field_collection_mod,               only : field_collection_type
   use formulation_config_mod,             only : use_physics
@@ -56,10 +57,18 @@ contains
     type(field_type), pointer :: dynamics_theta => null()
     type(field_type), pointer :: dynamics_exner => null()
 
+    type(field_collection_type), pointer :: moisture_fields => null()
+    type(field_array_type), pointer      :: mr_array => null()
+    type(field_array_type), pointer      :: moist_dyn_array => null()
+
     dynamics_prognostic_fields => dynamics_modeldb%model_data%prognostic_fields
     dynamics_derived_fields => dynamics_modeldb%model_data%derived_fields
-    dynamics_mr => dynamics_modeldb%model_data%mr
-    dynamics_moist_dyn => dynamics_modeldb%model_data%moist_dyn
+    moisture_fields => &
+            dynamics_modeldb%fields%get_field_collection("moisture_fields")
+    call moisture_fields%get_field("mr", mr_array)
+    call moisture_fields%get_field("moist_dyn", moist_dyn_array)
+    dynamics_mr => mr_array%bundle
+    dynamics_moist_dyn => moist_dyn_array%bundle
 
     ! Can't just iterate through the collection as some fields are scalars
     ! and some fields are vectors, so explicitly extract all fields from

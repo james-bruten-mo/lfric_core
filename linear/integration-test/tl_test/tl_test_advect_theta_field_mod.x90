@@ -19,12 +19,11 @@ module tl_test_advect_theta_field_mod
   use function_space_collection_mod,  only: function_space_collection
   use finite_element_config_mod,      only: element_order
   use fs_continuity_mod,              only: W2, Wtheta
-  use gungho_model_data_mod,          only: model_data_type
+  use gungho_modeldb_mod,             only: modeldb_type
   use log_mod,                        only: log_event,         &
                                             log_scratch_space, &
                                             LOG_LEVEL_INFO
   use mesh_mod,                       only: mesh_type
-  use model_clock_mod,                only: model_clock_type
   use gungho_transport_control_alg_mod,     &
                                       only: gungho_transport_control_alg_init, &
                                             gungho_transport_control_alg
@@ -48,22 +47,19 @@ module tl_test_advect_theta_field_mod
   contains
 
   !> @brief Test the tangent linear for advecting theta.
-  !> @param[in] model_data  The working data set for a model run
-  !> @param[in] model_clock Time within the model
-  !> @param[in] mesh        The current 3d mesh
-  !> @param[in] twod_mesh   The current 2d mesh
+  !> @param[in] modeldb   The working data set for a model run
+  !> @param[in] mesh      The current 3d mesh
+  !> @param[in] twod_mesh The current 2d mesh
   !>
-  subroutine test_advect_theta_field( model_data,  &
-                                      model_clock, &
+  subroutine test_advect_theta_field( modeldb,  &
                                       mesh,        &
                                       twod_mesh )
 
     implicit none
 
-    type(mesh_type),       pointer, intent(in) :: mesh
-    type(mesh_type),       pointer, intent(in) :: twod_mesh
-    type(model_data_type), target,  intent(in) :: model_data
-    class(model_clock_type),        intent(in) :: model_clock
+    type(mesh_type),    pointer, intent(in) :: mesh
+    type(mesh_type),    pointer, intent(in) :: twod_mesh
+    type(modeldb_type), target,  intent(in) :: modeldb
 
     character(str_def) :: label = "advect_theta_field"
 
@@ -100,8 +96,8 @@ module tl_test_advect_theta_field_mod
     call log_event( "TL Test: " // trim(label), &
                      LOG_LEVEL_INFO )
 
-    prognostic_fields => model_data%prognostic_fields
-    ls_fields         => model_data%ls_fields
+    prognostic_fields => modeldb%model_data%prognostic_fields
+    ls_fields         => modeldb%model_data%ls_fields
 
     ! Input
     call prognostic_fields%get_field('u', n_u)
@@ -139,10 +135,10 @@ module tl_test_advect_theta_field_mod
 
     ! Init stuff
     call gungho_transport_control_alg_init( mesh )
-    call set_transport_runtime( ls_u, ls_u, model_clock, 1_i_def, cheap_update = .false. )
+    call set_transport_runtime( ls_u, ls_u, modeldb%clock, 1_i_def, cheap_update = .false. )
     transport_metadata => transport_metadata_collection%get_transport_metadata('potential_temperature')
 
-    cast_dt = real(model_clock%get_seconds_per_step(), r_def)
+    cast_dt = real(modeldb%clock%get_seconds_per_step(), r_def)
 
     ! Taylor Remainder Convergence Test
     call invoke( assign_field_random_kernel_type( random_u, 1.0_r_def ),     &
@@ -167,13 +163,13 @@ module tl_test_advect_theta_field_mod
                    inc_X_plus_Y( n_u, p_u ),                  &
                    inc_X_plus_Y( n_theta, p_theta ) )
 
-      call set_transport_runtime(n_u, n_u, model_clock, 1_i_def, cheap_update = .false.)
+      call set_transport_runtime(n_u, n_u, modeldb%clock, 1_i_def, cheap_update = .false.)
 
       call transport_field( n_theta_np1, n_theta, cast_dt, transport_metadata )
       call invoke( X_minus_Y( n2_advection_inc, n_theta_np1, n_theta ) )
 
-      call set_transport_runtime(ls_u, ls_u, model_clock, 1_i_def, cheap_update = .false.)
-      call tl_transport_runtime%initialise(p_u, p_u, model_clock, 1_i_def, cheap_update = .false.)
+      call set_transport_runtime(ls_u, ls_u, modeldb%clock, 1_i_def, cheap_update = .false.)
+      call tl_transport_runtime%initialise(p_u, p_u, modeldb%clock, 1_i_def, cheap_update = .false.)
 
 
       call tl_transport_field( p_theta_np1, p_theta, ls_theta, &

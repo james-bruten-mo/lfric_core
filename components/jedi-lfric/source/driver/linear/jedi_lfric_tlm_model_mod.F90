@@ -28,6 +28,7 @@ module jedi_lfric_tlm_model_mod
   use derived_config_mod,         only : set_derived_config
   use extrusion_mod,              only : extrusion_type, TWOD, &
                                          SHIFTED, DOUBLE_LEVEL
+  use field_array_mod,            only : field_array_type
   use field_mod,                  only : field_type
   use field_parent_mod,           only : write_interface
   use field_collection_mod,       only : field_collection_type
@@ -43,6 +44,7 @@ module jedi_lfric_tlm_model_mod
   use geometric_constants_mod,    only : get_chi_inventory, get_panel_id_inventory
   use gungho_extrusion_mod,       only : create_extrusion
   use gungho_model_data_mod,      only : model_data_type
+  use gungho_modeldb_mod,         only : modeldb_type
   use gungho_setup_io_mod,        only : init_gungho_files
   use gungho_transport_control_alg_mod, &
                                   only : gungho_transport_control_alg_final
@@ -492,13 +494,13 @@ contains
   !> @brief Initialises the gungho application
   !>
   !> @param[in] mesh  The primary mesh
-  !> @param[in,out] model_data The working data set for the model run
+  !> @param[in,out] modeldb The working data set for the model run
   !>
-  subroutine initialise_model( mesh, model_data )
+  subroutine initialise_model( mesh, modeldb )
     implicit none
 
-    type( mesh_type ),       intent(in),    pointer :: mesh
-    type( model_data_type ), intent(inout), target  :: model_data
+    type( mesh_type ),    intent(in),    pointer :: mesh
+    type( modeldb_type ), intent(inout), target  :: modeldb
 
     type( field_collection_type ), pointer :: prognostic_fields => null()
     type( field_type ),            pointer :: mr(:) => null()
@@ -508,11 +510,16 @@ contains
     type( field_type), pointer :: rho => null()
     type( field_type), pointer :: exner => null()
 
+    type(field_collection_type), pointer :: moisture_fields => null()
+    type(field_array_type), pointer      :: mr_array => null()
+
     use_moisture = ( moisture_formulation /= moisture_formulation_dry )
 
     ! Get pointers to field collections for use downstream
-    prognostic_fields => model_data%prognostic_fields
-    mr => model_data%mr
+    prognostic_fields => modeldb%model_data%prognostic_fields
+    moisture_fields => modeldb%fields%get_field_collection("moisture_fields")
+    call moisture_fields%get_field("mr", mr_array)
+    mr => mr_array%bundle
 
     ! Get pointers to fields in the prognostic/diagnostic field collections
     ! for use downstream
@@ -610,16 +617,16 @@ contains
   !---------------------------------------------------------------------------
   !> @brief Finalise the gungho application
   !>
-  !> @param[in,out] model_data The working data set for the model run
+  !> @param[in,out] modeldb The working data set for the model run
   !> @param[in] program_name   An identifier given to the model begin run
   !>
-  subroutine finalise_model( model_data, &
+  subroutine finalise_model( modeldb, &
                              program_name )
 
     implicit none
 
-    type( model_data_type ), target,  intent(inout) :: model_data
-    character(*),                     intent(in)    :: program_name
+    type( modeldb_type ), target,  intent(inout) :: modeldb
+    character(*),                  intent(in)    :: program_name
 
     type( field_collection_type ), pointer :: prognostic_fields => null()
     type( field_collection_type ), pointer :: diagnostic_fields => null()
@@ -631,14 +638,19 @@ contains
     type( field_type), pointer :: rho => null()
     type( field_type), pointer :: exner => null()
 
+    type(field_collection_type), pointer :: moisture_fields => null()
+    type(field_array_type), pointer      :: mr_array => null()
+
     ! Pointer for setting I/O handlers on fields
     procedure(write_interface), pointer :: tmp_write_ptr => null()
 
     ! Get pointers to field collections for use downstream
-    prognostic_fields => model_data%prognostic_fields
-    diagnostic_fields => model_data%diagnostic_fields
-    mr => model_data%mr
-    fd_fields => model_data%fd_fields
+    prognostic_fields => modeldb%model_data%prognostic_fields
+    diagnostic_fields => modeldb%model_data%diagnostic_fields
+    moisture_fields => modeldb%fields%get_field_collection("moisture_fields")
+    call moisture_fields%get_field("mr", mr_array)
+    mr => mr_array%bundle
+    fd_fields => modeldb%model_data%fd_fields
 
     ! Get pointers to fields in the prognostic/diagnostic field collections
     ! for use downstream

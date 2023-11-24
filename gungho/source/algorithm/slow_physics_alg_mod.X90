@@ -62,7 +62,7 @@ module slow_physics_alg_mod
   use enforce_lower_bound_kernel_mod, only: enforce_lower_bound_kernel_type
   use moisture_conservation_alg_mod,  only: moisture_conservation_alg
   use fs_continuity_mod,         only: W3, Wtheta
-  use field_bundle_mod,          only: add_bundle, clone_bundle, &
+  use field_bundle_builtins_mod, only: add_bundle, clone_bundle, &
                                        set_bundle_scalar
   use formulation_config_mod,    only: moisture_formulation,     &
                                        moisture_formulation_dry

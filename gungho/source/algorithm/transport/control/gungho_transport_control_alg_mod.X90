@@ -203,7 +203,7 @@ contains
 
     use derived_config_mod,              only: bundle_size
     use fem_constants_mod,               only: get_mass_matrix
-    use field_bundle_mod,                only: bundle_inc_axpby, &
+    use field_bundle_builtins_mod,       only: bundle_inc_axpby, &
                                                clone_bundle,     &
                                                set_bundle_scalar
     use field_collection_mod,            only: field_collection_type

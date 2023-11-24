@@ -1,0 +1,68 @@
+!-----------------------------------------------------------------------------
+! (C) Crown copyright 2023 Met Office. All rights reserved.
+! The file LICENCE, distributed with this code, contains details of the terms
+! under which the code may be used.
+!-----------------------------------------------------------------------------
+
+!> Test the field array object
+!>
+!-------------------------------------------------------------------------------
+module field_array_mod_test
+
+  use constants_mod,   only : i_def
+  use field_array_mod, only : field_array_type
+
+  use pFUnit_Mod
+
+  implicit none
+
+  private
+  public :: test_field_array
+
+  @TestCase
+  type, extends(TestCase), public :: field_array_test_type
+    private
+  contains
+    procedure test_field_array
+  end type field_array_test_type
+
+contains
+
+  @test
+  subroutine test_field_array( this )
+    implicit none
+
+    class(field_array_test_type), intent(inout) :: this
+
+    integer(i_def), parameter :: nelements = 6
+    character(len=16), parameter :: field_array_name = "field_array_name"
+
+    type(field_array_type)  :: field_array
+    character(len=16) :: name
+
+    ! Create a field_array
+    call field_array%initialise(nelements, field_array_name)
+
+    ! Check that the field_array that has been initialised has the correct size.
+    @assertEqual ( size(field_array%bundle), 6 )
+
+    ! Extract the name from the field array
+    name = field_array%get_name()
+
+    ! Check that the name exracted from the field array is correct.
+    @assertEqual ( "field_array_name", name )
+
+    call field_array%clear()
+
+    ! Create a field_array with no name
+    call field_array%initialise(nelements)
+
+    ! Check for the correct behaviour when no name is given to the initialiser
+    name = field_array%get_name()
+    @assertEqual ( "none", name )
+
+    call field_array%clear()
+
+  end subroutine test_field_array
+
+end module field_array_mod_test

@@ -67,12 +67,7 @@ module gungho_model_data_mod
     type( field_collection_type ), public   :: aerosol_fields
     !> Fields owned by the stochastic physics schemes
     type( field_collection_type ), public   :: stph_fields
-    !> Array of fields containing the moisture mixing ratios
-    !>  (auxiliary prognostic)
-    type( field_type ), allocatable, public :: mr(:)
-    !> Array of fields containing the moist dynamics (auxiliary prognostic)
-    type( field_type ), allocatable, public :: moist_dyn(:)
-    !> Array of fields containing coupling data
+    !> Fields that contain coupling data
     type( field_collection_type ), public :: cpl_snd
     type( field_collection_type ), public :: cpl_rcv
     !> @}

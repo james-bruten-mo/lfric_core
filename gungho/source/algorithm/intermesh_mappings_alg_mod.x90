@@ -16,7 +16,7 @@ module intermesh_mappings_alg_mod
   use field_collection_mod,           only : field_collection_type
   use finite_element_config_mod,      only : element_order
   use field_mod,                      only : field_type
-  use field_bundle_mod,               only : clone_bundle, copy_bundle
+  use field_bundle_builtins_mod,      only : clone_bundle, copy_bundle
   use function_space_mod,             only : function_space_type
   use function_space_collection_mod,  only : function_space_collection
   use fs_continuity_mod,              only : W2, Wtheta, W3
@@ -821,7 +821,7 @@ contains
 
     use adjust_lambda_kernel_mod, only: adjust_lambda_kernel_type
     use apply_lambda_kernel_mod,  only: apply_lambda_kernel_type
-    use field_bundle_mod,         only: add_bundle
+    use field_bundle_builtins_mod,only: add_bundle
 
     implicit none
 

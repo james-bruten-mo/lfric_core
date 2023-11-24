@@ -16,6 +16,7 @@ module gungho_step_mod
   use energy_correction_config_mod,   only : encorr_usage,      &
                                              encorr_usage_none, &
                                              reset_hours
+  use field_array_mod,                only : field_array_type
   use field_collection_mod,           only : field_collection_type
   use field_mod,                      only : field_type
   use formulation_config_mod,         only : use_physics,             &
@@ -79,7 +80,10 @@ module gungho_step_mod
 
     type( field_collection_type ), pointer :: prognostic_fields => null()
     type( field_collection_type ), pointer :: diagnostic_fields => null()
+    type( field_collection_type ), pointer :: moisture_fields => null()
+    type( field_array_type ),      pointer :: mr_array
     type( field_type ),            pointer :: mr(:) => null()
+    type( field_array_type ),      pointer :: moist_dyn_array
     type( field_type ),            pointer :: moist_dyn(:) => null()
     type( field_collection_type ), pointer :: adv_tracer_all_outer => null()
     type( field_collection_type ), pointer :: adv_tracer_last_outer => null()
@@ -136,8 +140,11 @@ module gungho_step_mod
     ! Get pointers to field collections for use downstream
     prognostic_fields => modeldb%model_data%prognostic_fields
     diagnostic_fields => modeldb%model_data%diagnostic_fields
-    mr => modeldb%model_data%mr
-    moist_dyn => modeldb%model_data%moist_dyn
+    moisture_fields => modeldb%fields%get_field_collection("moisture_fields")
+    call moisture_fields%get_field("mr", mr_array)
+    mr => mr_array%bundle
+    call moisture_fields%get_field("moist_dyn", moist_dyn_array)
+    moist_dyn => moist_dyn_array%bundle
     adv_tracer_all_outer => modeldb%model_data%adv_tracer_all_outer
     adv_tracer_last_outer => modeldb%model_data%adv_tracer_last_outer
     con_tracer_all_outer => modeldb%model_data%con_tracer_all_outer

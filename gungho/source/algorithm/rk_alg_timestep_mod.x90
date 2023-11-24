@@ -33,7 +33,7 @@ module rk_alg_timestep_mod
   use mixing_config_mod,                  only: viscosity, viscosity_mu
   use planet_config_mod,                  only: cp
 
-  use field_bundle_mod,                   only: clone_bundle, &
+  use field_bundle_builtins_mod,          only: clone_bundle, &
                                                 bundle_axpy,  &
                                                 bundle_axpby, &
                                                 add_bundle,   &

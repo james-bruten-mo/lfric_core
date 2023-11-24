@@ -60,7 +60,7 @@ contains
     use check_configuration_mod,         only: check_any_shifted
     use derived_config_mod,              only: bundle_size
     use extrusion_mod,                   only: SHIFTED
-    use field_bundle_mod,                only: clone_bundle, set_bundle_scalar
+    use field_bundle_builtins_mod,       only: clone_bundle, set_bundle_scalar
     use field_indices_mod,               only: igh_u, igh_t, igh_d, igh_p
     use fs_continuity_mod,               only: Wtheta
     use mesh_mod,                        only: mesh_type

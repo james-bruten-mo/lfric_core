@@ -8,7 +8,6 @@
 module linear_model_data_mod
 
   use constants_mod,                  only : i_def, r_def, l_def, str_def
-  use gungho_model_data_mod,          only : model_data_type
   use pure_abstract_field_mod,        only : pure_abstract_field_type
   use field_mod,                      only : field_type
   use field_collection_mod,           only : field_collection_type
@@ -23,11 +22,9 @@ module linear_model_data_mod
                                              ls_option_file
   use lfric_xios_time_axis_mod,       only : time_axis_type
   use lfric_xios_read_mod,            only : read_field_time_var
-  use linear_data_algorithm_mod,      only : linear_copy_model_to_ls, &
-                                             linear_init_pert_random, &
-                                             init_ls_file_alg
   use linear_data_algorithm_mod,      only : linear_copy_model_to_ls,  &
                                              linear_init_pert_random,  &
+                                             init_ls_file_alg,         &
                                              linear_init_reference_ls, &
                                              linear_init_pert_analytical
   use linear_config_mod,              only : pert_option,          &
@@ -254,7 +251,7 @@ contains
             end do
 
             ! Copy the prognostic fields to the LS and then zero the prognostics.
-            call linear_copy_model_to_ls( modeldb%model_data )
+            call linear_copy_model_to_ls( modeldb )
 
         case( pert_option_analytic )
 
@@ -303,17 +300,17 @@ contains
 
   !> @brief   Define the initial perturbation values.
   !> @details Define the initial perturbation - currently from random data
-  !> @param[in]    mesh        The current 3d mesh
-  !> @param[in]    twod_mesh   The current 2d mesh
-  !> @param[inout] model_data  The working data set for a model run
-  subroutine linear_init_pert( mesh, twod_mesh, model_data )
+  !> @param[in]    mesh      The current 3d mesh
+  !> @param[in]    twod_mesh The current 2d mesh
+  !> @param[inout] modeldb   The working data set for a model run
+  subroutine linear_init_pert( mesh, twod_mesh, modeldb )
 
     implicit none
 
     type( mesh_type ), pointer, intent(in) :: mesh
     type( mesh_type ), pointer, intent(in) :: twod_mesh
 
-    type( model_data_type ), target, intent(inout) :: model_data
+    type( modeldb_type ), target, intent(inout) :: modeldb
 
     select case( pert_option )
 
@@ -321,17 +318,17 @@ contains
 
         call linear_init_pert_random( mesh,      &
                                       twod_mesh, &
-                                      model_data )
+                                      modeldb )
 
       case( pert_option_analytic )
 
         call linear_init_pert_analytical( mesh,      &
                                           twod_mesh, &
-                                          model_data )
+                                          modeldb )
 
       case( pert_option_file )
 
-          call linear_map_fd_to_prognostics(model_data)
+          call linear_map_fd_to_prognostics(modeldb)
 
       case default
 

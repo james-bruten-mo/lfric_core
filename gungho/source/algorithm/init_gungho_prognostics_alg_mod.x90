@@ -50,7 +50,7 @@ module init_gungho_prognostics_alg_mod
                                              recip_epsilon
 
   ! PsyKAl-lite kernels
-  use field_bundle_mod,                only: set_bundle_scalar
+  use field_bundle_builtins_mod,       only: set_bundle_scalar
 
   ! PsyKAl PSYClone kernels
   use dg_matrix_vector_kernel_mod,     only: dg_matrix_vector_kernel_type

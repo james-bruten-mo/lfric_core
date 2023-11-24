@@ -12,6 +12,7 @@ module linear_step_mod
 
   use conservation_algorithm_mod,     only : conservation_algorithm
   use constants_mod,                  only : i_def, r_def
+  use field_array_mod,                only : field_array_type
   use field_collection_mod,           only : field_collection_type
   use field_mod,                      only : field_type
   use formulation_config_mod,         only : moisture_formulation,     &
@@ -82,6 +83,10 @@ module linear_step_mod
     type( field_type), pointer :: ls_exner => null()
     type( field_type), pointer :: dA => null()  ! Areas of faces
 
+    type(field_collection_type), pointer :: moisture_fields => null()
+    type(field_array_type), pointer      :: mr_array => null()
+    type(field_array_type), pointer      :: moist_dyn_array => null()
+
     write( log_scratch_space, '("/", A, "\ ")' ) repeat( "*", 76 )
     call log_event( log_scratch_space, LOG_LEVEL_TRACE )
     write( log_scratch_space, &
@@ -91,8 +96,11 @@ module linear_step_mod
     ! Get pointers to field collections for use downstream
     prognostic_fields => modeldb%model_data%prognostic_fields
     diagnostic_fields => modeldb%model_data%diagnostic_fields
-    mr => modeldb%model_data%mr
-    moist_dyn => modeldb%model_data%moist_dyn
+    moisture_fields => modeldb%fields%get_field_collection("moisture_fields")
+    call moisture_fields%get_field("mr", mr_array)
+    call moisture_fields%get_field("moist_dyn", moist_dyn_array)
+    mr => mr_array%bundle
+    moist_dyn => moist_dyn_array%bundle
     derived_fields => modeldb%model_data%derived_fields
 
     ls_fields => modeldb%model_data%ls_fields

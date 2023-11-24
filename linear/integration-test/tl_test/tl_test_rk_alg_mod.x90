@@ -12,14 +12,14 @@ module tl_test_rk_alg_mod
 
   use assign_field_random_kernel_mod, only: assign_field_random_kernel_type
   use constants_mod,                  only: i_def, r_def, str_def
+  use field_array_mod,                only: field_array_type
   use field_mod,                      only: field_type
-  use field_bundle_mod,               only: clone_bundle
+  use field_bundle_builtins_mod,      only: clone_bundle
   use field_collection_mod,           only: field_collection_type
   use function_space_collection_mod,  only: function_space_collection
   use finite_element_config_mod,      only: element_order
   use fs_continuity_mod,              only: W2, W3, Wtheta
-  use gungho_model_data_mod,          only: model_data_type
-  use model_clock_mod,                only: model_clock_type
+  use gungho_modeldb_mod,             only: modeldb_type
   use moist_dyn_mod,                  only: num_moist_factors
   use mr_indices_mod,                 only: nummr
   use timestepping_config_mod,        only: dt
@@ -43,22 +43,19 @@ module tl_test_rk_alg_mod
   contains
 
   !> @brief Test the tangent linear runge-kutta algorithm
-  !> @param[in] model_data  The working data set for a model run
-  !> @param[in] mesh        The current 3d mesh
-  !> @param[in] twod_mesh   The current 2d mesh
-  !> @param[in] model_clock Model time
+  !> @param[in] modeldb   The working data set for a model run
+  !> @param[in] mesh      The current 3d mesh
+  !> @param[in] twod_mesh The current 2d mesh
   !>
-  subroutine test_rk_alg( model_data, &
-                          mesh,       &
-                          twod_mesh,  &
-                          model_clock )
+  subroutine test_rk_alg( modeldb, &
+                          mesh,    &
+                          twod_mesh )
 
     implicit none
 
-    type(mesh_type),       pointer, intent(in) :: mesh
-    type(mesh_type),       pointer, intent(in) :: twod_mesh
-    type(model_data_type), target,  intent(in) :: model_data
-    class(model_clock_type),        intent(in) :: model_clock
+    type(mesh_type),    pointer, intent(in) :: mesh
+    type(mesh_type),    pointer, intent(in) :: twod_mesh
+    type(modeldb_type), target,  intent(in) :: modeldb
 
     character(str_def) :: label = "rk_alg"
 
@@ -90,6 +87,10 @@ module tl_test_rk_alg_mod
     type(field_type) :: r_u, r_rho, r_theta, r_exner
     type(field_type) :: diff_u, diff_rho, diff_theta, diff_exner
 
+    type(field_collection_type), pointer :: moisture_fields => null()
+    type(field_array_type), pointer      :: mr_array => null()
+    type(field_array_type), pointer      :: moist_dyn_array => null()
+
     real(r_def) :: gamma_u, gamma_rho, gamma_exner, gamma_theta, gamma_moist_dyn
     real(r_def) :: norm_u, norm_rho, norm_exner, norm_theta, norm_moist_dyn
     real(r_def) :: norm_moist_dyn_tmp
@@ -102,12 +103,15 @@ module tl_test_rk_alg_mod
     call log_event( "TL Test: " // trim(label), &
                      LOG_LEVEL_INFO )
 
-    prognostic_fields => model_data%prognostic_fields
-    ls_fields         => model_data%ls_fields
-    moist_dyn         => model_data%moist_dyn
-    ls_moist_dyn      => model_data%ls_moist_dyn
-    ls_mr             => model_data%ls_mr
-    mr                => model_data%mr
+    prognostic_fields => modeldb%model_data%prognostic_fields
+    ls_fields         => modeldb%model_data%ls_fields
+    ls_moist_dyn      => modeldb%model_data%ls_moist_dyn
+    ls_mr             => modeldb%model_data%ls_mr
+    moisture_fields => modeldb%fields%get_field_collection("moisture_fields")
+    call moisture_fields%get_field("mr", mr_array)
+    call moisture_fields%get_field("moist_dyn", moist_dyn_array)
+    mr => mr_array%bundle
+    moist_dyn => moist_dyn_array%bundle
 
     ! Input
     call ls_fields%get_field('ls_u', ls_u)
@@ -187,7 +191,7 @@ module tl_test_rk_alg_mod
     call rk_alg_init(mesh, u, rho, theta, exner)
 
     call rk_alg_step(u, rho, theta, moist_dyn, exner, &
-                     mr, model_clock )
+                     mr, modeldb%clock )
 
     call rk_alg_final()
 
@@ -227,7 +231,7 @@ module tl_test_rk_alg_mod
       call rk_alg_init(mesh, n_u, n_rho, n_theta, n_exner)
 
       call rk_alg_step( n_u, n_rho, n_theta, n_moist_dyn, n_exner, &
-                        n_mr, model_clock )
+                        n_mr, modeldb%clock )
 
       call rk_alg_final()
 
@@ -237,7 +241,7 @@ module tl_test_rk_alg_mod
       call tl_rk_alg_step( p_u, p_rho, p_theta, p_moist_dyn, p_exner, &
                            p_mr, ls_u, ls_rho,                        &
                            ls_theta, ls_moist_dyn, ls_exner, ls_mr,   &
-                           model_clock )
+                           modeldb%clock )
 
       call tl_rk_alg_final()
 

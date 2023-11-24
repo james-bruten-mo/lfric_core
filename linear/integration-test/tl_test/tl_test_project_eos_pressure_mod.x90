@@ -17,14 +17,15 @@ module tl_test_project_eos_pressure_mod
   use fem_constants_mod,              only: get_inverse_w3_mass_matrix
   use geometric_constants_mod,        only: get_coordinates, &
                                             get_panel_id
-  use field_bundle_mod,               only: clone_bundle
+  use field_array_mod,                only: field_array_type
+  use field_bundle_builtins_mod,      only: clone_bundle
   use field_mod,                      only: field_type
   use mesh_mod,                       only: mesh_type
   use field_collection_mod,           only: field_collection_type
   use finite_element_config_mod,      only: element_order
   use fs_continuity_mod,              only: W3, Wtheta
   use function_space_collection_mod,  only: function_space_collection
-  use gungho_model_data_mod,          only: model_data_type
+  use gungho_modeldb_mod,             only: modeldb_type
   use moist_dyn_mod,                  only: num_moist_factors, gas_law
   use operator_mod,                   only: operator_type
   use planet_config_mod,              only: cp
@@ -46,17 +47,17 @@ module tl_test_project_eos_pressure_mod
   contains
 
   !> @brief Test the tangent linear for the project_eos_pressure kernel.
-  !> @param[in] model_data    The working data set for a model run
-  !> @param[in] mesh          The current 3d mesh
-  !> @param[in] twod_mesh     The current 2d mesh
-  subroutine test_project_eos_pressure( model_data, &
-                                        mesh,       &
+  !> @param[in] modedb    The working data set for a model run
+  !> @param[in] mesh      The current 3d mesh
+  !> @param[in] twod_mesh The current 2d mesh
+  subroutine test_project_eos_pressure( modeldb, &
+                                        mesh,    &
                                         twod_mesh )
     implicit none
 
-    type(mesh_type), pointer, intent(in)      :: mesh
-    type(mesh_type), pointer, intent(in)      :: twod_mesh
-    type(model_data_type), target, intent(in) :: model_data
+    type(mesh_type), pointer, intent(in)   :: mesh
+    type(mesh_type), pointer, intent(in)   :: twod_mesh
+    type(modeldb_type), target, intent(in) :: modeldb
 
     character(str_def) :: label = "project_eos_pressure"
 
@@ -90,6 +91,9 @@ module tl_test_project_eos_pressure_mod
     type(field_type) :: random_theta
     type(field_type), dimension(num_moist_factors) :: random_moist_dyn
 
+    type(field_collection_type), pointer :: moisture_fields => null()
+    type(field_array_type), pointer      :: moist_dyn_array => null()
+
     real(r_def) :: norm_diff, norm_diff_prev
     real(r_def) :: gamma
 
@@ -104,8 +108,8 @@ module tl_test_project_eos_pressure_mod
     qr => get_qr()
     m3_inv => get_inverse_w3_mass_matrix(mesh%get_id())
 
-    prognostic_fields => model_data%prognostic_fields
-    ls_fields         => model_data%ls_fields
+    prognostic_fields => modeldb%model_data%prognostic_fields
+    ls_fields         => modeldb%model_data%ls_fields
 
     ! Input fields
     call prognostic_fields%get_field('rho', n_rho)
@@ -116,8 +120,10 @@ module tl_test_project_eos_pressure_mod
     call ls_fields%get_field('ls_theta', ls_theta)
     call p_theta%initialise( vector_space = &
       function_space_collection%get_fs(mesh, element_order, Wtheta) )
-    n_moist_dyn => model_data%moist_dyn
-    ls_moist_dyn => model_data%ls_moist_dyn
+    moisture_fields => modeldb%fields%get_field_collection("moisture_fields")
+    call moisture_fields%get_field("moist_dyn", moist_dyn_array)
+    n_moist_dyn => moist_dyn_array%bundle
+    ls_moist_dyn => modeldb%model_data%ls_moist_dyn
     call clone_bundle(n_moist_dyn, p_moist_dyn, num_moist_factors)
 
     ! Output fields

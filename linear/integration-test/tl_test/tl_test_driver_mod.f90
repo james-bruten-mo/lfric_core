@@ -129,7 +129,7 @@ contains
 
     ! Model configuration initialisation
     call initialise_model( mesh,  &
-                           modeldb%model_data )
+                           modeldb )
 
     ! Initialise the linearisation state
     call linear_init_ls( mesh, twod_mesh, modeldb )
@@ -161,8 +161,8 @@ contains
 
     type(modeldb_type), intent(inout) :: modeldb
 
-    call test_kinetic_energy_gradient( modeldb%model_data, &
-                                       mesh,               &
+    call test_kinetic_energy_gradient( modeldb, &
+                                       mesh,    &
                                        twod_mesh )
 
   end subroutine run_kinetic_energy_gradient
@@ -176,9 +176,8 @@ contains
 
     type(modeldb_type), intent(inout) :: modeldb
 
-    call test_advect_density_field( modeldb%model_data, &
-                                    modeldb%clock,      &
-                                    mesh,               &
+    call test_advect_density_field( modeldb, &
+                                    mesh,    &
                                     twod_mesh )
 
   end subroutine run_advect_density_field
@@ -192,9 +191,8 @@ contains
 
     type(modeldb_type), intent(inout) :: modeldb
 
-    call test_advect_theta_field( modeldb%model_data, &
-                                  modeldb%clock,      &
-                                  mesh,               &
+    call test_advect_theta_field( modeldb, &
+                                  mesh,    &
                                   twod_mesh )
 
   end subroutine run_advect_theta_field
@@ -208,8 +206,8 @@ contains
 
     type(modeldb_type), intent(inout) :: modeldb
 
-    call test_vorticity_advection( modeldb%model_data, &
-                                   mesh,               &
+    call test_vorticity_advection( modeldb, &
+                                   mesh,    &
                                    twod_mesh )
 
   end subroutine run_vorticity_advection
@@ -223,8 +221,8 @@ contains
 
     type(modeldb_type), intent(inout) :: modeldb
 
-    call test_project_eos_pressure( modeldb%model_data, &
-                                    mesh,               &
+    call test_project_eos_pressure( modeldb, &
+                                    mesh,    &
                                     twod_mesh )
 
   end subroutine run_project_eos_pressure
@@ -238,8 +236,8 @@ contains
 
     type(modeldb_type), intent(inout) :: modeldb
 
-    call test_sample_eos_pressure( modeldb%model_data, &
-                                   mesh,               &
+    call test_sample_eos_pressure( modeldb, &
+                                   mesh,    &
                                    twod_mesh )
 
   end subroutine run_sample_eos_pressure
@@ -253,8 +251,8 @@ contains
 
     type(modeldb_type), intent(inout) :: modeldb
 
-    call test_hydrostatic( modeldb%model_data, &
-                           mesh,               &
+    call test_hydrostatic( modeldb, &
+                           mesh,    &
                            twod_mesh )
 
   end subroutine run_hydrostatic
@@ -268,8 +266,8 @@ contains
 
     type(modeldb_type), intent(inout) :: modeldb
 
-    call test_pressure_gradient_bd( modeldb%model_data, &
-                                    mesh,               &
+    call test_pressure_gradient_bd( modeldb, &
+                                    mesh,    &
                                     twod_mesh )
 
   end subroutine run_pressure_gradient_bd
@@ -283,10 +281,9 @@ contains
 
     type(modeldb_type), intent(inout) :: modeldb
 
-    call test_rk_alg( modeldb%model_data, &
-                      mesh,               &
-                      twod_mesh,          &
-                      modeldb%clock )
+    call test_rk_alg( modeldb, &
+                      mesh,    &
+                      twod_mesh )
 
   end subroutine run_rk_alg
 
@@ -299,9 +296,8 @@ contains
 
     type(modeldb_type), intent(inout) :: modeldb
 
-    call test_transport_control( modeldb%model_data, &
-                                 modeldb%clock,      &
-                                 mesh,               &
+    call test_transport_control( modeldb, &
+                                 mesh,    &
                                  twod_mesh )
 
   end subroutine run_transport_control
@@ -315,10 +311,9 @@ contains
 
     type(modeldb_type), intent(inout) :: modeldb
 
-    call test_semi_imp_alg( modeldb%model_data, &
-                            mesh,               &
-                            twod_mesh,          &
-                            modeldb%clock )
+    call test_semi_imp_alg( modeldb,   &
+                            mesh,      &
+                            twod_mesh )
 
   end subroutine run_semi_imp_alg
 
@@ -331,8 +326,8 @@ contains
 
     type(modeldb_type), intent(inout) :: modeldb
 
-    call test_rhs_alg( modeldb%model_data, &
-                       mesh,               &
+    call test_rhs_alg( modeldb, &
+                       mesh,    &
                        twod_mesh )
 
   end subroutine run_rhs_alg
@@ -346,8 +341,8 @@ contains
 
     type(modeldb_type), intent(inout) :: modeldb
 
-    call test_rhs_project_eos( modeldb%model_data, &
-                               mesh,               &
+    call test_rhs_project_eos( modeldb, &
+                               mesh,    &
                                twod_mesh )
 
   end subroutine run_rhs_project_eos
@@ -361,8 +356,8 @@ contains
 
     type(modeldb_type), intent(inout) :: modeldb
 
-    call test_rhs_sample_eos( modeldb%model_data, &
-                              mesh,               &
+    call test_rhs_sample_eos( modeldb, &
+                              mesh,    &
                               twod_mesh )
 
   end subroutine run_rhs_sample_eos
@@ -381,12 +376,12 @@ contains
     call log_event( 'Finalising '//program_name//' ...', LOG_LEVEL_ALWAYS )
 
     ! Model configuration finalisation
-    call finalise_model( modeldb%model_data,    &
+    call finalise_model( modeldb,               &
                          modeldb%configuration, &
                          program_name )
 
     ! Destroy the fields stored in model_data
-    call finalise_model_data( modeldb%model_data )
+    call finalise_model_data( modeldb )
 
     ! Finalise infrastructure and constants
     call finalise_infrastructure()
