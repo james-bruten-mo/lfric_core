@@ -28,6 +28,7 @@ module create_physics_prognostics_mod
   use function_space_mod,             only : function_space_type
   use log_mod,                        only : log_event,                         &
                                              LOG_LEVEL_INFO,                    &
+                                             LOG_LEVEL_WARNING,                 &
                                              LOG_LEVEL_ERROR
   use mesh_mod,                       only : mesh_type
   use mixing_config_mod,              only : smagorinsky
@@ -86,7 +87,12 @@ module create_physics_prognostics_mod
                                              adv_conv_prog_dtheta,              &
                                              adv_conv_prog_dq
   use mphys_inputs_mod, only: casim_iopt_act
+
+  use io_config_mod,                  only : checkpoint_read
+  use initialization_config_mod,      only : init_option,                       &
+                                             init_option_checkpoint_dump
 #endif
+
 
   implicit none
 
@@ -261,6 +267,20 @@ contains
     if (radiation == radiation_socrates) then
       ! Checkpoint unless both the first timestep of this run and the
       ! first timestep of the next run are radiation timesteps
+
+      if (checkpoint_read .or.                                                 &
+          init_option == init_option_checkpoint_dump) then
+        ! warn about asymmetric case;
+        ! if there is no subsequent XIOS read error, everthing's fine
+        ! after all
+        if (mod(clock%get_first_step()-1, n_radstep) /=                        &
+            mod(clock%get_last_step(),    n_radstep) ) then
+          call log_event('Danger: start and end steps should be ' //           &
+                          'either both radiation timesteps or neither',        &
+                          LOG_LEVEL_WARNING)
+        end if
+      endif
+
       checkpoint_flag =                                                         &
         mod(clock%get_first_step()-1, n_radstep) /= 0 .or.                      &
         mod(clock%get_last_step(),    n_radstep) /= 0
@@ -361,6 +381,20 @@ contains
     ! Checkpoint unless both the first timestep of this run and the
     ! first timestep of the next run are radaer timesteps
     if (l_radaer) then
+
+      if (checkpoint_read .or.                                                  &
+          init_option == init_option_checkpoint_dump) then
+        ! warn about asymmetric case;
+        ! if there is no subsequent XIOS read error, everthing's fine
+        ! after all
+        if (mod(clock%get_first_step()-1, n_radaer_step*n_radstep) /=           &
+            mod(clock%get_last_step(),    n_radaer_step*n_radstep)) then
+          call log_event('Danger: start and end steps should be ' //            &
+                         'either both radiation supersteps or neither',         &
+                          LOG_LEVEL_WARNING)
+        endif
+      end if
+
       checkpoint_flag =                                                         &
         mod(clock%get_first_step()-1, n_radaer_step*n_radstep) /= 0 .or.        &
         mod(clock%get_last_step(),    n_radaer_step*n_radstep) /= 0
