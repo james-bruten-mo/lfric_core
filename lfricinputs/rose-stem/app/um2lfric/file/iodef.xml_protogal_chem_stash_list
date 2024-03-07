@@ -121,7 +121,6 @@
         <field id="meoo" name="meoo" long_name="mass_fraction_of_methyl_peroxy_radical_in_air" unit="1" grid_ref="full_level_face_grid" />
         <field id="meooh" name="meooh" long_name="mass_fraction_of_methyl_hydroperoxide_in_air" unit="1" grid_ref="full_level_face_grid" />
         <field id="h" name="h" long_name="mass_fraction_of_hydrogen_radical_in_air" unit="1" grid_ref="full_level_face_grid" />
-        <field id="ch2o" name="ch2o" long_name="mass_fraction_of_water_vapour_from_chemistry_in_air" unit="1" grid_ref="full_level_face_grid" />
         <field id="oh" name="oh" long_name="mass_fraction_of_hydroxyl_radical_in_air" unit="1" grid_ref="full_level_face_grid" />
         <field id="ho2" name="ho2" long_name="mass_fraction_of_hydroxy_peroxyl_radical_in_air" unit="1" grid_ref="full_level_face_grid" />
         <field id="cl" name="cl" long_name="mass_fraction_of_chloride_radical_in_air" unit="1" grid_ref="full_level_face_grid" />
@@ -253,7 +252,6 @@
         <field field_ref="meoo"/>
         <field field_ref="meooh"/>
         <field field_ref="h"/>
-        <field field_ref="ch2o"/>
         <field field_ref="oh"/>
         <field field_ref="ho2"/>
         <field field_ref="cl"/>
