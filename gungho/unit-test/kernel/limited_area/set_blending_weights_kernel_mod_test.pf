@@ -80,6 +80,7 @@ module set_blending_weights_kernel_mod_test
                                   edge_cells_ns=1,          &
                                   inner_width_ew=1,         &
                                   inner_width_ns=1,         &
+                                  lbc_eos_height=100,       &
                                   lbc_method=lbc_method_onion_layer,      &
                                   limited_area=.false.,     &
                                   normal_only=.true.,       &

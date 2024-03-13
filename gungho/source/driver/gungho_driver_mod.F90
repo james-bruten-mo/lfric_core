@@ -267,7 +267,8 @@ contains
     if ( lbc_option == lbc_option_gungho_file .or. &
          lbc_option == lbc_option_um2lfric_file) then
 
-      call update_lbcs_file_alg( model_axes%lbc_times_list, &
+      call update_lbcs_file_alg( modeldb%configuration,     &
+                                 model_axes%lbc_times_list, &
                                  modeldb%clock, modeldb%model_data%lbc_fields )
     endif
 

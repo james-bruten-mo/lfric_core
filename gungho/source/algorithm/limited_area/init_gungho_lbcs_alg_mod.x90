@@ -19,12 +19,15 @@ module init_gungho_lbcs_alg_mod
                                              lbc_option_um2lfric_file
   use log_mod,                         only: log_event,         &
                                              log_scratch_space, &
-                                             LOG_LEVEL_INFO
+                                             LOG_LEVEL_INFO,    &
+                                             LOG_LEVEL_DEBUG
   use limited_area_constants_mod,      only: get_boundary_mask, &
                                              get_lbc_mask
   use lfric_xios_read_mod,             only: read_state
   use mesh_mod,                        only: mesh_type
   use model_clock_mod,                 only: model_clock_type
+  use namelist_collection_mod,         only: namelist_collection_type
+  use namelist_mod,                    only: namelist_type
   use variable_fields_mod,             only: init_variable_fields,  &
                                              update_variable_fields
   use linked_list_mod,                 only: linked_list_type
@@ -128,18 +131,23 @@ module init_gungho_lbcs_alg_mod
   !> @brief   Read the time-varying LBCs from a file.
   !> @details Initialise the LBCs, that are read in and updated using
   !!          a time-axis.
-  !> @param[in,out] lbc_times_list  The LBC time axis list
+  !> @param[in]     configuration   The application configuration object
+  !> @param[in]     lbc_times_list  The LBC time axis list
   !> @param[in]     clock           Clock
   !> @param[in,out] lbc_fields      The LBC field collection
-  subroutine init_lbcs_file_alg( lbc_times_list, clock, lbc_fields )
+  subroutine init_lbcs_file_alg( configuration, lbc_times_list, clock, lbc_fields )
 
     implicit none
 
-    type( field_collection_type ), intent(inout) :: lbc_fields
-    type(linked_list_type),        intent(in)    :: lbc_times_list
-    class(model_clock_type),       intent(in)    :: clock
+    type(namelist_collection_type), intent(in)    :: configuration
+    type(field_collection_type),    intent(inout) :: lbc_fields
+    type(linked_list_type),         intent(in)    :: lbc_times_list
+    class(model_clock_type),        intent(in)    :: clock
+    type(field_type),               pointer       :: lbc_v_u
 
     if ( subroutine_timers ) call timer('init_lbcs')
+
+    nullify(lbc_v_u)
 
     call read_state( lbc_fields )
     call init_variable_fields( lbc_times_list, &
@@ -153,10 +161,10 @@ module init_gungho_lbcs_alg_mod
         call combine_lbc_winds( lbc_fields, extensive=.true. )
 
       case ( lbc_option_um2lfric_file )
-        ! Note that map_lbc_inputs will rebalance the winds, so
-        ! that call needs to come before combining the winds.
-        call map_lbc_inputs( lbc_fields )
+        call lbc_fields%get_field( 'lbc_v_u', lbc_v_u )
+        call invoke( setval_c(lbc_v_u, 0.0_r_def) )
         call combine_lbc_winds( lbc_fields, extensive=.false. )
+        call map_lbc_inputs( configuration, lbc_fields )
 
       case default
         call log_event('This lbc_option not available', LOG_LEVEL_INFO)
@@ -171,21 +179,27 @@ module init_gungho_lbcs_alg_mod
 
   end subroutine init_lbcs_file_alg
 
+
   !> @brief   Update the time-varying LBCs from a file.
   !> @details Update the LBCs, that are read in and updated using
-  !!          a time-axis.
+  !!          a time-axis
+  !> @param[in]     configuration   The application configuration object
   !> @param[in]     lbc_times_list  The LBC time axis list
   !> @param[in]     clock           Clock
   !> @param[in,out] lbc_fields      The LBC field collection
-  subroutine update_lbcs_file_alg( lbc_times_list, clock, lbc_fields )
+  subroutine update_lbcs_file_alg( configuration, lbc_times_list, clock, lbc_fields )
 
     implicit none
 
-    type( field_collection_type ), intent(inout) :: lbc_fields
-    type(linked_list_type),        intent(in)    :: lbc_times_list
-    class(model_clock_type),       intent(in)    :: clock
+    type(namelist_collection_type), intent(in)    :: configuration
+    type(field_collection_type),    intent(inout) :: lbc_fields
+    type(linked_list_type),         intent(in)    :: lbc_times_list
+    class(model_clock_type),        intent(in)    :: clock
+    type(field_type),               pointer       :: lbc_v_u
 
     if ( subroutine_timers ) call timer('update_lbcs')
+
+    nullify(lbc_v_u)
 
     call update_variable_fields( lbc_times_list, &
                                  clock,lbc_fields )
@@ -196,8 +210,10 @@ module init_gungho_lbcs_alg_mod
         call combine_lbc_winds( lbc_fields, extensive=.true. )
 
       case ( lbc_option_um2lfric_file )
-        call map_lbc_inputs( lbc_fields )
+        call lbc_fields%get_field( 'lbc_v_u', lbc_v_u )
+        call invoke( setval_c(lbc_v_u, 0.0_r_def) )
         call combine_lbc_winds( lbc_fields, extensive=.false. )
+        call map_lbc_inputs( configuration, lbc_fields )
 
       case default
         call log_event('This lbc_option not available', LOG_LEVEL_INFO)
@@ -292,39 +308,39 @@ module init_gungho_lbcs_alg_mod
   !> @details LBC files from the UM contain rho*r**2 and specific humidities
   !>          whereas LFRic needs dry rho and mixing ratios.  So manipulate
   !>          these accordingly.
-  !> @param[in,out] lbc_fields  The collection of lbc fields
-  subroutine map_lbc_inputs( lbc_fields )
+  !> @param[in]     configuration The application configuration object
+  !> @param[in,out] lbc_fields    The collection of lbc fields
+  subroutine map_lbc_inputs( configuration, lbc_fields )
+
+    use map_fd_to_prognostics_alg_mod, only: hydrostatic_balance
     use map_um_lbc_inputs_alg_mod,     only: map_um_lbc_inputs
     use moist_dyn_mod,                 only: num_moist_factors, &
                                              gas_law, total_mass, water
-    use geometric_constants_mod,       only: get_height
-    use planet_config_mod,             only: radius,  rd, p_zero, kappa, &
-                                             cp, gravity
-    use lbc_balance_kernel_mod,        only: lbc_balance_kernel_type
-    use sample_eos_rho_kernel_mod,     only: sample_eos_rho_kernel_type
     use moist_dyn_gas_kernel_mod,      only: moist_dyn_gas_kernel_type
+    use sort_ref_kernel_mod,           only: sort_ref_kernel_type
+
     implicit none
 
-    type( field_collection_type ), intent(inout) :: lbc_fields
+    type(namelist_collection_type), intent(in)    :: configuration
+    type( field_collection_type ),  intent(inout) :: lbc_fields
 
-    type(field_type), pointer :: lbc_rho_r2 => null()
-    type(field_type), pointer :: lbc_rho => null()
-    type(field_type), pointer :: lbc_q => null()
-    type(field_type), pointer :: lbc_qcl => null()
-    type(field_type), pointer :: lbc_qcf => null()
-    type(field_type), pointer :: lbc_qrain => null()
-    type(field_type), pointer :: lbc_m_v => null()
-    type(field_type), pointer :: lbc_m_cl => null()
-    type(field_type), pointer :: lbc_m_ci => null()
-    type(field_type), pointer :: lbc_m_r => null()
+    type(field_type), pointer :: lbc_rho_r2
+    type(field_type), pointer :: lbc_rho
+    type(field_type), pointer :: lbc_q
+    type(field_type), pointer :: lbc_qcl
+    type(field_type), pointer :: lbc_qcf
+    type(field_type), pointer :: lbc_qrain
+    type(field_type), pointer :: lbc_m_v
+    type(field_type), pointer :: lbc_m_cl
+    type(field_type), pointer :: lbc_m_ci
+    type(field_type), pointer :: lbc_m_r
     type(field_type)          :: lbc_moist_dyn(num_moist_factors)
-    type(field_type), pointer :: lbc_theta  => null()
-    type(field_type), pointer :: lbc_exner  => null()
-    type(field_type), pointer :: lbc_v_u => null()
+    type(field_type), pointer :: lbc_theta
+    type(field_type), pointer :: lbc_exner
+    type(field_type), pointer :: lbc_u
 
-    type(mesh_type),  pointer :: mesh => null()
-    type(field_type), pointer :: w3_lbc_mask => null()
-    type(field_type), pointer :: height_w3 => null()
+    type(mesh_type),  pointer :: mesh
+    type(field_type), pointer :: w3_lbc_mask
 
     ! The interior of the LBC fields for rho and exner need to have
     ! sensible values to avoid numerical errors for kernels that
@@ -335,8 +351,22 @@ module init_gungho_lbcs_alg_mod
 
     integer(i_def)            :: imd
 
-    write(log_scratch_space,'(A)') 'Recovering density, and mixing ratios for LBCs. '
-    call log_event(log_scratch_space, LOG_LEVEL_INFO)
+    integer(i_def)            :: lbc_eos_height
+
+    type(namelist_type), pointer :: boundaries_nml
+
+    nullify( lbc_rho_r2, lbc_rho, lbc_q, lbc_qcl, lbc_qcf, lbc_qrain,    &
+             lbc_m_v, lbc_m_cl, lbc_m_ci, lbc_m_r, lbc_theta, lbc_exner, &
+             lbc_u, mesh, w3_lbc_mask )
+
+    boundaries_nml => configuration%get_namelist('boundaries')
+    call boundaries_nml%get_value( 'lbc_eos_height', lbc_eos_height )
+    nullify( boundaries_nml )
+
+    write(log_scratch_space,'(A)') &
+      'Recovering exner, and mixing ratios for LBCs.'
+
+    call log_event(log_scratch_space, LOG_LEVEL_DEBUG)
 
     call lbc_fields%get_field( 'lbc_rho_r2', lbc_rho_r2 )
     call lbc_fields%get_field( 'lbc_rho', lbc_rho )
@@ -350,10 +380,9 @@ module init_gungho_lbcs_alg_mod
     call lbc_fields%get_field( 'lbc_m_r', lbc_m_r )
     call lbc_fields%get_field( 'lbc_theta', lbc_theta )
     call lbc_fields%get_field( 'lbc_exner', lbc_exner )
-    call lbc_fields%get_field( 'lbc_v_u', lbc_v_u )
+    call lbc_fields%get_field( 'lbc_u', lbc_u )
 
     mesh        => lbc_exner%get_mesh()
-    height_w3   => get_height(W3, mesh%get_id())
     w3_lbc_mask => get_lbc_mask(W3, mesh%get_id())
 
     call lbc_theta%log_minmax(LOG_LEVEL_INFO, 'lbc_theta')
@@ -376,18 +405,15 @@ module init_gungho_lbcs_alg_mod
                  inc_X_plus_Y(lbc_moist_dyn(total_mass), lbc_m_v),              &
                  setval_c( lbc_moist_dyn(water), 1.0_r_def),                    &
 
+    ! Remove any static instability.
+                 sort_ref_kernel_type(lbc_theta),                               &
+
     ! Initialize hydrostatically balanced exner field.
-    ! This will also recalculate the dry density to satisfy the
-    ! equation of state
-                 setval_c(lbc_exner, EXNER_RHO_FILL_VALUE),                     &
-                 lbc_balance_kernel_type(lbc_exner, lbc_rho, lbc_theta,         &
-                                         lbc_moist_dyn, height_w3, w3_lbc_mask, &
-                                         gravity, p_zero, kappa, rd, cp),       &
-                 sample_eos_rho_kernel_type(lbc_rho, lbc_exner, lbc_theta,      &
-                                            lbc_moist_dyn(gas_law),             &
-                                            kappa, rd, p_zero),                 &
-    ! Set vertical component of wind to zero
-                 setval_c(lbc_v_u, 0.0_r_def) )
+                 setval_c(lbc_exner, EXNER_RHO_FILL_VALUE) )
+
+    call hydrostatic_balance( lbc_exner, lbc_rho, lbc_theta, &
+                              lbc_u, lbc_moist_dyn,          &
+                              lbc_eos_height, w3_lbc_mask )
 
     call lbc_rho%log_minmax(LOG_LEVEL_INFO, 'lbc_rho')
     call lbc_exner%log_minmax(LOG_LEVEL_INFO, 'lbc_exner')

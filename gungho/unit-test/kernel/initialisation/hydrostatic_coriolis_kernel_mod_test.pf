@@ -35,8 +35,10 @@ module hydrostatic_coriolis_kernel_mod_test
       real(r_def),    allocatable :: rho_data(:)
       real(r_def),    allocatable :: theta_data(:)
       real(r_def),    allocatable :: coriolis_data(:)
+      real(r_def),    allocatable :: phi_data(:)
       real(r_def),    allocatable :: moist_dyn_data(:,:)
       real(r_def),    allocatable :: height_w3_data(:)
+      real(r_def),    allocatable :: mask_w3_data(:)
   contains
     procedure setUp
     procedure tearDown
@@ -51,6 +53,7 @@ module hydrostatic_coriolis_kernel_mod_test
   real(r_def), parameter :: cp       = 1000.0_r_def
   real(r_def), parameter :: kappa    = rd/cp
   real(r_def), parameter :: scaling  = 1.0_r_def
+  integer(i_def), parameter :: eos_level = 3
 
 contains
 
@@ -123,9 +126,11 @@ contains
     ! Create the data
     allocate(this%exner_data(this%undf_w3))
     allocate(this%rho_data(this%undf_w3))
+    allocate(this%phi_data(this%undf_w3))
     allocate(this%theta_data(this%undf_wt))
     allocate(this%coriolis_data(this%undf_w2))
     allocate(this%moist_dyn_data(this%undf_wt, 3))
+    allocate(this%mask_w3_data(this%undf_w3))
 
   end subroutine setUp
 
@@ -145,10 +150,12 @@ contains
     deallocate(this%map_w2)
     deallocate(this%exner_data)
     deallocate(this%rho_data)
+    deallocate(this%phi_data)
     deallocate(this%theta_data)
     deallocate(this%coriolis_data)
     deallocate(this%moist_dyn_data)
     deallocate(this%height_w3_data)
+    deallocate(this%mask_w3_data)
 
     call final_configuration()
 
@@ -180,9 +187,11 @@ contains
     this%rho_data(:) = 1.1_r_def
     this%theta_data(:) = 300.0_r_def
     this%coriolis_data(:) = 5.0e-3_r_def
+    this%mask_w3_data(:) = 1.0_r_def
     this%moist_dyn_data(:,1) = 1.0_r_def + recip_epsilon*mv
     this%moist_dyn_data(:,2) = 1.0_r_def + mv
     this%moist_dyn_data(:,3) = 1.0_r_def
+    this%phi_data(:) =gravity * this%height_w3_data(:)
     call hydrostatic_coriolis_code( nlayers,                             &
                                     this%exner_data,                     &
                                     this%rho_data,                       &
@@ -191,8 +200,11 @@ contains
                                     this%moist_dyn_data(:,1),            &
                                     this%moist_dyn_data(:,2),            &
                                     this%moist_dyn_data(:,3),            &
+                                    this%phi_data,                       &
                                     this%height_w3_data,                 &
-                                    gravity, p_zero, kappa, rd, cp,      &
+                                    this%mask_w3_data,                   &
+                                    p_zero, kappa, rd, cp,               &
+                                    eos_level,                           &
                                     this%ndf_w3, this%undf_w3,           &
                                     this%map_w3(:,cell), this%basis_w3,  &
                                     this%ndf_wt, this%undf_wt,           &

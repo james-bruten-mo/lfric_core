@@ -386,7 +386,8 @@ subroutine create_model_data( modeldb,      &
           call init_fd_prognostics_dump( modeldb%model_data%fd_fields )
 
           ! Populate prognostics from input finite difference fields
-          call map_fd_to_prognostics( modeldb%model_data%prognostic_fields, &
+          call map_fd_to_prognostics( modeldb%configuration,                &
+                                      modeldb%model_data%prognostic_fields, &
                                       mr_array%bundle,                      &
                                       moist_dyn_array%bundle,               &
                                       modeldb%model_data%fd_fields )
@@ -422,12 +423,14 @@ subroutine create_model_data( modeldb,      &
                                        modeldb%model_data%lbc_fields )
 
         case ( lbc_option_gungho_file )
-          call init_lbcs_file_alg( model_axes%lbc_times_list, &
+          call init_lbcs_file_alg( modeldb%configuration,     &
+                                   model_axes%lbc_times_list, &
                                    modeldb%clock,             &
                                    modeldb%model_data%lbc_fields )
 
         case ( lbc_option_um2lfric_file )
-          call init_lbcs_file_alg( model_axes%lbc_times_list, &
+          call init_lbcs_file_alg( modeldb%configuration,     &
+                                   model_axes%lbc_times_list, &
                                    modeldb%clock,             &
                                    modeldb%model_data%lbc_fields )
 
