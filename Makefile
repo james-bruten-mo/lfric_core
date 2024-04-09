@@ -20,7 +20,6 @@ OPERATE_ON ?= infrastructure             \
               components/lfric-xios      \
               components/inventory       \
               mesh_tools                 \
-              linear                     \
               miniapps/skeleton          \
               miniapps/simple_diffusion  \
               miniapps/io_dev            

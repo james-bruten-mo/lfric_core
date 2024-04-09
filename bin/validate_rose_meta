@@ -35,7 +35,6 @@ default_project_names=( infrastructure   \
                         lfric-xios       \
                         driver           \
                         mesh_tools       \
-                        linear           \
                         simple_diffusion \
                         skeleton         \
                         io_dev           )
@@ -45,7 +44,6 @@ default_app_names=( \
     lfric-xios:none                   \
     driver:none                       \
     mesh_tools:mesh                   \
-    linear:none                       \
     simple_diffusion:simple_diffusion \
     skeleton:skeleton                 \
     io_dev:io_dev                     )
@@ -84,7 +82,6 @@ project_folder_location=(                      \
   [lfric-xios]=components/lfric-xios           \
   [driver]=components/driver                   \
   [mesh_tools]=mesh_tools                      \
-  [linear]=linear                              \
   [simple_diffusion]=miniapps/simple_diffusion \
   [skeleton]=miniapps/skeleton                 \
   [io_dev]=miniapps/io_dev                     )
@@ -96,7 +93,6 @@ project_primary_app=(                 \
   [lfric-xios]=none                   \
   [driver]=none                       \
   [mesh_tools]=mesh                   \
-  [linear]=none                       \
   [simple_diffusion]=simple_diffusion \
   [skeleton]=skeleton                 \
   [io_dev]=io_dev                     )
