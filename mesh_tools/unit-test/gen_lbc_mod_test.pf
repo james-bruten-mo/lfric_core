@@ -158,13 +158,8 @@ module gen_lbc_mod_test
     integer(i_def), allocatable :: test_vert_edge(:,:)
 
   contains
-    procedure :: SetUp
+    procedure :: setUp
     procedure :: tearDown
-
-    procedure :: test_rim3_9x8
-    procedure :: test_rim2_6x5
-    procedure :: test_rim1_3x4
-
   end type test_lbc_type
 
 contains
@@ -184,11 +179,11 @@ contains
   end subroutine tearDown
 
  @test
- subroutine test_rim3_9x8(this)
+ subroutine test_rim3_9x8(context)
 
    implicit none
 
-   class(test_lbc_type), intent(inout) :: this
+   class(test_lbc_type), intent(inout) :: context
 
    type(gen_planar_type)     :: planar_strategy
    type(gen_lbc_type)        :: lbc_strategy
@@ -352,11 +347,11 @@ contains
 
 
  @test
- subroutine test_rim2_6x5(this)
+ subroutine test_rim2_6x5(context)
 
    implicit none
 
-   class(test_lbc_type), intent(inout) :: this
+   class(test_lbc_type), intent(inout) :: context
 
    type(gen_planar_type)     :: planar_strategy
    type(gen_lbc_type)        :: lbc_strategy
@@ -490,11 +485,11 @@ contains
   end subroutine test_rim2_6x5
 
  @test
- subroutine test_rim1_3x4(this)
+ subroutine test_rim1_3x4(context)
 
    implicit none
 
-   class(test_lbc_type), intent(inout) :: this
+   class(test_lbc_type), intent(inout) :: context
 
    type(gen_planar_type)     :: planar_strategy
    type(gen_lbc_type)        :: lbc_strategy

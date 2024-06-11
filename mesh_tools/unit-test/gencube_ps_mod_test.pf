@@ -21,49 +21,15 @@ module gencube_ps_mod_test
             test_C3, &
             test_stretched_grid
 
-  @TestCase
-  type, extends(TestCase), public :: gencube_ps_test_type
-    private
-  contains
-    procedure setUp
-    procedure tearDown
-    procedure test_C1
-    procedure test_C2
-    procedure test_C3
-    procedure test_stretched_grid
-
-  end type gencube_ps_test_type
-
   character(str_def), parameter :: mesh_name = 'unit_test'
 
 contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  subroutine setUp( this )
-
-    implicit none
-
-    class(gencube_ps_test_type), intent(inout) :: this
-
-  end subroutine setUp
-
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  subroutine tearDown( this )
-
-    implicit none
-
-    class(gencube_ps_test_type), intent(inout) :: this
-
-  end subroutine tearDown
-
-
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   @test
-  subroutine test_C1( this )
+  subroutine test_C1()
 
     implicit none
-
-    class(gencube_ps_test_type), intent(inout) :: this
 
     type(gencube_ps_type)  :: csgen
     integer(i_def)         :: nodes, edges, faces
@@ -219,11 +185,9 @@ contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   @test
-  subroutine test_C2( this )
+  subroutine test_C2()
 
     implicit none
-
-    class(gencube_ps_test_type), intent(inout) :: this
 
     type(gencube_ps_type)  :: csgen
     integer(i_def)         :: nodes, edges, faces
@@ -391,11 +355,9 @@ contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   @test
-  subroutine test_C3( this )
+  subroutine test_C3()
 
     implicit none
-
-    class(gencube_ps_test_type), intent(inout) :: this
 
     type(gencube_ps_type)  :: csgen_rot
 
@@ -521,11 +483,10 @@ contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   @test
-  subroutine test_stretched_grid( this )
+  subroutine test_stretched_grid()
 
     implicit none
 
-    class(gencube_ps_test_type), intent(inout) :: this
     type(gencube_ps_type)  :: csgen_stretch
 
     character(str_def)     :: test_coord_units_x

@@ -15,8 +15,7 @@
 !>
 module gen_planar_mod_test_spherical
 
-  use constants_mod,                  only: i_def,                            &
-                                            r_def,                            &
+  use constants_mod,                  only: i_def, r_def, &
                                             str_def, str_longlong, str_short
   use gen_planar_mod,                 only: gen_planar_type
   use global_mesh_map_collection_mod, only: global_mesh_map_collection_type
@@ -114,7 +113,7 @@ module gen_planar_mod_test_spherical
     integer, public :: number_of_maps
 
   contains
-    procedure :: test_gen
+
   end type gen_planar_test_type
 
   character(str_def), parameter :: mesh_name = 'unit_test'
@@ -131,10 +130,10 @@ contains
     class(config_type), intent(in) :: this
     character(:), allocatable :: string
     character(str_def) :: buffer
-    write(                                                              &
-      buffer,                                                           &
-      '(I0, "x", I0, " ", L1, "x", L1, " ", L1)' &
-    ) this%x_size, this%y_size, this%x_periodic, this%y_periodic,       &
+    write(                                                        &
+      buffer,                                                     &
+      '(I0, "x", I0, " ", L1, "x", L1, " ", L1)'                  &
+    ) this%x_size, this%y_size, this%x_periodic, this%y_periodic, &
       this%rotate_mesh
     string = trim(buffer)
   end function toString
@@ -263,11 +262,11 @@ contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   @test
-  subroutine test_gen( this )
+  subroutine test_gen( context )
 
     implicit none
 
-    class(gen_planar_test_type), intent(inout) :: this
+    class(gen_planar_test_type), intent(inout) :: context
 
     integer(i_def), parameter :: npanels = 1
 
@@ -279,13 +278,13 @@ contains
 
     integer(i_def), pointer  :: edge_cell_ids(:) => null()
 
-    integer(i_def) :: faces_on_face(4, this%x_size * this%y_size)
-    integer(i_def) :: nodes_on_face(4, this%x_size * this%y_size)
-    integer(i_def) :: edges_on_face(4, this%x_size * this%y_size)
-    integer(i_def) :: nodes_on_edge(2, this%edges)
+    integer(i_def) :: faces_on_face(4, context%x_size * context%y_size)
+    integer(i_def) :: nodes_on_face(4, context%x_size * context%y_size)
+    integer(i_def) :: edges_on_face(4, context%x_size * context%y_size)
+    integer(i_def) :: nodes_on_edge(2, context%edges)
 
-    real(r_def) :: face_coords(2, this%x_size * this%y_size)
-    real(r_def) :: coords(2, this%nodes)
+    real(r_def) :: face_coords(2, context%x_size * context%y_size)
+    real(r_def) :: coords(2, context%nodes)
     real(r_def) :: domain_extents(2,4)
 
     character(str_def)      :: test_str(5)
@@ -315,22 +314,22 @@ contains
     type(reference_cube_type) :: cube_element
     cube_element = reference_cube_type()
 
-    mesh_gen = gen_planar_type( reference_element=cube_element,           &
-                                mesh_name=mesh_name,                      &
-                                geometry=geometry_spherical,              &
-                                topology=this%topology,                   &
-                                coord_sys=this%coord_sys,                 &
-                                edge_cells_x=this%x_size,                 &
-                                edge_cells_y=this%y_size,                 &
-                                fine_mesh_edge_cells_x=this%x_size,       &
-                                fine_mesh_edge_cells_y=this%y_size,       &
-                                periodic_x=this%x_periodic,               &
-                                periodic_y=this%y_periodic,               &
-                                domain_size=this%domain_size,             &
-                                domain_centre=this%domain_centre,         &
-                                rotate_mesh=this%rotate_mesh,             &
-                                target_north_pole=this%target_north_pole, &
-                                target_null_island=this%target_null_island )
+    mesh_gen = gen_planar_type( reference_element=cube_element,              &
+                                mesh_name=mesh_name,                         &
+                                geometry=geometry_spherical,                 &
+                                topology=context%topology,                   &
+                                coord_sys=context%coord_sys,                 &
+                                edge_cells_x=context%x_size,                 &
+                                edge_cells_y=context%y_size,                 &
+                                fine_mesh_edge_cells_x=context%x_size,       &
+                                fine_mesh_edge_cells_y=context%y_size,       &
+                                periodic_x=context%x_periodic,               &
+                                periodic_y=context%y_periodic,               &
+                                domain_size=context%domain_size,             &
+                                domain_centre=context%domain_centre,         &
+                                rotate_mesh=context%rotate_mesh,             &
+                                target_north_pole=context%target_north_pole, &
+                                target_null_island=context%target_null_island )
 
     ! Test metadata retrieval
     call mesh_gen%get_metadata( mesh_name          = test_str(1),            &
@@ -347,53 +346,62 @@ contains
 
     @assertEqual( mesh_name,             trim(test_str(1)) )
     @assertEqual( 'spherical',           trim(test_str(2)) )
-    @assertEqual( this%topology_string,  trim(test_str(3)) )
-    @assertEqual( this%coord_sys_string, trim(test_str(4)) )
+    @assertEqual( context%topology_string,  trim(test_str(3)) )
+    @assertEqual( context%coord_sys_string, trim(test_str(4)) )
 
-    @assertEqual( this%x_size, test_edge_cells_x )
-    @assertEqual( this%y_size, test_edge_cells_y )
-    @assertEqual( this%number_of_maps, test_nmaps )
+    @assertEqual( context%x_size, test_edge_cells_x )
+    @assertEqual( context%y_size, test_edge_cells_y )
+    @assertEqual( context%number_of_maps, test_nmaps )
 
 
-    write(x_str, '(F10.2)') this%domain_size(1)
-    write(y_str, '(F10.2)') this%domain_size(2)
+    write(x_str, '(F10.2)') context%domain_size(1)
+    write(y_str, '(F10.2)') context%domain_size(2)
     write(domain_size_str, '(A)') ';domain_size=['//          &
                                   trim(adjustl(x_str))//','// &
                                   trim(adjustl(y_str))//']'
 
-    write(x_str, '(F10.2)') this%domain_centre(1)
-    write(y_str, '(F10.2)') this%domain_centre(2)
+    write(x_str, '(F10.2)') context%domain_centre(1)
+    write(y_str, '(F10.2)') context%domain_centre(2)
     write(domain_centre_str, '(A)') ';domain_centre=['//        &
                                     trim(adjustl(x_str))//','// &
                                     trim(adjustl(y_str))//']'
 
-    if (this%rotate_mesh) then
-      write(x_str, '(F10.2)') this%target_north_pole(1)
-      write(y_str, '(F10.2)') this%target_north_pole(2)
+    if (context%rotate_mesh) then
+      write(x_str, '(F10.2)') context%target_north_pole(1)
+      write(y_str, '(F10.2)') context%target_north_pole(2)
       write(north_pole_str, '(A)') ';north_pole=['//            &
                                     trim(adjustl(x_str))//','// &
                                     trim(adjustl(y_str))//']'
 
-      write(x_str, '(F10.2)') this%target_null_island(1)
-      write(y_str, '(F10.2)') this%target_null_island(2)
+      write(x_str, '(F10.2)') context%target_null_island(1)
+      write(y_str, '(F10.2)') context%target_null_island(2)
       write(null_island_str, '(A)') ';null_island=['//           &
                                      trim(adjustl(x_str))//','// &
                                      trim(adjustl(y_str))//']'
 
-      write(                                                               &
-        expected_test_str,                                                 &
-        '("geometry=spherical;topology=", A, ";coord_sys=", A, ";edge_cells_x=", I0, ";edge_cells_y=", I0, ";periodic_x=", L1, ";periodic_y=", L1, 2A, ";rotate_mesh=", L1, 2A)' &
-      ) this%topology_string, this%coord_sys_string,                       &
-        this%x_size, this%y_size, this%x_periodic, this%y_periodic,        &
-        trim(domain_size_str), trim(domain_centre_str), this%rotate_mesh,  &
-        trim(north_pole_str), trim(null_island_str)
+      write( expected_test_str, '( 2(A,I0), 2(A,L1), 2A, (A,L1), 2A)' ) &
+          "geometry=spherical;topology="//context%topology_string//     &
+          ";coord_sys="//context%coord_sys_string//                     &
+          ";edge_cells_x=", context%x_size,                             &
+          ";edge_cells_y=", context%y_size,                             &
+          ";periodic_x=", context%x_periodic,                           &
+          ";periodic_y=", context%y_periodic,                           &
+          trim(domain_size_str), trim(domain_centre_str),               &
+          ";rotate_mesh=", context%rotate_mesh,                         &
+          trim(north_pole_str), trim(null_island_str)
+
     else
-      write(                                                               &
-        expected_test_str,                                                 &
-        '("geometry=spherical;topology=", A, ";coord_sys=", A, ";edge_cells_x=", I0, ";edge_cells_y=", I0, ";periodic_x=", L1, ";periodic_y=", L1, 2A, ";rotate_mesh=", L1)'                             &
-      ) this%topology_string, this%coord_sys_string,                       &
-        this%x_size, this%y_size, this%x_periodic, this%y_periodic,        &
-        trim(domain_size_str), trim(domain_centre_str), this%rotate_mesh
+
+      write( expected_test_str, '( 2(A,I0), 2(A,L1), 2A, (A,L1) )' ) &
+          "geometry=spherical;topology="//context%topology_string//  &
+          ";coord_sys="//context%coord_sys_string//                  &
+          ";edge_cells_x=", context%x_size,                          &
+          ";edge_cells_y=", context%y_size,                          &
+          ";periodic_x=", context%x_periodic,                        &
+          ";periodic_y=", context%y_periodic,                        &
+          trim(domain_size_str), trim(domain_centre_str),            &
+          ";rotate_mesh=", context%rotate_mesh
+
     end if
 
     @assertEqual( trim(expected_test_str), trim(big_test_str) )
@@ -412,9 +420,9 @@ contains
                                   max_faces_per_node )
 
     ! Mesh has correct dimensions for arguments
-    @assertEqual(this%nodes, nodes, "Incorrect number of vertices for mesh dimensions")
-    @assertEqual(this%edges, edges, "Incorrect number of edges for mesh dimensions")
-    @assertEqual(this%faces, faces, "Incorrect number of faces for mesh dimensions")
+    @assertEqual(context%nodes, nodes, "Incorrect number of vertices for mesh dimensions")
+    @assertEqual(context%edges, edges, "Incorrect number of edges for mesh dimensions")
+    @assertEqual(context%faces, faces, "Incorrect number of faces for mesh dimensions")
 
     ! Mesh has correct element dimensions
     @assertEqual(4, edges_per_face, "Number of edges per face does not correspond to quad mesh")
@@ -425,10 +433,10 @@ contains
     call mesh_gen%get_connectivity( nodes_on_face, edges_on_face, &
                                     faces_on_face, nodes_on_edge )
 
-    @assertEqual(this%nodes_on_face, nodes_on_face, "Incorrect vertex sequence on faces.")
-    @assertEqual(this%faces_on_face, faces_on_face, "Incorrect faces_on_face connectivity.")
-    @assertEqual(this%edges_on_face, edges_on_face, "Incorrect edges_on_face connectivity.")
-    @assertEqual(this%nodes_on_edge, nodes_on_edge, "Incorrect nodes_on_edge connectivity.")
+    @assertEqual(context%nodes_on_face, nodes_on_face, "Incorrect vertex sequence on faces.")
+    @assertEqual(context%faces_on_face, faces_on_face, "Incorrect faces_on_face connectivity.")
+    @assertEqual(context%edges_on_face, edges_on_face, "Incorrect edges_on_face connectivity.")
+    @assertEqual(context%nodes_on_edge, nodes_on_edge, "Incorrect nodes_on_edge connectivity.")
 
     ! Retrieve mesh coordinates
     call mesh_gen%get_coordinates( coords,             &
@@ -437,18 +445,18 @@ contains
                                    test_coord_units_x, &
                                    test_coord_units_y )
 
-    @assertEqual( this%coords, coords, 0.005_r_def, "Incorrect mesh coordinates." )
-    @assertEqual( this%face_coords, face_coords, 0.005_r_def, "Incorrect cell coordinates." )
+    @assertEqual( context%coords, coords, 0.005_r_def, "Incorrect mesh coordinates." )
+    @assertEqual( context%face_coords, face_coords, 0.005_r_def, "Incorrect cell coordinates." )
     @assertEqual( 'degrees_east', trim(test_coord_units_x) )
     @assertEqual( 'degrees_north', trim(test_coord_units_y) )
 
     ! I don't think these are ever used.
     !
-    if (this%number_of_maps > 0) then
-      @assertEqual( this%number_of_maps, size(test_target_mesh_names) )
+    if (context%number_of_maps > 0) then
+      @assertEqual( context%number_of_maps, size(test_target_mesh_names) )
       @assertEqual( trim(target_mesh_names(1)), trim(test_target_mesh_names(1)) )
-      @assertEqual( this%number_of_maps, size(test_maps_edge_cells_x ) )
-      @assertEqual( this%number_of_maps, size(test_maps_edge_cells_y ) )
+      @assertEqual( context%number_of_maps, size(test_maps_edge_cells_x ) )
+      @assertEqual( context%number_of_maps, size(test_maps_edge_cells_y ) )
       @assertEqual( target_edge_cells_x, test_maps_edge_cells_x )
       @assertEqual( target_edge_cells_y, test_maps_edge_cells_y )
 
