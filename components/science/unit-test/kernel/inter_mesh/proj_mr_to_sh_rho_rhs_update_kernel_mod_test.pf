@@ -55,7 +55,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use proj_mr_to_sh_rho_rhs_update_kernel_mod, only : proj_mr_to_sh_rho_rhs_update_code
+    use sci_proj_mr_to_sh_rho_rhs_update_kernel_mod, only : proj_mr_to_sh_rho_rhs_update_code
 
     implicit none
 

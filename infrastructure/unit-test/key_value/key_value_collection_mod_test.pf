@@ -8,19 +8,27 @@
 !>
 module key_value_collection_mod_test
 
-    use, intrinsic :: iso_fortran_env, only : int64, int32, real64, real32
+    use, intrinsic :: iso_fortran_env, &
+                       only : int64, int32, real64, real32
 
-    use constants_mod,                 only : i_def, r_def, l_def, &
-                                              str_longlong, str_def
-    use key_value_collection_mod,      only : key_value_collection_type
-    use key_value_mod, only: int32_key_value_type,     int64_key_value_type,      &
-                           int32_arr_key_value_type,   int64_arr_key_value_type,  &
-                           real32_key_value_type,      real64_key_value_type,     &
-                           real32_arr_key_value_type,  real64_arr_key_value_type, &
-                           logical_key_value_type,     str_key_value_type,        &
-                           logical_arr_key_value_type, str_arr_key_value_type,    &
-                           abstract_key_value_type,                               &
-                           abstract_value_type
+    use constants_mod, only : i_def, r_def, l_def, &
+                              str_longlong, str_def
+    use key_value_collection_mod, &
+                       only : key_value_collection_type
+    use key_value_mod, only: int32_key_value_type,       &
+                             int64_key_value_type,       &
+                             int32_arr_key_value_type,   &
+                             int64_arr_key_value_type,   &
+                             real32_key_value_type,      &
+                             real64_key_value_type,      &
+                             real32_arr_key_value_type,  &
+                             real64_arr_key_value_type,  &
+                             logical_key_value_type,     &
+                             str_key_value_type,         &
+                             logical_arr_key_value_type, &
+                             str_arr_key_value_type,     &
+                             abstract_key_value_type,    &
+                             abstract_value_type
     use pFUnit_Mod
 
   implicit none

@@ -71,8 +71,8 @@ contains
   !> @param[in,out] y Resulting field \f$y=Mx\f$
   subroutine apply_mass_matrix_operator(self, x, y)
 
-    use enforce_bc_kernel_mod,    only: enforce_bc_kernel_type
-    use matrix_vector_kernel_mod, only: matrix_vector_kernel_type
+    use sci_enforce_bc_kernel_mod, only: enforce_bc_kernel_type
+    use matrix_vector_kernel_mod,  only: matrix_vector_kernel_type
 
     implicit none
 

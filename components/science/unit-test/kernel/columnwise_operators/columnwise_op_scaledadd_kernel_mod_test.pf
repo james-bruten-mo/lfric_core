@@ -9,7 +9,7 @@
 !> has the same entries as the corresponding dense matrix.
 module columnwise_op_scaledadd_kernel_mod_test
 
-  use constants_mod,                 only : i_def, r_solver
+  use constants_mod, only : i_def, r_solver
 
   use get_unit_test_m3x3_cma_data_mod, &
        only : get_cma_size, get_cma_prod_size
@@ -20,45 +20,16 @@ module columnwise_op_scaledadd_kernel_mod_test
   private
   public :: test_all
 
-  @TestCase
-  type, extends(TestCase), public :: columnwise_op_scaledadd_test_type
-    private
-  contains
-    procedure setUp
-    procedure tearDown
-    procedure test_all
-  end type columnwise_op_scaledadd_test_type
-
 contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  subroutine setUp( this )
-
-    implicit none
-
-    class(columnwise_op_scaledadd_test_type), intent(inout) :: this
-
-  end subroutine setUp
-
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  subroutine tearDown( this )
-
-    implicit none
-
-    class(columnwise_op_scaledadd_test_type), intent(inout) :: this
-
-  end subroutine tearDown
-
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   @Test
-  subroutine test_all( this )
+  subroutine test_all()
 
-    use columnwise_op_scaledadd_kernel_mod, only : &
-         columnwise_op_scaledadd_kernel_code
+    use sci_columnwise_op_scaledadd_kernel_mod, &
+      only : columnwise_op_scaledadd_kernel_code
 
     implicit none
-
-    class(columnwise_op_scaledadd_test_type), intent(inout) :: this
 
     real(r_solver), parameter :: tol = 1.0e-6_r_solver
 

@@ -58,7 +58,7 @@ contains
   subroutine test_all( this )
 
     use, intrinsic :: iso_fortran_env, only : real64
-    use dot_product_of_components_kernel_mod,   only : dot_product_of_components_code
+    use sci_dot_product_of_components_kernel_mod, only : dot_product_of_components_code
 
     implicit none
 

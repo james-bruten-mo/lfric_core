@@ -6,24 +6,26 @@
 
 program configuration_test
 
-  use, intrinsic :: iso_fortran_env, only : error_unit
-  use mpi_mod,                     only : global_mpi, create_comm, destroy_comm
-  use one_of_each_test_config_mod, only : key_from_an_enum,                  &
-                                      postprocess_one_of_each_test_namelist, &
-                                          read_one_of_each_test_namelist,    &
-                                          a_dim,                             &
-                                          angle_deg,                         &
-                                          angle_rad,                         &
-                                          an_enum,                           &
-                                          bounded_array_local_dim,           &
-                                          bounded_array1_namelist_dim,       &
-                                          bounded_array2_namelist_dim,       &
-                                          bounded_array_source_dim,          &
-                                          closed_array,                      &
-                                          max_array_size,                    &
-                                          open_array,                        &
-                                          some_string,                       &
-                                          whole_number
+  use, intrinsic :: iso_fortran_env, &
+                                only : error_unit
+  use mpi_mod,                  only : global_mpi, create_comm, destroy_comm
+  use one_of_each_test_config_mod,                                            &
+                                only : key_from_an_enum,                      &
+                                       postprocess_one_of_each_test_namelist, &
+                                       read_one_of_each_test_namelist,        &
+                                       a_dim,                                 &
+                                       angle_deg,                             &
+                                       angle_rad,                             &
+                                       an_enum,                               &
+                                       bounded_array_local_dim,               &
+                                       bounded_array1_namelist_dim,           &
+                                       bounded_array2_namelist_dim,           &
+                                       bounded_array_source_dim,              &
+                                       closed_array,                          &
+                                       max_array_size,                        &
+                                       open_array,                            &
+                                       some_string,                           &
+                                       whole_number
 
    use another_list_config_mod, only : postprocess_another_list_namelist,    &
                                        read_another_list_namelist,           &

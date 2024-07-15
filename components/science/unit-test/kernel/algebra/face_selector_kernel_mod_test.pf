@@ -28,7 +28,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use face_selector_kernel_mod, only : face_selector_code
+    use sci_face_selector_kernel_mod, only : face_selector_code
 
     implicit none
 

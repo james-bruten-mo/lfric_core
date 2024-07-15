@@ -54,7 +54,7 @@ contains
   subroutine test_all( this )
 
     use, intrinsic :: iso_fortran_env, only      : real64
-    use tri_solve_sh_rho_to_mr_kernel_mod, only : tri_solve_sh_rho_to_mr_code
+    use sci_tri_solve_sh_rho_to_mr_kernel_mod, only : tri_solve_sh_rho_to_mr_code
 
     implicit none
 

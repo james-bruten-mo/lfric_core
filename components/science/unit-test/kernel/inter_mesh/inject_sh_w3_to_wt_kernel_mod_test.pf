@@ -64,7 +64,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use inject_sh_w3_to_wt_kernel_mod, only : inject_sh_w3_to_wt_code
+    use sci_inject_sh_w3_to_wt_kernel_mod, only : inject_sh_w3_to_wt_code
 
    implicit none
 

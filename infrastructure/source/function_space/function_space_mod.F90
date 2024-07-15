@@ -17,7 +17,7 @@ module function_space_mod
   use constants_mod,        only : i_def, i_halo_index, l_def, r_def
   use mesh_mod,             only : mesh_type
   use master_dofmap_mod,    only : master_dofmap_type
-  use stencil_dofmap_helper_functions_mod,                                     &
+  use stencil_dofmap_helper_functions_mod, &
                             only : generate_stencil_dofmap_id
   use log_mod,              only : log_event, log_scratch_space,               &
                                    LOG_LEVEL_DEBUG, LOG_LEVEL_ERROR,           &
@@ -25,7 +25,7 @@ module function_space_mod
   use fs_continuity_mod,    only : W0, W1, W2, W3, Wtheta, W2broken, W2trace,  &
                                    W2Htrace, W2Vtrace, W2V, W2H, Wchi,         &
                                    W2Hbroken
-  use function_space_constructor_helper_functions_mod,                         &
+  use function_space_constructor_helper_functions_mod, &
                             only : ndof_setup, basis_setup, dofmap_setup,      &
                                    levels_setup, generate_fs_id
   use linked_list_data_mod, only : linked_list_data_type

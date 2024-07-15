@@ -11,7 +11,7 @@
 module io_dev_driver_mod
 
   use add_mesh_map_mod,           only : assign_mesh_maps
-  use checksum_alg_mod,           only: checksum_alg
+  use sci_checksum_alg_mod,       only: checksum_alg
   use clock_mod,                  only: clock_type
   use constants_mod,              only: i_def, str_def, &
                                         PRECISION_REAL, r_def, r_second

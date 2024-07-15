@@ -8,20 +8,24 @@
 !>
 module compute_mass_matrix_kernel_wtheta_mod_test
 
-  use constants_mod,                       only : i_def, r_def, r_single, r_double, l_def
+  use constants_mod,        only : i_def, r_def, r_single, r_double, l_def
 
-  use get_unit_test_m3x3_q3x3x3_sizes_mod, only : get_w0_m3x3_q3x3x3_size,     &
-                                                  get_wtheta_m3x3_q3x3x3_size, &
-                                                  get_w3_m3x3_q3x3x3_size
-  use get_unit_test_m3x3_dofmap_mod,       only : get_w0_m3x3_dofmap,          &
-                                                  get_w3_m3x3_dofmap
-  use get_unit_test_q3x3x3_basis_mod,      only : get_w0_q3x3x3_diff_basis,    &
-                                                  get_w0_q3x3x3_basis,         &
-                                                  get_wtheta_q3x3x3_basis
-  use get_unit_test_q3x3x3_quadrature_mod, only : &
-                                    get_gaussian_q3x3x3_quadrature_weights_xy, &
-                                    get_gaussian_q3x3x3_quadrature_weights_z
-  use get_unit_test_3x3x3_chi_mod,         only : get_w0_3x3x3_field
+  use get_unit_test_m3x3_q3x3x3_sizes_mod,                      &
+                            only : get_w0_m3x3_q3x3x3_size,     &
+                                   get_wtheta_m3x3_q3x3x3_size, &
+                                   get_w3_m3x3_q3x3x3_size
+  use get_unit_test_m3x3_dofmap_mod,                   &
+                            only : get_w0_m3x3_dofmap, &
+                                   get_w3_m3x3_dofmap
+  use get_unit_test_q3x3x3_basis_mod,                           &
+                            only : get_w0_q3x3x3_diff_basis,    &
+                                   get_w0_q3x3x3_basis,         &
+                                   get_wtheta_q3x3x3_basis
+  use get_unit_test_q3x3x3_quadrature_mod,                                    &
+                            only : get_gaussian_q3x3x3_quadrature_weights_xy, &
+                                   get_gaussian_q3x3x3_quadrature_weights_z
+  use get_unit_test_3x3x3_chi_mod, &
+                            only : get_w0_3x3x3_field
   use pFUnit_Mod
 
   implicit none
@@ -80,8 +84,8 @@ contains
   @Test
   subroutine test_r_single( this )
 
-    use compute_mass_matrix_kernel_w_scalar_mod, only : &
-                                 compute_mass_matrix_w_scalar_code
+    use sci_compute_mass_matrix_kernel_w_scalar_mod, only : &
+                                                           compute_mass_matrix_w_scalar_code
 
     implicit none
 
@@ -245,8 +249,8 @@ contains
   @Test
   subroutine test_mixed_precision( this )
 
-    use compute_mass_matrix_kernel_w_scalar_mod, only : &
-                                compute_mass_matrix_w_scalar_code
+    use sci_compute_mass_matrix_kernel_w_scalar_mod, only : &
+                                                           compute_mass_matrix_w_scalar_code
 
     implicit none
 
@@ -410,8 +414,8 @@ contains
   @Test
   subroutine test_r_double( this )
 
-    use compute_mass_matrix_kernel_w_scalar_mod, only : &
-                                compute_mass_matrix_w_scalar_code
+    use sci_compute_mass_matrix_kernel_w_scalar_mod, only : &
+                                                           compute_mass_matrix_w_scalar_code
 
     implicit none
 

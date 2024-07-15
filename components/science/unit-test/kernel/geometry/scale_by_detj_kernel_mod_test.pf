@@ -67,7 +67,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use scale_by_detj_kernel_mod, only : scale_by_detj_code
+    use sci_scale_by_detj_kernel_mod, only : scale_by_detj_code
 
     implicit none
 

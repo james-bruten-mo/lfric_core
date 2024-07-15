@@ -24,7 +24,7 @@ contains
 
   @test
   subroutine test_all( this )
-    use restrict_w0_kernel_mod, only : restrict_w0_kernel_code
+    use sci_restrict_w0_kernel_mod, only : restrict_w0_kernel_code
     implicit none
     class(restrict_w0_test_type), intent(inout) :: this
 

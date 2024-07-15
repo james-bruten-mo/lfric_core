@@ -66,7 +66,7 @@ contains
   @test
   subroutine test_all( this )
 
-    use random_perturb_kernel_mod, only : random_perturb_code
+    use sci_random_perturb_kernel_mod, only : random_perturb_code
 
     implicit none
 

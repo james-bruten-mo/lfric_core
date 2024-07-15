@@ -40,10 +40,11 @@ module lfric_xios_setup_mod
   use mesh_collection_mod,           only: mesh_collection
   use model_clock_mod,               only: model_clock_type
   use mpi_mod,                       only: global_mpi
-  use nodal_xyz_coordinates_kernel_mod, &
+  use sci_nodal_xyz_coordinates_kernel_mod, &
                                      only: nodal_xyz_coordinates_kernel_type
-  use nodal_coordinates_kernel_mod,  only: nodal_coordinates_kernel_type
-  use psykal_builtin_light_mod,      only: invoke_pointwise_convert_xyz2llr
+  use sci_nodal_coordinates_kernel_mod, &
+                                     only: nodal_coordinates_kernel_type
+  use sci_psykal_builtin_light_mod,  only: invoke_pointwise_convert_xyz2llr
   use step_calendar_mod,             only: step_calendar_type
   use xios,                          only: xios_date,            &
                                            xios_duration,        &

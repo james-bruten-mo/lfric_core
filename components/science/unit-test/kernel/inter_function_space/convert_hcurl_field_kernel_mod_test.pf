@@ -73,7 +73,7 @@ contains
   subroutine test_all( this )
 
     use, intrinsic :: iso_fortran_env, only : real64
-    use convert_hcurl_field_kernel_mod, only: convert_hcurl_field_code
+    use sci_convert_hcurl_field_kernel_mod, only: convert_hcurl_field_code
 
     implicit none
 

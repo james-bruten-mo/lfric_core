@@ -24,7 +24,7 @@ contains
   subroutine test_all( this )
 
     use, intrinsic :: iso_fortran_env, only : real64
-    use prolong_w2_kernel_mod, only : prolong_w2_kernel_code
+    use sci_prolong_w2_kernel_mod, only : prolong_w2_kernel_code
 
     implicit none
     class(prolong_w2_test_type), intent(inout) :: this

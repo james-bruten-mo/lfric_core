@@ -78,7 +78,7 @@ contains
   @Test
   subroutine test_r_single( this )
 
-    use compute_mass_matrix_kernel_w3_mod, only : compute_mass_matrix_w3_code
+    use sci_compute_mass_matrix_kernel_w3_mod, only : compute_mass_matrix_w3_code
 
     implicit none
 
@@ -228,7 +228,7 @@ contains
   @Test
   subroutine test_r_double( this )
 
-    use compute_mass_matrix_kernel_w3_mod, only : compute_mass_matrix_w3_code
+    use sci_compute_mass_matrix_kernel_w3_mod, only : compute_mass_matrix_w3_code
 
     implicit none
 
@@ -379,7 +379,7 @@ contains
   @Test
   subroutine test_mixed_precision( this )
 
-    use compute_mass_matrix_kernel_w3_mod, only : compute_mass_matrix_w3_code
+    use sci_compute_mass_matrix_kernel_w3_mod, only : compute_mass_matrix_w3_code
 
     implicit none
 

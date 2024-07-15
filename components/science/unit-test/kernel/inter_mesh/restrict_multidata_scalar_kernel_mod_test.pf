@@ -19,7 +19,7 @@ contains
   ! Double precision test
   @test( )
   subroutine test_restrict_multidata_r_double( )
-    use restrict_multidata_scalar_kernel_mod, only : restrict_multidata_scalar_kernel_code
+    use sci_restrict_multidata_scalar_kernel_mod, only : restrict_multidata_scalar_kernel_code
     use get_unit_test_m3x3_dofmap_mod,        only : get_wtheta_m3x3_dofmap
     implicit none
 
@@ -120,7 +120,7 @@ contains
   ! Single precision test
   @test( )
   subroutine test_restrict_multidata_r_single( )
-    use restrict_multidata_scalar_kernel_mod, only : restrict_multidata_scalar_kernel_code
+    use sci_restrict_multidata_scalar_kernel_mod, only : restrict_multidata_scalar_kernel_code
     use get_unit_test_m3x3_dofmap_mod,        only : get_wtheta_m3x3_dofmap
     implicit none
 

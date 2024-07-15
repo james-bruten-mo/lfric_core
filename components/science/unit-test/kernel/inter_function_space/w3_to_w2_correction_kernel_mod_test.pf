@@ -55,7 +55,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use w3_to_w2_correction_kernel_mod, only : w3_to_w2_correction_code
+    use sci_w3_to_w2_correction_kernel_mod, only : w3_to_w2_correction_code
 
     implicit none
 

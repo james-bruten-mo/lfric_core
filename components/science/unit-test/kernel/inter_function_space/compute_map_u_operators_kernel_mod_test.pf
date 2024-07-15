@@ -33,7 +33,7 @@ contains
 
     use base_mesh_config_mod,      only : geometry_spherical, &
                                           topology_fully_periodic
-    use chi_transform_mod,         only : init_chi_transforms
+    use sci_chi_transform_mod,     only : init_chi_transforms
     use finite_element_config_mod, only : cellshape_quadrilateral, &
                                           coord_system_lonlatz
     use feign_config_mod,          only : feign_finite_element_config, &
@@ -69,7 +69,7 @@ contains
   subroutine tearDown( this )
 
     use configuration_mod,        only: final_configuration
-    use chi_transform_mod,        only: final_chi_transforms
+    use sci_chi_transform_mod,    only: final_chi_transforms
 
     implicit none
 
@@ -85,7 +85,7 @@ contains
   subroutine test_all( this )
 
     use matrix_vector_kernel_mod,            only : matrix_vector_code
-    use compute_map_u_operators_kernel_mod,         only : compute_map_u_operators_code
+    use sci_compute_map_u_operators_kernel_mod,     only : compute_map_u_operators_code
 
     use get_unit_test_m3x3_q3x3x3_sizes_mod, only : get_w0_m3x3_q3x3x3_size, &
                                                     get_w2_m3x3_q3x3x3_size, &

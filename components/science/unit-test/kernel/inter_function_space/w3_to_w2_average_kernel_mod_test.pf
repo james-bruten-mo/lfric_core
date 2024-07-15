@@ -96,7 +96,7 @@ module w3_to_w2_average_kernel_mod_test
   @test
   subroutine test_real32( this )
 
-    use w3_to_w2_average_kernel_mod, only : w3_to_w2_average_kernel_code
+    use sci_w3_to_w2_average_kernel_mod, only : w3_to_w2_average_kernel_code
 
     implicit none
 
@@ -162,7 +162,7 @@ module w3_to_w2_average_kernel_mod_test
   @test
   subroutine test_real64( this )
 
-    use w3_to_w2_average_kernel_mod, only : w3_to_w2_average_kernel_code
+    use sci_w3_to_w2_average_kernel_mod, only : w3_to_w2_average_kernel_code
 
     implicit none
 

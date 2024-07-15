@@ -56,7 +56,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use sample_w2_to_sh_w2_kernel_mod, only : sample_w2_to_sh_w2_code
+    use sci_sample_w2_to_sh_w2_kernel_mod, only : sample_w2_to_sh_w2_code
 
     implicit none
 

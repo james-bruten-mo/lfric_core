@@ -11,16 +11,14 @@
 
 module sci_null_preconditioner_alg_mod
 
-  use constants_mod, only : i_def, r_def
-  use log_mod,       only : log_event, &
-                            LOG_LEVEL_INFO, &
-                            LOG_LEVEL_ERROR, &
-                            log_scratch_space
-  use sci_field_vector_mod, &
-                     only : field_vector_type
-  use sci_preconditioner_mod, &
-                     only : abstract_preconditioner_type
-  use vector_mod,    only : abstract_vector_type
+  use constants_mod,          only : i_def, r_def
+  use log_mod,                only : log_event, &
+                                     LOG_LEVEL_INFO, &
+                                     LOG_LEVEL_ERROR, &
+                                     log_scratch_space
+  use sci_field_vector_mod,   only : field_vector_type
+  use sci_preconditioner_mod, only : abstract_preconditioner_type
+  use vector_mod,             only : abstract_vector_type
 
   implicit none
 

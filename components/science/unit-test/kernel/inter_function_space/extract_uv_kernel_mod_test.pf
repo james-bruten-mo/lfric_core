@@ -78,7 +78,7 @@ contains
   @test
   subroutine test_w2h_field( this )
 
-    use extract_uv_kernel_mod, only : extract_uv_code
+    use sci_extract_uv_kernel_mod, only : extract_uv_code
 
     implicit none
 

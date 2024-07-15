@@ -64,7 +64,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use sample_wtheta_to_w3_kernel_mod, only : sample_wtheta_to_w3_code
+    use sci_sample_wtheta_to_w3_kernel_mod, only : sample_wtheta_to_w3_code
 
    implicit none
 

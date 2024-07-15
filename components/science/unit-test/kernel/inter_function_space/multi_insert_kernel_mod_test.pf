@@ -71,8 +71,8 @@ contains
   @Test
   subroutine test_of_multi_insert( this )
 
-    use multi_insert_kernel_mod, only : multi_insert_code
-    use int_multi_insert_kernel_mod, only : int_multi_insert_code
+    use sci_multi_insert_kernel_mod, only : multi_insert_code
+    use sci_int_multi_insert_kernel_mod, only : int_multi_insert_code
 
     implicit none
 

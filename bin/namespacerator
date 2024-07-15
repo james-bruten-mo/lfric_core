@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+##############################################################################
+# (c) Crown copyright 2024 Met Office. All rights reserved.
+# The file LICENCE, distributed with this code, contains details of the terms
+# under which the code may be used.
+##############################################################################
+"""
+Prepends a namespace onto Fortran modules in a source tree.
+
+This is a two stage process.
+
+First all modules not already so namespaced have the namespace prepended to
+their name and their associated files are renamed. Then all use statements
+are checked and updated if they refer to a renamed module.
+
+Beware, the result of this script will need to be scrutinised and modified
+by hand.
+"""
+import argparse
+from argparse import ArgumentParser, Namespace
+from pathlib import Path
+from typing import Callable
+
+from modules.namespacerator import AddNamespace, UpdateUses  # pylint: disable=import-error
+
+VERSION = '0.1'
+
+__IGNORE_DIRS = ['working', 'venv']
+__FORTRAN_SUFFIXES = ['.f90', '.F90', '.x90', '.X90', '.pf']
+
+
+def tree_walk(root: Path, visitor: Callable[[Path], None]):
+    """
+    Walks a file tree making callback for every Fortran source found.
+
+    :param root: Start walk at this file object.
+    :param visitor: Called for each Fortran source.
+    """
+    candidates = [root]
+    while candidates:
+        candidate = candidates.pop(-1)
+        if candidate.is_dir():
+            if candidate.name in __IGNORE_DIRS \
+                    or candidate.name.startswith('.'):
+                continue
+            candidates.extend(candidate.iterdir())
+        else:  # Is file
+            if candidate.suffix not in __FORTRAN_SUFFIXES:
+                continue
+            visitor(candidate)
+
+
+def add_namespace(arguments: Namespace):
+    """
+    Adds a namespace to every Fortran source file found in tree walk.
+
+    :param arguments: Configuration.
+    """
+    def rename_symbol(symbol: str) -> str:
+        print(f"Symbol '{symbol}'is too long.")
+        return input("Please reduce it: ")
+
+    visitor = AddNamespace(arguments.name, long_symbol_callback=rename_symbol)
+    tree_walk(arguments.module_fname, visitor.rename_module_files)
+    visitor.write_renames(arguments.map_file)
+
+
+def use_namespace(arguments: Namespace):
+    """
+    Modifies "use" statements in Fortran module source.
+
+    Walks file trees specified in arguments modifying every Fortran module
+    found.
+
+    :param arguments: Configuration.
+    """
+    visitor = UpdateUses(arguments.map_file)
+    for user_root in arguments.user_fname:
+        tree_walk(user_root, visitor.update_file)
+
+
+def cli() -> Namespace:
+    """
+    Processes command line for arguments.
+    """
+    parser = ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False
+    )
+    parser.add_argument('-help', '-h', '--help', action='help',
+                        help="Display this help and exit.")
+    parser.add_argument('-version', action='version',
+                        version='%(prog)s ' + VERSION,
+                        help="Display version information an exit.")
+    parser.add_argument('map_file', type=Path, metavar='<Map filename>',
+                        help="Symbol mappings in this file.")
+    subparsers = parser.add_subparsers(dest='command',
+                                       help="Sub-commands")
+
+    rename_parser = subparsers.add_parser('rename', add_help=False,
+                                          help="Rename modules.")
+    rename_parser.add_argument('-help', '-h', '--help', action='help',
+                               help="Display this help and exit.")
+    rename_parser.add_argument('name',
+                               help="Namespace name to add.")
+    rename_parser.add_argument('module_fname', metavar='<module filename>',
+                               type=Path,
+                               help="Root of sub-tree to namespace")
+
+    update_parser = subparsers.add_parser('update', add_help=False,
+                                          help='Update "use" statements.')
+    update_parser.add_argument('-help', '-h', '--help', action='help',
+                               help="Display this help and exit.")
+    update_parser.add_argument(
+        'user_fname', metavar='<users filename>',
+        type=Path, nargs='+',
+        help="Root of sub-tree which uses the renamed modules"
+    )
+
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+    args = cli()
+
+    dispatch = {'rename': add_namespace,
+                'update': use_namespace}
+    dispatch[args.command](args)

@@ -52,7 +52,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use smooth_orog_kernel_mod, only : smooth_orog_code
+    use sci_smooth_orog_kernel_mod, only : smooth_orog_code
 
     implicit none
 

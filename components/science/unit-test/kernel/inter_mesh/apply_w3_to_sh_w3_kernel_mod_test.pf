@@ -51,7 +51,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use apply_w3_to_sh_w3_kernel_mod, only : apply_w3_to_sh_w3_code
+    use sci_apply_w3_to_sh_w3_kernel_mod, only : apply_w3_to_sh_w3_code
 
    implicit none
 

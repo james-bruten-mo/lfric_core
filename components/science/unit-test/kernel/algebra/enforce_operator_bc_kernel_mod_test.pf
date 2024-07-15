@@ -17,7 +17,7 @@ contains
   @test
   subroutine test_of_enforce_operator_bc()
 
-    use enforce_operator_bc_kernel_mod, only : enforce_operator_bc_code
+    use sci_enforce_operator_bc_kernel_mod, only : enforce_operator_bc_code
 
     implicit none
 

@@ -94,7 +94,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use gp_rhs_kernel_mod, only : gp_rhs_code
+    use sci_gp_rhs_kernel_mod, only : gp_rhs_code
 
     implicit none
 

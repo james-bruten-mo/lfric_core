@@ -67,7 +67,7 @@ contains
   @Test
   subroutine test_of_multi_extract( this )
 
-    use multi_extract_kernel_mod, only : multi_extract_code
+    use sci_multi_extract_kernel_mod, only : multi_extract_code
 
     implicit none
 

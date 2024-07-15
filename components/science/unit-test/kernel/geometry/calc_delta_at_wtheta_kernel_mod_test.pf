@@ -28,7 +28,7 @@ contains
   @test
   subroutine test_all( this )
 
-    use calc_delta_at_wtheta_kernel_mod, only : calc_delta_at_wtheta_code
+    use sci_calc_delta_at_wtheta_kernel_mod, only : calc_delta_at_wtheta_code
 
     implicit none
 

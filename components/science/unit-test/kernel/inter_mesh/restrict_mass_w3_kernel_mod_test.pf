@@ -15,7 +15,7 @@ module restrict_mass_w3_kernel_mod_test
 contains
   @test
   subroutine test_all( )
-    use restrict_mass_w3_kernel_mod, only : restrict_mass_w3_kernel_code
+    use sci_restrict_mass_w3_kernel_mod, only : restrict_mass_w3_kernel_code
     implicit none
 
     integer(kind=i_def) :: lp_x, lp_y

@@ -59,7 +59,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use set_w1h_dofs_kernel_mod, only: set_w1h_dofs_code
+    use sci_set_w1h_dofs_kernel_mod, only: set_w1h_dofs_code
     implicit none
 
     class(set_w1h_dofs_test_type), intent(inout) :: this

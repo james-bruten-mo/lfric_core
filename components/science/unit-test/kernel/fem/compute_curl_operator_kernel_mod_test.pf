@@ -79,7 +79,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use compute_curl_operator_kernel_mod, &
+    use sci_compute_curl_operator_kernel_mod, &
                                     only : compute_curl_operator_code
 
     implicit none

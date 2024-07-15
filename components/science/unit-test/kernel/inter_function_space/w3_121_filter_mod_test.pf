@@ -105,7 +105,7 @@ module w3_121_filter_mod_test
   @test
   subroutine test_w3_to_w1_average_kernel( this )
 
-    use w3_to_w1_average_kernel_mod, only : w3_to_w1_average_code
+    use sci_w3_to_w1_average_kernel_mod, only : w3_to_w1_average_code
 
     implicit none
 
@@ -150,7 +150,7 @@ module w3_121_filter_mod_test
   @test
   subroutine test_w1_to_w3_average_kernel( this )
 
-    use w1_to_w3_average_kernel_mod, only : w1_to_w3_average_code
+    use sci_w1_to_w3_average_kernel_mod, only : w1_to_w3_average_code
 
     implicit none
 

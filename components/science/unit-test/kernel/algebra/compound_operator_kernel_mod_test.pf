@@ -49,7 +49,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use compound_operator_kernel_mod, only : compound_operator_kernel_code
+    use sci_compound_operator_kernel_mod, only : compound_operator_kernel_code
 
     implicit none
 

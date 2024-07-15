@@ -17,7 +17,7 @@ contains
   @test
   subroutine test_of_enforce_upper_bound()
 
-    use enforce_upper_bound_kernel_mod, only : enforce_upper_bound_code
+    use sci_enforce_upper_bound_kernel_mod, only : enforce_upper_bound_code
 
     implicit none
 

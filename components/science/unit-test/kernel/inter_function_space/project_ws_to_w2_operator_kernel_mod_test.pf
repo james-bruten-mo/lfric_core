@@ -64,7 +64,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use project_ws_to_w2_operator_kernel_mod, only : project_ws_to_w2_operator_code
+    use sci_project_ws_to_w2_operator_kernel_mod, only : project_ws_to_w2_operator_code
 
     implicit none
 

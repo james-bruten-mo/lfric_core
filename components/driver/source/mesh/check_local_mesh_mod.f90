@@ -6,7 +6,7 @@
 module check_local_mesh_mod
 
   use constants_mod,             only: i_def, str_def, &
-                                        str_max_filename
+                                       str_max_filename
   use local_mesh_collection_mod, only: local_mesh_collection
   use local_mesh_mod,            only: local_mesh_type
   use log_mod,                   only: log_event,         &

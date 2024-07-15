@@ -55,7 +55,7 @@ contains
   subroutine test_x_plus_ay( this )
 
     use, intrinsic :: iso_fortran_env, only: real64
-    use operator_algebra_kernel_mod, only : operator_x_plus_ay_kernel_code
+    use sci_operator_algebra_kernel_mod, only : operator_x_plus_ay_kernel_code
 
     implicit none
 
@@ -115,7 +115,7 @@ contains
   subroutine test_setval_c( this )
 
     use, intrinsic :: iso_fortran_env, only: real64
-    use operator_algebra_kernel_mod, only : operator_setval_c_kernel_code
+    use sci_operator_algebra_kernel_mod, only : operator_setval_c_kernel_code
 
     implicit none
 
@@ -162,7 +162,7 @@ contains
   subroutine test_setval_x( this )
 
     use, intrinsic :: iso_fortran_env, only: real64
-    use operator_algebra_kernel_mod, only : operator_setval_x_kernel_code
+    use sci_operator_algebra_kernel_mod, only : operator_setval_x_kernel_code
 
     implicit none
 

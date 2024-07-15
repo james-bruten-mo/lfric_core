@@ -31,7 +31,7 @@ contains
 
     use base_mesh_config_mod,      only : geometry_planar,    &
                                           topology_fully_periodic
-    use chi_transform_mod,         only : init_chi_transforms
+    use sci_chi_transform_mod,     only : init_chi_transforms
     use finite_element_config_mod, only : cellshape_quadrilateral, &
                                           coord_system_xyz
     use feign_config_mod,          only : feign_finite_element_config, &
@@ -63,7 +63,7 @@ contains
   subroutine tearDown( this )
 
     use configuration_mod,        only: final_configuration
-    use chi_transform_mod,        only: final_chi_transforms
+    use sci_chi_transform_mod,    only: final_chi_transforms
 
     implicit none
 
@@ -78,7 +78,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use convert_phys_to_hdiv_kernel_mod, only : convert_phys_to_hdiv_code
+    use sci_convert_phys_to_hdiv_kernel_mod, only : convert_phys_to_hdiv_code
 
     use get_unit_test_m3x3_q3x3x3_sizes_mod, only: get_w0_m3x3_q3x3x3_size, &
                                                    get_w2_m3x3_q3x3x3_size, &

@@ -37,13 +37,20 @@ module namelist_item_mod
 
   use constants_mod,  only: imdi, rmdi, cmdi, str_def
   use log_mod,        only: log_event, log_scratch_space, LOG_LEVEL_ERROR
-  use key_value_mod,   only: key_value_type,                                   &
-                         int32_key_value_type,      int64_key_value_type,      &
-                         int32_arr_key_value_type,  int64_arr_key_value_type,  &
-                         real32_key_value_type,     real64_key_value_type,     &
-                         real32_arr_key_value_type, real64_arr_key_value_type, &
-                         logical_key_value_type,    logical_arr_key_value_type,&
-                         str_key_value_type,        str_arr_key_value_type
+  use key_value_mod,  only: key_value_type,             &
+                            int32_key_value_type,       &
+                            int64_key_value_type,       &
+                            int32_arr_key_value_type,   &
+                            int64_arr_key_value_type,   &
+                            real32_key_value_type,      &
+                            real64_key_value_type,      &
+                            real32_arr_key_value_type,  &
+                            real64_arr_key_value_type,  &
+                            logical_key_value_type,     &
+                            logical_arr_key_value_type, &
+                            str_key_value_type,         &
+                            str_arr_key_value_type
+
   implicit none
 
   private

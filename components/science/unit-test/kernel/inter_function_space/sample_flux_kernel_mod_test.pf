@@ -6,7 +6,7 @@
 
 module sample_flux_kernel_mod_test
 
-  use constants_mod,                 only : i_def, r_def
+  use constants_mod, only : i_def, r_def
   use pFUnit_Mod
 
   implicit none
@@ -49,7 +49,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use sample_flux_kernel_mod,     only : sample_flux_code
+    use sample_flux_kernel_mod, only : sample_flux_code
 
     use get_unit_test_w2nodal_basis_mod, only: get_w3_w2nodal_basis
 

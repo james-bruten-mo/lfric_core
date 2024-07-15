@@ -74,7 +74,7 @@ contains
   subroutine test_all( this )
 
     use, intrinsic :: iso_fortran_env, only: real64
-    use calc_detj_at_w2_kernel_mod,    only: calc_detj_at_w2_code
+    use sci_calc_detj_at_w2_kernel_mod, only: calc_detj_at_w2_code
 
     implicit none
 

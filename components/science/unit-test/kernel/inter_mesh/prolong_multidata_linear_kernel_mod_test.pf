@@ -150,7 +150,7 @@ subroutine set_up_unit_test( nlayers, ncell_fine_per_coarse_x, ncell_fine_per_co
   ! Test with mask
   @test ( )
   subroutine test_masked( )
-    use prolong_multidata_linear_kernel_mod, only : prolong_multidata_linear_kernel_code
+    use sci_prolong_multidata_linear_kernel_mod, only : prolong_multidata_linear_kernel_code
     use get_unit_test_m3x3_dofmap_mod,    only : get_wtheta_m3x3_dofmap, &
                                                  get_w3_m3x3_dofmap
     implicit none
@@ -260,7 +260,7 @@ subroutine set_up_unit_test( nlayers, ncell_fine_per_coarse_x, ncell_fine_per_co
   ! Test without mask
   @test ( )
   subroutine test_not_masked( )
-    use prolong_multidata_linear_kernel_mod, only : prolong_multidata_linear_kernel_code
+    use sci_prolong_multidata_linear_kernel_mod, only : prolong_multidata_linear_kernel_code
 
     integer(kind=i_def) :: i, k, cell, k_start
     ! Scalars

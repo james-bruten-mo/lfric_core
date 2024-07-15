@@ -11,22 +11,23 @@
 !>          runtime_contants the coordinate fields and fem operators
 module init_simple_diffusion_mod
 
-  use assign_field_random_range_alg_mod,  only: assign_field_random_range
-  use constants_mod,                      only : i_def, r_def
-  use driver_modeldb_mod,                 only : modeldb_type
-  use field_collection_mod,               only : field_collection_type
-  use field_mod,                          only : field_type
-  use field_parent_mod,                   only : write_interface
-  use finite_element_config_mod,          only : element_order
-  use function_space_collection_mod,      only : function_space_collection
-  use fs_continuity_mod,                  only : Wtheta
-  use log_mod,                            only : log_event,      &
-                                                 LOG_LEVEL_TRACE
-  use mesh_mod,                           only : mesh_type
-  use io_config_mod,                      only : write_diag, &
-                                                 use_xios_io
-  use lfric_xios_write_mod,               only : write_field_generic
-  use simple_diffusion_constants_mod,     only : create_simple_diffusion_constants
+  use sci_assign_field_random_range_alg_mod, &
+                                      only: assign_field_random_range
+  use constants_mod,                  only : i_def, r_def
+  use driver_modeldb_mod,             only : modeldb_type
+  use field_collection_mod,           only : field_collection_type
+  use field_mod,                      only : field_type
+  use field_parent_mod,               only : write_interface
+  use finite_element_config_mod,      only : element_order
+  use function_space_collection_mod,  only : function_space_collection
+  use fs_continuity_mod,              only : Wtheta
+  use log_mod,                        only : log_event,      &
+                                             LOG_LEVEL_TRACE
+  use mesh_mod,                       only : mesh_type
+  use io_config_mod,                  only : write_diag, &
+                                             use_xios_io
+  use lfric_xios_write_mod,           only : write_field_generic
+  use simple_diffusion_constants_mod, only : create_simple_diffusion_constants
 
   implicit none
 

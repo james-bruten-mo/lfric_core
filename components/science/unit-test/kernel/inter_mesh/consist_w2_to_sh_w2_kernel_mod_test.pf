@@ -56,7 +56,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use consist_w2_to_sh_w2_kernel_mod, only : consist_w2_to_sh_w2_code
+    use sci_consist_w2_to_sh_w2_kernel_mod, only : consist_w2_to_sh_w2_code
 
     implicit none
 

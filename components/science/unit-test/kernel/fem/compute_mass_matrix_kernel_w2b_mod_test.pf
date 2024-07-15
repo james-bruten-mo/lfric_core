@@ -75,7 +75,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use compute_mass_matrix_kernel_w2_mod, only : compute_mass_matrix_w2_code
+    use sci_compute_mass_matrix_kernel_w2_mod, only : compute_mass_matrix_w2_code
 
     implicit none
 

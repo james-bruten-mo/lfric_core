@@ -10,7 +10,7 @@ module assign_field_random_kernel_mod_test
     @test
     subroutine sample_test()
 
-      use assign_field_random_kernel_mod, only : assign_field_random_code
+      use sci_assign_field_random_kernel_mod, only : assign_field_random_code
 
       implicit none
 

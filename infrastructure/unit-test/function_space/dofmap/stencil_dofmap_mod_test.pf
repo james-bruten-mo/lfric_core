@@ -10,11 +10,10 @@ module stencil_dofmap_mod_test
 
   use constants_mod,   only : i_def
   use pFUnit_Mod
-  use stencil_dofmap_mod,  only: stencil_dofmap_type, STENCIL_POINT, &
-                                                      STENCIL_1DX,   &
-                                                      STENCIL_CROSS, &
-                                                      STENCIL_1DY, &
-                                                      STENCIL_REGION
+  use stencil_dofmap_mod,  only: stencil_dofmap_type,        &
+                                 STENCIL_POINT, STENCIL_1DX, &
+                                 STENCIL_CROSS, STENCIL_1DY, &
+                                 STENCIL_REGION
   use local_mesh_mod,      only: local_mesh_type
   use master_dofmap_mod,   only: master_dofmap_type
   use mesh_collection_mod, only: mesh_collection_type, &
@@ -197,11 +196,11 @@ contains
 
  @test
  subroutine test_stencil_dofmaps(this)
-    use stencil_dofmap_mod,  only: stencil_dofmap_type, STENCIL_POINT, &
-                                                        STENCIL_1DX,   &
-                                                        STENCIL_CROSS, &
-                                                        STENCIL_1DY,   &
-                                                        STENCIL_REGION
+
+    use stencil_dofmap_mod,  only: stencil_dofmap_type,        &
+                                   STENCIL_POINT, STENCIL_1DX, &
+                                   STENCIL_CROSS, STENCIL_1DY, &
+                                   STENCIL_REGION
     use master_dofmap_mod,   only: master_dofmap_type
 
    implicit none

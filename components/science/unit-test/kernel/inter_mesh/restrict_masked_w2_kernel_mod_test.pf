@@ -8,7 +8,7 @@ module restrict_masked_w2_kernel_mod_test
 
   use pFUnit_mod
   use constants_mod,                 only : i_def, r_def, rmdi
-  use restrict_masked_w2_kernel_mod, only : restrict_masked_w2_kernel_code
+  use sci_restrict_masked_w2_kernel_mod, only : restrict_masked_w2_kernel_code
 
   implicit none
 

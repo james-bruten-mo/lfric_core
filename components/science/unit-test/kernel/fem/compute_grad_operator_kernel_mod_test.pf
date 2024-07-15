@@ -76,7 +76,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use compute_grad_operator_kernel_mod, &
+    use sci_compute_grad_operator_kernel_mod, &
                                     only : compute_grad_operator_code
 
     implicit none

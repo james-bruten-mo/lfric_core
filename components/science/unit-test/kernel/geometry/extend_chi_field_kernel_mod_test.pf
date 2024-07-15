@@ -27,7 +27,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use extend_chi_field_kernel_mod,   only: extend_chi_field_code
+    use sci_extend_chi_field_kernel_mod, only: extend_chi_field_code
     use, intrinsic :: iso_fortran_env, only : real64
 
     implicit none

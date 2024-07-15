@@ -29,9 +29,9 @@ module simple_diffusion_constants_mod
   use timer_mod,                          only: timer
 
   ! Kernels
-  use calc_dA_at_w2_kernel_mod,           only: calc_dA_at_w2_kernel_type
-  use calc_detj_at_w2_kernel_mod,         only: calc_detj_at_w2_kernel_type
-  use multiplicity_kernel_mod,            only: multiplicity_kernel_type
+  use sci_calc_da_at_w2_kernel_mod,       only: calc_dA_at_w2_kernel_type
+  use sci_calc_detj_at_w2_kernel_mod,     only: calc_detj_at_w2_kernel_type
+  use sci_multiplicity_kernel_mod,        only: multiplicity_kernel_type
 
   implicit none
 

@@ -22,7 +22,7 @@ module prolong_scalar_linear_kernel_mod_test
 contains
   @test
   subroutine test_all( this )
-    use prolong_scalar_linear_kernel_mod, only : prolong_scalar_linear_kernel_code
+    use sci_prolong_scalar_linear_kernel_mod, only : prolong_scalar_linear_kernel_code
     use get_unit_test_m3x3_dofmap_mod,    only : get_wtheta_m3x3_dofmap
     implicit none
     class(prolong_test_type), intent(inout) :: this

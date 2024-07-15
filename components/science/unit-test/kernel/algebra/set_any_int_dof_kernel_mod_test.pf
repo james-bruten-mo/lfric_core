@@ -29,7 +29,7 @@ contains
   @Test
   subroutine test_all( )
 
-    use set_any_int_dof_kernel_mod, only: set_any_int_dof_code
+    use sci_set_any_int_dof_kernel_mod, only: set_any_int_dof_code
     implicit none
 
     integer(i_def) :: answer

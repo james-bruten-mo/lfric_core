@@ -22,7 +22,7 @@ module apply_lambda_kernel_mod_test
 contains
   @test
   subroutine test_all( this )
-    use apply_lambda_kernel_mod, only : apply_lambda_kernel_code
+    use sci_apply_lambda_kernel_mod, only : apply_lambda_kernel_code
     implicit none
     class(apply_lambda_test_type), intent(inout) :: this
 

@@ -62,7 +62,8 @@ contains
   @Test
   subroutine test_all( this )
 
-    use coordinate_jacobian_mod, only : coordinate_jacobian,                   &
+    use sci_coordinate_jacobian_mod,                                           &
+                                 only : coordinate_jacobian,                   &
                                         coordinate_jacobian_inverse,           &
                                         pointwise_coordinate_jacobian,         &
                                         pointwise_coordinate_jacobian_inverse

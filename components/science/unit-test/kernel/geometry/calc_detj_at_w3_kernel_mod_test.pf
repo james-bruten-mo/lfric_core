@@ -72,7 +72,7 @@ contains
   @Test
   subroutine test_real64( this )
 
-    use calc_detj_at_w3_kernel_mod,    only: calc_detj_at_w3_code
+    use sci_calc_detj_at_w3_kernel_mod, only: calc_detj_at_w3_code
 
     implicit none
 
@@ -180,7 +180,7 @@ contains
   @Test
   subroutine test_real32( this )
 
-    use calc_detj_at_w3_kernel_mod,    only: calc_detj_at_w3_code
+    use sci_calc_detj_at_w3_kernel_mod, only: calc_detj_at_w3_code
 
     implicit none
 

@@ -80,7 +80,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use compute_broken_div_operator_kernel_mod, &
+    use sci_compute_broken_div_operator_kernel_mod, &
       only : compute_broken_div_operator_code
 
     implicit none

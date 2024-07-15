@@ -53,7 +53,7 @@ contains
   @test
   subroutine test_all( this )
 
-    use split_vector_field_kernel_mod, only : split_vector_field_code
+    use sci_split_vector_field_kernel_mod, only : split_vector_field_code
 
     implicit none
 

@@ -35,7 +35,7 @@ module skeleton_constants_mod
   use finite_element_config_mod,          only: element_order, nqp_exact
 
   ! Kernels
-  use compute_derham_matrices_kernel_mod, only: compute_derham_matrices_kernel_type
+  use sci_compute_derham_matrices_kernel_mod, only: compute_derham_matrices_kernel_type
 
   implicit none
 

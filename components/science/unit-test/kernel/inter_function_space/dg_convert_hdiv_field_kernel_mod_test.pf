@@ -56,7 +56,7 @@ contains
   @Test
   subroutine test_all( this )
     use, intrinsic :: iso_fortran_env, only: real64
-    use dg_convert_hdiv_field_kernel_mod, only: dg_convert_hdiv_field_code
+    use sci_dg_convert_hdiv_field_kernel_mod, only: dg_convert_hdiv_field_code
     implicit none
     class(dg_convert_hdiv_field_kernel_test_type), intent(inout) :: this
     real(r_def), parameter :: tol = 1.0e-10_r_def    ! r_def 64bit

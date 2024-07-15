@@ -68,7 +68,7 @@ contains
   subroutine test_all( this)
 
     use, intrinsic :: iso_fortran_env, only : real64
-    use consist_w3_to_sh_w3_op_kernel_mod,   only : consist_w3_to_sh_w3_op_code
+    use sci_consist_w3_to_sh_w3_op_kernel_mod, only : consist_w3_to_sh_w3_op_code
 
     implicit none
 

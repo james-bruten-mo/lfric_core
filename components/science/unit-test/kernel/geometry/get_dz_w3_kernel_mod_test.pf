@@ -79,7 +79,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use get_dz_w3_kernel_mod, only : get_dz_w3_code
+    use sci_get_dz_w3_kernel_mod, only : get_dz_w3_code
 
     implicit none
 

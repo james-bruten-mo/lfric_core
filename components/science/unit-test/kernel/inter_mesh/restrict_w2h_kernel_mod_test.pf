@@ -23,7 +23,7 @@ contains
 
   @test
   subroutine test_all( this )
-    use restrict_w2h_kernel_mod, only : restrict_w2h_code
+    use sci_restrict_w2h_kernel_mod, only : restrict_w2h_code
     implicit none
     class(restrict_w2h_test_type), intent(inout) :: this
 

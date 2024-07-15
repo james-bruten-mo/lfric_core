@@ -8,7 +8,7 @@ module restrict_scalar_masked_kernel_mod_test
 
   use pFUnit_mod
   use constants_mod,                     only : i_def, r_def, rmdi
-  use restrict_scalar_masked_kernel_mod, only : restrict_scalar_masked_kernel_code
+  use sci_restrict_scalar_masked_kernel_mod, only : restrict_scalar_masked_kernel_code
 
   implicit none
 

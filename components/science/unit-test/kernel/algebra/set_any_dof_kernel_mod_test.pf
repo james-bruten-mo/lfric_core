@@ -60,7 +60,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use set_any_dof_kernel_mod, only: set_any_dof_code
+    use sci_set_any_dof_kernel_mod, only: set_any_dof_code
     implicit none
 
     class(set_any_dof_test_type), intent(inout) :: this

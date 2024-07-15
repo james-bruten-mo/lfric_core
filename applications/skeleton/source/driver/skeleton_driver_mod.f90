@@ -11,7 +11,7 @@ module skeleton_driver_mod
 
   use add_mesh_map_mod,           only : assign_mesh_maps
   use calendar_mod,               only : calendar_type
-  use checksum_alg_mod,           only : checksum_alg
+  use sci_checksum_alg_mod,       only : checksum_alg
   use constants_mod,              only : i_def, str_def, &
                                          r_def, r_second
   use convert_to_upper_mod,       only : convert_to_upper

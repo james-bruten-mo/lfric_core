@@ -83,7 +83,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use get_height_kernel_mod, only : get_height_code
+    use sci_get_height_kernel_mod, only : get_height_code
 
     implicit none
 

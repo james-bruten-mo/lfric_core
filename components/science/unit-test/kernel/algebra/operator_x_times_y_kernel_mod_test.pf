@@ -24,7 +24,7 @@ contains
   @test( )
   subroutine test_x_times_y_r_double( )
 
-    use operator_x_times_y_kernel_mod, only : operator_x_times_y_kernel_code
+    use sci_operator_x_times_y_kernel_mod, only : operator_x_times_y_kernel_code
 
     implicit none
 
@@ -70,7 +70,7 @@ contains
   subroutine test_x_times_y_r_single( )
 
     use, intrinsic :: iso_fortran_env, only: real64
-    use operator_x_times_y_kernel_mod, only : operator_x_times_y_kernel_code
+    use sci_operator_x_times_y_kernel_mod, only : operator_x_times_y_kernel_code
 
     implicit none
 

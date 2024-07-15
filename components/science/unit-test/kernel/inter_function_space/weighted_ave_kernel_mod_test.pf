@@ -68,7 +68,7 @@ contains
   @Test
   subroutine test_of_weighted_ave( this )
 
-    use weighted_ave_kernel_mod, only : weighted_ave_code
+    use sci_weighted_ave_kernel_mod, only : weighted_ave_code
 
     implicit none
 

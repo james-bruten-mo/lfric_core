@@ -49,7 +49,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use invert_local_operator_kernel_mod, only : invert_local_operator_code
+    use sci_invert_local_operator_kernel_mod, only : invert_local_operator_code
 
     use get_unit_test_m3x3_q3x3x3_sizes_mod, only: get_w3_m3x3_q3x3x3_size
 

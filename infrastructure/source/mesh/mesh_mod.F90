@@ -28,9 +28,9 @@ module mesh_mod
                                     LOG_LEVEL_INFO, LOG_LEVEL_DEBUG
   use mesh_colouring_mod,    only : set_colours
   use mesh_tiling_mod,       only : set_tiling
-  use mesh_constructor_helper_functions_mod,                 &
-                             only : mesh_extruder,           &
-                                    mesh_connectivity,       &
+  use mesh_constructor_helper_functions_mod,           &
+                             only : mesh_extruder,     &
+                                    mesh_connectivity, &
                                     set_dz
   use mesh_map_mod,          only : mesh_map_type
   use mesh_map_collection_mod, only : mesh_map_collection_type

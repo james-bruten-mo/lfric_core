@@ -22,7 +22,7 @@ contains
   @Test
   subroutine test_all( )
 
-    use shift_mass_w3_kernel_mod, only : shift_mass_w3_code
+    use sci_shift_mass_w3_kernel_mod, only : shift_mass_w3_code
 
    implicit none
 

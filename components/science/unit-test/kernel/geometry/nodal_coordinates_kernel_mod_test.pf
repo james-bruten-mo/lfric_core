@@ -60,7 +60,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use nodal_coordinates_kernel_mod, only: nodal_coordinates_code
+    use sci_nodal_coordinates_kernel_mod, only: nodal_coordinates_code
 
     implicit none
 

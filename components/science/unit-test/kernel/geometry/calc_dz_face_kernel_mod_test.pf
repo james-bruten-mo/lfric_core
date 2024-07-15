@@ -28,7 +28,7 @@ contains
   @test
   subroutine test_all( this )
 
-    use calc_dz_face_kernel_mod, only : calc_dz_face_code
+    use sci_calc_dz_face_kernel_mod, only : calc_dz_face_code
 
     implicit none
 

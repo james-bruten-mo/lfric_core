@@ -65,7 +65,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use compute_derham_matrices_kernel_mod, only : compute_derham_matrices_code
+    use sci_compute_derham_matrices_kernel_mod, only : compute_derham_matrices_code
 
     implicit none
 

@@ -18,7 +18,7 @@ module write_local_meshes_mod
                            degrees_to_radians
   use log_mod,       only: log_event, log_scratch_space, &
                            LOG_LEVEL_INFO
-  use query_mod,     only: valid_for_global_model
+  use sci_query_mod, only: valid_for_global_model
 
   ! Derived types
   use global_mesh_mod,                only: global_mesh_type

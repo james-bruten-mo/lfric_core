@@ -229,13 +229,13 @@ contains
   !!                                     solution is zero?
   recursive subroutine vcycle(self,level,initial_solution_is_zero)
 
-    use restrict_scalar_unweighted_kernel_mod, &
+    use sci_restrict_scalar_unweighted_kernel_mod, &
                                     only: restrict_scalar_unweighted_kernel_type
-    use prolong_scalar_unweighted_kernel_mod,  &
+    use sci_prolong_scalar_unweighted_kernel_mod, &
                                     only: prolong_scalar_unweighted_kernel_type
-    use restrict_scalar_masked_kernel_mod,     &
+    use sci_restrict_scalar_masked_kernel_mod, &
                                     only: restrict_scalar_masked_kernel_type
-    use prolong_scalar_masked_kernel_mod,      &
+    use sci_prolong_scalar_masked_kernel_mod, &
                                     only: prolong_scalar_masked_kernel_type
 
     implicit none

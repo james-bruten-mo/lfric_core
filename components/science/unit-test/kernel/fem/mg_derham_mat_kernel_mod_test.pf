@@ -63,7 +63,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use mg_derham_mat_kernel_mod, only : mg_derham_mat_code
+    use sci_mg_derham_mat_kernel_mod, only : mg_derham_mat_code
 
     implicit none
 

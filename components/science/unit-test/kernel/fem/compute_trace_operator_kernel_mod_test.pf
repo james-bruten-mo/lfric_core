@@ -56,7 +56,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use compute_trace_operator_kernel_mod, only : compute_trace_operator_code
+    use sci_compute_trace_operator_kernel_mod, only : compute_trace_operator_code
 
     use get_unit_test_planar_mesh_mod, only: get_outward_normals_to_faces
 

@@ -1,10 +1,10 @@
-!-----------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 ! (c) Crown copyright 2020 Met Office. All rights reserved.
 ! The file LICENCE, distributed with this code, contains details of the terms
 ! under which the code may be used.
-!-----------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 !
-!-------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
 module coordinate_jacobian_alphabetaz_mod_test
 
   use pFUnit_Mod
@@ -69,7 +69,8 @@ contains
   subroutine test_all( this )
 
     use, intrinsic :: iso_fortran_env, only: real64
-    use coordinate_jacobian_mod, only : coordinate_jacobian,                   &
+    use sci_coordinate_jacobian_mod,                                           &
+                                 only : coordinate_jacobian,                   &
                                         coordinate_jacobian_inverse,           &
                                         pointwise_coordinate_jacobian,         &
                                         pointwise_coordinate_jacobian_inverse

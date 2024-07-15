@@ -53,7 +53,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use average_w3_to_w0_kernel_mod, only : average_w3_to_w0_code
+    use sci_average_w3_to_w0_kernel_mod, only : average_w3_to_w0_code
 
     implicit none
 

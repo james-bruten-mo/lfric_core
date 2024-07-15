@@ -73,7 +73,7 @@ contains
   subroutine test_all( this )
 
     use, intrinsic :: iso_fortran_env, only : real64
-    use calc_dA_at_w2_kernel_mod,      only : calc_dA_at_w2_code
+    use sci_calc_da_at_w2_kernel_mod,  only : calc_dA_at_w2_code
 
     implicit none
 

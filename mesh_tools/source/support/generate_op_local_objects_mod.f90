@@ -19,7 +19,7 @@ module generate_op_local_objects_mod
   use global_mesh_map_collection_mod, only: global_mesh_map_collection_type
   use global_mesh_map_mod,            only: global_mesh_map_type
   use partition_mod,                  only: partition_type, partitioner_interface
-  use query_mod,                      only: check_uniform_partitions
+  use sci_query_mod,                  only: check_uniform_partitions
 
   implicit none
 

@@ -54,7 +54,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use multiplicity_kernel_mod, only : multiplicity_code
+    use sci_multiplicity_kernel_mod, only : multiplicity_code
 
     implicit none
 

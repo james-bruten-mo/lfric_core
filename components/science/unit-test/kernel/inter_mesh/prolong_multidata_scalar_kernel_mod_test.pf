@@ -19,7 +19,7 @@ contains
   ! Double precision test
   @test( )
   subroutine test_prolong_multidata_r_double( )
-    use prolong_multidata_scalar_kernel_mod, only : prolong_multidata_scalar_kernel_code
+    use sci_prolong_multidata_scalar_kernel_mod, only : prolong_multidata_scalar_kernel_code
     use get_unit_test_m3x3_dofmap_mod,       only : get_wtheta_m3x3_dofmap
     implicit none
 
@@ -121,7 +121,7 @@ contains
   ! Single precision test
   @test( )
   subroutine test_prolong_multidata_r_single( )
-    use prolong_multidata_scalar_kernel_mod, only : prolong_multidata_scalar_kernel_code
+    use sci_prolong_multidata_scalar_kernel_mod, only : prolong_multidata_scalar_kernel_code
     use get_unit_test_m3x3_dofmap_mod,       only : get_wtheta_m3x3_dofmap
     implicit none
 

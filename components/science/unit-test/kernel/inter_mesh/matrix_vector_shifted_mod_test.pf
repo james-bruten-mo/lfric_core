@@ -54,7 +54,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use matrix_vector_shifted_kernel_mod, only : matrix_vector_shifted_code
+    use sci_matrix_vector_shifted_kernel_mod, only : matrix_vector_shifted_code
 
     implicit none
 

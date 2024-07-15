@@ -105,7 +105,7 @@ module wth_121_filter_mod_test
   @test
   subroutine test_wth_to_w0_average_kernel( this )
 
-    use wth_to_w0_average_kernel_mod, only : wth_to_w0_average_code
+    use sci_wth_to_w0_average_kernel_mod, only : wth_to_w0_average_code
 
     implicit none
 
@@ -151,7 +151,7 @@ module wth_121_filter_mod_test
   @test
   subroutine test_w0_to_wth_average_kernel( this )
 
-    use w0_to_wth_average_kernel_mod, only : w0_to_wth_average_code
+    use sci_w0_to_wth_average_kernel_mod, only : w0_to_wth_average_code
 
     implicit none
 

@@ -52,7 +52,7 @@ contains
   @test
   subroutine test_real64( this )
 
-    use mm_diagonal_kernel_mod,     only : mm_diagonal_kernel_code
+    use sci_mm_diagonal_kernel_mod, only : mm_diagonal_kernel_code
 
     implicit none
 
@@ -107,7 +107,7 @@ contains
   @test
   subroutine test_real32( this )
 
-    use mm_diagonal_kernel_mod,     only : mm_diagonal_kernel_code
+    use sci_mm_diagonal_kernel_mod, only : mm_diagonal_kernel_code
 
     implicit none
 

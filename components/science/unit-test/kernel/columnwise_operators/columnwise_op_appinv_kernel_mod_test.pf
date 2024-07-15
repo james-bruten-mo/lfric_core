@@ -58,8 +58,8 @@ contains
   @Test
   subroutine test_all( this )
 
-    use columnwise_op_appinv_kernel_mod, only : &
-         columnwise_op_appinv_kernel_code
+    use sci_columnwise_op_appinv_kernel_mod, only : &
+                                                   columnwise_op_appinv_kernel_code
 
     implicit none
 

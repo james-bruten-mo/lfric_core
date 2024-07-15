@@ -33,7 +33,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use average_w2b_to_w2_kernel_mod, only : average_w2b_to_w2_code
+    use sci_average_w2b_to_w2_kernel_mod, only : average_w2b_to_w2_code
 
     implicit none
 

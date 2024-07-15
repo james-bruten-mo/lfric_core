@@ -8,7 +8,7 @@ module prolong_scalar_masked_kernel_mod_test
 
   use pFUnit_mod
   use constants_mod,             only : i_def, r_def
-  use prolong_scalar_masked_kernel_mod, only : prolong_scalar_masked_kernel_code
+  use sci_prolong_scalar_masked_kernel_mod, only : prolong_scalar_masked_kernel_code
 
   implicit none
 

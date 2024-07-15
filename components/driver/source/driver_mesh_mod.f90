@@ -42,7 +42,7 @@ module driver_mesh_mod
   use namelist_collection_mod,    only: namelist_collection_type
   use namelist_mod,               only: namelist_type
   use partition_mod,              only: partitioner_interface
-  use query_mod,                  only: check_uniform_partitions
+  use sci_query_mod,              only: check_uniform_partitions
   use runtime_partition_mod,      only: get_partition_parameters, &
                                         create_local_mesh_maps,   &
                                         create_local_mesh

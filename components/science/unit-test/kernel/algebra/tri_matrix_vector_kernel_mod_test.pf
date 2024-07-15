@@ -54,7 +54,7 @@ contains
   @Test
   subroutine test_all( this )
 
-    use tri_matrix_vector_kernel_mod, only : tri_matrix_vector_code
+    use sci_tri_matrix_vector_kernel_mod, only : tri_matrix_vector_code
 
     implicit none
 
