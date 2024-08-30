@@ -261,14 +261,14 @@ contains
   @Test( npes=[1] )
   subroutine test_space( this )
 
+    use, intrinsic :: iso_fortran_env, only : real32, real64
+
     implicit none
 
     class(test_function_space_type), intent(inout) :: this
 
     integer(i_def), parameter :: scalar = 1
     integer(i_def), parameter :: vector = 3
-
-    real(r_def), parameter :: margin = 1.0e-14_r_def
 
     type( quadrature_xyoz_type )          :: qr
     type(quadrature_xyoz_proxy_type)      :: qr_proxy
@@ -297,6 +297,14 @@ contains
     integer(i_def) :: known_global_edge_dof_id_2d(18)
     integer(i_def) :: global_vert_dof_id_2d(9)
     integer(i_def) :: known_global_vert_dof_id_2d(9)
+
+#if (RDEF_PRECISION == 64)
+    real(real64), parameter :: margin = 1.0e-14_real64
+#elif (RDEF_PRECISION == 32)
+    real(real32), parameter :: margin = 1.0e-6_real32
+#else
+    @assertFail("Unsupported default precission")
+#endif
 
     qr = quadrature_xyoz_type(3, quadrature_rule)
     qr_proxy = qr%get_quadrature_proxy()

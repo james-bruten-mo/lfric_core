@@ -1,0 +1,93 @@
+{# ########################################################################### #}
+{# (c) Crown copyright 2024 Met Office. All rights reserved. #}
+{# The file LICENCE, distributed with this code, contains details of the terms #}
+{# under which the code may be used. #}
+{# ########################################################################### #}
+{% do LOG.debug("Entered site/meto/groups/group_infrastructure.cylc") %}
+
+{# SPICE Groups #}
+{% do site_groups.update({
+    "infrastructure_spice_developer": [
+        "infrastructure_spice_unit_tests",
+        "infrastructure_spice_integration_tests",
+    ],
+    "infrastructure_spice": [
+        "infrastructure_spice_developer"
+    ],
+    "infrastructure_spice_unit_tests": [
+        "infrastructure_unit_tests_spice_intel_32bit",
+        "infrastructure_unit_tests_spice_intel_64bit",
+        "infrastructure_unit_tests_spice_gnu_32bit",
+        "infrastructure_unit_tests_spice_gnu_64bit"
+    ],
+    "infrastructure_spice_integration_tests": [
+        "infrastructure_integration_tests_spice_intel_32bit",
+        "infrastructure_integration_tests_spice_intel_64bit",
+        "infrastructure_integration_tests_spice_gnu_32bit",
+        "infrastructure_integration_tests_spice_gnu_64bit"
+    ]
+    }) %}
+
+
+{# XC40 Groups #}
+{% do site_groups.update({
+    "infrastructure_xc40_developer": [
+        "infrastructure_xc40_unit_tests",
+        "infrastructure_xc40_integration_tests",
+    ],
+    "infrastructure_xc40": [
+        "infrastructure_xc40_developer"
+    ],
+    "infrastructure_xc40_unit_tests": [
+        "infrastructure_unit_tests_xc40_intel_32bit",
+        "infrastructure_unit_tests_xc40_intel_64bit"
+    ],
+    "infrastructure_xc40_integration_tests": [
+        "infrastructure_integration_tests_xc40_intel_32bit",
+        "infrastructure_integration_tests_xc40_intel_64bit"
+    ]
+    }) %}
+
+{# Platform Generic Groups #}
+{% do site_groups.update({
+    "infrastructure_developer": [
+        "scripts",
+        "infrastructure_spice_developer",
+        "infrastructure_xc40_developer",
+        "infrastructure_unit_tests",
+        "infrastructure_integration_tests"
+    ],
+    "infrastructure": [
+        "infrastructure_developer",
+        "infrastructure_spice",
+        "infrastructure_xc40"
+    ],
+    "infrastructure_unit_tests": [
+        "infrastructure_spice_unit_tests",
+        "infrastructure_xc40_unit_tests"
+    ],
+    "infrastructure_integration_tests": [
+        "infrastructure_spice_integration_tests",
+        "infrastructure_xc40_integration_tests"
+    ]
+    }) %}
+
+{# Platform Generic Extends #}
+{% do site_groups.developer.extend(site_groups.infrastructure_developer) %}
+{% do site_groups.all.extend(site_groups.infrastructure) %}
+{% do site_groups.unit_tests.extend(site_groups.infrastructure_unit_tests) %}
+{% do site_groups.unit_tests.extend(site_groups.infrastructure_integration_tests) %}
+
+{# Spice Extends #}
+{% do site_groups.spice_developer.extend(site_groups.infrastructure_spice_developer) %}
+{% do site_groups.spice.extend(site_groups.infrastructure_spice) %}
+{% do site_groups.spice_unit_tests.extend(site_groups.infrastructure_spice_unit_tests) %}
+{% do site_groups.spice_unit_tests.extend(site_groups.infrastructure_spice_integration_tests) %}
+
+{# XC40 Extends #}
+{% do site_groups.xc40_developer.extend(site_groups.infrastructure_xc40_developer) %}
+{% do site_groups.xc40.extend(site_groups.infrastructure_xc40) %}
+{% do site_groups.xc40_unit_tests.extend(site_groups.infrastructure_xc40_unit_tests) %}
+{% do site_groups.xc40_unit_tests.extend(site_groups.infrastructure_xc40_integration_tests) %}
+
+{% do LOG.debug("Finished in site/meto/groups/group_infrastructure.cylc") %}

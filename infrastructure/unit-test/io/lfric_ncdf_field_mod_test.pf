@@ -8,7 +8,7 @@
 !>
 module lfric_ncdf_field_mod_test
 
-  use constants_mod,        only: r_def, str_def
+  use constants_mod,        only: dp_native, r_def, str_def
   use file_mod,             only: FILE_MODE_READ, FILE_MODE_WRITE, &
                                   FILE_OP_OPEN, FILE_OP_CREATE
   use lfric_ncdf_dims_mod,  only: lfric_ncdf_dims_type
@@ -51,7 +51,8 @@ contains
     field1 = lfric_ncdf_field_type("test_field", file1, dims1)
     scalar_field = lfric_ncdf_field_type("scalar_field", file1)
     call field1%set_char_attribute("test_attr", test_attr)
-    call field1%set_real_attribute("test_attr_real", test_attr_real)
+    call field1%set_real_attribute( "test_attr_real", &
+                                    real(test_attr_real, dp_native) )
 
     call file1%close_definition()
 

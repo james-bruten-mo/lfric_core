@@ -5,6 +5,8 @@
 !-----------------------------------------------------------------------------
 module quadrature_xyz_mod_test
 
+  use, intrinsic :: iso_fortran_env, only : real32, real64
+
   implicit none
 
 contains
@@ -39,7 +41,13 @@ contains
     qr = quadrature_xyz_type(nqp, gaussian_quadrature)
     qr_proxy = qr%get_quadrature_proxy()
 
-    epsilon = 1.0e-14_r_def
+#if (RDEF_PRECISION == 64)
+    epsilon = 1.0e-14_real64
+#elif (RDEF_PRECISION == 32)
+    epsilon = 1.0e-7_real32
+#else
+    @assertFail("Unsupported default precission")
+#endif
 
     ! Define expected data
     test_points_xyz(1,:) = [1.127016653792583E-001_r_def, &
@@ -193,7 +201,13 @@ contains
     qr = quadrature_xyz_type(nqp_x, nqp_y, nqp_z, gaussian_quadrature)
     qr_proxy = qr%get_quadrature_proxy()
 
-    epsilon = 1.0e-14_r_def
+#if (RDEF_PRECISION == 64)
+    epsilon = 1.0e-14_real64
+#elif (RDEF_PRECISION == 32)
+    epsilon = 1.0e-7_real32
+#else
+    @assertFail("Unsupported default precission")
+#endif
 
     ! Define expected data
     test_points_xyz(1,:) = [1.127016653792583E-001_r_def, &

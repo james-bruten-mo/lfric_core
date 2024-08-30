@@ -503,6 +503,8 @@ contains
   @Test(npes=[1] )
   subroutine test_set_from_ugrid_data( this )
 
+    use, intrinsic :: iso_fortran_env, only : real32, real64
+
     implicit none
 
     class(local_mesh_test_type), intent( inout ) :: this
@@ -807,14 +809,28 @@ contains
     @assertEqual(  1_i_def, SQ20%get_num_panels_global_mesh() )
 
 
-    tol=1.0e-14_r_def
+#if (RDEF_PRECISION == 64)
+    tol = 1.0e-14_real64
+#elif (RDEF_PRECISION == 32)
+    tol = 1.0e-6_real32
+#else
+    @assertFail("Unsupported default precission")
+#endif
+
     do i=1, SQ20%get_n_unique_vertices()
       call SQ20%get_vert_coords( i, vert_coords )
       @assertEqual( kgo_node_coords(:,i), vert_coords*radians_to_degrees, tol )
       @assertEqual( kgo_node_owner(i), SQ20%get_vert_cell_owner(i) )
     end do
 
-    tol=1.0e-14_r_def
+#if (RDEF_PRECISION == 64)
+    tol = 1.0e-14_real64
+#elif (RDEF_PRECISION == 32)
+    tol = 2.0e-6_real32
+#else
+    @assertFail("Unsupported default precission")
+#endif
+
     do i=1, SQ20%get_num_cells_in_layer()
       call SQ20%get_cell_coords( i, cell_coords )
       @assertEqual( kgo_face_coords(:,i), cell_coords*radians_to_degrees, tol )

@@ -23,8 +23,6 @@ module log_mod_parallel_level_test
 
   private
 
-  !> @todo We shouldn't have to explicitly export setUp and tearDown but
-  !>       it's a requirement of pFUnit.
   public log_level_test_single_trace, log_level_test_single_debug,    &
          log_level_test_single_info, log_level_test_single_warning,   &
          log_level_test_trace, log_level_test_debug,                  &
@@ -32,8 +30,7 @@ module log_mod_parallel_level_test
          log_output_test_single_trace, log_output_test_single_debug,  &
          log_output_test_single_info, log_output_test_single_warning, &
          log_output_test_trace, log_output_test_debug,                &
-         log_output_test_info, log_output_test_warning,               &
-         setUp, tearDown
+         log_output_test_info, log_output_test_warning
 
   integer(i_def), parameter :: log_unit   = 11
   integer(i_def), parameter :: info_unit  = 12
@@ -43,22 +40,6 @@ module log_mod_parallel_level_test
   type, public, extends(MpiTestCase) :: log_test_type
     character(:), allocatable :: pet_file
   contains
-    procedure :: log_output_test_single_trace
-    procedure :: log_output_test_single_debug
-    procedure :: log_output_test_single_info
-    procedure :: log_output_test_single_warning
-    procedure :: log_output_test_trace
-    procedure :: log_output_test_debug
-    procedure :: log_output_test_info
-    procedure :: log_output_test_warning
-    procedure :: log_level_test_single_trace
-    procedure :: log_level_test_single_debug
-    procedure :: log_level_test_single_info
-    procedure :: log_level_test_single_warning
-    procedure :: log_level_test_trace
-    procedure :: log_level_test_debug
-    procedure :: log_level_test_info
-    procedure :: log_level_test_warning
     procedure :: setUp
     procedure :: tearDown
   end type log_test_type
@@ -105,13 +86,13 @@ contains
 
 
   @test(npes=[1])
-  subroutine log_output_test_single_trace( this )
+  subroutine log_output_test_single_trace( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
     call log_output_test_serial( log_level_trace, ':TRACE:' )
     call finalise_logging()
@@ -120,13 +101,13 @@ contains
 
 
   @test(npes=[1])
-  subroutine log_output_test_single_debug( this )
+  subroutine log_output_test_single_debug( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
     call log_output_test_serial( log_level_debug, ':DEBUG:' )
     call finalise_logging()
@@ -135,13 +116,13 @@ contains
 
 
   @test(npes=[1])
-  subroutine log_output_test_single_info( this )
+  subroutine log_output_test_single_info( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
     call log_output_test_serial( log_level_info, ':INFO :' )
     call finalise_logging()
@@ -150,13 +131,13 @@ contains
 
 
   @test(npes=[1])
-  subroutine log_output_test_single_warning( this )
+  subroutine log_output_test_single_warning( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
     call log_output_test_serial( log_level_warning, ':WARN :' )
     call finalise_logging()
@@ -165,57 +146,57 @@ contains
 
 
   @test(npes=[2, 3, 4])
-  subroutine log_output_test_trace( this )
+  subroutine log_output_test_trace( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
-    call log_output_test( this%getProcessRank(), log_level_trace, ':TRACE:' )
+    call log_output_test( context%getProcessRank(), log_level_trace, ':TRACE:' )
 
   end subroutine log_output_test_trace
 
 
   @test(npes=[2, 3, 4])
-  subroutine log_output_test_debug( this )
+  subroutine log_output_test_debug( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
-    call log_output_test( this%getProcessRank(), log_level_debug, ':DEBUG:' )
+    call log_output_test( context%getProcessRank(), log_level_debug, ':DEBUG:' )
 
   end subroutine log_output_test_debug
 
 
   @test(npes=[2, 3, 4])
-  subroutine log_output_test_info( this )
+  subroutine log_output_test_info( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
-    call log_output_test( this%getProcessRank(), log_level_info, ':INFO :' )
+    call log_output_test( context%getProcessRank(), log_level_info, ':INFO :' )
 
   end subroutine log_output_test_info
 
 
   @test(npes=[2, 3, 4])
-  subroutine log_output_test_warning( this )
+  subroutine log_output_test_warning( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
-    call log_output_test( this%getProcessRank(), log_level_warning, ':WARN :' )
+    call log_output_test( context%getProcessRank(), log_level_warning, ':WARN :' )
 
   end subroutine log_output_test_warning
 
@@ -463,13 +444,13 @@ contains
 
 
   @test(npes=[1])
-  subroutine log_level_test_single_trace( this )
+  subroutine log_level_test_single_trace( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
     call log_level_test_serial( log_level_trace )
     call finalise_logging()
@@ -478,13 +459,13 @@ contains
 
 
   @test(npes=[1])
-  subroutine log_level_test_single_debug( this )
+  subroutine log_level_test_single_debug( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
     call log_level_test_serial( log_level_debug )
     call finalise_logging()
@@ -493,13 +474,13 @@ contains
 
 
   @test(npes=[1])
-  subroutine log_level_test_single_info( this )
+  subroutine log_level_test_single_info( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
     call log_level_test_serial( log_level_info )
     call finalise_logging()
@@ -508,13 +489,13 @@ contains
 
 
   @test(npes=[1])
-  subroutine log_level_test_single_warning( this )
+  subroutine log_level_test_single_warning( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
     call log_level_test_serial( log_level_warning )
     call finalise_logging()
@@ -523,57 +504,57 @@ contains
 
 
   @test(npes=[2, 3, 4])
-  subroutine log_level_test_trace( this )
+  subroutine log_level_test_trace( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
-    call log_level_test( this%getProcessRank(), log_level_trace )
+    call log_level_test( context%getProcessRank(), log_level_trace )
 
   end subroutine log_level_test_trace
 
 
   @test(npes=[2, 3, 4])
-  subroutine log_level_test_debug( this )
+  subroutine log_level_test_debug( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
-    call log_level_test( this%getProcessRank(), log_level_debug )
+    call log_level_test( context%getProcessRank(), log_level_debug )
 
   end subroutine log_level_test_debug
 
 
   @test(npes=[2, 3, 4])
-  subroutine log_level_test_info( this )
+  subroutine log_level_test_info( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
-    call log_level_test( this%getProcessRank(), log_level_info )
+    call log_level_test( context%getProcessRank(), log_level_info )
 
   end subroutine log_level_test_info
 
 
   @test(npes=[2, 3, 4])
-  subroutine log_level_test_warning( this )
+  subroutine log_level_test_warning( context )
 
     implicit none
 
-    class(log_test_type), intent(inout) :: this
+    class(log_test_type), intent(inout) :: context
 
-    call initialise_logging( this%getMpiCommunicator(), name )
+    call initialise_logging( context%getMpiCommunicator(), name )
     call log_forget_timestep()
-    call log_level_test( this%getProcessRank(), log_level_warning )
+    call log_level_test( context%getProcessRank(), log_level_warning )
 
   end subroutine log_level_test_warning
 
@@ -658,11 +639,11 @@ contains
 !   !> Test error logging behaviour. Because errors cause a "STOP" they can not
 !   !> be tested with the others. Or at all at the moment.
 !   @test
-!   subroutine error_test( this )
+!   subroutine error_test( context )
 !
 !     implicit none
 !
-!     class ( log_test_type ), intent( inout ) :: this
+!     class ( log_test_type ), intent( inout ) :: context
 !
 !     character(  8 ) :: tag
 !     character( 80 ) :: message

@@ -175,9 +175,11 @@ contains
     type(field_collection_type)         :: test_field_collectionA
     type(field_collection_type)         :: test_field_collectionB
 
-    real(r_def), parameter              :: tol = 1.0e-6_r_def
     integer(i_def)                      :: length
     logical(l_def)                      :: exists
+
+    real(real32), parameter             :: tol32 = 1.0e-6_real32
+    real(real64), parameter             :: tol64 = 1.0e-6_real64
 
     !------------------- Create 32- and 64-bit real & integer fields ------------------------!
     ! Create a 64-bit field object with the name 'test_field1'
@@ -225,14 +227,14 @@ contains
     call test_field_collectionA%get_field('test_field1', returned_field1)
     returned_field1_p = returned_field1%get_proxy()
     ! Check that test_field1 has 99.0 in the first dof
-    @assertEqual(99.0_real64, returned_field1_p%data(1), real(tol, real64))
+    @assertEqual(99.0_real64, returned_field1_p%data(1), tol64)
 
     !---32-bit Real field extract
     ! Extract the 32-bit real field called 'test_field2' into returned_field2
     call test_field_collectionA%get_field('test_field2', returned_field2)
     returned_field2_p = returned_field2%get_proxy()
     ! Check that test_field1 has 66.0 in the first dof
-    @assertEqual(66.0_real32, returned_field2_p%data(1), real(tol, real32))
+    @assertEqual(66.0_real32, returned_field2_p%data(1), tol32)
 
     !---Integer field extract
     ! Extract the integer field called 'test_field3' into returned_field3
@@ -293,12 +295,12 @@ contains
     call test_field_collectionB%add_reference_to_field(field_ptr)
 
     ! Change the data in the original field
-    returned_field1_p%data(1)=999.0_r_def
+    returned_field1_p%data(1)=999.0_real64
 
     ! Check that the reference to that field has been updated
     call test_field_collectionB%get_field('test_field1', returned_field1a)
     returned_field1a_p = returned_field1a%get_proxy()
-    @assertEqual(999.0_r_def, returned_field1a_p%data(1), tol)
+    @assertEqual(999.0_real64, returned_field1a_p%data(1), tol64)
 
 
     !-------------- Remove and Add Back the 64-bit Real Field ----------------------!
@@ -315,7 +317,7 @@ contains
     call test_field_collectionA%add_field(test_field1)
     call test_field_collectionA%get_field('test_field1', returned_field1)
     returned_field1_p = returned_field1%get_proxy()
-    @assertEqual(99.0_r_def, returned_field1_p%data(1), tol)
+    @assertEqual(99.0_real64, returned_field1_p%data(1), tol64)
 
   end subroutine test_all
 

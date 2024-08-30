@@ -8,6 +8,8 @@
 !>
 module coord_transform_mod_test
 
+    use, intrinsic :: iso_fortran_env, only : real32, real64
+
   use pFUnit_Mod
   use constants_mod, only: i_def, r_def, pi
 
@@ -19,7 +21,9 @@ contains
   !>
   @test
   subroutine test_xyz2alphabetarpanel( )
+
     use coord_transform_mod, only : xyz2alphabetarpanel
+
     implicit none
 
     real(kind=r_def)    :: tol
@@ -28,7 +32,13 @@ contains
     integer(kind=i_def) :: i, panel_id, panel_answer
 
     ! Check that some obvious coordinates are returned correctly
-    tol = 1.0e-7_r_def
+#if (RDEF_PRECISION == 64)
+    tol = 1.0e-7_real64
+#elif (RDEF_PRECISION == 32)
+    tol = 2.0e-7_real32
+#else
+    @assertFail("Unsupported default precission")
+#endif
 
     ! Panel 1: tan(alpha) = Y/X, tan(beta) = Z/X
     XYZ(:) = (/ 1.0_r_def, 0.0_r_def, 0.0_r_def /)
@@ -98,7 +108,13 @@ contains
     integer(kind=i_def) :: i, panel_id
 
     ! Check that some obvious coordinates are returned correctly
-    tol = 1.0e-7_r_def
+#if (RDEF_PRECISION == 64)
+    tol = 1.0e-7_real64
+#elif (RDEF_PRECISION == 32)
+    tol = 1.5e-7_real32
+#else
+    @assertFail("Unsupported default precission")
+#endif
 
     ! Panel 2: tan(alpha) = -X/Y, tan(beta) = Z/Y
     abr(:) = (/ 0.0_r_def, 0.0_r_def, 1.0_r_def /)
@@ -162,7 +178,13 @@ contains
     integer(kind=i_def) :: i
 
     ! Check that some obvious coordinates are returned correctly
-    tol = 1.0e-7_r_def
+#if (RDEF_PRECISION == 64)
+    tol = 1.0e-7_real64
+#elif (RDEF_PRECISION == 32)
+    tol = 1.0e-7_real32
+#else
+    @assertFail("Unsupported default precission")
+#endif
 
     ! Panel 1: tan(alpha) = Y/X, tan(beta) = Z/X
     XYZ(:) = (/ 10.0_r_def, 0.0_r_def, 0.0_r_def /)
@@ -205,7 +227,13 @@ contains
     integer(kind=i_def) :: i, panel_id
 
     ! Check that some obvious coordinates are returned correctly
-    tol = 1.0e-7_r_def
+#if (RDEF_PRECISION == 64)
+    tol = 1.0e-7_real64
+#elif (RDEF_PRECISION == 32)
+    tol = 1.0e-7_real32
+#else
+    @assertFail("Unsupported default precission")
+#endif
 
     ! Panel 2: tan(alpha) = -X/Y, tan(beta) = Z/Y
     panel_id = 2_i_def
@@ -247,7 +275,13 @@ contains
     real(kind=r_def)           :: tol
     real(kind=r_def)           :: lon
 
-    tol = 1.0e-5_r_def
+#if (RDEF_PRECISION == 64)
+    tol = 1.0e-5_real64
+#elif (RDEF_PRECISION == 32)
+    tol = 1.0e-5_real32
+#else
+    @assertFail("Unsupported default precission")
+#endif
 
     lon = 180.0_r_def
     @assertEqual( -180.0_r_def, rebase_longitude_range(lon, LON_BASE) )

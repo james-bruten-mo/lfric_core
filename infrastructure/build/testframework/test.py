@@ -17,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from typing import List
 import six
 import errno
 
@@ -132,11 +133,15 @@ class MpiTest(six.with_metaclass(ABCMeta, AbstractTest)):
                                                          text=True )
     handle = os.fdopen( filedescriptor, 'wt' )
     print( '#!/bin/sh', file=handle )
-    print( 'echo {tag}'.format( tag=self._startTag ),
+    print( f'echo {self._startTag}',
+           file=handle )
+    print( f'echo {self._startTag} >&2',
            file=handle )
     print( commandString, file=handle )
     print( 'result=$?', file=handle )
-    print( 'echo {tag}'.format( tag=self._doneTag ),
+    print( f'echo {self._doneTag}',
+           file=handle )
+    print( f'echo {self._doneTag} >&2',
            file=handle )
     print( 'sync', file=handle )
     print( 'exit $result', file=handle )
@@ -154,14 +159,14 @@ class MpiTest(six.with_metaclass(ABCMeta, AbstractTest)):
   def __del__( self ):
     os.remove( self._scriptname )
 
-  def filterOut( self, out ):
-    '''
-    Strips MPI cruft from standard out.
-    '''
-    newOut = []
+  def __rejectWaffle(self, log: str) -> List[str]:
+    """
+    Strips out MPI cruft from a log file.
+    """
+    newLog = []
     state = 'spinup'
     processesRunning = 0
-    for line in out.splitlines():
+    for line in log.splitlines():
       if state == 'spinup':
         if line == self._startTag:
           processesRunning += 1
@@ -173,17 +178,20 @@ class MpiTest(six.with_metaclass(ABCMeta, AbstractTest)):
           if processesRunning == 0:
             state = 'done'
         else: # line does not start with 'Done '
-          newOut.append( line )
+          newLog.append( line )
+    return newLog
 
-    return '\n'.join( newOut )
+  def filterOut( self, out ):
+    '''
+    Strips MPI cruft from standard out.
+    '''
+    return '\n'.join( self.__rejectWaffle(out) )
 
   def filterErr( self, err ):
     '''
     Strip MPI cruft from standard out.
     '''
-    newErr = err.splitlines()
-
-    return '\n'.join( newErr[:-self._processes] )
+    return '\n'.join( self.__rejectWaffle(err) )
 
 ##############################################################################
 class LFRicLoggingTest(six.with_metaclass(ABCMeta, MpiTest)):
