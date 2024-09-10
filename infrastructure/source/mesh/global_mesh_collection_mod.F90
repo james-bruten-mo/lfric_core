@@ -137,36 +137,11 @@ contains
     class(global_mesh_collection_type), intent(inout) :: self
     type (global_mesh_type),            intent(in)    :: global_mesh_to_add
 
-    integer(i_def)          :: global_mesh_id
     character(str_def)      :: global_mesh_name
-    integer(i_def)          :: n_global_meshes
 
-    global_mesh_id = global_mesh_to_add%get_id()
     global_mesh_name = global_mesh_to_add%get_mesh_name()
 
-
-    ! 1.0 Perform some checks based on the existings contents
-    !     of the collection
-    !=================================================================
-    n_global_meshes = self%global_mesh_list%get_length()
-
-    ! 1.1 If this is the first global mesh in the collection, it
-    !     will be used to set the constraint for the number of
-    !     panels used by subsequent meshes added to this collection.
-    if (n_global_meshes < 1) then
-      self%npanels = global_mesh_to_add%get_npanels()
-    else
-      if (self%npanels /= global_mesh_to_add%get_npanels()) then
-        write(log_scratch_space,'(A,I0,A)')        &
-            'This global mesh collection is '//    &
-            'for global meshes of comprising of ', &
-            self%npanels, ' panels.'
-
-        call log_event(log_scratch_space,LOG_LEVEL_ERROR)
-      end if
-    end if
-
-    ! 2.0 Read in the requested mesh topology from file.
+    ! Read in the requested mesh topology from file.
     !=================================================================
     ! Check list of tag names to see if mesh is already in collection
     ! As these are assumed to be read in from the same mesh input
