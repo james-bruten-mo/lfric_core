@@ -128,7 +128,7 @@ endif
 $(BIN_DIR)/%: %.o $$(LIB_DIR)/lib$$(*F).a
 	$(call MESSAGE,Linking,$*)
 	$(Q)mkdir -p $(@D)
-	$(Q)$(LDMPI) $(LDFLAGS) -o $@ $^ \
+	$(Q)$(LDMPI) $(LDFLAGS) $(LDFLAGS_COMPILER) -o $@ $^ \
 	            $(patsubst %,-l%,$(EXTERNAL_STATIC_LIBRARIES)) \
 	            $(patsubst %,-l%,$(EXTERNAL_DYNAMIC_LIBRARIES))
 

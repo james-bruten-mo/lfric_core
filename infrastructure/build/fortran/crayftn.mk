@@ -46,14 +46,22 @@ $(info $(FFLAGS_DEBUG))
 
 FFLAGS_WARNINGS           = -m 0 -M E664,E7208,E7212
 FFLAGS_UNIT_WARNINGS      = -m 0
-FFLAGS_RUNTIME            = -R bcdps -Ktrap=fp
-# fast-debug flag set separately as Intel compiler needs platform-specific control on them
-FFLAGS_FASTD_RUNTIME      = $(FFLAGS_RUNTIME)
+FFLAGS_RUNTIME            = -R bcdps
+# fast-debug flags set separately as Intel compiler needs platform-specific control on them.
+# Though, Cray will not set them to anything
+FFLAGS_FASTD_RUNTIME      =
+FFLAGS_FASTD_INIT         =
 
 # Option for checking code meets Fortran standards
 FFLAGS_FORTRAN_STANDARD   = -en
 
-LDFLAGS_COMPILER =
+# Floating point checking with CCE causes XIOS failures. To allow
+# flexibility for testing, do not apply above full-debug
+ifeq "$(PROFILE)" "full-debug"
+  LDFLAGS_COMPILER = -Ktrap=fp
+else
+  LDFLAGS_COMPILER =
+endif
 
 FPPFLAGS = -P
 

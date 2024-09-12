@@ -11,7 +11,7 @@
 .NOTPARALLEL:
 export PROJECT_NAME = simple_diffusion
 export PROJECT_DIR_NAME = simple_diffusion
-PROFILE ?= fast-debug
+export PROFILE ?= fast-debug
 
 # Select option for PSyclone transformation. Select "none" for no transformation.
 export PSYCLONE_TRANSFORMATION ?= minimum
