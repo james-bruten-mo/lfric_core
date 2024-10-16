@@ -8,6 +8,8 @@
 !>
 module field_collection_iterator_mod_test
 
+    use, intrinsic :: iso_fortran_env, only : real32, real64
+
     use constants_mod,                 only : i_def, r_def, l_def
     use function_space_mod,            only : function_space_type
     use function_space_collection_mod, only : function_space_collection_type, &
@@ -19,12 +21,14 @@ module field_collection_iterator_mod_test
     use halo_routing_collection_mod,   only : halo_routing_collection_type, &
                                               halo_routing_collection
     use field_mod,                     only : field_type,field_proxy_type
+    use field_real32_mod,              only : field_real32_type, &
+                                              field_real32_proxy_type
+    use field_real64_mod,              only : field_real64_type, &
+                                              field_real64_proxy_type
     use field_parent_mod,              only : field_parent_type
     use integer_field_mod,             only : integer_field_type, &
                                               integer_field_proxy_type
-    use field_collection_iterator_mod, only : field_collection_iterator_type, &
-                                              field_collection_real_iterator_type, &
-                                              field_collection_integer_iterator_type
+    use field_collection_iterator_mod, only : field_collection_iterator_type
     use field_collection_mod,          only : field_collection_type
     use fs_continuity_mod,             only : W0, W2, W3
     use local_mesh_mod,                only : local_mesh_type
@@ -35,12 +39,9 @@ module field_collection_iterator_mod_test
   implicit none
 
   private
-  public :: test_all, &
-            test_zero_length_iteration, &
-            test_zero_length_real_iteration, &
-            test_zero_length_integer_iteration, &
-            test_real_collection_integer_iteration, &
-            test_integer_collection_real_iteration
+  public :: test_mixed_type, &
+            test_mixed_kind, &
+            test_zero_length_iteration
 
   @TestCase
   type, extends(MPITestCase), public :: field_collection_iterator_test_type
@@ -53,7 +54,6 @@ module field_collection_iterator_mod_test
     procedure setUp
     procedure tearDown
     procedure get_local_mesh_ptr
-    procedure test_all
   end type field_collection_iterator_test_type
 
   integer(i_def), parameter :: element_order = 0
@@ -140,11 +140,11 @@ contains
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   @Test( npes=[1] )
-  subroutine test_all( this )
+  subroutine test_mixed_type( test_type )
 
     implicit none
 
-    class(field_collection_iterator_test_type), intent(inout) :: this
+    class(field_collection_iterator_test_type), intent(inout) :: test_type
 
     type(field_type)                    :: test_field1
     type(integer_field_type)            :: test_field2
@@ -152,50 +152,41 @@ contains
     type(field_proxy_type)              :: test_field1_p
     type(integer_field_proxy_type)      :: test_field2_p
 
-    type(field_type), pointer           :: returned_field1
-    type(integer_field_type), pointer   :: returned_field2
-
     type(field_proxy_type)              :: returned_field1_p
     type(integer_field_proxy_type)      :: returned_field2_p
 
-    type(field_collection_type)                    :: collection
+    type(field_collection_type)                    :: field_collectionA
     type(field_collection_iterator_type)           :: iter
-    type(field_collection_real_iterator_type)      :: iter_real
-    type(field_collection_integer_iterator_type)   :: iter_integer
     class(field_parent_type), pointer              :: fld => null()
 
     real(r_def), parameter              :: tol = 1.0e-6_r_def
     integer(i_def)                      :: i
 
-    !----------------------- Create real & integer fields ----------------------------!
     ! Create a field object with the name 'test_field1'
     ! and put 99.0 in the first dof
-    call test_field1%initialise( this%w0_fs, name='test_field1' )
+    call test_field1%initialise( test_type%w0_fs, name='test_field1' )
     test_field1_p = test_field1%get_proxy()
     test_field1_p%data(1) = 99.0_r_def
 
     ! Create an integer field object with the name 'test_field2'
     ! and put 33 in the first dof
-    call test_field2%initialise( this%w2_fs, name='test_field2' )
+    call test_field2%initialise( test_type%w2_fs, name='test_field2' )
     test_field2_p = test_field2%get_proxy()
     test_field2_p%data(1) = 33_i_def
 
-    !----------------- Create field collection 'A' & test extracts -------------------!
     ! Put test_field1 and test_field2 in to a collection.
     !
-    call collection%initialise( name="field_collection", table_len=5 )
-    call collection%add_field(test_field1)  ! a real field
-    call collection%add_field(test_field2)  ! an integer field
-
-    !----------------------Iterating over the 'A' Collection --------------------------!
+    call field_collectionA%initialise( name="field_collectionA", table_len=5 )
+    call field_collectionA%add_field(test_field1)  ! a real field
+    call field_collectionA%add_field(test_field2)  ! an integer field
 
     ! Check we can iterate over a collection
-    ! test_field_collectionA created above with table_len=5 and the given
+    ! field_collectionA created above with table_len=5 and the given
     ! field names, should contain fields in the following order:
     ! 1. The real field with a first data item of 99.0
     ! 2. The integer field with 33 as the first data item
     !    - so check for that:
-    call iter%initialise(collection)
+    call iter%initialise(field_collectionA)
     do i=1,10
       if(.not.iter%has_next())exit
       fld=>iter%next()
@@ -214,44 +205,83 @@ contains
     ! loop exited on i==3)
     @assertEqual(3, i)
 
-    !----------------------Iterating selectively by kind -----------------------
+  end subroutine test_mixed_type
 
-    ! ------- real ---------
-    ! Check the real field iterator sees just the real field:
-
-    call iter_real%initialise(collection)
-    do i=1,10
-      if(.not.iter_real%has_next())exit
-      returned_field1=>iter_real%next()
-      returned_field1_p = returned_field1%get_proxy()
-      @assertEqual(99.0_r_def, returned_field1_p%data(1), tol)
-    end do
-    ! Test that there was only one real field in the collection (so the
-    ! iteration loop should exit on i==2)
-    @assertEqual(2, i)
-
-    ! ------- integer ---------
-    ! Check the integer field iterator sees just the integer field:
-    call iter_integer%initialise(collection)
-    do i=1,10
-      if(.not.iter_integer%has_next())exit
-      returned_field2=>iter_integer%next()
-      returned_field2_p = returned_field2%get_proxy()
-      @assertEqual(33_i_def, returned_field2_p%data(1))
-    end do
-    ! Test that there was only one integer field in the collection (so the
-    ! iteration loop should exit on i==2)
-    @assertEqual(2, i)
-
-  end subroutine test_all
-
-
-  @test( npes=1 )
-  subroutine test_zero_length_iteration( this )
+  @Test( npes=[1] )
+  subroutine test_mixed_kind( test_type )
 
     implicit none
 
-    class(field_collection_iterator_test_type), intent(inout) :: this
+    class(field_collection_iterator_test_type), intent(inout) :: test_type
+
+    type(field_real32_type)              :: test_field1
+    type(field_real64_type)              :: test_field2
+
+    type(field_real32_proxy_type)        :: test_field1_p
+    type(field_real64_proxy_type)        :: test_field2_p
+
+    type(field_real32_proxy_type)        :: returned_field1_p
+    type(field_real64_proxy_type)        :: returned_field2_p
+
+    type(field_collection_type)          :: field_collectionB
+    type(field_collection_iterator_type) :: iter
+    class(field_parent_type), pointer    :: fld => null()
+
+    real(real32), parameter              :: tol_real32 = 1.0e-6_real32
+    real(real64), parameter              :: tol_real64 = 1.0e-6_real64
+    integer(i_def)                       :: i
+
+    ! Create a field object with the name 'test_field1'
+    ! and put 99.0 in the first dof
+    call test_field1%initialise( test_type%w0_fs, name='test_field1' )
+    test_field1_p = test_field1%get_proxy()
+    test_field1_p%data(1) = 99.0_real32
+
+    ! Create an integer field object with the name 'test_field2'
+    ! and put 33 in the first dof
+    call test_field2%initialise( test_type%w2_fs, name='test_field2' )
+    test_field2_p = test_field2%get_proxy()
+    test_field2_p%data(1) = 33.0_real64
+
+    ! Put test_field1 and test_field2 in to a collection.
+    !
+    call field_collectionB%initialise( name="field_collectionB", table_len=5 )
+    call field_collectionB%add_field(test_field1)  ! a real32 field
+    call field_collectionB%add_field(test_field2)  ! a real64 field
+
+    ! Check we can iterate over a collection
+    ! field_collectionA created above with table_len=5 and the given
+    ! field names, should contain fields in the following order:
+    ! 1. The real32 field with a first data item of 99.0
+    ! 2. The real64 field with 33.0 as the first data item
+    !    - so check for that:
+    call iter%initialise(field_collectionB)
+    do i=1,10
+      if(.not.iter%has_next())exit
+      fld=>iter%next()
+      select type(fld)
+        type is (field_real32_type)
+          @assertEqual(1, i)
+          returned_field1_p = fld%get_proxy()
+          @assertEqual(99.0_real32, returned_field1_p%data(1), tol_real32)
+        type is (field_real64_type)
+          @assertEqual(2, i)
+          returned_field2_p = fld%get_proxy()
+          @assertEqual(33_real64, returned_field2_p%data(1), tol_real64)
+      end select
+    end do
+    ! Test that there were only two items in the collection (so the iteration
+    ! loop exited on i==3)
+    @assertEqual(3, i)
+
+  end subroutine test_mixed_kind
+
+  @test( npes=1 )
+  subroutine test_zero_length_iteration( test_type )
+
+    implicit none
+
+    class(field_collection_iterator_test_type), intent(inout) :: test_type
 
     class(field_parent_type), pointer :: field => null()
 
@@ -266,107 +296,5 @@ contains
     @assertFalse( associated(field), message="Empty list iterator didn't return null field." )
 
   end subroutine test_zero_length_iteration
-
-
-  @test( npes=1 )
-  subroutine test_zero_length_real_iteration( this )
-
-    implicit none
-
-    class(field_collection_iterator_test_type), intent(inout) :: this
-
-    class(field_parent_type), pointer :: field => null()
-
-    type(field_collection_type)               :: collection
-    type(field_collection_real_iterator_type) :: test_unit
-
-    call collection%initialise( name="field_collection", table_len=5 )
-    call test_unit%initialise(collection)
-    @assertFalse( test_unit%has_next(), message="Empty list real iterator didn't signal completion." )
-
-    field=>test_unit%next()
-    @assertFalse( associated(field), message="Empty list real iterator didn't return null field." )
-
-  end subroutine test_zero_length_real_iteration
-
-
-  @test( npes=1 )
-  subroutine test_zero_length_integer_iteration( this )
-
-    implicit none
-
-    class(field_collection_iterator_test_type), intent(inout) :: this
-
-    class(field_parent_type), pointer :: field => null()
-
-    type(field_collection_type)                  :: collection
-    type(field_collection_integer_iterator_type) :: test_unit
-
-    call collection%initialise( name="field_collection", table_len=5 )
-    call test_unit%initialise(collection)
-    @assertFalse( test_unit%has_next(), message="Empty list integer iterator didn't signal completion." )
-
-    field=>test_unit%next()
-    @assertFalse( associated(field), message="Empty list integer iterator didn't return null field." )
-
-  end subroutine test_zero_length_integer_iteration
-
-  @test( npes=1 )
-  subroutine test_real_collection_integer_iteration( this )
-
-    implicit none
-
-    class(field_collection_iterator_test_type), intent(inout) :: this
-
-    type(field_collection_type)                    :: collection
-    class(field_parent_type),              pointer :: field => null()
-    type(field_type)                               :: test_field1
-    type(field_collection_integer_iterator_type)   :: iter_integer
-
-    !--------------------------- Create real field ----------------------------!
-    ! Create a field object with the name 'test_field1'
-    call test_field1%initialise( this%w0_fs, name='test_field1' )
-
-    !---------------- Create field collection 'A' & test extract --------------!
-    ! Put test_field1 into a collection.
-    !
-    call collection%initialise( name="field_collection", table_len=5 )
-    call collection%add_field(test_field1)  ! a real field
-
-    call iter_integer%initialise(collection)
-
-    field => iter_integer%next()
-    @assertFalse( associated(field), message="Integer iterator didn't return null field." )
-
-  end subroutine test_real_collection_integer_iteration
-
-  @test( npes=1 )
-  subroutine test_integer_collection_real_iteration( this )
-
-    implicit none
-
-    class(field_collection_iterator_test_type), intent(inout) :: this
-
-    type(field_collection_type)                 :: collection
-    class(field_parent_type),           pointer :: field => null()
-    type(integer_field_type)                    :: test_field1
-    type(field_collection_real_iterator_type)   :: iter_real
-
-    !--------------------------- Create real field ----------------------------!
-    ! Create a field object with the name 'test_field1'
-    call test_field1%initialise( this%w0_fs, name='test_field1' )
-
-    !---------------- Create field collection 'A' & test extract --------------!
-    ! Put test_field1 into a collection.
-    !
-    call collection%initialise( name="field_collection", table_len=5 )
-    call collection%add_field(test_field1)  ! an integer field
-
-    call iter_real%initialise(collection)
-
-    field => iter_real%next()
-    @assertFalse( associated(field), message="Real iterator didn't return null field." )
-
-  end subroutine test_integer_collection_real_iteration
 
 end module field_collection_iterator_mod_test
