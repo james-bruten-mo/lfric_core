@@ -3,14 +3,13 @@
 ! For further details please refer to the file LICENCE.original which you
 ! should have received as part of this distribution.
 !-----------------------------------------------------------------------------
-!> @brief Tridiagonal solver using Thomas algorithm for mapping between Wtheta
-!> and shifted W3 spaces.
+!> @brief Tridiagonal solver for mapping between Wtheta and shifted W3 spaces.
 !>
-!> @details Solve the triadiagonal system of equations
-!>          \f[ A^+ y^+ + A^0 y + A^- y^- = x \]f
-!>          for y in Wtheta given known x in shifted W3
-!>          and matrix A using the Thomas algorithm.
-!>          Code is only valid for lowest order elements.
+!> Solve the triadiagonal system of equations
+!> \f$A^+ y^+ + A^0 y + A^- y^- = x\f$ for \f$y\f$ in Wtheta given known
+!> \f$x\f$ in shifted W3 and matrix \f$A\f$ using the Thomas algorithm.
+!>
+!> Code is only valid for lowest order elements.
 !>
 module sci_tri_solve_sh_rho_to_mr_kernel_mod
 

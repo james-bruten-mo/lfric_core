@@ -5,10 +5,15 @@
 !-----------------------------------------------------------------------------
 !> @brief Tridiagonal solver using Thomas algorithm.
 !>
-!> @details Solve the triadiagonal system of equations
-!>          \f[ A^+ y^+ + A^0 y + A^- y^- = x \]f
-!>          for known x and matrix A using the Thomas algorithm
-!>          Code is only valid for lowest order elements
+!> Solve the triadiagonal system of equations
+!>
+!> \f{align}{
+!> A^+ y^+ + A^0 y + A^- y^- = x
+!> \f}
+!>
+!> for known \f$x\f$ and matrix \f$A\f$ using the Thomas algorithm.
+!>
+!> Code is only valid for lowest order elements
 !>
 module sci_tri_solve_kernel_mod
 

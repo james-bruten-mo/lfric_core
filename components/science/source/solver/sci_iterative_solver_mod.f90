@@ -6,12 +6,11 @@
 
 !> @brief Abstract base class for iterative solver.
 !>
-!> @detail This class can be used as a base class for iterative solvers
-!> which solve the system \f$Ax=b\f$. It contains a linear operator and a
-!> preconditioner object which are required by each Krylov-subspace solver.
-!> The type also defines an interface for the solver application. Common
-!> data such as the relative and absolute solver tolerance are stored as
-!> data members.
+!> This class can be used as a base class for iterative solvers which solve the
+!> system \f$Ax=b\f$. It contains a linear operator and a preconditioner object
+!> which are required by each Krylov-subspace solver. The type also defines an
+!> interface for the solver application. Common data such as the relative and
+!> absolute solver tolerance are stored as data members.
 
 module sci_iterative_solver_mod
 
@@ -440,7 +439,6 @@ module sci_iterative_solver_mod
   type, private :: array_abstract_vector_type
     class(abstract_vector_type), allocatable :: vt
   end type array_abstract_vector_type
-
 
 end module sci_iterative_solver_mod
 

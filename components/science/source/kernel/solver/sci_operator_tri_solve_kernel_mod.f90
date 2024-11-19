@@ -4,12 +4,19 @@
 ! under which the code may be used.
 !-----------------------------------------------------------------------------
 !> @brief Tridiagonal solver using Thomas algorithm for Wtheta and W2v fields.
-!> @details Solve the triadiagonal system of equations
-!!          \f[ A^+ y^+ + A^0 y + A^- y^- = x \]f
-!!          for known x and matrix A using the Thomas algorithm.
-!!          Code is only valid for lowest order elements on Wtheta
-!!          and W2v spaces (2 dofs per cell). The tridiagonal operator
-!!          is extracted from the LMA operators.
+!>
+!> Solve the triadiagonal system of equations
+!>
+!> \f{align}{
+!> A^+ y^+ + A^0 y + A^- y^- = x
+!> \f}
+!>
+!> for known \f$x\f$ and matrix \f$A\f$ using the Thomas algorithm.
+!>
+!> Code is only valid for lowest order elements on Wtheta and W2v spaces
+!> (2 dofs per cell). The tridiagonal operator is extracted from the LMA
+!> operators.
+!>
 module sci_operator_tri_solve_kernel_mod
 
   use argument_mod,  only: arg_type,              &

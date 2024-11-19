@@ -103,12 +103,17 @@ contains
   !-----------------------------------------------------------------------------
   ! c o o r d i n a t e _ j a c o b i a n _ q u a d r a t u r e
   !-----------------------------------------------------------------------------
-  !> @brief Subroutine Computes the element Jacobian of the coordinate transform from
-  !! reference space \f$ \hat{\chi} \f$ to physical space chi
-  !> @details Compute the Jacobian of the coordinate transform from
-  !> reference space \f[ \hat{\chi} \f] to physical space \f[ \chi \f]
-  !> \f[ J^{i,j} = \frac{\partial \chi_i} / {\partial \hat{\chi_j}} \f]
-  !> and the determinant det(J)
+  !> @brief Computes element Jacobian of coordinate transform from reference
+  !>        space.
+  !>
+  !> Compute the Jacobian of the coordinate transform from reference space
+  !> \f$\hat{\chi}\f$ to physical space \f$\chi\f$ and the determinant
+  !> det(J)
+  !>
+  !> \f{align}{
+  !> J^{i,j} = \frac{\partial \chi_i} / {\partial \hat{\chi_j}}
+  !> \f}
+  !>
   !! @param[in] ndf        Size of the chi arrays
   !! @param[in] ngp_h      Number of quadrature points in horizontal direction
   !! @param[in] ngp_v      Number of quadrature points in vertical direction
@@ -120,6 +125,7 @@ contains
   !! @param[in] diff_basis Grad of Wchi basis functions
   !! @param[out] jac       Jacobian on quadrature points
   !! @param[out] dj        Determinant of the Jacobian on quadrature points
+  !!
   subroutine coordinate_jacobian_quadrature_r_single( &
                                            ndf, ngp_h, ngp_v,   &
                                            chi_1, chi_2, chi_3, &
