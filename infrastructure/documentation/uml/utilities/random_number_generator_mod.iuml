@@ -1,0 +1,23 @@
+' (c) Crown copyright 2025 Met Office. All rights reserved.
+' The file LICENCE, distributed with this code, contains details of the terms
+' under which the code may be used.
+
+class random_number_generator_mod::random_number_generator_type {
+  -seed: integer
+  -seeded: logical
+  -seeder(seed : integer) : procedure <<pointer>>
+  -method(result : real) : procedure <<pointer>>
+
+  +<<create>> random_number_generator_type(<<in>> seed : integer, <<in optional>> method : procedure <<pointer>>, <<in optional>> seeder : procedure <<pointer>>) : random_number_generator_type
+  +next(<<inout>> results : real)
+  +next(<<inout>> results : real(:))
+  +next(<<inout>> results : real(::))
+  +next(<<inout>> results : real(:::))
+}
+
+note right
+  next() is a generic procedure that maps to multiple
+  interfaces with different shapes of `results`
+end note
+
+

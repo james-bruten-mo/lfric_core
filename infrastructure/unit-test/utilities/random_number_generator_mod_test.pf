@@ -1,0 +1,127 @@
+!-----------------------------------------------------------------------------
+! (C) Crown copyright 2025 Met Office. All rights reserved.
+! The file LICENCE, distributed with this code, contains details of the terms
+! under which the code may be used.
+!-----------------------------------------------------------------------------
+
+module random_number_generator_mod_test
+  use pfunit
+  use random_number_generator_mod, only      : &
+    random_number_generator_type,              &
+    random_number_generator_seeder_interface,  &
+    random_number_generator_method_interface
+  use, intrinsic :: iso_fortran_env, only    : real64
+
+  implicit none
+
+  private
+
+  public :: test_results_shape, test_fn_pointers
+
+  contains
+
+    @test
+    !> @brief tests that random_number_generator_type can copy w/ arbitrary result shapes
+    subroutine test_results_shape( )
+      ! tests that rng correctly fills up the `results` argument
+
+      use constants_mod, only : r_double
+      implicit none
+
+      type(random_number_generator_type) :: rng
+
+      real(kind=r_double) :: results_scalar
+      real(kind=r_double), dimension(:), allocatable :: results_1d
+      real(kind=r_double), dimension(:,:), allocatable :: results_2d
+      real(kind=r_double), dimension(:,:,:), allocatable :: results_3d
+
+      real(kind=r_double) :: missing_data = 0.0
+      integer :: i, j, k, N = 2
+      integer :: seed = 42
+
+      allocate(results_1d(N))
+      allocate(results_2d(N,N))
+      allocate(results_3d(N,N,N))
+
+      ! initialise all results to missing_data
+      ! so I can tell when values change
+      results_scalar = missing_data
+      results_1d(:) = missing_data
+      results_2d(:,:) = missing_data
+      results_3d(:,:,:) = missing_data
+
+      @assertEqual(results_scalar, missing_data)
+      do i = 1, N
+        @assertEqual(results_1d(i), missing_data)
+        do j = 1, N
+          @assertEqual(results_2d(i,j), missing_data)
+          do k = 1, N
+            @assertEqual(results_3d(i,j,k), missing_data)
+          end do
+        end do
+      end do
+
+      rng = random_number_generator_type(seed)
+
+      call rng%next(results_scalar)
+      call rng%next(results_1d)
+      call rng%next(results_2d)
+      call rng%next(results_3d)
+
+      @assertTrue((results_scalar /= missing_data).and.(results_scalar > 0).and.(results_scalar < 1))
+      do i = 1, N
+        @assertTrue((results_1d(i) /= missing_data).and.(results_1d(i) > 0).and.(results_1d(i) < 1))
+        do j = 1, N
+          @assertTrue((results_2d(i,j) /= missing_data).and.(results_2d(i,j) > 0).and.(results_2d(i,j) < 1))
+          do k = 1, N
+            @assertTrue((results_3d(i,j,k) /= missing_data).and.(results_3d(i,j,k) > 0).and.(results_3d(i,j,k) < 1))
+          end do
+        end do
+      end do
+
+    end subroutine test_results_shape
+
+    @test
+    !> @brief tests that random_number_generator_type can use arbitrary fn ptrs
+    subroutine test_fn_pointers( )
+      use constants_mod, only : r_double
+      implicit none
+
+      type(random_number_generator_type) :: rng
+      procedure(random_number_generator_seeder_interface), pointer :: test_seeder_ptr
+      procedure(random_number_generator_method_interface), pointer :: test_method_ptr
+
+      real(kind=real64), parameter :: tolerance = 0.001_real64
+      real(kind=real64) :: test_result = 123._real64
+      real(kind=real64) :: results_scalar
+      integer :: seed = 42
+
+      test_seeder_ptr => test_seeder
+      test_method_ptr => test_method
+
+      rng = random_number_generator_type( &
+        seed,                   &
+        method=test_method_ptr, &
+        seeder=test_seeder_ptr  &
+      )
+      call rng%next(results_scalar)
+
+      @assertEqual(results_scalar, test_result, tolerance)
+
+      contains
+
+        subroutine test_seeder(seed)
+          implicit none
+          integer, intent(in) :: seed
+          continue
+        end subroutine test_seeder
+
+        subroutine test_method(result)
+          implicit none
+          real, intent(inout) :: result
+          result = test_result
+        end subroutine test_method
+
+    end subroutine test_fn_pointers
+
+  end module random_number_generator_mod_test

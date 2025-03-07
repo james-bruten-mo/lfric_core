@@ -9,34 +9,35 @@
 !>
 module simple_diffusion_driver_mod
 
-  use add_mesh_map_mod,           only : assign_mesh_maps
-  use sci_checksum_alg_mod,       only : checksum_alg
-  use constants_mod,              only : i_def, str_def, &
-                                         r_def, r_second
-  use convert_to_upper_mod,       only : convert_to_upper
-  use create_mesh_mod,            only : create_mesh, create_extrusion
-  use driver_mesh_mod,            only : init_mesh
-  use driver_modeldb_mod,         only : modeldb_type
-  use driver_fem_mod,             only : init_fem, final_fem
-  use driver_io_mod,              only : init_io, final_io
-  use extrusion_mod,              only : extrusion_type,         &
-                                         uniform_extrusion_type, &
-                                         TWOD, PRIME_EXTRUSION
-  use field_collection_mod,       only : field_collection_type
-  use field_mod,                  only : field_type
-  use init_simple_diffusion_mod,  only : init_simple_diffusion
-  use inventory_by_mesh_mod,      only : inventory_by_mesh_type
-  use log_mod,                    only : log_event,         &
-                                         log_scratch_space, &
-                                         LOG_LEVEL_INFO,    &
-                                         LOG_LEVEL_ERROR,   &
-                                         LOG_LEVEL_TRACE
-  use mesh_mod,                   only : mesh_type
-  use mesh_collection_mod,        only : mesh_collection
-  use mpi_mod,                    only : mpi_type
-  use namelist_mod,               only : namelist_type
-
-  use simple_diffusion_alg_mod,   only : simple_diffusion_alg
+  use add_mesh_map_mod,            only : assign_mesh_maps
+  use sci_checksum_alg_mod,        only : checksum_alg
+  use constants_mod,               only : i_def, str_def, &
+                                          r_def, r_second
+  use convert_to_upper_mod,        only : convert_to_upper
+  use create_mesh_mod,             only : create_mesh, create_extrusion
+  use driver_mesh_mod,             only : init_mesh
+  use driver_modeldb_mod,          only : modeldb_type
+  use driver_fem_mod,              only : init_fem, final_fem
+  use driver_io_mod,               only : init_io, final_io
+  use extrusion_mod,               only : extrusion_type,         &
+                                          uniform_extrusion_type, &
+                                          TWOD, PRIME_EXTRUSION
+  use field_collection_mod,        only : field_collection_type
+  use field_mod,                   only : field_type
+  use init_simple_diffusion_mod,   only : init_simple_diffusion
+  use inventory_by_mesh_mod,       only : inventory_by_mesh_type
+  use key_value_mod,               only : abstract_value_type
+  use log_mod,                     only : log_event,         &
+                                          log_scratch_space, &
+                                          LOG_LEVEL_INFO,    &
+                                          LOG_LEVEL_ERROR,   &
+                                          LOG_LEVEL_TRACE
+  use mesh_mod,                    only : mesh_type
+  use mesh_collection_mod,         only : mesh_collection
+  use mpi_mod,                     only : mpi_type
+  use namelist_mod,                only : namelist_type
+  use random_number_generator_mod, only : random_number_generator_type
+  use simple_diffusion_alg_mod,    only : simple_diffusion_alg
 
   !------------------------------------
   ! Configuration modules
@@ -75,6 +76,9 @@ contains
 
     class(extrusion_type),        allocatable :: extrusion
     type(uniform_extrusion_type), allocatable :: extrusion_2d
+
+    class(abstract_value_type), pointer :: abstract_value
+    type(random_number_generator_type), pointer :: rng
 
     type(namelist_type), pointer :: base_mesh_nml => null()
     type(namelist_type), pointer :: planet_nml    => null()
@@ -190,6 +194,21 @@ contains
     !=======================================================================
     ! 4.0 Create and initialise prognostic fields
     !=======================================================================
+
+    !-------------------------------------------------------------------------
+    ! Seed the random number generator
+    !-------------------------------------------------------------------------
+    call modeldb%values%get_value("rng", abstract_value)
+    select type(abstract_value)
+      type is (random_number_generator_type)
+        rng => abstract_value
+      class default
+        write(log_scratch_space, * ) &
+          "Error: the value called 'rng' is not a random_number_generator"
+        call log_event( log_scratch_space, LOG_LEVEL_ERROR )
+    end select
+    call rng%check_seed()
+
     mesh => mesh_collection%get_mesh(prime_mesh_name)
     call chi_inventory%get_field_array(mesh, chi)
     call panel_id_inventory%get_field(mesh, panel_id)
