@@ -18,6 +18,8 @@ from re import compile as re_compile
 from stylist.fortran import (
     FortranCharacterset,
     MissingImplicit,
+    NakedLiteral,
+    MissingOnly,
     IntrinsicModule,
     ForbidUsage
 )
@@ -44,14 +46,36 @@ allowed_mpi = (
     "log_mod"
 )
 
+allowed_oasis = (
+    "coupling_mod",
+    "coupler_exchange_0d_mod",
+    "coupler_exchange_2d_mod"
+)
+
+allowed_yaxt = (
+    "halo_comms_mod"
+)
+
+# We limit the modules that can be used without "only"
+allowed_use_no_only = (
+    "funit",
+    "pfunit"
+)
+
 infrastructure = Style(
     TrailingWhitespace(),
     FortranCharacterset(),
     MissingImplicit(),
+    NakedLiteral(integers=False, reals=True),
+    MissingOnly(ignore=allowed_use_no_only),
     IntrinsicModule(),
-    ForbidUsage('mpi', exceptions=allowed_mpi)
+    ForbidUsage('mpi', exceptions=allowed_mpi),
+    ForbidUsage('mod_oasis', exceptions=allowed_oasis),
+    ForbidUsage('yaxt', exceptions=allowed_yaxt)    
 )
 
 # Define additional file type processing pipelines
 #
 pf = FilePipe(FortranSource, PFUnitProcessor, FortranPreProcessor)
+X90 = FilePipe(FortranSource, FortranPreProcessor)
+x90 = FilePipe(FortranSource)

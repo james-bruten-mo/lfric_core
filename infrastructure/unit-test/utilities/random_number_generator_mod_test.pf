@@ -35,7 +35,7 @@ module random_number_generator_mod_test
       real(kind=r_double), dimension(:,:), allocatable :: results_2d
       real(kind=r_double), dimension(:,:,:), allocatable :: results_3d
 
-      real(kind=r_double) :: missing_data = 0.0
+      real(kind=r_double) :: missing_data = 0.0_r_double
       integer :: i, j, k, N = 2
       integer :: seed = 42
 

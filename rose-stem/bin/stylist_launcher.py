@@ -49,6 +49,7 @@ if __name__ == "__main__":
     #
     candidates = ["infrastructure",
                   "mesh_tools",
+                  "components/coupling",
                   "components/driver",
                   "components/science",
                   "components/inventory",
