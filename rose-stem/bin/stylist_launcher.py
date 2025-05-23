@@ -5,14 +5,14 @@
 # under which the code may be used.
 ##############################################################################
 """
-Launch stylist on list of directories. Run on all and print outputs. Fail if any
-style changes required.
+Launch stylist on list of directories. Run on all and print outputs. Fail if
+any style changes required.
 """
 
-import sys
+import argparse
 import os
 import subprocess
-import argparse
+import sys
 
 
 def launch_stylist(app_path, config_path):
@@ -47,16 +47,18 @@ if __name__ == "__main__":
     #
     # ToDo: Ideally the list of candidates would be automatically generated.
     #
-    candidates = ["infrastructure",
-                  "mesh_tools",
-                  "components/coupling",
-                  "components/driver",
-                  "components/science",
-                  "components/inventory",
-                  "components/lfric-xios",
-                  "applications/skeleton",
-                  "applications/simple_diffusion",
-                  "applications/io_demo"]
+    candidates = [
+        "infrastructure",
+        "mesh_tools",
+        "components/coupling",
+        "components/driver",
+        "components/science",
+        "components/inventory",
+        "components/lfric-xios",
+        "applications/skeleton",
+        "applications/simple_diffusion",
+        "applications/io_demo",
+    ]
     for app in candidates:
         print(f"Running on {app}\n")
         app_path = os.path.join(args.source, app)

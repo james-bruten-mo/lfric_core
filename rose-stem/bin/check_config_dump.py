@@ -4,15 +4,15 @@
 # The file LICENCE, distributed with this code, contains details of the terms
 # under which the code may be used.
 ##############################################################################
-'''
+"""
 Run a rose config-dump command on all relevant lfric_apps directories.
 Fail if any files changed as result of command
-'''
+"""
 
+import argparse
+import subprocess
 import sys
 from os import path
-import subprocess
-import argparse
 
 APPLICATIONS = [
     "applications/io_demo",
@@ -40,7 +40,7 @@ def check_config_dump(path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Check through applications in lfric_apps and check "
-                    "that rose config-dump has been run on them."
+        "that rose config-dump has been run on them."
     )
     parser.add_argument(
         "-s", "--source", help="Source directory for lfric_apps"

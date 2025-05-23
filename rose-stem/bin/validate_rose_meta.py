@@ -8,30 +8,20 @@
 Validate the rose metadata in lfric_apps
 """
 
-import os
-import sys
-import re
-import subprocess
 import argparse
+import os
+import subprocess
+import sys
 
-DEFAULT_APPS = {
-   "skeleton": ["skeleton"],
-   "mesh_tools": ["mesh_tools"]
-}
+DEFAULT_APPS = {"skeleton": ["skeleton"], "mesh_tools": ["mesh_tools"]}
 
 COMPONENTS = [
     "driver",
 ]
 
-APPLICATIONS = [
-    "skeleton",
-    "mesh_tools"
-]
+APPLICATIONS = ["skeleton", "mesh_tools"]
 
-OTHERS = [
-    "infrastructure",
-    "mesh_tools"
-]
+OTHERS = ["infrastructure", "mesh_tools"]
 
 
 def run_subprocess(command, source_dir):
@@ -62,8 +52,10 @@ def check_metadata(application, source_dir):
     elif application in COMPONENTS:
         meta_path = os.path.join("components", application, "rose-meta")
     else:
-        sys.exit(f"Application {application} not defined in either "
-                 "APPLICATIONS or COMPONENTS lists.")
+        sys.exit(
+            f"Application {application} not defined in either "
+            "APPLICATIONS or COMPONENTS lists."
+        )
     retcode = 0
     paths = os.listdir(os.path.join(source_dir, meta_path))
     for path in paths:
@@ -128,7 +120,7 @@ if __name__ == "__main__":
         "-i",
         "--ignore_sc",
         help="Ignore failures from rose-app-suite_controlled.conf files.",
-        default=True
+        default=True,
     )
     args = parser.parse_args()
 
@@ -144,7 +136,6 @@ if __name__ == "__main__":
         else:
             print(f"[PASS] {application} passed rose metadata-check")
 
-
     print("[INFO] Validating App Configurations")
     if args.ignore_sc:
         print("[WARNING]: Ignoring rose-app-suite_controlled.conf failures")
@@ -156,11 +147,15 @@ if __name__ == "__main__":
             print(f"[INFO] Validating {application} with app {app}")
             retcode = validate_app(app, args.source, args.ignore_sc)
             if retcode:
-                print(f"[FAIL] {application} with app {app} failed to validate")
+                print(
+                    f"[FAIL] {application} with app {app} failed to validate"
+                )
                 failures = True
             else:
-                print(f"[PASS] {application} with app{app} "
-                      "validated successfully")
+                print(
+                    f"[PASS] {application} with app{app} "
+                    "validated successfully"
+                )
 
     if failures:
         sys.exit("There were metadata validation failures")

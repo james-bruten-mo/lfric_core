@@ -8,10 +8,10 @@
 Copy failed checksum kgos from a rose-stem suite to a working copy
 """
 
-import sys
+import argparse
 import os
 import subprocess
-import argparse
+import sys
 
 PLATFORMS = {
     "meto": {
@@ -153,10 +153,10 @@ def parse_cl_args():
         "-s",
         "--suite",
         required=True,
-        help="The name of the suite being run. Will look in ~/cylc-run for log "
-        "files. If the numbered run dir isn't given or is given as runN, will "
-        "read the runN symlink and use the real number to work on remote "
-        "platforms.",
+        help="The name of the suite being run. Will look in ~/cylc-run for "
+             "log files. If the numbered run dir isn't given or is given as "
+             "runN, will read the runN symlink and use the real number to "
+             "work on remote platforms."
     )
     parser.add_argument(
         "-w",
@@ -169,7 +169,7 @@ def parse_cl_args():
         "-p",
         "--site",
         default="meto",
-        help="The rose-stem site being run used. Needed for platform settings.",
+        help="The rose-stem site being run used. Needed for platform settings."
     )
     args = parser.parse_args()
     args.working_copy = os.path.expanduser(args.working_copy)
@@ -187,7 +187,7 @@ def parse_cl_args():
         path_base = ""
     if "run" not in path_base:
         spath = os.path.expanduser(
-            os.path.join('~', 'cylc-run', args.suite, 'runN')
+            os.path.join("~", "cylc-run", args.suite, "runN")
         )
         sym_path = run_command(f"readlink {spath}")
         args.suite = os.path.join(args.suite, sym_path.stdout.strip("\n"))
@@ -199,7 +199,9 @@ if __name__ == "__main__":
 
     suite_path = os.path.expanduser(os.path.join("~", "cylc-run", args.suite))
     log_file = os.path.join(suite_path, "log", "job", "1")
-    flow_file = os.path.join(suite_path, "log", "config", "flow-processed.cylc")
+    flow_file = os.path.join(
+        suite_path, "log", "config", "flow-processed.cylc"
+    )
 
     failed_jobs = find_failed_tasks(log_file)
 

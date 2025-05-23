@@ -1,12 +1,11 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 ##############################################################################
 # Copyright (c) 2017,  Met Office, on behalf of HMSO and Queen's Printer
 # For further details please refer to the file LICENCE.original which you
 # should have received as part of this distribution.
 ##############################################################################
 
-from __future__ import absolute_import
-from .exception  import TestFailed
-from .test       import Test, MpiTest, LFRicLoggingTest
-from .testengine import TestEngine
+
+from .exception import TestFailed  # noqa: F401
+from .test import LFRicLoggingTest, MpiTest, Test  # noqa: F401
+from .testengine import TestEngine  # noqa: F401

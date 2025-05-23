@@ -10,11 +10,11 @@ Ignore codes S007 (family all uppercase - due to not detecting jinja2
 variables), S012 (line length) and S013 (should be 4 tabs)
 """
 
-import sys
+import argparse
 import os
 import re
-import argparse
 import subprocess
+import sys
 
 
 def run_command(command):
@@ -39,7 +39,7 @@ if __name__ == "__main__":
     command = f"cylc lint {source} -n S007 -n S012 -n S013 -n S014"
     result = run_command(command)
     try:
-        nissues = int(re.search("found (\d+) issue", result.stdout).group(1))
+        nissues = int(re.search(r"found (\d+) issue", result.stdout).group(1))
         print(result.stdout, file=sys.stderr)
         sys.exit(
             f"{nissues} Errors were detected - please fix them and run again"

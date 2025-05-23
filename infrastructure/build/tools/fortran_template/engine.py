@@ -9,15 +9,16 @@ Reifies compilable source from an abstract template of such.
 Keyed values are inserted into the template at specified locations to produce
 something a compiler can understand.
 """
+
 from pathlib import Path
 from typing import Dict, Optional
 
 from jinja2 import BaseLoader, Environment, FileSystemLoader
 
 
-def main(source_path: Path,
-         kv_dict: Dict[str, Optional[str]],
-         output_file: str) -> None:
+def main(
+    source_path: Path, kv_dict: Dict[str, Optional[str]], output_file: str
+) -> None:
     """
     Main method
 
@@ -27,13 +28,15 @@ def main(source_path: Path,
         output_file: Pattern for output filename with template.
     """
     environment = Environment(
-        variable_start_string='{{', variable_end_string='}}',
+        variable_start_string="{{",
+        variable_end_string="}}",
         loader=FileSystemLoader(source_path.parent),
-        keep_trailing_newline=True
+        keep_trailing_newline=True,
     )
     template = environment.get_template(source_path.name)
-    file_name_template = Environment(
-        loader=BaseLoader()).from_string(output_file)
+    file_name_template = Environment(loader=BaseLoader()).from_string(
+        output_file
+    )
     filename = file_name_template.render(kv_dict)
     content = template.render(kv_dict)
 

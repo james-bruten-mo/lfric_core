@@ -7,11 +7,12 @@
 """
 Turns namelist descriptions into namelist modules.
 """
-from abc import ABC, abstractmethod
+
 import collections
 import json
-from pathlib import Path
 import re
+from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 from zlib import crc32
 
@@ -25,6 +26,7 @@ class NamelistDescriptionException(Exception):
     """
     Thrown for problems in the namelist.
     """
+
     pass  # pylint: disable=unnecessary-pass
 
 
@@ -36,6 +38,7 @@ class FortranType:
     Implements the singleton pattern such that there is only one object per
     type.
     """
+
     _singletonMap: Dict[str, Dict[str, Dict[str, "FortranType"]]] = {}
 
     def __init__(self, intrinsic_type: str, kind: str, write_format: str):
@@ -52,13 +55,13 @@ class FortranType:
         """
         Gets the type designator used by declarations in source files.
         """
-        return f'{self.intrinsic_type}({self.kind})'
+        return f"{self.intrinsic_type}({self.kind})"
 
     def label(self) -> str:
         """
         Gets a label for this type.
         """
-        return f'{self.intrinsic_type}_{self.kind}'
+        return f"{self.intrinsic_type}_{self.kind}"
 
     def __lt__(self, other):
         return self.declaration() < other.declaration()
@@ -84,8 +87,9 @@ class FortranType:
             cls._singletonMap[intrinsic_type][kind] = {}
 
         if write_format not in cls._singletonMap[intrinsic_type][kind]:
-            cls._singletonMap[intrinsic_type][kind][write_format] \
-                = cls(intrinsic_type, kind, write_format)
+            cls._singletonMap[intrinsic_type][kind][write_format] = cls(
+                intrinsic_type, kind, write_format
+            )
 
         return cls._singletonMap[intrinsic_type][kind][write_format]
 
@@ -97,6 +101,7 @@ class _Property(ABC):
 
     .. todo:: This interface is used externally so shouldn't be "private."
     """
+
     def __init__(self, name: str, fortran_type: FortranType):
         """
         :param name: Identifying name.
@@ -132,8 +137,8 @@ class _String(_Property):
     """
     Namelist string field.
     """
-    _fortranStringMap = {'default':  'str_def',
-                         'filename': 'str_max_filename'}
+
+    _fortranStringMap = {"default": "str_def", "filename": "str_max_filename"}
 
     def __init__(self, name: str, length: Optional[str] = None):
         """
@@ -141,19 +146,21 @@ class _String(_Property):
         :param length: String length is a name which resolves to a length.
         """
         if not length:
-            length = 'default'
+            length = "default"
 
-        super().__init__(name,
-                         FortranType.instance('character',
-                                              self._fortranStringMap[length],
-                                              'A'))
+        super().__init__(
+            name,
+            FortranType.instance(
+                "character", self._fortranStringMap[length], "A"
+            ),
+        )
 
     def get_configure_type(self) -> str:
-        return 'string'
+        return "string"
 
     @property
     def missing_data_indicator(self) -> str:
-        return 'cmdi'
+        return "cmdi"
 
 
 ##############################################################################
@@ -161,30 +168,29 @@ class _Enumeration(_Property):
     """
     Namelist enumeration field.
     """
+
     def __init__(self, name: str, keyDictionary: Dict[str, int]):
         """
         :param name: Identifying name.
         :param keyDictionary: Mapping of enumerator to representation.
         """
-        super().__init__(name,
-                         FortranType.instance('integer',
-                                              'i_def',
-                                              'I0'))
+        super().__init__(name, FortranType.instance("integer", "i_def", "I0"))
 
         self.mapping = keyDictionary
-        self.inverse_mapping = {value:
-                                key for key, value in self.mapping.items()}
+        self.inverse_mapping = {
+            value: key for key, value in self.mapping.items()
+        }
         self.first_key = self.inverse_mapping[min(self.inverse_mapping.keys())]
 
     def required_kinds(self):
-        return [self.fortran_type.kind, 'str_def']
+        return [self.fortran_type.kind, "str_def"]
 
     def get_configure_type(self):
-        return 'enumeration'
+        return "enumeration"
 
     @property
     def missing_data_indicator(self):
-        return 'emdi'
+        return "emdi"
 
 
 ##############################################################################
@@ -192,56 +198,68 @@ class _Scalar(_Property):
     """
     Namelist scalar value field.
     """
-    _fortranKindMap = {'character': {'default': 'str_def',
-                                     'filename': 'str_max_filename'},
-                       'logical':   {'default': 'l_def',
-                                     'native':  'l_native'},
-                       'integer':   {'default': 'i_def',
-                                     'short':   'i_short',
-                                     'medium':  'i_medium',
-                                     'long':    'i_long'},
-                       'real':      {'default': 'r_def',
-                                     'native':  'r_native',
-                                     'single':  'r_single',
-                                     'double':  'r_double',
-                                     'second':  'r_second'}}
 
-    _fortranFormatMap = {'character': 'A',
-                         'logical':   'L2',
-                         'integer':   'I0',
-                         'real':      'E14.7'}
+    _fortranKindMap = {
+        "character": {"default": "str_def", "filename": "str_max_filename"},
+        "logical": {"default": "l_def", "native": "l_native"},
+        "integer": {
+            "default": "i_def",
+            "short": "i_short",
+            "medium": "i_medium",
+            "long": "i_long",
+        },
+        "real": {
+            "default": "r_def",
+            "native": "r_native",
+            "single": "r_single",
+            "double": "r_double",
+            "second": "r_second",
+        },
+    }
 
-    _fortranMissingDataIndicator = {'character': 'cmdi',
-                                    'logical':   '.false.',
-                                    'integer':   'imdi',
-                                    'real':      'rmdi'}
+    _fortranFormatMap = {
+        "character": "A",
+        "logical": "L2",
+        "integer": "I0",
+        "real": "E14.7",
+    }
 
-    def __init__(self, name: str,
-                 configure_type: str,
-                 configure_kind: Optional[str] = None):
+    _fortranMissingDataIndicator = {
+        "character": "cmdi",
+        "logical": ".false.",
+        "integer": "imdi",
+        "real": "rmdi",
+    }
+
+    def __init__(
+        self,
+        name: str,
+        configure_type: str,
+        configure_kind: Optional[str] = None,
+    ):
         """
         :param name: Identifying name.
         :param configure_type: Configuration type identifier.
         :param configure_kind: Configuration kind identifier.
         """
         if not configure_kind:
-            configure_kind = 'default'
+            configure_kind = "default"
 
-        if configure_type == 'string':
-            configure_type = 'character'
+        if configure_type == "string":
+            configure_type = "character"
 
         super().__init__(
             name,
             FortranType.instance(
                 configure_type,
                 self._fortranKindMap[configure_type][configure_kind],
-                self._fortranFormatMap[configure_type]
-            )
+                self._fortranFormatMap[configure_type],
+            ),
         )
         self._mdi = self._fortranMissingDataIndicator[configure_type]
 
     def get_configure_type(self):
-        return 'scalar'
+        return "scalar"
 
     @property
     def missing_data_indicator(self):
@@ -253,11 +271,15 @@ class _Computed(_Scalar):
     """
     Namelist computed value field.
     """
-    def __init__(self, name: str,
-                 configure_type: str,
-                 computation: str,
-                 configure_kind: Optional[str],
-                 dereferenced_list_vars: Optional[Sequence[str]] = None):
+
+    def __init__(
+        self,
+        name: str,
+        configure_type: str,
+        computation: str,
+        configure_kind: Optional[str],
+        dereferenced_list_vars: Optional[Sequence[str]] = None,
+    ):
         # pylint: disable=too-many-arguments
         """
         :param name: Identifying name.
@@ -271,7 +293,7 @@ class _Computed(_Scalar):
         self.dereferenced_list_vars = dereferenced_list_vars
 
     def get_configure_type(self):
-        return 'computed'
+        return "computed"
 
 
 ##############################################################################
@@ -279,9 +301,8 @@ class _Array(_Property):
     """
     Namelist array field.
     """
-    def __init__(self, name: str,
-                 contentProperty: _Property,
-                 bounds: str):
+
+    def __init__(self, name: str, contentProperty: _Property, bounds: str):
         """
         :param name: Identifying name.
         :param contentProperty: Description of array elements.
@@ -290,16 +311,17 @@ class _Array(_Property):
         super().__init__(name, contentProperty.fortran_type)
         self.content = contentProperty
 
-        if ',' in bounds:
-            message = 'Only 1D arrays allowed in configuration: {}'
+        if "," in bounds:
+            message = "Only 1D arrays allowed in configuration: {}"
             raise NamelistDescriptionException(message.format(bounds))
 
-        if ':' in bounds and bounds.strip() != ':':
-            lower, upper = bounds.split(':')
+        if ":" in bounds and bounds.strip() != ":":
+            lower, upper = bounds.split(":")
 
-            if (lower.strip() not in ['1', '']):
-                message = 'Only lower bound of 1 '\
-                          'is allowed in configuration: {}'
+            if lower.strip() not in ["1", ""]:
+                message = (
+                    "Only lower bound of 1 is allowed in configuration: {}"
+                )
                 raise NamelistDescriptionException(message.format(bounds))
 
             self.bounds = upper
@@ -307,7 +329,7 @@ class _Array(_Property):
             self.bounds = bounds
 
     def get_configure_type(self):
-        return 'array'
+        return "array"
 
     @property
     def missing_data_indicator(self):
@@ -326,7 +348,7 @@ class _Array(_Property):
         """
         :return: True if array size is dependent on another field.
         """
-        if not self.bounds[0].isdigit() and self.bounds[0] != ':':
+        if not self.bounds[0].isdigit() and self.bounds[0] != ":":
             return True
 
         return False
@@ -335,7 +357,7 @@ class _Array(_Property):
         """
         :return: True if array size is unspecified.
         """
-        if self.bounds[0] == ':':
+        if self.bounds[0] == ":":
             return True
 
         return False
@@ -346,9 +368,13 @@ class NamelistDescription:
     """
     Describes a namelist and its contained fields.
     """
-    def __init__(self, listname: str,
-                 multiple_instances_allowed: bool = False,
-                 instance_key_member: Optional[str] = None):
+
+    def __init__(
+        self,
+        listname: str,
+        multiple_instances_allowed: bool = False,
+        instance_key_member: Optional[str] = None,
+    ):
         """
         :param listname: Identifying name.
         """
@@ -357,14 +383,16 @@ class NamelistDescription:
         self._instance_key_member = instance_key_member
 
         self._engine = jinja2.Environment(
-            loader=jinja2.PackageLoader('configurator', 'templates'),
-            extensions=['jinja2.ext.do'])
-        self._engine.filters['decorate'] = jinjamacros.decorate_macro
+            loader=jinja2.PackageLoader("configurator", "templates"),
+            extensions=["jinja2.ext.do"],
+        )
+        self._engine.filters["decorate"] = jinjamacros.decorate_macro
 
         self._parameters: Dict[str, _Property] = collections.OrderedDict()
         self._module_usage = collections.defaultdict(set)
-        self._module_usage['constants_mod'] = set(['cmdi', 'emdi', 'unset_key',
-                                                   'imdi', 'rmdi', 'str_def'])
+        self._module_usage["constants_mod"] = set(
+            ["cmdi", "emdi", "unset_key", "imdi", "rmdi", "str_def"]
+        )
 
     def get_namelist_name(self) -> str:
         """
@@ -376,7 +404,7 @@ class NamelistDescription:
         """
         :return: Namelist loader Fortran module name.
         """
-        return self._listname + '_config_mod'
+        return self._listname + "_config_mod"
 
     def add_enumeration(self, name: str, enumerators: Sequence[str]) -> None:
         """
@@ -390,7 +418,7 @@ class NamelistDescription:
         :param enumerators:
         """
         if not isinstance(enumerators, list):
-            message = 'Expected list of enumerators'
+            message = "Expected list of enumerators"
             raise NamelistDescriptionException(message)
 
         key_dict: Dict[str, int] = collections.OrderedDict()
@@ -403,9 +431,9 @@ class NamelistDescription:
             # Furthermore everything is limited to 2^31 as Fortran integers are
             # always signed.
             #
-            value = crc32(bytes(name + key, encoding='ascii')) & 0x7fffffff
+            value = crc32(bytes(name + key, encoding="ascii")) & 0x7FFFFFFF
             while value in key_dict.values():
-                value = (value + 1) & 0x7fffffff
+                value = (value + 1) & 0x7FFFFFFF
             key_dict[key] = value
 
         self._parameters[name] = _Enumeration(name, key_dict)
@@ -420,9 +448,12 @@ class NamelistDescription:
         """
         self._module_usage[module].add(name)
 
-    def add_string(self, name: str,
-                   configure_string_length: Optional[str] = None,
-                   bounds: Optional[str] = None) -> None:
+    def add_string(
+        self,
+        name: str,
+        configure_string_length: Optional[str] = None,
+        bounds: Optional[str] = None,
+    ) -> None:
         """
         Adds a scalar or array string field to the namelist.
 
@@ -435,16 +466,19 @@ class NamelistDescription:
 
         if bounds:
             dereffed_bounds, _ = self._dereference_expression(bounds)
-            self._parameters[name] = _Array(name,
-                                            new_parameter,
-                                            dereffed_bounds)
+            self._parameters[name] = _Array(
+                name, new_parameter, dereffed_bounds
+            )
         else:
             self._parameters[name] = new_parameter
 
-    def add_value(self, name: str,
-                  configure_type: str,
-                  configure_kind: Optional[str] = None,
-                  bounds: Optional[str] = None) -> None:
+    def add_value(
+        self,
+        name: str,
+        configure_type: str,
+        configure_kind: Optional[str] = None,
+        bounds: Optional[str] = None,
+    ) -> None:
         """
         Adds a scalar or array field of type logical, integer or real to the
         namelist.
@@ -457,16 +491,19 @@ class NamelistDescription:
         new_parameter = _Scalar(name, configure_type, configure_kind)
         if bounds:
             dereffed_bounds, _ = self._dereference_expression(bounds)
-            self._parameters[name] = _Array(name,
-                                            new_parameter,
-                                            dereffed_bounds)
+            self._parameters[name] = _Array(
+                name, new_parameter, dereffed_bounds
+            )
         else:
             self._parameters[name] = new_parameter
 
-    def add_computed(self, name: str,
-                     configure_type: str,
-                     calculation: str,
-                     configure_kind: Optional[str] = None) -> None:
+    def add_computed(
+        self,
+        name: str,
+        configure_type: str,
+        calculation: str,
+        configure_kind: Optional[str] = None,
+    ) -> None:
         """
         Adds a computed field to the namelist.
 
@@ -475,13 +512,16 @@ class NamelistDescription:
         :param configure_kind: kind identifier.
         :param colculation: Fortran expression.
         """
-        calculation, dereferenced_list_vars = (
-            self._dereference_expression(calculation))
+        calculation, dereferenced_list_vars = self._dereference_expression(
+            calculation
+        )
         self._parameters[name] = _Computed(
-            name, configure_type,
+            name,
+            configure_type,
             calculation,
             configure_kind,
-            dereferenced_list_vars=dereferenced_list_vars)
+            dereferenced_list_vars=dereferenced_list_vars,
+        )
 
     def get_parameters(self) -> List[_Property]:
         """
@@ -496,54 +536,66 @@ class NamelistDescription:
         :param file_object: Filename to write to.
         """
         if not self._parameters:
-            message = ('Cannot write a module to load an empty namelist ('
-                       + self._listname + ')')
+            message = (
+                "Cannot write a module to load an empty namelist ("
+                + self._listname
+                + ")"
+            )
             raise NamelistDescriptionException(message)
 
-        all_kinds = set(['i_def'])
+        all_kinds = set(["i_def"])
         lone_kind_index = {}
         lone_kind_tally: Dict[FortranType, int] = collections.defaultdict(int)
         namelist = []
 
         for name, parameter in self._parameters.items():
-
             all_kinds.update(parameter.required_kinds())
 
-            if not isinstance(parameter, _Computed) and \
-               not isinstance(parameter, _Array):
-
+            if not isinstance(parameter, _Computed) and not isinstance(
+                parameter, _Array
+            ):
                 lone_kind_tally[parameter.fortran_type] += 1
                 lone_kind_index[name] = lone_kind_tally[parameter.fortran_type]
 
             if not isinstance(parameter, _Computed):
                 namelist.append(parameter.name)
 
-        inserts = {'all_kinds': all_kinds,
-                   'arrays': [parameter.name
-                              for parameter in self._parameters.values()
-                              if isinstance(parameter, _Array)],
-                   'allocatables': [parameter.name
-                                    for parameter in self._parameters.values()
-                                    if (isinstance(parameter, _Array) and
-                                        not parameter.is_immediate_size())],
-                   'enumerations': [parameter.name
-                                    for parameter in self._parameters.values()
-                                    if isinstance(parameter, _Enumeration)],
-                   'listname': self._listname,
-                   'multiple_instances_allowed':
-                       self._multiple_instances_allowed,
-                   'instance_key_member': self._instance_key_member,
-                   'lonekindindex': lone_kind_index,
-                   'lonekindtally': lone_kind_tally,
-                   'namelist': namelist,
-                   'parameters': self._parameters,
-                   'use_from': self._module_usage}
+        inserts = {
+            "all_kinds": all_kinds,
+            "arrays": [
+                parameter.name
+                for parameter in self._parameters.values()
+                if isinstance(parameter, _Array)
+            ],
+            "allocatables": [
+                parameter.name
+                for parameter in self._parameters.values()
+                if (
+                    isinstance(parameter, _Array)
+                    and not parameter.is_immediate_size()
+                )
+            ],
+            "enumerations": [
+                parameter.name
+                for parameter in self._parameters.values()
+                if isinstance(parameter, _Enumeration)
+            ],
+            "listname": self._listname,
+            "multiple_instances_allowed": self._multiple_instances_allowed,
+            "instance_key_member": self._instance_key_member,
+            "lonekindindex": lone_kind_index,
+            "lonekindtally": lone_kind_tally,
+            "namelist": namelist,
+            "parameters": self._parameters,
+            "use_from": self._module_usage,
+        }
 
-        template = self._engine.get_template('namelist.f90.jinja')
+        template = self._engine.get_template("namelist.f90.jinja")
         file_object.write_text(template.render(inserts))
 
-    def _dereference_expression(self,
-                                expression: str) -> Tuple[str, List[str]]:
+    def _dereference_expression(
+        self, expression: str
+    ) -> Tuple[str, List[str]]:
         """
         Resolve field references in an expression.
 
@@ -551,34 +603,39 @@ class NamelistDescription:
         :result: Expression with references resolved and a list of namelist
                  fields involved.
         """
-        str_dict = {'namelist': {'regexString':   r'namelist:(\w*)=(\w*)',
-                                 'removalString': r'namelist:\w*=',
-                                 'moduleSuffix':  '_config_mod'},
-                    'source':   {'regexString':   r'source:(\w*)=(\w*)',
-                                 'removalString': r'source:\w*=',
-                                 'moduleSuffix':  ''}}
+        str_dict = {
+            "namelist": {
+                "regexString": r"namelist:(\w*)=(\w*)",
+                "removalString": r"namelist:\w*=",
+                "moduleSuffix": "_config_mod",
+            },
+            "source": {
+                "regexString": r"source:(\w*)=(\w*)",
+                "removalString": r"source:\w*=",
+                "moduleSuffix": "",
+            },
+        }
         result = expression
 
         dereferenced_list_vars: List[str] = []
 
         for key, value in str_dict.items():
-            use_variables = re.findall(value['regexString'], result)
+            use_variables = re.findall(value["regexString"], result)
             if use_variables is not None:
                 n_vars = len(use_variables)
 
                 for i_var in range(0, n_vars):
-
                     list_name = use_variables[i_var][0]
                     var_name = use_variables[i_var][1]
 
                     if use_variables[i_var][0] != self._listname:
-                        module_name = f'{list_name}{value["moduleSuffix"]}'
+                        module_name = f"{list_name}{value['moduleSuffix']}"
                         self.add_usage(var_name, module=module_name)
 
-                    if key == 'namelist':
+                    if key == "namelist":
                         dereferenced_list_vars.append(var_name)
 
-            result = re.sub(value['removalString'], '', result)
+            result = re.sub(value["removalString"], "", result)
 
         if len(dereferenced_list_vars) == 0:
             dereferenced_list_vars = []
@@ -596,78 +653,84 @@ class NamelistDescription:
         """
         meta_keys = list(meta_dict.keys())
         string_length: Optional[str] = None
-        xtype: str = ''
+        xtype: str = ""
         xkind: Optional[str] = None
         xbounds: Optional[str] = None
 
-        if 'string_length' in meta_keys:
-            string_length = meta_dict['string_length']
+        if "string_length" in meta_keys:
+            string_length = meta_dict["string_length"]
 
-        if 'kind' in meta_keys:
-            xkind = meta_dict['kind']
+        if "kind" in meta_keys:
+            xkind = meta_dict["kind"]
 
-        if 'type' in meta_keys:
-            xtype = meta_dict['type']
+        if "type" in meta_keys:
+            xtype = meta_dict["type"]
             if isinstance(xtype, str):
-                xtype = xtype.replace('character', 'string')
+                xtype = xtype.replace("character", "string")
 
-        elif ('enumeration' not in meta_keys or
-              meta_dict['enumeration'] == 'false'):
-            message = ('namelist:' + self._listname + '='
-                       + member_name
-                       + ': Non-enumeration metadata requires '
-                       + 'a type definition')
+        elif (
+            "enumeration" not in meta_keys
+            or meta_dict["enumeration"] == "false"
+        ):
+            message = (
+                "namelist:"
+                + self._listname
+                + "="
+                + member_name
+                + ": Non-enumeration metadata requires "
+                + "a type definition"
+            )
             raise NamelistDescriptionException(message)
 
         # Determining array bounds if any.
-        if 'length' in meta_keys:
+        if "length" in meta_keys:
+            xlength = meta_dict["length"]
 
-            xlength = meta_dict['length']
-
-            if xlength == ':':
-
-                if 'bounds' in meta_keys:
-                    xbounds = meta_dict['bounds']
+            if xlength == ":":
+                if "bounds" in meta_keys:
+                    xbounds = meta_dict["bounds"]
                 else:
-                    xbounds = ':'
+                    xbounds = ":"
 
             elif isinstance(int(xlength), int):
                 xbounds = xlength
 
         # Generating Enumerators from metadata
         # These are not dependant on xtype being specified
-        if ('enumeration' in meta_keys and
-                meta_dict['enumeration'] == 'true'):
-
-            key_values = meta_dict['values']
+        if "enumeration" in meta_keys and meta_dict["enumeration"] == "true":
+            key_values = meta_dict["values"]
             if all(isinstance(item, str) for item in key_values):
-                key_values = key_values.replace('\n', '')
-                key_values = key_values.replace(' ', '')
-                key_values = key_values.replace("'", '')
-                keys = key_values.split(',')
+                key_values = key_values.replace("\n", "")
+                key_values = key_values.replace(" ", "")
+                key_values = key_values.replace("'", "")
+                keys = key_values.split(",")
 
-                enumeration_keys = [re.sub(r'namelist:', '', member)
-                                    for member in keys]
+                enumeration_keys = [
+                    re.sub(r"namelist:", "", member) for member in keys
+                ]
 
-                self.add_enumeration(
-                    member_name, enumerators=enumeration_keys)
+                self.add_enumeration(member_name, enumerators=enumeration_keys)
 
         # Check to see if member is a derived variable
-        elif 'expression' in meta_keys:
-            expression_string = meta_dict['expression']
+        elif "expression" in meta_keys:
+            expression_string = meta_dict["expression"]
             self.add_computed(
-                member_name, xtype, configure_kind=xkind,
-                calculation=expression_string)
+                member_name,
+                xtype,
+                configure_kind=xkind,
+                calculation=expression_string,
+            )
 
-        elif xtype == 'string':
+        elif xtype == "string":
             self.add_string(
                 member_name,
                 configure_string_length=string_length,
-                bounds=xbounds)
+                bounds=xbounds,
+            )
         else:
             self.add_value(
-                member_name, xtype, configure_kind=xkind,
-                bounds=xbounds)
+                member_name, xtype, configure_kind=xkind, bounds=xbounds
+            )
 
 
 ###############################################################################
@@ -675,32 +738,36 @@ class NamelistConfigDescription:  # pylint: disable=too-few-public-methods
     """
     Manages the JSON representation of the configuration metadata.
     """
+
     @staticmethod
     def process_config(nml_config_file: Path) -> List[NamelistDescription]:
         """
         Loads the file and dissects it.
         :param nml_config_file: Input JSON file.
         """
-        with open(nml_config_file, encoding='utf8') as config_file:
+        with open(nml_config_file, encoding="utf8") as config_file:
             namelist_config = json.load(config_file)
 
         result = []
 
         for listname in namelist_config.keys():
-
             multiple_instances_allowed = False
             instance_key_member = None
-            if 'multiple_instances_allowed' in \
-                    namelist_config[listname].keys():
-                multiple_instances_allowed = \
-                    namelist_config[listname]['multiple_instances_allowed']
-                instance_key_member = \
-                    namelist_config[listname]['instance_key_member']
+            if (
+                "multiple_instances_allowed"
+                in namelist_config[listname].keys()
+            ):
+                multiple_instances_allowed = namelist_config[listname][
+                    "multiple_instances_allowed"
+                ]
+                instance_key_member = namelist_config[listname][
+                    "instance_key_member"
+                ]
 
-            description = NamelistDescription(listname,
-                                              multiple_instances_allowed,
-                                              instance_key_member)
-            members_dict = namelist_config[listname]['members']
+            description = NamelistDescription(
+                listname, multiple_instances_allowed, instance_key_member
+            )
+            members_dict = namelist_config[listname]["members"]
 
             for member in sorted(members_dict.keys()):
                 meta_dict = members_dict[member]

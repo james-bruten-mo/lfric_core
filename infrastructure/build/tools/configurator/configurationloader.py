@@ -7,6 +7,7 @@
 """
 Generates Fortran source for loading all the configuration namelists.
 """
+
 from pathlib import Path
 from typing import List
 
@@ -18,9 +19,11 @@ class ConfigurationLoader:
     """
     Fortran source to load configuration namelists.
     """
+
     def __init__(self, module_name: str):
         self._engine = jinja2.Environment(
-            loader=jinja2.PackageLoader('configurator', 'templates'))
+            loader=jinja2.PackageLoader("configurator", "templates")
+        )
         self._module_name = module_name
         self._namelists: List[str] = []
 
@@ -38,8 +41,10 @@ class ConfigurationLoader:
 
         :param module_file: Filename to use.
         """
-        inserts = {'moduleName': self._module_name,
-                   'namelists':  self._namelists}
+        inserts = {
+            "moduleName": self._module_name,
+            "namelists": self._namelists,
+        }
 
-        template = self._engine.get_template('loader.f90.jinja')
+        template = self._engine.get_template("loader.f90.jinja")
         module_file.write_text(template.render(inserts))

@@ -7,4 +7,5 @@
 """
 Configurator package details.
 """
-__version__ = '1.0-SNAPSHOT'
+
+__version__ = "1.0-SNAPSHOT"

@@ -9,9 +9,9 @@ Run 'cylc --validate' on the rose-stem suite for different sites and groups
 Ensure the suite validates for all WORKING_CONFIGS
 """
 
-import sys
 import argparse
 import subprocess
+import sys
 
 WORKING_CONFIGS = {
     "meto": ["all"],

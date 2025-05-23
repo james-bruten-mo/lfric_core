@@ -5,4 +5,4 @@
 # under which the code may be used.
 ##############################################################################
 
-from .xiostest import XiosTest
+from .xiostest import XiosTest  # noqa: F401

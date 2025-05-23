@@ -13,27 +13,24 @@
 # For the full project code style check this page:
 # <https://code.metoffice.gov.uk/trac/lfric/wiki/LFRicTechnical/CodingStandards>
 #
-from re import compile as re_compile
-
 from stylist.fortran import (
+    ForbidUsage,
     FortranCharacterset,
-    MissingImplicit,
-    NakedLiteral,
-    MissingOnly,
     IntrinsicModule,
-    ForbidUsage
+    MissingImplicit,
+    MissingOnly,
+    NakedLiteral,
 )
 from stylist.rule import TrailingWhitespace
 from stylist.source import (
     FilePipe,
     FortranPreProcessor,
     FortranSource,
-    PFUnitProcessor
+    PFUnitProcessor,
 )
 from stylist.style import Style
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise Exception("This is a Stylist configuration file, not to be run")
 
 # Define the rules which make up our style...
@@ -43,24 +40,19 @@ allowed_mpi = (
     "lfric_mpi_mod_test",
     "lfric_abort_mod",
     "lfric_mpi_mod",
-    "log_mod"
+    "log_mod",
 )
 
 allowed_oasis = (
     "coupling_mod",
     "coupler_exchange_0d_mod",
-    "coupler_exchange_2d_mod"
+    "coupler_exchange_2d_mod",
 )
 
-allowed_yaxt = (
-    "halo_comms_mod"
-)
+allowed_yaxt = "halo_comms_mod"
 
 # We limit the modules that can be used without "only"
-allowed_use_no_only = (
-    "funit",
-    "pfunit"
-)
+allowed_use_no_only = ("funit", "pfunit")
 
 infrastructure = Style(
     TrailingWhitespace(),
@@ -69,9 +61,9 @@ infrastructure = Style(
     NakedLiteral(integers=False, reals=True),
     MissingOnly(ignore=allowed_use_no_only),
     IntrinsicModule(),
-    ForbidUsage('mpi', exceptions=allowed_mpi),
-    ForbidUsage('mod_oasis', exceptions=allowed_oasis),
-    ForbidUsage('yaxt', exceptions=allowed_yaxt)    
+    ForbidUsage("mpi", exceptions=allowed_mpi),
+    ForbidUsage("mod_oasis", exceptions=allowed_oasis),
+    ForbidUsage("yaxt", exceptions=allowed_yaxt),
 )
 
 # Define additional file type processing pipelines

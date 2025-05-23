@@ -7,6 +7,7 @@
 Crufty tool to detect global variables in Fortran source. This is a stop-gap
 to aid the eradication of globals until Stylist can do it properly.
 """
+
 from dataclasses import dataclass
 from errno import ENOENT
 from logging import getLogger
@@ -39,7 +40,9 @@ class Dirt:
     Describes a dirty file.
     """
 
-    def __init__(self, line_number: int, fortran_type: str, variable_name: str):
+    def __init__(
+        self, line_number: int, fortran_type: str, variable_name: str
+    ):
         self.line_number = line_number
         self.fortran_type = fortran_type.lower()
         self.variable_name = variable_name
@@ -64,12 +67,14 @@ class DirtyFile:
         """
         if not isinstance(other, DirtyFile):
             message = (
-                "Can only compare DirtyFile against other DirtyFile " "objects."
+                "Can only compare DirtyFile against other DirtyFile objects."
             )
             raise ValueError(message)
         return self.filename < other.filename
 
-    def add_dirt(self, line_number: int, fortran_type: str, variable_name: str):
+    def add_dirt(
+        self, line_number: int, fortran_type: str, variable_name: str
+    ):
         """
         Extends the list of dirty files.
         """
@@ -162,7 +167,9 @@ def __find_globals(
 
     for entity in declaration.entities:
         dirty_file.dirt.append(
-            Dirt(declaration.line_number, declaration.fortran_type, entity.name)
+            Dirt(
+                declaration.line_number, declaration.fortran_type, entity.name
+            )
         )
 
 
@@ -177,7 +184,9 @@ def __find_explicit_saved(
 
     for entity in declaration.entities:
         dirty_file.dirt.append(
-            Dirt(declaration.line_number, declaration.fortran_type, entity.name)
+            Dirt(
+                declaration.line_number, declaration.fortran_type, entity.name
+            )
         )
 
 

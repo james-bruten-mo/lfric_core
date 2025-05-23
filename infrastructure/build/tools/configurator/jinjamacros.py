@@ -7,12 +7,15 @@
 """
 Jinja2 filters.
 """
+
 from typing import List, Optional, Sequence
 
 
-def decorate_macro(subject: Sequence[str],
-                   prefix: Optional[str] = None,
-                   postfix: Optional[str] = None) -> List[str]:
+def decorate_macro(
+    subject: Sequence[str],
+    prefix: Optional[str] = None,
+    postfix: Optional[str] = None,
+) -> List[str]:
     """
     Bracket all input lines.
 
@@ -23,9 +26,9 @@ def decorate_macro(subject: Sequence[str],
     result = list(subject)
 
     if prefix:
-        result = [prefix+value for value in result]
+        result = [prefix + value for value in result]
 
     if postfix:
-        result = [value+postfix for value in result]
+        result = [value + postfix for value in result]
 
     return result

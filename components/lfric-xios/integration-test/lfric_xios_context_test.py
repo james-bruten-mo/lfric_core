@@ -8,12 +8,13 @@
 Simple test which initialises a minimal `lfric_xios_context_type` object and
 then destroys it. This will also create an attached XIOS context.
 """
+
 from testframework import TestEngine, TestFailed
 from xiostest import LFRicXiosTest
 
 
 ###############################################################################
-class LfricXiosContextTest(LFRicXiosTest):  # pylint: disable=too-few-public-methods
+class LfricXiosContextTest(LFRicXiosTest):
     """
     Tests the lfric_xios_context_type by creating and destroying it
     """
@@ -27,14 +28,19 @@ class LfricXiosContextTest(LFRicXiosTest):  # pylint: disable=too-few-public-met
         """
 
         if returncode != 0:
-            raise TestFailed(f"Unexpected failure of test executable: {returncode}\n" + 
-                             f"stderr:\n" +
-                             f"{err}")
+            raise TestFailed(
+                f"Unexpected failure of test executable: {returncode}\n"
+                "stderr:\n"
+                f"{err}"
+            )
 
         for xios_out in self.xios_out:
             if not xios_out.exists():
                 raise TestFailed("XIOS context log output not found")
-            if not "-> info : Client side context is finalized\n" in xios_out.contents:
+            if (
+                "-> info : Client side context is finalized\n"
+                not in xios_out.contents
+            ):
                 raise TestFailed("XIOS context not finalised")
 
         for xios_err in self.xios_err:

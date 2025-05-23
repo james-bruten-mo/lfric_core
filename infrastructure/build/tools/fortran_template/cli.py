@@ -6,6 +6,7 @@
 """
 Command line helper functions.
 """
+
 from typing import Dict, List, Optional, Tuple
 
 
@@ -37,9 +38,9 @@ def set_kv(item: str) -> Tuple[str, Optional[str]]:
     return:
         Key and value from string
     """
-    pair = item.split('=')
+    pair = item.split("=")
     key = pair[0].strip()
     value = None
     if len(pair) > 1:
-        value = '='.join(pair[1:])
+        value = "=".join(pair[1:])
     return key, value

@@ -9,7 +9,7 @@ def test_program(tmp_path: Path):
     Ensures that globals may exist in programs. There can only ever be one
     program so globals are acceptable.
     """
-    test_file = tmp_path / 'program.f90'
+    test_file = tmp_path / "program.f90"
     test_file.write_text(
         dedent("""
             program test_program
@@ -37,7 +37,7 @@ def test_parameters(tmp_path: Path):
     """
     Parameters are immutable so are intrinsically global. We don't mind those.
     """
-    test_file = tmp_path / 'program.f90'
+    test_file = tmp_path / "program.f90"
     test_file.write_text(
         dedent("""
         module parameter_mod
@@ -64,7 +64,7 @@ def test_module(tmp_path: Path):
     todo: We have not currently come to a conclusion on how to handle pointer
           initialisation. So we ignore it for the moment.
     """
-    test_file = tmp_path / 'module.f90'
+    test_file = tmp_path / "module.f90"
     test_file.write_text(
         dedent("""
         module test_module
@@ -95,28 +95,28 @@ def test_module(tmp_path: Path):
     assert len(dirty_list[0].dirt) == 6
 
     assert dirty_list[0].dirt[0].line_number == 3
-    assert dirty_list[0].dirt[0].fortran_type == 'integer'
-    assert dirty_list[0].dirt[0].variable_name == 'global_var'
+    assert dirty_list[0].dirt[0].fortran_type == "integer"
+    assert dirty_list[0].dirt[0].variable_name == "global_var"
 
     assert dirty_list[0].dirt[1].line_number == 4
-    assert dirty_list[0].dirt[1].fortran_type == 'integer'
-    assert dirty_list[0].dirt[1].variable_name == 'implicit_var'
+    assert dirty_list[0].dirt[1].fortran_type == "integer"
+    assert dirty_list[0].dirt[1].variable_name == "implicit_var"
 
     # todo: This trips despite our indecision on pointers as it is
     #       plain and simple a global variable.
     #
     assert dirty_list[0].dirt[2].line_number == 5
-    assert dirty_list[0].dirt[2].fortran_type == 'real'
-    assert dirty_list[0].dirt[2].variable_name == 'implicit_pointer'
+    assert dirty_list[0].dirt[2].fortran_type == "real"
+    assert dirty_list[0].dirt[2].variable_name == "implicit_pointer"
 
     assert dirty_list[0].dirt[3].line_number == 10
-    assert dirty_list[0].dirt[3].fortran_type == 'test_type'
-    assert dirty_list[0].dirt[3].variable_name == 'global_type'
+    assert dirty_list[0].dirt[3].fortran_type == "test_type"
+    assert dirty_list[0].dirt[3].variable_name == "global_type"
 
     assert dirty_list[0].dirt[4].line_number == 13
-    assert dirty_list[0].dirt[4].fortran_type == 'integer'
-    assert dirty_list[0].dirt[4].variable_name == 'save_local'
+    assert dirty_list[0].dirt[4].fortran_type == "integer"
+    assert dirty_list[0].dirt[4].variable_name == "save_local"
 
     assert dirty_list[0].dirt[5].line_number == 14
-    assert dirty_list[0].dirt[5].fortran_type == 'integer'
-    assert dirty_list[0].dirt[5].variable_name == 'implicit_local'
+    assert dirty_list[0].dirt[5].fortran_type == "integer"
+    assert dirty_list[0].dirt[5].variable_name == "implicit_local"

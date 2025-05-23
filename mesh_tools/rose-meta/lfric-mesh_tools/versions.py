@@ -1,8 +1,8 @@
 import sys
 
-from metomi.rose.upgrade import MacroUpgrade
+# from metomi.rose.upgrade import MacroUpgrade
 
-from .version20_21 import *
+from .version20_21 import *  # noqa: F401, F403
 
 
 class UpgradeError(Exception):

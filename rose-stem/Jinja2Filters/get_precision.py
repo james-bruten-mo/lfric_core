@@ -26,20 +26,20 @@ def get_precision(build_string):
     # Find a default with format 'NNbit'
     # Use 64 if not set
     try:
-        default = int(re.search("(\d+)bit", build_string).group(1))
+        default = int(re.search(r"(\d+)bit", build_string).group(1))
     except AttributeError:
         default = 64
 
     types = ["rbl", "rdef", "rphys", "rsolver", "rtran"]
     precisions = {}
 
-    # Loop over all types and search for 'typeNN' string matches in build config
-    # Extract the precision, NN, as an integer.
+    # Loop over all types and search for 'typeNN' string matches in build
+    # config. Extract the precision, NN, as an integer.
     # If type not in the build_string use the default
     for precision_type in types:
         try:
             num = int(
-                re.search(f"{precision_type}(\d+)", build_string).group(1)
+                re.search(fr"{precision_type}(\d+)", build_string).group(1)
             )
         except AttributeError:
             num = default

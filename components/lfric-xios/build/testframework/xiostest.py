@@ -4,28 +4,23 @@
 # The file LICENCE, distributed with this code, contains details of the terms
 # under which the code may be used.
 ##############################################################################
-
-from __future__ import print_function
-
-from __future__ import absolute_import
-from abc import ABCMeta, abstractmethod
 import os
 from pathlib import Path
 import sys
 from typing import List
-import six
+
 from testframework import MpiTest
 
 
 ##############################################################################
-class LFRicXiosTest(six.with_metaclass(ABCMeta, MpiTest)):
+class LFRicXiosTest(MpiTest):
     """
     Base for LFRic-XIOS integration tests.
     """
 
     def __init__(self, command=sys.argv[1], processes=1):
         """ """
-        super(LFRicXiosTest, self).__init__(command, processes)
+        super().__init__(command, processes)
         self.xios_out: List[XiosOutput] = []
         self.xios_err: List[XiosOutput] = []
 
