@@ -1,0 +1,93 @@
+{# ########################################################################### #}
+{# (c) Crown copyright 2024 Met Office. All rights reserved. #}
+{# The file LICENCE, distributed with this code, contains details of the terms #}
+{# under which the code may be used. #}
+{# ########################################################################### #}
+{% do LOG.debug("Entered site/meto/groups/group_coupled.cylc") %}
+
+{# azspice Groups #}
+{% do site_groups.update({
+    "coupled_azspice_developer": [
+        "coupled_azspice_unit_tests",
+        "coupled_azspice_canned",
+        "coupled_default-C12_azspice_gnu_fast-debug-64bit",
+        "coupled_default-C12_azspice_gnu_full-debug-64bit",
+    ],
+    "coupled_azspice": [
+        "coupled_azspice_developer"
+    ],
+    "coupled_azspice_unit_tests": [
+    ],
+    "coupled_azspice_canned": [
+        "coupled_canned_azspice_gnu_fast-debug-64bit",
+    ],
+    "coupled_azspice_build": [
+        "build_coupled_azspice_gnu_fast-debug-64-bit",
+        "build_coupled_azspice_gnu_full-debug-64-bit",
+    ]
+    }) %}
+
+{# ex1a Groups #}
+{% do site_groups.update({
+    "coupled_ex1a_developer": [
+        "coupled_ex1a_unit_tests",
+        "coupled_ex1a_canned",
+        "coupled_default-C12_ex1a_cce_fast-debug-64bit",
+        "coupled_default-C12_ex1a_cce_full-debug-64bit",
+    ],
+    "coupled_ex1a": [
+        "coupled_ex1a_developer"
+    ],
+    "coupled_ex1a_unit_tests": [
+    ],
+    "coupled_ex1a_canned": [
+        "coupled_canned_ex1a_cce_fast-debug-64bit",
+    ],
+    "coupled_ex1a_build": [
+        "build_coupled_ex1a_cce_fast-debug-64-bit",
+        "build_coupled_ex1a_cce_full-debug-64-bit",
+    ]
+    }) %}
+
+{# Platform Generic Groups #}
+{% do site_groups.update({
+    "coupled_developer": [
+        "scripts",
+        "coupled_azspice_developer",
+        "coupled_ex1a_developer",
+        "coupled_unit_tests",
+    ],
+    "coupled": [
+        "coupled_developer",
+        "coupled_azspice",
+    ],
+    "coupled_unit_tests": [
+        "coupled_azspice_unit_tests",
+    ],
+    "coupled_build": [
+        "coupled_azspice_build",
+    ],
+    "coupled_canned": [
+        "coupled_azspice_canned",
+    ],
+    }) %}
+
+{# Platform Generic Extends #}
+{% do site_groups.developer.extend(site_groups.coupled_developer) %}
+{% do site_groups.all.extend(site_groups.coupled) %}
+{% do site_groups.unit_tests.extend(site_groups.coupled_unit_tests) %}
+{% do site_groups.build.extend(site_groups.coupled_build) %}
+
+{# azspice Extends #}
+{% do site_groups.azspice_developer.extend(site_groups.coupled_azspice_developer) %}
+{% do site_groups.azspice.extend(site_groups.coupled_azspice) %}
+{% do site_groups.azspice_unit_tests.extend(site_groups.coupled_azspice_unit_tests) %}
+{% do site_groups.azspice_build.extend(site_groups.coupled_azspice_build) %}
+
+{# ex1a Extends #}
+{% do site_groups.ex1a_developer.extend(site_groups.coupled_ex1a_developer) %}
+{% do site_groups.ex1a.extend(site_groups.coupled_ex1a) %}
+{% do site_groups.ex1a_unit_tests.extend(site_groups.coupled_ex1a_unit_tests) %}
+{% do site_groups.ex1a_build.extend(site_groups.coupled_ex1a_build) %}
+
+{% do LOG.debug("Finished in site/meto/groups/group_coupled.cylc") %}

@@ -58,7 +58,7 @@
 {# These will be populated if the task is required #}
 {% set mesh_build_task = "" %}
 {% set application_build_task = "" %}
-{% set mesh_run_task = "" %}
+{% set mesh_run_tasks = [] %}
 {% set application_run_task = "" %}
 
 {# Do we need to build the mesh? #}
@@ -108,20 +108,29 @@
       (task_values["app_name"] == "canned_test" or
       task_ns.application == "mesh_tools") %}
 
-    {% set mesh_run_task = "run_mesh_"~
-                           task_values["resolution"]~"_"~
-                           task_ns.platform~"_"~
-                           site_vars["mesh_build"][task_ns.platform] %}
-
-{# If the task is the mesh run task then use the task dictionary #}
-{# Otherwise use an empty dict to be populated later #}
-    {% if mesh_run_task not in tasks_to_run %}
-        {% if task_ns.application == "mesh" %}
-            {% do tasks_to_run.update({mesh_run_task: task_values}) %}
-        {% else %}
-            {% do tasks_to_run.update({mesh_run_task: {} }) %}
-        {% endif %}
+    {% if task_values["resolution"] is string %}
+        {% set res = task_values["resolution"] %}
+        {% do task_values.update({"resolution": [res]}) %}
     {% endif %}
+
+    {% for resolution in task_values["resolution"] %}
+        {% set mesh_run_task = "run_mesh_"~
+                               resolution~"_"~
+                               task_ns.platform~"_"~
+                               site_vars["mesh_build"][task_ns.platform] %}
+
+        {% do mesh_run_tasks.append(mesh_run_task) %}
+
+        {# If the task is the mesh run task then use the task dictionary #}
+        {# Otherwise use an empty dict to be populated later #}
+        {% if mesh_run_task not in tasks_to_run %}
+            {% if task_ns.application == "mesh" %}
+                {% do tasks_to_run.update({mesh_run_task: task_values}) %}
+            {% else %}
+                {% do tasks_to_run.update({mesh_run_task: {} }) %}
+            {% endif %}
+        {% endif %}
+    {% endfor %}
 {% endif %}
 
 {# Do we need to run an application? #}
@@ -152,11 +161,11 @@
         application_build_task]) %}
 {% endif %}
 
-{% if mesh_run_task %}
+{% for mesh_run_task in mesh_run_tasks %}
     {% do graph_sections.append([
         mesh_build_task,
         mesh_run_task]) %}
-{% endif %}
+{% endfor %}
 
 {# If running the nrun task, define application, plot and check #}
 {% if running_nrun and task.startswith("run") %}
@@ -164,11 +173,11 @@
         {% do graph_sections.append([
             application_build_task,
             application_run_task]) %}
-        {% if mesh_run_task %}
+        {% for mesh_run_task in mesh_run_tasks %}
             {% do graph_sections.append([
                 mesh_run_task,
                 application_run_task]) %}
-        {% endif %}
+        {% endfor %}
     {% endif %}
 
     {% if checksum_kgo %}

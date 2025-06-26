@@ -1,0 +1,157 @@
+!-----------------------------------------------------------------------------
+! (c) Crown copyright 2025 Met Office. All rights reserved.
+! The file LICENCE, distributed with this code, contains details of the terms
+! under which the code may be used.
+!-----------------------------------------------------------------------------
+
+!> @brief Initialisation functionality for the coupled miniapp
+
+!> @details Handles initialisation of the prognostic field that is passed
+!>          through the coupler.
+
+module init_coupled_mod
+
+  use constants_mod,                  only : i_def, r_def, str_def, &
+                                             str_longlong,          &
+                                             radians_to_degrees
+  use coupling_mod,                   only : coupling_type,       &
+                                             get_coupling_fields, &
+                                             get_coupling_from_collection
+  use driver_modeldb_mod,             only : modeldb_type
+  use field_collection_mod,           only : field_collection_type
+  use field_mod,                      only : field_type
+  use field_parent_mod,               only : write_interface
+  use finite_element_config_mod,      only : element_order_h, element_order_v
+  use function_space_collection_mod,  only : function_space_collection
+  use fs_continuity_mod,              only : W3
+  use log_mod,                        only : log_event,      &
+                                             LOG_LEVEL_INFO, &
+                                             LOG_LEVEL_ERROR
+  use mesh_mod,                       only : mesh_type
+  use pure_abstract_field_mod,        only : pure_abstract_field_type
+  use sci_compute_latlon_kernel_mod,  only : compute_latlon_kernel_type
+
+  implicit none
+
+  contains
+
+  !> @details Initialises everything needed to run the coupled miniapp
+  !> @param[in]     mesh Representation of the mesh the code will run on
+  !> @param[in,out] chi The co-ordinate field
+  !> @param[in,out] panel_id 2d field giving the id for cubed sphere panels
+  !> @param[in,out] modeldb The structure that holds model state
+  subroutine init_coupled( mesh, chi, panel_id, modeldb)
+
+    implicit none
+
+    type(mesh_type), intent(in), pointer     :: mesh
+    ! Coordinate field
+    type( field_type ), intent(inout)        :: chi(:)
+    type( field_type ), intent(inout)        :: panel_id
+    type(modeldb_type), intent(inout)        :: modeldb
+
+    ! Loop variable over the configuration names
+    integer(i_def)                           :: nv
+    ! Field name
+    character(str_def)                       :: name
+
+    type(field_collection_type), pointer :: cpl_snd_2d
+    type(field_collection_type), pointer :: cpl_rcv_2d
+    type(field_collection_type), pointer :: cpl_snd_0d
+
+    ! Names of coupling send fields listed in the coupling configuration
+    character(str_def), allocatable        :: send_field_names(:)
+    ! Names of coupling receive fields listed in the coupling configuration
+    character(str_def), allocatable        :: recv_field_names(:)
+
+    type( field_type )                     :: field_1, field_2
+    type( field_type ), pointer            :: field_1_ptr, field_2_ptr
+    type( field_collection_type ), pointer :: depository
+    class(pure_abstract_field_type), pointer :: abs_field_ptr
+
+    type(coupling_type), pointer           :: coupling_ptr
+    character(str_longlong), pointer       :: cpl_component_name
+
+    procedure(write_interface), pointer :: tmp_ptr
+
+    call log_event( 'coupled: Initialising app ...', LOG_LEVEL_INFO )
+
+    ! Get the name of the coupling component
+    call modeldb%values%get_value("cpl_name", cpl_component_name)
+
+    ! Create prognostic fields
+    ! Creates a field in the W3 function space (fully discontinuous field)
+    call field_1%initialise( vector_space = &
+                    function_space_collection%get_fs(mesh, element_order_h, element_order_v, W3), &
+                             name="field_1")
+    call field_2%initialise( vector_space = &
+                    function_space_collection%get_fs(mesh, element_order_h, element_order_v, W3), &
+                             name="field_2")
+
+    ! Add field to modeldb
+    depository => modeldb%fields%get_field_collection("depository")
+    call depository%add_field(field_1)
+    call depository%add_field(field_2)
+
+    ! Set up collections to hold 2d coupling fields
+    call modeldb%fields%add_empty_field_collection("cpl_snd_2d" , &
+                                              table_len = 30)
+    call modeldb%fields%add_empty_field_collection("cpl_rcv_2d" , &
+                                              table_len = 30)
+    call modeldb%fields%add_empty_field_collection("cpl_snd_0d" , &
+                                              table_len = 30)
+
+    cpl_snd_2d => modeldb%fields%get_field_collection("cpl_snd_2d")
+    cpl_rcv_2d => modeldb%fields%get_field_collection("cpl_rcv_2d")
+    cpl_snd_0d => modeldb%fields%get_field_collection("cpl_snd_0d")
+
+    ! Get the contents of the coupling configuration
+    ! Note: this allocates the two arrays - so they will need deallocating later
+    call get_coupling_fields(send_field_names, recv_field_names)
+
+    ! Loop over all entries in the namcouple file, looking for lfric fields
+    ! as either the coupling source or destination entry
+    if (trim(cpl_component_name) == "lfric_o") then
+      do nv = 1, size(send_field_names)
+        name = trim(adjustl(send_field_names(nv)))
+        call depository%get_field( trim(name),  field_1_ptr)
+        ! Initialise the values in the field that will be sent to the coupler.
+        ! Set them to the longitude of the cell-centre (converted to degrees)
+        call invoke(compute_latlon_kernel_type(field_2, field_1_ptr, &
+                                               chi, panel_id),       &
+                    inc_a_times_X(radians_to_degrees, field_1_ptr))
+        ! Add that field to the coupling 2d "send" field collection
+        abs_field_ptr => field_1_ptr
+        call cpl_snd_2d%add_reference_to_field(abs_field_ptr)
+      end do
+    end if
+    if (trim(cpl_component_name) == "lfric_i") then
+      do nv = 1, size(recv_field_names)
+        name = trim(adjustl(recv_field_names(nv)))
+        call depository%get_field( trim(name),  field_2_ptr)
+        ! Zero the values in the field that will be received the coupler
+        call invoke(setval_c(field_2_ptr, 0.0_r_def))
+        ! Add that field to the coupling 2d "receive" field collection
+        abs_field_ptr => field_2_ptr
+        call cpl_rcv_2d%add_reference_to_field(abs_field_ptr)
+      end do
+    end if
+
+    ! Extract the coupling object from the modeldb key-value pair collection
+    coupling_ptr => get_coupling_from_collection(modeldb%values, "coupling" )
+    call coupling_ptr%define_partitions(modeldb%mpi,mesh)
+    call coupling_ptr%define_variables( cpl_snd_2d, &
+                                        cpl_rcv_2d, &
+                                        cpl_snd_0d )
+    call coupling_ptr%end_definition( cpl_snd_2d, &
+                                      cpl_rcv_2d, &
+                                      cpl_snd_0d )
+
+    if(allocated(send_field_names)) deallocate(send_field_names)
+    if(allocated(recv_field_names)) deallocate(recv_field_names)
+
+    call log_event( 'coupled: Miniapp initialised', LOG_LEVEL_INFO )
+
+  end subroutine init_coupled
+
+end module init_coupled_mod

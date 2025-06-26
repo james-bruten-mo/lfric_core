@@ -78,7 +78,7 @@ subroutine final_logger(program_name)
   character(len=*), intent(in) :: program_name
 
   ! Final logging before infrastructure is destroyed
-  call log_event( program_name//' completed.', LOG_LEVEL_ALWAYS )
+  call log_event( program_name//' application completed.', LOG_LEVEL_ALWAYS )
 
   ! Finalise the logging system
   call finalise_logging()

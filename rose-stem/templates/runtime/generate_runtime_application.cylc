@@ -63,6 +63,12 @@
       {% set post_script_commands = [] %}
     {% endif %}
 
+    {% if task_ns.application == "coupled" %}
+      {% set configuration_file1 = "configuration_glo.nml" %}
+      {% set configuration_file2 = "configuration_lam.nml" %}
+      {% set post_script_commands = [] %}
+    {% endif %}
+
     {% set script_str.name = script_str.name~" --command-key=$RUN_METHOD" %}
 
 {% elif task_values["app_name"] == "mesh_tools" %}
@@ -75,10 +81,16 @@
     {% set post_script_commands = [] %}
 
 {% else %}
+    {# Use the first resolution if multiple supplied (coupled) #}
+    {% set resolution = task_values["resolution"] %}
+    {% if resolution is not string %}
+        {% set resolution = resolution[0] %}
+    {% endif %}
+
     {% for opt_conf in task_values["opt_confs"] %}
         {% set script_str.name = script_str.name~" --opt-conf-key="~opt_conf %}
     {% endfor %}
-    {% set script_str.name = script_str.name~" --opt-conf-key="~task_values["resolution"] %}
+    {% set script_str.name = script_str.name~" --opt-conf-key="~resolution %}
     {% if task_values["use_xios"] %}
         {% set script_str.name = script_str.name~" --opt-conf-key=xios_server" %}
     {% endif %}
@@ -133,6 +145,14 @@
             RUN_METHOD            = mpiexec
             PROCESSES             = {{task_values["mpi_parts"]}}
       {% endif %}
+      {% if task_ns.application == "coupled" %}
+        {% if task_values["app_name"] == "canned_test" %}
+            CONFIGURATION_FILE1   = {{configuration_file1}}
+            CONFIGURATION_FILE2   = {{configuration_file2}}
+            RUN_METHOD            = mpiexec_cpl
+        {% endif %}
+      {% endif %}
+
 
 {# Set any directives using macros imported in generate_runtime for this platform #}
         [[[directives]]]

@@ -5,7 +5,8 @@
 {# ########################################################################### #}
 {% do LOG.debug("Entered site/meto/variables.cylc") %}
 
-{% do site_vars.update({"known_applications": ["coupling",
+{% do site_vars.update({"known_applications": ["coupled",
+                                               "coupling",
                                                "driver",
                                                "infrastructure",
                                                "io_demo",

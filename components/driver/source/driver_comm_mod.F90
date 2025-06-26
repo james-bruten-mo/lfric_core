@@ -17,7 +17,7 @@
 !>
 module driver_comm_mod
 
-  use constants_mod,         only: i_def, l_def, str_def
+  use constants_mod,         only: i_def, l_def, str_longlong
   use driver_modeldb_mod,    only: modeldb_type
   use halo_comms_mod,        only: initialise_halo_comms, &
                                    finalise_halo_comms
@@ -67,9 +67,9 @@ contains
     logical :: comm_is_split
 
 #ifdef MCT
-    type(coupling_type)          :: coupling
-    type(coupling_type), pointer :: coupling_ptr
-    character(str_def),  pointer :: cpl_name
+    type(coupling_type)              :: coupling
+    type(coupling_type),     pointer :: coupling_ptr
+    character(str_longlong), pointer :: cpl_name
 #endif
 
     ! Comm has not been split yet

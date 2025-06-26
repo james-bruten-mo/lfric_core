@@ -72,7 +72,7 @@ program summarise_ugrid
   call initialise_logging( comm%get_comm_mpi_val(), "summarise" )
 
   ! Get filename from command line
-  call get_initial_filename( filename, 'UGRID mesh file' )
+  call get_initial_filename( filename, description='UGRID mesh file' )
 
   ! Create object to manipulate UGRID conforming NetCDF file
   allocate(ncdf_quad_type::ugrid_file)

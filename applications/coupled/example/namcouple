@@ -1,0 +1,35 @@
+
+#########################################################################
+ $NFIELDS
+# This is the total number of fields being exchanged. 
+# For the definition of the fields, see under $STRINGS keyword
+#
+             1
+ $END
+#########################################################################
+ $RUNTIME
+# This gives you the total simulated time for this run in seconds
+#
+  86400
+ $END
+###########################################################################
+ $NLOGPRT
+# Index of printing level in output file cplout: 0 = no printing
+#  1 = main routines and field names when treated, 2 = complete output
+  0
+ $END
+###########################################################################
+ $STRINGS
+#
+# field1 send from global (C12) into field2, lam (50x50)
+#
+ field_1 field_2 466 1 1 coupled.nc   EXPOUT
+ 864 1 50 50 lfric_o lfric_i
+ P  0  R  2
+#
+ MAPPING
+#
+ rmp_lfric_glo_to_lfric_lam.nc
+#######################################################
+#
+$END
