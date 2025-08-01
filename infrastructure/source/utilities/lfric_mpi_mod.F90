@@ -311,6 +311,17 @@ contains
   subroutine finalise(self)
     implicit none
     class(lfric_mpi_type), intent(inout) :: self
+    integer :: ierr
+
+#ifdef NO_MPI
+    ierr = 0
+#else
+    if (self%comm_set) then
+      call mpi_comm_free(self%comm, ierr)
+      if (ierr /= 0) &
+        call log_event('Cannot free the duplicated MPI comm.', LOG_LEVEL_ERROR )
+    end if
+#endif
     self%comm_set = .false.
   end subroutine finalise
 

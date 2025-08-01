@@ -124,13 +124,19 @@ else
   $(error Unrecognised LINK_TYPE. Must be either "static" or "dynamic")
 endif
 
+ifdef NO_MPI
+  LINKER = $(FC)
+else
+  LINKER = $(LDMPI)
+endif
+
 ##############################################################################
 
 .PRECIOUS: $(BIN_DIR)/%
 $(BIN_DIR)/%: %.o $$(LIB_DIR)/lib$$(*F).a
 	$(call MESSAGE,Linking,$*)
 	$(Q)mkdir -p $(@D)
-	$(Q)$(LDMPI) $(LDFLAGS) $(LDFLAGS_BASE) $(LDFLAGS_COMPILER) -o $@ $^ \
+	$(Q)$(LINKER) $(LDFLAGS) $(LDFLAGS_BASE) $(LDFLAGS_COMPILER) -o $@ $^ \
 	            $(patsubst %,-l%,$(EXTERNAL_STATIC_LIBRARIES)) \
 	            $(patsubst %,-l%,$(EXTERNAL_DYNAMIC_LIBRARIES))
 

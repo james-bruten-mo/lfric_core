@@ -230,6 +230,11 @@ contains
       ! No barriers required in non-mpi build
 #else
       call mpi_barrier( mpi_communicator, ierror=ios )
+      call mpi_comm_free( mpi_communicator, ios )
+      if (ios /= 0) then
+        write( error_unit, "('Cannot free the duplicate MPI comm. ierr = ', i0)" ) ios
+        call abort_model()
+      end if
 #endif
       deallocate( mpi_communicator )
     end if
