@@ -34,8 +34,6 @@ module field_parent_mod
     private
     !> A pointer to the function space on which the field lives
     type( function_space_type ), pointer :: vspace => null( )
-    !> Holds information about how to halo exchange a field
-    type(halo_routing_type), pointer :: halo_routing => null()
     !> Flag that holds whether each depth of halo is clean or dirty (dirty=1)
     integer(kind=i_def),allocatable :: halo_dirty(:)
     !> Name of the field. Note the name is immutable once defined via
@@ -47,6 +45,10 @@ module field_parent_mod
     integer(kind=i_def) :: field_halo_depth
     !> marker for if a field has been initialised
     logical(kind=l_def) :: initialised = .false.
+    !> The type of data in the field to be halo swapped
+    integer(i_def) :: fortran_type
+    !> The kind of data in the field to be halo swapped
+    integer(i_def) :: fortran_kind
   contains
     !> Initialiser for a field parent object
     !> @param [in] vector_space The function space that the field lives on
@@ -101,12 +103,14 @@ module field_parent_mod
     integer(kind=i_def) :: dummy_for_self
     !> A pointer to the function space on which the field lives
     type( function_space_type ), pointer, public :: vspace => null()
-    !> Holds metadata information about a field - like dofmap or routing tables
-    type(halo_routing_type), public, pointer :: halo_routing => null()
     !> A pointer to the array that holds halo dirtiness
     integer(kind=i_def), public, pointer :: halo_dirty(:) => null()
     !> Depth of halo for this field
     integer(kind=i_def), pointer :: field_halo_depth
+    !> The type of data in the field to be halo swapped
+    integer(i_def) :: fortran_type
+    !> The kind of data in the field to be halo swapped
+    integer(i_def) :: fortran_kind
   contains
     !> Return the halo depth on this field
     !> @return The halo depth on this field
@@ -217,28 +221,15 @@ contains
     self%vspace => vector_space
     mesh => self%vspace%get_mesh()
 
+    self%fortran_kind = fortran_kind
+    self%fortran_type = fortran_type
+
     ! Set the depth of the halos for this field. If the optional parameter
     ! is not given, use the maximum halo depth offerred by the mesh
     if ( present(halo_depth) ) then
       self%field_halo_depth = halo_depth
     else
       self%field_halo_depth = default_halo_depth
-    end if
-
-
-    ! Fields on a read-only function space can never halo exchanged
-    ! - so only need a routing table for writable function spaces
-    if ( vector_space%is_writable() ) then
-      self%halo_routing => &
-        halo_routing_collection%get_halo_routing(                                &
-                                             mesh,                               &
-                                             vector_space%get_element_order_h(), &
-                                             vector_space%get_element_order_v(), &
-                                             vector_space%which(),               &
-                                             vector_space%get_ndata(),           &
-                                             fortran_type,                       &
-                                             fortran_kind,                       &
-                                             self%field_halo_depth )
     end if
 
     ! Set the name of the field if given, otherwise default to 'none'
@@ -286,9 +277,10 @@ contains
    class(field_parent_proxy_type), intent(inout) :: field_proxy
 
    field_proxy%vspace           => self%vspace
-   field_proxy%halo_routing     => self%halo_routing
    field_proxy%halo_dirty       => self%halo_dirty
    field_proxy%field_halo_depth => self%field_halo_depth
+   field_proxy%fortran_kind = self%fortran_kind
+   field_proxy%fortran_type = self%fortran_type
 
   end subroutine field_parent_proxy_initialiser
 
@@ -419,7 +411,17 @@ contains
     class(field_parent_proxy_type), intent(in) :: self
     type(halo_routing_type), pointer :: halo_routing
 
-    halo_routing => self%halo_routing
+    ! Only compute a routing table when a field needs to be halo exchanged
+    halo_routing => &
+        halo_routing_collection%get_halo_routing(                               &
+                                             self%vspace%get_mesh(),            &
+                                             self%vspace%get_element_order_h(), &
+                                             self%vspace%get_element_order_v(), &
+                                             self%vspace%which(),               &
+                                             self%vspace%get_ndata(),           &
+                                             self%fortran_type,                 &
+                                             self%fortran_kind,                 &
+                                             self%field_halo_depth )
 
   end function get_halo_routing
 
