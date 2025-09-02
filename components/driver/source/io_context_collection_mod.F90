@@ -48,7 +48,9 @@ module io_context_collection_mod
     procedure, public :: context_exists
     procedure, public :: get_table_len
     procedure, public :: clear
-    final :: destructor
+    ! Replaced destructor with custom name for FINAL (for NVIDIA)
+    ! final :: destructor
+    final :: io_context_collection_final
 
   end type io_context_collection_type
 
@@ -308,13 +310,14 @@ contains
   end subroutine clear
 
   !> @brief Destructor for io context collection
-  subroutine destructor(this)
+  ! Replaced name destructor for FINAL because it clashes with reserved name for NVIDIA
+  subroutine io_context_collection_final(this)
     implicit none
 
     type(io_context_collection_type), intent(inout) :: this
 
     call this%clear()
 
-  end subroutine destructor
+  end subroutine io_context_collection_final
 
 end module io_context_collection_mod

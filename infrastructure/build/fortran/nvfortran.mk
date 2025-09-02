@@ -18,6 +18,7 @@ endif
 F_MOD_DESTINATION_ARG = -module$(SPACE)
 
 FFLAGS_COMPILER           =
+FFLAGS_COMPILER          += -Mfree -Mpreprocess
 FFLAGS_NO_OPTIMISATION    = -O0
 FFLAGS_SAFE_OPTIMISATION  = -O2
 FFLAGS_RISKY_OPTIMISATION = -O4
@@ -42,5 +43,5 @@ else
 	LDFLAGS_OPENMP = -mp
 endif
 
-FPP = nvfortran -F
+FPP = nvfortran -E
 FPPFLAGS = -P -D__NVCOMPILER
