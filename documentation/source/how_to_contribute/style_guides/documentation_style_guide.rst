@@ -1,5 +1,5 @@
 .. -----------------------------------------------------------------------------
-    (c) Crown copyright 2024 Met Office. All rights reserved.
+    (c) Crown copyright Met Office. All rights reserved.
     The file LICENCE, distributed with this code, contains details of the terms
     under which the code may be used.
    -----------------------------------------------------------------------------
@@ -18,13 +18,12 @@ documentation follows a consistent style.
 Copyright
 ---------
 
-Include a copy of the standard Copyright text in all files (with an
-appropriate year).
+Include a copy of the standard Copyright text in all files.
 
 .. code-block:: rst
 
   .. -----------------------------------------------------------------------------
-      (c) Crown copyright 2025 Met Office. All rights reserved.
+      (c) Crown copyright Met Office. All rights reserved.
       The file LICENCE, distributed with this code, contains details of the terms
       under which the code may be used.
      -----------------------------------------------------------------------------
