@@ -70,3 +70,4 @@ components/**/documents
 infrastructure/**/bin
 infrastructure/**/working
 infrastructure/**/test
+infrastructure/**/documents
