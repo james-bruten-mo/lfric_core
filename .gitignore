@@ -58,6 +58,7 @@ __pycache__
 applications/**/bin
 applications/**/working
 applications/**/test
+applications/**/documents
 applications/**/example*/
 mesh_tools/**/bin
 mesh_tools/**/working
