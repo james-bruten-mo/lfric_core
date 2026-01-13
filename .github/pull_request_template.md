@@ -27,7 +27,7 @@ Code Reviewer: <!-- CR id, filled by SSD/CCD (e.g. @octocat) -->
 - [ ] I have performed a self-review of my own code
 - [ ] My code follows the project's
       [style guidelines](https://metoffice.github.io/lfric_core/how_to_contribute/index.html#how-to-contribute-index)
-- [ ] Comments have been included that aid undertanding and enhance the
+- [ ] Comments have been included that aid understanding and enhance the
       readability of the code
 - [ ] My changes generate no new warnings
 
