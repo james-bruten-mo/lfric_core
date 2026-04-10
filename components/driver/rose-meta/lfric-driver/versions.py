@@ -31,3 +31,12 @@ class vnXX_txxx(MacroUpgrade):
         # Add settings
         return config, self.reports
 """
+
+class vn31_t999(MacroUpgrade):
+    """Upgrade macro for ticket 999 by James Bruten."""
+
+    BEFORE_TAG = "vn3.1"
+    AFTER_TAG = "vn3.1_t999"
+
+    def upgrade(self, config, meta_config=None):
+        return config, self.reports
