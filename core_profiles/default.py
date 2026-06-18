@@ -1,6 +1,7 @@
 fortran_compile_flags_common =[
     "-std=f2008",
     "-ffree-line-length-none",
+    "-fallow-argument-mismatch",
 ]
 
 compile_profile = {
