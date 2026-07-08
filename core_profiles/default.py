@@ -8,4 +8,5 @@ compile_profile = {
     "min_compiler_version": 12,
     "fortran_compile_flags_common": fortran_compile_flags_common,
     "openmp": True,
+    "fortran_pp_flags": ["-traditional-cpp", "-P"],
 }
