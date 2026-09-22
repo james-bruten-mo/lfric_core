@@ -14,7 +14,8 @@
         "validate_rose_meta",
         "rose-stem_lint_checker",
         "global_variables_checker",
-        "python_unit_tests"
+        "python_unit_tests",
+        "fab_skeleton"
     ],
     "azspice_developer": [],
     "azspice": ["azspice_developer"],

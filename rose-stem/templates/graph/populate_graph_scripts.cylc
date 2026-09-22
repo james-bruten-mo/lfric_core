@@ -57,6 +57,7 @@
     {# * global_variables_checker #}
     {# * python_unit_tests #}
     {# * local_build_test #}
+    {# * fab_skeleton #}
 
     {% do graph_sections.append([
         export_task,

@@ -15,9 +15,13 @@
 {# Set the family inheritance for this task #}
 {% set inherit = namespace(str="") %}
 {% set inherit.str = "SCRIPTS" %}
-{% for family in task_values["script_families"] %}
-    {% set inherit.str = inherit.str~","~family|upper %}
-{% endfor %}
+{% if task.startswith("fab") %}
+    {% set inherit.str = site_vars["scripts_platform"]|upper~"_BUILD_GNU" %}
+{% else %}
+    {% for family in task_values["script_families"] %}
+        {% set inherit.str = inherit.str~","~family|upper %}
+    {% endfor %}
+{% endif %}
 
 {# ######################## #}
 {# Scripts Runtime Sections #}
@@ -73,6 +77,15 @@
 
         inherit={{inherit.str|upper}}
         script="rose task-run --app-key=python_unit_tests"
+
+{% elif task.startswith("fab") %}
+
+    {% set application = task.removeprefix("fab_") %}
+
+        inherit={{inherit.str|upper}}
+        script = "rose task-run --app-key=fab_test"
+        [[[environment]]]
+        application = {{application}}
 
 {% endif %}
 
